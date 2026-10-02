@@ -202,3 +202,61 @@ def test_ta31_domain_sessions_share_no_state(tmp_path: Path) -> None:
     a.ledger.record_opening_balance(bank, "10.00", date(2026, 1, 1))
     a.add_document("n.pdf", docs.nubank_card_pdf())
     assert bank not in b.ledger.accounts and not b.ledger.operations and not b.documents
+
+
+def test_ta29_ai_enabled_but_failing_does_not_block_review_or_save(
+    vault_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import socket
+
+    from opesvault.ai.ollama import AiUnavailable, OllamaClient
+    from opesvault.domain.settings import update_settings
+    from opesvault.importing.ai_suggestions import suggest_with_ai
+
+    monkeypatch.setenv("OPV_DEV_PASSWORD", PASSWORD)
+    client = VaultClient(dev_worker_command())
+    session = saved_session(vault_path, client)
+    update_settings(session.ledger, ai_enabled=True, ai_model="llama3")
+    with socket.socket() as probe:  # a loopback port nobody listens on
+        probe.bind(("127.0.0.1", 0))
+        dead_port = probe.getsockname()[1]
+    batch = pipeline.import_document(session, ImportRequest("nu.pdf", docs.nubank_card_pdf()))
+    with pytest.raises(AiUnavailable):
+        suggest_with_ai(session.ledger, batch.id, OllamaClient("llama3", f"http://127.0.0.1:{dead_port}"))
+    result = pipeline.approve(session.ledger, batch.id)
+    assert result.created > 0
+    frozen = session.freeze()
+    session.mark_saved(frozen, client.save_frozen(frozen))
+    assert not session.dirty
+
+
+def test_ta30_every_page_renders_with_external_network_blocked(
+    app: QApplication, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import socket
+
+    attempts: list[str] = []
+    original = socket.socket.connect
+
+    def guarded(self: socket.socket, address: object) -> None:
+        host = address[0] if isinstance(address, tuple) else str(address)
+        if host not in ("127.0.0.1", "::1", "localhost") and not str(host).startswith("/"):
+            attempts.append(str(host))
+            raise OSError("rede externa bloqueada no teste")
+        return original(self, address)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(socket.socket, "connect", guarded)
+    window = MainWindow()
+    session = Session.new(tmp_path / "x.opesvault", "Família")
+    f = family()
+    session.ledger = f.ledger
+    f.ledger.record_opening_balance(f.bank, "1000.00", date(2026, 1, 1))
+    pipeline.import_document(session, ImportRequest("nu.pdf", docs.nubank_card_pdf()))
+    window.session = session
+    window._refresh()
+    texts = _visible_texts(window)  # visits every page, charts included
+    from opesvault.ui.help import help_for
+
+    # Help is local text: no browser, no URL.
+    assert all("http" not in help_for(p.title) for p in window.pages)
+    assert texts and attempts == []

@@ -34,7 +34,7 @@ Fases 9 e 10 podem andar em paralelo depois da 8. Expansões da fase 11 entram u
 
 | Fase | Feito | Falta |
 |---|---|---|
-| 7 | `scripts/validar_layouts.py` (corpus privado com esperado conferido, regra dos 3 documentos); rastreabilidade TA-01…TA-36 (`15`): 29 automatizados, 7 parciais, nenhum pendente | Gates G0–G7 no Windows; documentos reais; cópia das notas de terceiros |
+| 7 | `scripts/validar_layouts.py` (corpus privado com esperado conferido, regra dos 3 documentos); rastreabilidade TA-01…TA-36 (`15`): 31 automatizados, 5 parciais, nenhum pendente | Gates G0–G7 no Windows; documentos reais; cópia das notas de terceiros |
 | 8 | Gravação incremental (`11` §5); abertura com registros em JSON e verificação de todas as páginas; consultas com índice e somas acumuladas; livro em tabela virtual | Abrir ainda leva ~8,7 s no Linux (meta ≤ 5 s); medir no Windows de referência |
 | 9 | Assistente de primeiro uso; edição completa de lançamentos com rateio; filtros; reclassificação em lote; revisão por teclado; ajuda F1; bloqueio visual por inatividade | Critério humano: jornadas feitas por uma pessoa sem ajuda, em 100/150/200%, só com teclado |
 | 10 | Fuzzing; registro técnico só com códigos; inventário de licenças e SBOM; revisão do worker e das exportações (`14`) | Versões fixadas após G1; assinatura do instalador; ícone; enxugar módulos Qt |
@@ -124,7 +124,7 @@ Cada alteração de escopo registra motivo, documentos afetados, migração de d
 | 02/10/2026 | Fases 1 a 6 implementadas; instalador opcional | Pedido do usuário | 13, CLAUDE.md | Novos tipos persistidos registrados; histórico guarda só a versão anterior nas alterações | Exportações claras com aviso; backups cifrados; IA só em loopback | 186 testes automatizados, jornada offline |
 | 02/10/2026 | Roadmap ampliado com as fases 7 a 11 e dívida técnica | Pedido do usuário após concluir as fases 1 a 6 | 09, 13, CLAUDE.md | Nenhum | Nenhum | Critérios de saída mensuráveis por fase |
 | 02/10/2026 | Gravação incremental (opção c do `11` §5) e abertura rápida | Pedido do usuário para resolver as dívidas | 09, 11, 13 | Mesmo formato de arquivo; só muda como é gravado | Toda página é autenticada na abertura; candidato verificado antes de substituir | `test_incremental_save`, adulteração página a página |
-| 02/10/2026 | Fases 7 a 10 no que não depende do Windows nem de documentos reais | Pedido do usuário | 09, 13, 14, 15, CLAUDE.md | Nenhum tipo persistido novo; preferências de bloqueio fora do cofre | Desbloqueio confere senha e revisão no worker; registro técnico só com códigos; parsers isolados por `run_parser` | 274 testes; fuzzing longo com 3000 variações |
+| 02/10/2026 | Fases 7 a 10 no que não depende do Windows nem de documentos reais | Pedido do usuário | 09, 13, 14, 15, CLAUDE.md | Nenhum tipo persistido novo; preferências de bloqueio fora do cofre | Desbloqueio confere senha e revisão no worker; registro técnico só com códigos; parsers isolados por `run_parser` | 276 testes; fuzzing longo com 3000 variações |
 
 ## 6. Definição de pronto documental (versão 1.0, mantida como histórico)
 

@@ -33,8 +33,8 @@ Os caminhos são relativos a `tests/`.
 | TA-26 | automatizado | `test_investments::test_disagreeing_sources_same_date_ta26` | — |
 | TA-27 | automatizado | `test_portfolio::test_twr_unavailable_without_valuation_at_flow_ta27` | — |
 | TA-28 | automatizado | `test_investments::test_tax_due_later_reduces_cash_only_when_paid_ta28` | — |
-| TA-29 | parcial | `test_ai::test_offline_is_unavailable`, `test_ai::test_invalid_json_is_unavailable`, `test_journey::test_family_journey` | Revisão manual e salvamento com a IA ligada e falhando |
-| TA-30 | parcial | `test_journey::test_family_journey` (rede externa bloqueada) | Renderizar todas as telas com a rede bloqueada |
+| TA-29 | automatizado | `test_acceptance_gaps::test_ta29_ai_enabled_but_failing_does_not_block_review_or_save`, `test_ai::test_offline_is_unavailable` | — |
+| TA-30 | automatizado | `test_acceptance_gaps::test_ta30_every_page_renders_with_external_network_blocked`, `test_journey::test_family_journey` | — |
 | TA-31 | automatizado | `test_acceptance_gaps::test_ta31_switching_family_shows_nothing_from_the_previous` | — |
 | TA-32 | automatizado | `test_domain_ledger::test_allocate_is_exact`, `test_domain_ledger::test_rounding_is_half_away_from_zero` | — |
 | TA-33 | automatizado | `test_acceptance_gaps::test_ta33_migrated_vault_is_backed_up_before_any_write`, `test_store::test_newer_format_is_refused` | — |
@@ -42,7 +42,7 @@ Os caminhos são relativos a `tests/`.
 | TA-35 | automatizado | `test_acceptance_gaps::test_ta35_approved_but_unsaved_work_is_not_masked` | — |
 | TA-36 | parcial | `test_investments::test_composition_partial_without_price_ta36` | Moeda sem câmbio depende de moedas estrangeiras (fase 11) |
 
-Resumo: 29 automatizados (TA-04, TA-05 e TA-08 com complemento manual no Windows), 7 parciais (TA-07 também depende do Windows) e nenhum pendente.
+Resumo: 31 automatizados (TA-04, TA-05 e TA-08 com complemento manual no Windows), 5 parciais (TA-07 também depende do Windows) e nenhum pendente.
 
 ## 2. Validação dos layouts com documentos reais
 

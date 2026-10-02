@@ -105,6 +105,8 @@ Regra: quem vê um problema chega ao objeto e ao comando que o resolve, sem proc
 | Itens aguardando revisão | Importar, com o documento aberto e o foco nos itens (Ctrl+Enter) | `ImportPage.reveal` |
 | Linha de saldo ou de categoria na Visão geral | Livro financeiro filtrado pela conta ou categoria, no mesmo mês | `LedgerPage.reveal(("filter", conta, mês))` |
 | Documento | A revisão do lote ligado a ele (**Abrir na revisão**) | `DocumentsPage` |
+| Ponto de um gráfico mensal em Relatórios | Livro filtrado no mês do ponto, com a conta, a categoria ou o integrante do filtro (**Ver lançamentos**) | `ReportsPage._ledger_ref` |
+| Composição da carteira (Investimentos › Mais) e Projeção de compromissos (Recorrências › Mais) | O gráfico correspondente em Relatórios | `ReportsPage.reveal` |
 
 - **Pagar fatura:** a aba Faturas tem **Pagar…** (também duplo clique na fatura). O formulário já traz a conta, o valor restante e a data de hoje. Pagamentos depois do vencimento contam para a fatura seguinte (`domain.cards.bills`), e o formulário avisa isso antes de registrar.
 - **Mês compartilhado:** o mês escolhido na Visão geral vale no Orçamento e é a segunda opção de período do Livro, que abre em "Todo o período" para não esconder lançamentos de quem chega pela barra lateral. Ao abrir o cofre, a Visão geral escolhe o último mês com movimento e os outros a seguem.
@@ -114,6 +116,10 @@ Regra: quem vê um problema chega ao objeto e ao comando que o resolve, sem proc
 - **Correção no Livro:** Enter e duplo clique abrem o mesmo formulário do lançamento do dia a dia (valor, data, contas ou categoria, competência). **Corrigir partidas…** abre o editor completo. Competência é escolhida como mês, nunca digitada como `AAAA-MM`.
 - **Importar:** uma ação primária por vez (**Importar arquivos…** sem documento aberto; **Aprovar prontos** com documento aberto). Arquivos podem ser arrastados para a tela. **Layouts suportados** abre a cobertura de layouts.
 - **Operador:** só aparece na barra quando há mais de um integrante ativo.
+- **Assistente:** contas entram por um formulário, uma por vez, com titulares marcados entre os integrantes; a conta preenchida conta mesmo sem "Adicionar conta", então uma família com uma conta só preenche e avança.
+- **Orçamento do mês:** **Orçamento do mês…** abre todas as categorias de despesa numa grade, com o gasto do mês e o plano anterior ao lado; vazio é "sem plano". Uma gravação, um passo de desfazer. "Alterar valor…" segue para uma categoria só.
+- **Relatórios:** o filtro muda com o gráfico e só existe onde o cálculo está definido: conta em Entradas e saídas e em Fluxo de caixa; integrante no Resultado (a visão por integrante do domínio); categoria em Despesas por categoria, que passa a mostrar a evolução mensal dela. O período termina no mês escolhido na Visão geral.
+- **Integrantes:** nome e papel (titular ou dependente) num formulário; o papel identifica, não dá acesso.
 
 ## 6. Verificação
 

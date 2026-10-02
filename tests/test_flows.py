@@ -194,3 +194,70 @@ def test_operator_shows_only_with_several_members(setup: tuple[MainWindow, Famil
     f.ledger.update_member(f.ledger.members[f.bruno].model_copy(update={"active": False}), "saiu de casa")
     window._refresh()
     assert not window._session_actions[2].isVisible()
+
+
+def test_budget_grid_sets_the_whole_month(setup: tuple[MainWindow, Family]) -> None:
+    window, f = setup
+    from opesvault.domain import budget
+    from opesvault.ui.pages.budget_page import BudgetGridDialog
+
+    ledger = f.ledger
+    month = YearMonth(year=2026, month=5)
+    budget.set_budget(ledger, f.groceries, month.add(-1), "600.00")
+    dialog = BudgetGridDialog(window, ledger, month)
+    rows = {category_id: index for index, (_, category_id) in enumerate(dialog.categories)}
+    dialog.copy_previous()  # fills only what last month had
+    assert dialog.edits[rows[f.groceries]].text() == "600,00"
+    transport = next(c for name, c in dialog.categories if name == "Transporte")
+    dialog.edits[rows[transport]].setText("150,00")
+    assert dialog.apply() == 2
+    assert {line.category_id: line.amount for line in budget.lines_of(ledger, month)} == {
+        f.groceries: Decimal("600.00"),
+        transport: Decimal("150.00"),
+    }
+    dialog.edits[rows[transport]].clear()  # empty means no plan
+    assert dialog.apply() == 1 and budget.line_for(ledger, transport, month) is None
+    dialog.deleteLater()
+
+
+def test_reports_filter_by_account_and_open_the_ledger(setup: tuple[MainWindow, Family]) -> None:
+    window, f = setup
+    from opesvault.charts.data import Point
+    from opesvault.ui.pages.reports_page import ReportsPage
+
+    f.ledger.record_expense(f.bank, f.groceries, "70.00", date(2026, 3, 9), "Feira")
+    window._refresh()
+    reports = page_of(window, ReportsPage)
+    window.show_page(window.pages.index(reports))
+    reports.follow_month(YearMonth(year=2026, month=3))
+    assert not reports.scope.isHidden()  # Entradas e saídas: filtered by account
+    select = [reports.scope.itemData(i) for i in range(reports.scope.count())].index(f.bank)
+    reports.scope.setCurrentIndex(select)
+    reports.inspect("Saídas", Point("2026-03", Decimal("70.00")))
+    assert reports.open_ledger.isEnabled()
+    reports._open_ledger()
+    ledger = page_of(window, LedgerPage)
+    assert window.stack.currentWidget() is ledger
+    assert ledger.filter_account.currentData() == f.bank and ledger.period.currentData() == "month"
+    assert [op.description for op in ledger.model.ops] == ["Feira"]
+
+    window.navigate("reports", "composition")
+    assert reports._key() == "composition" and reports.scope.isHidden()
+
+
+def test_member_role_in_the_dialog(setup: tuple[MainWindow, Family]) -> None:
+    window, f = setup
+    from opesvault.domain.model import MemberRole
+    from opesvault.ui.dialogs import MemberDialog
+
+    dialog = MemberDialog(window, f.ledger)
+    dialog.name.setText("Lia")
+    dialog.role.setCurrentIndex(1)
+    dialog.validate()
+    lia = dialog.apply()
+    assert lia.role is MemberRole.DEPENDENT
+    edit = MemberDialog(window, f.ledger, lia)
+    edit.role.setCurrentIndex(0)
+    assert edit.apply().role is MemberRole.HOLDER
+    for widget in (dialog, edit):
+        widget.deleteLater()

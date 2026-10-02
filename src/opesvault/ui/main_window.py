@@ -882,6 +882,8 @@ class MainWindow(QMainWindow):
         "import": "ImportPage",
         "accounts": "AccountsPage",
         "recurrences": "RecurrencesPage",
+        "reports": "ReportsPage",
+        "investments": "InvestmentsPage",
     }
 
     def navigate(self, target: str, ref: object = None, *, act: bool = False) -> None:

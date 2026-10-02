@@ -145,6 +145,8 @@ class RecurrencesPage(Page):
                 [
                     ("Vincular sugestões únicas", self.link_suggestions),
                     ("Pular previsão…", self.skip_selected),
+                    None,
+                    ("Projeção de compromissos (Relatórios)", lambda: self.navigate("reports", "projection")),
                 ],
                 tip="Vincular quando há um único candidato, ou pular uma previsão",
             ),

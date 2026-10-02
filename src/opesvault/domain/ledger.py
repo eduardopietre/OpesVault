@@ -21,6 +21,7 @@ from opesvault.domain.model import (
     HistoryEntry,
     LedgerAccount,
     Member,
+    MemberRole,
     Operation,
     OperationKind,
     OperationStatus,
@@ -30,7 +31,7 @@ from opesvault.domain.model import (
 )
 from opesvault.domain.money import BRL, ZERO, is_cents, to_decimal
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2  # 2: members have a role (domain/migrations.py)
 _META_NAMESPACE = UUID("6f1c3d2a-1b7e-4b8e-9f00-0c0ffee0a001")
 META_ID = uuid5(_META_NAMESPACE, "ledger-meta")
 
@@ -365,11 +366,11 @@ class Ledger:
 
     # ── members ─────────────────────────────────────────
 
-    def add_member(self, name: str) -> Member:
+    def add_member(self, name: str, role: MemberRole = MemberRole.HOLDER) -> Member:
         name = name.strip()
         if any(m.name.casefold() == name.casefold() for m in self.members.values()):
             raise DomainError("Já existe um integrante com esse nome.")
-        return self.put("member", Member(name=name))
+        return self.put("member", Member(name=name, role=role))
 
     def update_member(self, member: Member, reason: str) -> Member:
         if member.id not in self.members:

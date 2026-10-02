@@ -8,7 +8,7 @@ Um cofre tem identificador, versão de formato, revisão e moeda de apresentaç�
 
 | Entidade | Campos e vínculos essenciais |
 |---|---|
-| Integrante | Identificador, nome, situação, participação nas contas |
+| Integrante | Identificador, nome, papel (titular ou dependente), situação, participação nas contas. O papel só identifica a pessoa; não concede nem bloqueia nada. Esquema 2: cofres do esquema 1 são migrados ao abrir, com todos os integrantes como titulares |
 | Conta | Instituição, tipo, moeda, titulares, identificação mascarada |
 | Cartão | Conta de liquidação preferida, final, titular, adicionais |
 | Fatura | Cartão, ciclo, fechamento, vencimento, total, pagamentos e status |

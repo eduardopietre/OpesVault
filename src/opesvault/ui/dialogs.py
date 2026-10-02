@@ -21,7 +21,7 @@ from PySide6.QtWidgets import (
 )
 
 from opesvault.domain.ledger import DomainError, Ledger
-from opesvault.domain.model import AccountSubtype, AccountType, Card, LedgerAccount, YearMonth
+from opesvault.domain.model import AccountSubtype, AccountType, Card, LedgerAccount, Member, MemberRole, YearMonth
 from opesvault.ui.common import (
     CompetenceCombo,
     combo_value,
@@ -409,6 +409,57 @@ class OperationDialog(FormDialog):
                 self.ledger.record_card_purchase(source, target, value, on, description, **extra)
         elif self.kind == "card_payment":
             self.ledger.record_card_payment(source, target, value, on)
+
+
+ROLE_LABELS: dict[MemberRole, str] = {MemberRole.HOLDER: "Titular", MemberRole.DEPENDENT: "Dependente"}
+
+
+class MemberDialog(FormDialog):
+    """A family member: name and role (holder or dependent); editing also sets the situation."""
+
+    def __init__(self, parent: QWidget | None, ledger: Ledger, member: Member | None = None) -> None:
+        from PySide6.QtWidgets import QCheckBox
+
+        from opesvault.ui.components import text
+
+        super().__init__(
+            parent, "Editar integrante" if member else "Novo integrante", "Salvar" if member else "Adicionar"
+        )
+        self.ledger = ledger
+        self.original = member
+        self.name = QLineEdit(member.name if member else "")
+        self.role = QComboBox()
+        fill_combo(self.role, [(label, role) for role, label in ROLE_LABELS.items()])
+        select_combo(self.role, member.role if member else MemberRole.HOLDER)
+        self.active = QCheckBox("Ativo (aparece em formulários, titularidade e rateios)")
+        self.active.setChecked(member.active if member else True)
+        self.form.addRow("Nome:", self.name)
+        self.form.addRow("Papel:", self.role)
+        self.form.addRow(
+            "",
+            text(
+                "Titular responde pelas finanças da família; dependente (filhos, por exemplo) participa de "
+                "rateios e pode ser portador de cartão adicional. O papel identifica; não dá nem tira acesso.",
+                "caption",
+                wrap=True,
+            ),
+        )
+        if member is not None:
+            self.form.addRow("", self.active)
+
+    def validate(self) -> None:
+        if not self.name.text().strip():
+            raise DomainError("Informe o nome.")
+
+    def apply(self) -> Member:
+        # Qt hands enum data back as plain text; model_copy does not validate, so convert here.
+        name, role = self.name.text().strip(), MemberRole(self.role.currentData())
+        if self.original is None:
+            return self.ledger.add_member(name, role)
+        updated = self.original.model_copy(update={"name": name, "role": role, "active": self.active.isChecked()})
+        if updated == self.original:
+            return self.original
+        return self.ledger.update_member(updated, "Edição do integrante")
 
 
 class BillPaymentDialog(FormDialog):

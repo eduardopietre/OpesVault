@@ -64,9 +64,20 @@ class YearMonth(BaseModel):
 # ── people and accounts ─────────────────────────────────
 
 
+class MemberRole(StrEnum):
+    """Who answers for the family's money (holder) and who depends on it (dependent).
+
+    Informative: it labels people in lists and forms; it grants or blocks nothing.
+    """
+
+    HOLDER = "holder"
+    DEPENDENT = "dependent"
+
+
 class Member(_Entity):
     name: str = Field(min_length=1, max_length=120)
     active: bool = True
+    role: MemberRole = MemberRole.HOLDER
 
 
 class AccountType(StrEnum):

@@ -5,11 +5,23 @@ from uuid import UUID
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor
-from PySide6.QtWidgets import QComboBox, QMessageBox, QStackedWidget, QTableWidgetItem, QWidget
+from PySide6.QtWidgets import (
+    QComboBox,
+    QDialog,
+    QDialogButtonBox,
+    QHBoxLayout,
+    QLineEdit,
+    QMessageBox,
+    QStackedWidget,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
+)
 
 from opesvault.domain import budget
 from opesvault.domain.budget import BudgetState
-from opesvault.domain.ledger import DomainError
+from opesvault.domain.ledger import DomainError, Ledger
 from opesvault.domain.model import AccountType, YearMonth
 from opesvault.ui.common import (
     fill_combo,
@@ -21,6 +33,7 @@ from opesvault.ui.common import (
     run_guarded,
     select_combo,
     stretch_column,
+    style_table,
     summary_table,
 )
 from opesvault.ui.components import EmptyState, Figures, MonthPicker, button, menu_button
@@ -28,7 +41,137 @@ from opesvault.ui.dialogs import FormDialog, category_items
 from opesvault.ui.pages.base import Page
 from opesvault.ui.theme import SPACE_L, SPACE_S, SPACE_XL, tokens
 
+
+def _editable(value: Decimal) -> str:
+    """A planned amount as typed in the form: '2.350,00' (the same format the field reads)."""
+    from opesvault.domain.money import format_brl
+
+    return format_brl(value).replace("R$", "").strip()
+
+
 STATE_LABELS = {BudgetState.OK: "Dentro", BudgetState.NEAR: "Perto do limite", BudgetState.OVER: "Estourado"}
+
+
+class BudgetGridDialog(QDialog):
+    """The whole month at once: every expense category with its plan, this month's spending and
+    last month's plan beside it. Empty means no plan for that category."""
+
+    COLUMNS = ("Categoria", "Planejado", "Gasto no mês", "Mês anterior")
+
+    def __init__(self, parent: QWidget | None, ledger: Ledger, month: YearMonth) -> None:
+        from opesvault.domain import queries
+        from opesvault.ui.components import text
+
+        super().__init__(parent)
+        self.ledger = ledger
+        self.month = month
+        self.setWindowTitle(f"Orçamento de {month_label(month)}")
+        spending = queries.expenses_by_category(ledger, month, month)
+        previous = month.add(-1)
+        self.categories = category_items(ledger, AccountType.EXPENSE)
+        self.table = QTableWidget(len(self.categories), len(self.COLUMNS))
+        self.table.setHorizontalHeaderLabels(list(self.COLUMNS))
+        style_table(self.table)
+        self.table.setAlternatingRowColors(False)
+        self.edits: list[QLineEdit] = []
+        self.previous: list[Decimal | None] = []
+        right = Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+        for row, (name, category_id) in enumerate(self.categories):
+            line = budget.line_for(ledger, category_id, month)
+            before = budget.line_for(ledger, category_id, previous)
+            edit = money_edit("sem plano")
+            edit.setAccessibleName(f"Planejado para {name}")
+            if line is not None:
+                edit.setText(_editable(line.amount))
+            self.edits.append(edit)
+            self.previous.append(before.amount if before is not None else None)
+            self.table.setItem(row, 0, QTableWidgetItem(name))
+            self.table.setCellWidget(row, 1, edit)
+            for column, value in ((2, spending.get(category_id)), (3, self.previous[-1])):
+                item = QTableWidgetItem(fmt(value) if value is not None else "—")
+                item.setTextAlignment(right)
+                self.table.setItem(row, column, item)
+        for column in (1, 2, 3):
+            header = self.table.horizontalHeaderItem(column)
+            if header is not None:
+                header.setTextAlignment(right)
+        self.table.resizeColumnsToContents()
+        self.table.setColumnWidth(1, 140)
+        stretch_column(self.table)
+        self.error = text("", wrap=True)
+        self.error.setProperty("tone", "negative")
+        self.error.hide()
+        copy = button(
+            "Copiar do mês anterior", self.copy_previous, tip="Preenche os campos vazios com o plano anterior"
+        )
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        save = buttons.button(QDialogButtonBox.StandardButton.Ok)
+        cancel = buttons.button(QDialogButtonBox.StandardButton.Cancel)
+        if save is not None and cancel is not None:
+            save.setText("Salvar orçamento")
+            save.setProperty("role", "primary")
+            cancel.setText("Cancelar")
+        buttons.accepted.connect(self._try_accept)
+        buttons.rejected.connect(self.reject)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(SPACE_XL, SPACE_XL, SPACE_XL, SPACE_L)
+        layout.setSpacing(SPACE_S)
+        layout.addWidget(text(f"Orçamento de {month_label(month)}", "headline"))
+        layout.addWidget(
+            text(
+                "Quanto planeja gastar em cada categoria. Deixe vazio o que não quer acompanhar. O gasto segue a "
+                "competência: compras no cartão contam no mês em que aconteceram.",
+                "caption",
+                wrap=True,
+            )
+        )
+        layout.addWidget(self.table, 1)
+        layout.addWidget(self.error)
+        bottom = QHBoxLayout()
+        bottom.addWidget(copy)
+        bottom.addStretch(1)
+        bottom.addWidget(buttons)
+        layout.addLayout(bottom)
+        self.resize(720, 560)
+
+    def copy_previous(self) -> None:
+        for edit, value in zip(self.edits, self.previous, strict=True):
+            if value is not None and not edit.text().strip():
+                edit.setText(_editable(value))
+
+    def values(self) -> list[tuple[UUID, Decimal | None]]:
+        """(category, planned) for every row; None where the field is empty."""
+        result = []
+        for (name, category_id), edit in zip(self.categories, self.edits, strict=True):
+            value = read_money(edit, allow_empty=True)
+            if value is not None and value <= 0:
+                raise DomainError(f"{name}: informe um valor positivo ou deixe vazio.")
+            result.append((category_id, value))
+        return result
+
+    def _try_accept(self) -> None:
+        try:
+            self.values()
+        except DomainError as exc:
+            self.error.setText(str(exc))
+            self.error.show()
+            return
+        self.accept()
+
+    def apply(self) -> int:
+        """Writes the differences only; returns how many categories changed."""
+        changed = 0
+        for category_id, value in self.values():
+            line = budget.line_for(self.ledger, category_id, self.month)
+            current = line.amount if line is not None else None
+            if value == current:
+                continue
+            if value is None:
+                budget.remove_budget(self.ledger, category_id, self.month)
+            else:
+                budget.set_budget(self.ledger, category_id, self.month, value)
+            changed += 1
+        return changed
 
 
 class BudgetDialog(FormDialog):
@@ -44,7 +187,7 @@ class BudgetDialog(FormDialog):
             self.category.setEnabled(False)
             line = budget.line_for(ledger, category_id, month)
             if line is not None:
-                self.amount.setText(f"{line.amount:f}".replace(".", ","))
+                self.amount.setText(_editable(line.amount))
         self.form.addRow("Categoria:", self.category)
         self.form.addRow("Planejado para o mês:", self.amount)
 
@@ -74,7 +217,7 @@ class BudgetPage(Page):
                 ("Remover do orçamento", self.remove_selected),
             ],
         )
-        self.header.add(self.month, SPACE_XL, more, button("Definir orçamento…", self.define, role="primary"))
+        self.header.add(self.month, SPACE_XL, more, button("Orçamento do mês…", self.define_month, role="primary"))
         self.more = more
 
         self.figures = Figures(["Planejado", "Realizado", "Restante", "Gasto fora do plano"])
@@ -87,7 +230,7 @@ class BudgetPage(Page):
             "Sem orçamento neste mês",
             "Defina quanto pretende gastar por categoria. O realizado vem dos lançamentos por competência: "
             "compras no cartão contam no mês em que aconteceram.",
-            [button("Copiar do mês anterior", self.copy_previous), button("Definir orçamento…", self.define)],
+            [button("Copiar do mês anterior", self.copy_previous), button("Definir o mês…", self.define_month)],
         )
         self.views = QStackedWidget()
         self.views.addWidget(self.table)
@@ -191,6 +334,20 @@ class BudgetPage(Page):
         if run_guarded(self, lambda: budget.set_budget(ledger, target, month, value)):
             self.notify(f"Orçamento de {month_label(month)} atualizado.")
             self.changed()
+
+    def define_month(self) -> None:
+        """Every category of the month in one grid: one dialog, one undo step."""
+        if self.session is None:
+            return
+        ledger = self.session.ledger
+        month: YearMonth = self.month.current()
+        dialog = BudgetGridDialog(self, ledger, month)
+        if dialog.exec():
+            changed = run_guarded(self, dialog.apply)
+            if changed:
+                self.notify(f"Orçamento de {month_label(month)}: {changed} categoria(s) alterada(s).")
+                self.changed()
+        dialog.deleteLater()
 
     def edit_selected(self) -> None:
         category_id = self._selected_category()

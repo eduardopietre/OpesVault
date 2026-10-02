@@ -467,15 +467,26 @@ class LedgerPage(Page):
             self.refresh()
 
     def reveal(self, ref: object, *, act: bool = False) -> None:
-        """("filter", account or category, month): the operations behind an Overview line."""
-        if not (isinstance(ref, tuple) and len(ref) == 3 and ref[0] == "filter"):
+        """("filter", account or category, period[, member]): the operations behind a number.
+
+        `period` is a month (Overview, Reports), a (start, end) pair of dates, or None for all.
+        """
+        if not (isinstance(ref, tuple) and len(ref) in (3, 4) and ref[0] == "filter"):
             return
-        _, account_id, month = ref
+        account_id, period, member_id = ref[1], ref[2], ref[3] if len(ref) == 4 else None
+        custom = isinstance(period, tuple)
+        index = MONTH_PERIOD if isinstance(period, YearMonth) else self.period.count() - 1 if custom else 0
         for combo in (self.period, self.filter_account, self.filter_member, self.filter_status, self.filter_origin):
             combo.blockSignals(True)
-            combo.setCurrentIndex(MONTH_PERIOD if combo is self.period else 0)
+            combo.setCurrentIndex(index if combo is self.period else 0)
             combo.blockSignals(False)
-        self.custom_dates.hide()
+        self.custom_dates.setVisible(custom)
+        if custom:
+            for optional, day in zip((self.filter_start, self.filter_end), period, strict=True):
+                optional.edit.blockSignals(True)
+                optional.set_value(day)
+                optional.edit.blockSignals(False)
+        month = period
         self.filter_text.blockSignals(True)
         self.filter_text.clear()
         self.filter_text.blockSignals(False)
@@ -483,9 +494,10 @@ class LedgerPage(Page):
             self._month = month
             self._label_month()
         self.refresh()  # fills the account list before choosing from it
-        self.filter_account.blockSignals(True)
-        select_combo(self.filter_account, account_id)
-        self.filter_account.blockSignals(False)
+        for combo, value in ((self.filter_account, account_id), (self.filter_member, member_id)):
+            combo.blockSignals(True)
+            select_combo(combo, value)
+            combo.blockSignals(False)
         self.refresh()
 
     def _period_changed(self) -> None:

@@ -3,13 +3,13 @@
 from typing import Any
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QComboBox, QInputDialog, QTabWidget, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QComboBox, QTabWidget, QVBoxLayout, QWidget
 
 from opesvault.domain import queries
 from opesvault.domain.model import AccountType
 from opesvault.ui.common import fmt, frameless, make_table, run_guarded, selected_id, set_rows, stretch_column
 from opesvault.ui.components import button, hbox, text
-from opesvault.ui.dialogs import SUBTYPE_LABELS, AccountDialog, CardDialog, CategoryDialog
+from opesvault.ui.dialogs import ROLE_LABELS, SUBTYPE_LABELS, AccountDialog, CardDialog, CategoryDialog
 from opesvault.ui.pages.base import Page
 from opesvault.ui.theme import SPACE_L, SPACE_M
 
@@ -23,7 +23,8 @@ class AccountsPage(Page):
         tabs = QTabWidget()
         self.tabs = tabs
         self._bills: dict[Any, Any] = {}  # bill month -> Bill
-        self.members = make_table(["Integrante", "Situação"])
+        self.members = make_table(["Integrante", "Papel", "Situação"])
+        self.members.doubleClicked.connect(lambda _: self.edit_member())
         self.accounts = make_table(["Conta", "Tipo", "Instituição", "Titulares", "Saldo"])
         self.cards = make_table(["Cartão", "Portador", "Final", "Fechamento", "Vencimento", "Fatura em aberto"])
         self.categories = make_table(["Categoria", "Tipo", "Dentro de"])
@@ -85,7 +86,10 @@ class AccountsPage(Page):
             ),
         )
         tabs.addTab(rules_box, "Regras")
-        tabs.addTab(self._with_buttons(self.members, [("Novo integrante…", self.add_member)]), "Integrantes")
+        tabs.addTab(
+            self._with_buttons(self.members, [("Novo integrante…", self.add_member), ("Editar…", self.edit_member)]),
+            "Integrantes",
+        )
         layout = self.page_layout()
         layout.addWidget(tabs, 1)
 
@@ -105,7 +109,13 @@ class AccountsPage(Page):
             return
         ledger = self.session.ledger
         names = {m.id: m.name for m in ledger.members.values()}
-        set_rows(self.members, [([m.name, "Ativo" if m.active else "Inativo"], m.id) for m in ledger.members.values()])
+        set_rows(
+            self.members,
+            [
+                ([m.name, ROLE_LABELS[m.role], "Ativo" if m.active else "Inativo"], m.id)
+                for m in ledger.members.values()
+            ],
+        )
         balances = queries.balances(ledger)
         set_rows(
             self.accounts,
@@ -275,8 +285,20 @@ class AccountsPage(Page):
     def add_member(self) -> None:
         if self.session is None:
             return
-        name, ok = QInputDialog.getText(self, "Novo integrante", "Nome:")
-        if ok and run_guarded(self, lambda: self.session.ledger.add_member(name)):  # type: ignore[union-attr]
+        from opesvault.ui.dialogs import MemberDialog
+
+        dialog = MemberDialog(self, self.session.ledger)
+        if dialog.exec() and run_guarded(self, dialog.apply):
+            self.changed()
+
+    def edit_member(self) -> None:
+        member_id = selected_id(self.members)
+        if self.session is None or member_id is None:
+            return
+        from opesvault.ui.dialogs import MemberDialog
+
+        dialog = MemberDialog(self, self.session.ledger, self.session.ledger.members[member_id])
+        if dialog.exec() and run_guarded(self, dialog.apply):
             self.changed()
 
     def add_account(self) -> None:

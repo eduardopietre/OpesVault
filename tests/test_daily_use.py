@@ -40,14 +40,16 @@ def test_wizard_builds_and_applies_a_plan(window: MainWindow) -> None:
     ledger = window.session.ledger
     wizard = SetupWizard(window, ledger)
     wizard.members_page.names.setPlainText("Ana\nBruno\n\n")
-    row = wizard.accounts_page.add_row()
-    cells = [wizard.accounts_page.table.cellWidget(row, c) for c in range(6)]
-    assert isinstance(cells[0], QLineEdit) and isinstance(cells[2], QLineEdit) and isinstance(cells[4], QLineEdit)
-    cells[0].setText("Banco A")
-    cells[2].setText("Ana, Bruno")
-    cells[4].setText("2.500,00")
-    empty = wizard.accounts_page.add_row()  # rows without a name are ignored
-    assert empty == 1
+    accounts = wizard.accounts_page
+    accounts.initializePage()  # holders come from the members typed on the previous page
+    assert [box.text() for box in accounts.holders] == ["Ana", "Bruno"]
+    accounts.name.setText("Banco A")
+    for box in accounts.holders:
+        box.setChecked(True)
+    accounts.balance.setText("2.500,00")
+    assert [a.name for a in accounts.accounts()] == ["Banco A"]  # the account in the form counts
+    assert accounts.validatePage() and accounts.name.text() == ""  # Avançar adds it to the list
+    assert not accounts.add_current()  # an empty form is not an account
     card_row = wizard.cards_page.add_row()
     wizard.cards_page.initializePage()  # refreshes members and payers from the previous pages
     card = [wizard.cards_page.table.cellWidget(card_row, c) for c in range(6)]

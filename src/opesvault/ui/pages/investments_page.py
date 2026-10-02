@@ -165,6 +165,8 @@ class InvestmentsPage(Page):
         more = menu_button(
             "Mais",
             [
+                ("Composição da carteira (Relatórios)", lambda: self.navigate("reports", "composition")),
+                None,
                 ("Regra de imposto…", self.new_rule),
                 None,
                 ("Importar índice de referência…", self.import_benchmark),

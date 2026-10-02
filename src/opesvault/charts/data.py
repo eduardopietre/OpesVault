@@ -63,23 +63,28 @@ def monthly_in_out(ledger: Ledger, start: YearMonth, end: YearMonth, accounts: l
     )
 
 
-def monthly_result(ledger: Ledger, start: YearMonth, end: YearMonth) -> Chart:
+def monthly_result(ledger: Ledger, start: YearMonth, end: YearMonth, member_id: UUID | None = None) -> Chart:
+    """Competence result per month; with `member_id`, the member's view (`queries.income_statement`)."""
     points = []
     for month in months_between(start, end):
-        statement = queries.income_statement(ledger, month)
+        statement = queries.income_statement(ledger, month, member_id)
         points.append(Point(str(month), statement.result, {"regime": "competência"}))
+    member = ledger.members.get(member_id) if member_id else None
+    notes = ["Competência; não é a variação do saldo bancário."]
+    if member is not None:
+        notes.append(f"Visão de {member.name}: lançamentos e rateios atribuídos a este integrante.")
     return Chart(
-        "Resultado mensal (receitas − despesas)",
+        "Resultado mensal (receitas − despesas)" + (f" · {member.name}" if member else ""),
         "BRL",
         [Series("Resultado", points)],
-        ["Competência; não é a variação do saldo bancário."],
+        notes,
         "competência",
     )
 
 
-def cash_flow_balance(ledger: Ledger, start: YearMonth, end: YearMonth) -> Chart:
-    flows = queries.cash_flow(ledger, start, end)
-    liquid = [a.id for a in ledger.accounts.values() if a.is_liquid]
+def cash_flow_balance(ledger: Ledger, start: YearMonth, end: YearMonth, accounts: list[UUID] | None = None) -> Chart:
+    flows = queries.cash_flow(ledger, start, end, accounts)
+    liquid = accounts if accounts else [a.id for a in ledger.accounts.values() if a.is_liquid]
     balance_points = []
     for month in flows:
         total = sum((queries.balance(ledger, a, month.last_day()) for a in liquid), ZERO)
@@ -119,6 +124,29 @@ def expenses_by_category(ledger: Ledger, start: YearMonth, end: YearMonth) -> Ch
         "BRL",
         [Series("Despesas", points)],
         ["Valores já líquidos de estornos."],
+        "competência",
+    )
+
+
+def category_monthly(ledger: Ledger, category_id: UUID, start: YearMonth, end: YearMonth) -> Chart:
+    """One expense category (with its sub-categories) month by month, by competence."""
+    family = {category_id}
+    grew = True
+    while grew:  # sub-categories at any depth
+        children = {a.id for a in ledger.accounts.values() if a.parent_id in family} - family
+        family |= children
+        grew = bool(children)
+    points = []
+    for month in months_between(start, end):
+        totals = queries.expenses_by_category(ledger, month, month)
+        value = sum((v for cid, v in totals.items() if cid in family), ZERO)
+        points.append(Point(str(month), value, {"regime": "competência"}))
+    name = ledger.account(category_id).name
+    return Chart(
+        f"Despesas: {name}",
+        "BRL",
+        [Series(name, points)],
+        ["Competência; inclui as subcategorias. Valores já líquidos de estornos."],
         "competência",
     )
 

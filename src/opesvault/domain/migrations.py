@@ -15,7 +15,16 @@ from opesvault.domain.ledger import SCHEMA_VERSION, DomainError
 Row = tuple[UUID, str, dict[str, Any]]
 Step = Callable[[dict[str, Any], list[Row]], tuple[dict[str, Any], list[Row]]]
 
-STEPS: dict[int, Step] = {}
+
+def _members_get_a_role(meta: dict[str, Any], rows: list[Row]) -> tuple[dict[str, Any], list[Row]]:
+    """1 → 2: every existing member becomes a holder (the only kind there was)."""
+    return meta, [
+        (rid, kind, {**payload, "role": payload.get("role", "holder")} if kind == "member" else payload)
+        for rid, kind, payload in rows
+    ]
+
+
+STEPS: dict[int, Step] = {1: _members_get_a_role}
 
 
 def migrate(meta: dict[str, Any], rows: list[Row]) -> tuple[dict[str, Any], list[Row]]:

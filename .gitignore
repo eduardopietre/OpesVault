@@ -1,0 +1,76 @@
+# ── Python ──────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+wheels/
+pip-wheel-metadata/
+
+# Ambientes virtuais
+.venv/
+venv/
+env/
+.python-version.local
+
+# Ferramentas de qualidade e testes
+.pytest_cache/
+.mypy_cache/
+.pyright/
+.ruff_cache/
+.hypothesis/
+.tox/
+.nox/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# ── Empacotamento (Nuitka / pyside6-deploy) ────────────
+*.build/
+*.dist/
+*.onefile-build/
+deployment/
+*.exe
+*.msi
+*.pyd
+*.dll
+
+# ── Dados sensíveis: NUNCA versionar ───────────────────
+# Cofres, candidatos de gravação, backups e bloqueios
+*.opesvault
+*.opesvault.*
+*.opesvault-*
+*.bak
+# Bancos locais (cifrados ou não)
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+*.sqlcipher
+# Documentos financeiros: só PDFs sintéticos explicitamente liberados
+*.pdf
+!tests/fixtures/sinteticos/**/*.pdf
+# Exportações claras e amostras privadas
+exports/
+amostras_privadas/
+private/
+# Segredos e logs
+.env
+.env.*
+*.log
+logs/
+
+# ── Editores e sistema operacional ─────────────────────
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Claude Code ────────────────────────────────────────
+.claude/settings.local.json

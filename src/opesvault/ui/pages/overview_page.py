@@ -4,11 +4,13 @@ spending by category, plus what still needs attention (docs/07 §2)."""
 from datetime import date
 from decimal import Decimal
 
-from PySide6.QtWidgets import QGridLayout, QTableWidget
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QGridLayout, QScrollArea, QTableWidget, QVBoxLayout, QWidget
 
 from opesvault.domain import queries
 from opesvault.domain.model import AccountType, YearMonth
 from opesvault.domain.money import ZERO
+from opesvault.ui.alerts_panel import AlertsPanel
 from opesvault.ui.common import fmt, make_table, month_label, set_rows, stretch_column
 from opesvault.ui.components import Figures, MonthPicker, Section, button, flow_row, text
 from opesvault.ui.pages.base import Page
@@ -33,6 +35,7 @@ class OverviewPage(Page):
         self.reopen_button = button("Reabrir mês…", self.reopen_month, tip="Libera alterações; exige motivo")
         self.header.add(self.month, self.close_button, self.reopen_button)
         self._month_chosen = False
+        self.alerts = AlertsPanel(self.navigate)
 
         self.cash = Figures(["Entradas", "Saídas", "Saldo do mês"])
         self.result = Figures(["Receitas", "Despesas", "Resultado"])
@@ -69,10 +72,22 @@ class OverviewPage(Page):
         tables.setHorizontalSpacing(SPACE_XL)
         tables.addWidget(balances, 0, 0)
         tables.addWidget(categories, 0, 1)
+        # Short windows scroll the content instead of forcing a taller window.
+        body = QWidget()
+        body.setObjectName("Surface")
+        content = QVBoxLayout(body)
+        content.setContentsMargins(0, 0, 0, 0)
+        content.addWidget(self.alerts)
+        content.addWidget(figures)
+        content.addWidget(self.pending_section)
+        content.addLayout(tables, 1)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QScrollArea.Shape.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll.setWidget(body)
         layout = self.page_layout()
-        layout.addWidget(figures)
-        layout.addWidget(self.pending_section)
-        layout.addLayout(tables, 1)
+        layout.addWidget(scroll, 1)
 
     def _default_month(self) -> None:
         """Opens on the latest month with activity, not on an empty current month."""
@@ -86,15 +101,25 @@ class OverviewPage(Page):
             self.month.blockSignals(False)
             self._month_chosen = True
 
+    def show_alerts(self) -> None:
+        """Called when a vault opens: the panel comes back even if it was hidden before."""
+        self.alerts.reveal()
+        self.refresh()
+
     def set_session(self, session) -> None:  # type: ignore[no-untyped-def]
         self._month_chosen = False
+        self.alerts.dismissed = False
         super().set_session(session)
 
     def refresh(self) -> None:
         if self.session is None:
+            self.alerts.set_alerts([])
             return
         self._default_month()
         ledger = self.session.ledger
+        from opesvault.domain.alerts import alerts
+
+        self.alerts.set_alerts(alerts(ledger))
         month: YearMonth = self.month.current()
         flow = queries.cash_flow(ledger, month, month)[month]
         statement = queries.income_statement(ledger, month)

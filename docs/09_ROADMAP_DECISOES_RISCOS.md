@@ -45,9 +45,9 @@ Critério de escolha: o que uma família precisa todo mês e hoje exige trabalho
 
 | Item | Por quê | Decisão? |
 |---|---|---|
-| **Orçamento por categoria e mês**: limite planejado, realizado por competência, saldo restante e alerta ao passar do limite; cópia do mês anterior | É a pergunta mensal mais comum ("quanto ainda posso gastar?") e hoje não existe. Usa só dados que o domínio já tem | Sim: entra no escopo do `00` §5 |
-| **Regras de categorização editáveis**: "descrição contém X → categoria Y", por conta ou cartão, criadas a partir de uma correção na revisão | Hoje as regras são fixas no código (`KEYWORD_RULES`) e o histórico só repete a última escolha. É o maior ganho de tempo na revisão de faturas | Não |
-| **Alertas de vencimento ao abrir o cofre**: faturas e recorrências que vencem nos próximos dias, previsões sem realização e importações pendentes | O app é offline e não notifica; ao abrir, deve dizer o que pede atenção | Não |
+| **Orçamento por categoria e mês**: limite planejado, realizado por competência, saldo restante e alerta ao passar do limite; cópia do mês anterior | É a pergunta mensal mais comum ("quanto ainda posso gastar?") | **Feito** (`13` §2.2); escopo aprovado pelo usuário |
+| **Regras de categorização editáveis**: "descrição contém X → categoria Y", por conta ou cartão, criadas a partir de uma correção na revisão | Maior ganho de tempo na revisão de faturas | **Feito** (`13` §2.2) |
+| **Alertas de vencimento ao abrir o cofre**: faturas e recorrências que vencem nos próximos dias, previsões sem realização, orçamento estourado e importações pendentes | O app é offline e não notifica; ao abrir, deve dizer o que pede atenção | **Feito** (`13` §2.2) |
 | **Comprovantes em lançamentos manuais**: anexar PDF/imagem a qualquer operação, guardado cifrado como os documentos importados | Hoje só itens importados têm evidência; recibos de aluguel, médicos e escolas ficam fora | Não |
 | **Drill-down**: clicar num número da Visão geral, numa barra ou numa categoria abre o Livro já filtrado | Liga "quanto" a "o quê" sem refazer filtros | Não |
 | **Visão por integrante**: Visão geral e relatórios filtrados por integrante, com rateio, ao lado do consolidado (fecha o TA-18 e o TA-24) | Contas conjuntas e despesas divididas são o caso típico de família | Não |
@@ -59,7 +59,7 @@ Critério de escolha: o que uma família precisa todo mês e hoje exige trabalho
 
 | Item | Por quê | Decisão? |
 |---|---|---|
-| **Desfazer/refazer na sessão** (Ctrl+Z / Ctrl+Shift+Z) para as edições ainda não salvas; depois de salvo, a correção continua por histórico e estorno | Erros de clique hoje exigem estorno com motivo. O domínio já registra cada alteração, o que permite reverter as não salvas | Sim: semântica de desfazer em relação ao histórico |
+| **Desfazer/refazer na sessão** (Ctrl+Z / Ctrl+Shift+Z) para as edições ainda não salvas; depois de salvo, a correção continua por histórico e estorno | Erros de clique exigiam estorno com motivo | **Feito** (`13` §2.2); decidido: só o que não foi salvo |
 | **Verificação de backup**: abrir um backup no worker (senha digitada nele) e conferir integridade e contagens; lembrete de "último backup há N dias" | Backup que nunca foi restaurado não é garantia (`03`) | Não |
 | **Compactação opcional do histórico** antigo, com backup antes | O cofre cresce indefinidamente | Sim (já listada) |
 | **Detecção de lançamentos suspeitos**: valor muito acima da média da categoria, possível cobrança duplicada no cartão, assinatura que mudou de valor | Pega erro de digitação e cobrança indevida, sem IA | Não |
@@ -147,8 +147,7 @@ ADR-01 a ADR-03 refletem escolhas aprovadas; os mecanismos específicos e demais
 |---|---|---|
 | Desbloqueio após inatividade pede a senha do cofre (implementado assim; cofre nunca salvo desbloqueia sem senha) e o tempo padrão é 10 min | Equilíbrio entre proteção e incômodo | Revisável |
 | Compactar o histórico antigo de alterações | Reduz o cofre, mas perde versões anteriores | Fase 12 (opcional) |
-| Incluir **orçamento** e **metas** no escopo (`00` §5) | São as funcionalidades novas de maior valor mensal | Fases 11 e 13 |
-| **Desfazer**: só edições não salvas, ou também salvas? | Desfazer o que já foi salvo conflita com o histórico como registro de correções | Fase 12 |
+| Incluir **metas** de patrimônio no escopo (`00` §5); o orçamento já foi aprovado e implementado | Funcionalidade de valor mensal | Fase 13 |
 | **Fechamento do ano** como material de apoio à declaração | O `00` §5 exclui declaração fiscal oficial; o apoio precisa de limite claro | Fase 13 |
 | Certificado de assinatura de código | Evita alertas do SmartScreen no instalador | Fase 10 |
 | Quando rodar os gates G0–G7 e qual é a máquina Windows de referência (RAM, disco, antivírus) | Sem isso, distribuição e metas de desempenho não têm base | Fases 7, 8 e 10 |
@@ -172,6 +171,7 @@ Cada alteração de escopo registra motivo, documentos afetados, migração de d
 | 02/10/2026 | Gravação incremental (opção c do `11` §5) e abertura rápida | Pedido do usuário para resolver as dívidas | 09, 11, 13 | Mesmo formato de arquivo; só muda como é gravado | Toda página é autenticada na abertura; candidato verificado antes de substituir | `test_incremental_save`, adulteração página a página |
 | 02/10/2026 | Fases 7 a 10 no que não depende do Windows nem de documentos reais | Pedido do usuário | 09, 13, 14, 15, CLAUDE.md | Nenhum tipo persistido novo; preferências de bloqueio fora do cofre | Desbloqueio confere senha e revisão no worker; registro técnico só com códigos; parsers isolados por `run_parser` | 276 testes; fuzzing longo com 3000 variações |
 | 02/10/2026 | Revisão da interface (princípios de desktop) | Pedido do usuário | 16, CLAUDE.md | Preferências de janela e colunas fora do cofre | Nenhum segredo novo na UI; senha segue só no worker | `test_ui_design`, capturas claro/escuro/estreito |
+| 02/10/2026 | Regras de categoria editáveis, orçamento mensal, avisos ao abrir e desfazer/refazer de edições não salvas | Pedido do usuário (aprova orçamento no escopo e desfazer só do que não foi salvo) | 00, 09, 13, 16, CLAUDE.md | Novos tipos persistidos `category_rule` e `budget_line` (versões antigas do app recusam o cofre) | Desfazer remove do histórico só o que nunca chegou ao cofre; nada novo sai da memória | `test_rules`, `test_budget`, `test_alerts`, `test_undo`, `test_family_routine` |
 | 02/10/2026 | Roadmap 1.3: fases 11 a 14 com funcionalidades propostas (orçamento, regras editáveis, alertas, comprovantes, desfazer, verificação de backup, fechamento do ano) | Pedido do usuário | 09, CLAUDE.md | A definir por item | A definir por item | Critérios de saída por fase |
 
 ## 6. Definição de pronto documental (versão 1.0, mantida como histórico)

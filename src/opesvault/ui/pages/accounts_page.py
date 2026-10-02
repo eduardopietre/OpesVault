@@ -52,6 +52,24 @@ class AccountsPage(Page):
         )
         tabs.addTab(self._with_buttons(self.bills, [], lead=[text("Cartão", "secondary"), self.bill_card]), "Faturas")
         tabs.addTab(self._with_buttons(self.categories, [("Nova categoria…", self.add_category)]), "Categorias")
+        self.rules = make_table(["A descrição contém", "Categoria", "Vale para", "Usos", "Situação"])
+        self.rules.setAccessibleName("Regras de categoria")
+        self.rules.doubleClicked.connect(lambda _: self.edit_rule())
+        rules_box = self._with_buttons(
+            self.rules,
+            [("Nova regra…", self.add_rule), ("Editar…", self.edit_rule), ("Ativar ou desativar…", self.toggle_rule)],
+        )
+        rules_box.layout().insertWidget(  # type: ignore[union-attr]
+            0,
+            text(
+                "Regras sugerem a categoria de itens importados; nada é aprovado sozinho. "
+                "Uma regra sua vale mais que o histórico e que as regras padrão; "
+                "a escolha feita à mão vale mais que tudo.",
+                "caption",
+                wrap=True,
+            ),
+        )
+        tabs.addTab(rules_box, "Regras")
         tabs.addTab(self._with_buttons(self.members, [("Novo integrante…", self.add_member)]), "Integrantes")
         layout = self.page_layout()
         layout.addWidget(tabs, 1)
@@ -125,6 +143,7 @@ class AccountsPage(Page):
                 for a in ledger.categories(kind)
             ],
         )
+        self._refresh_rules()
         n_accounts = sum(1 for a in ledger.accounts.values() if a.type in (AccountType.ASSET, AccountType.LIABILITY))
         self.header.set_subtitle(
             f"{n_accounts} contas · {len(ledger.cards)} cartões · {len(ledger.members)} integrantes"
@@ -246,4 +265,81 @@ class AccountsPage(Page):
         ledger = self.session.ledger
         dialog = CategoryDialog(self, ledger)
         if dialog.exec() and run_guarded(self, lambda: ledger.add_account(dialog.build())):
+            self.changed()
+
+    # ── categorization rules ────────────────────────
+
+    def _refresh_rules(self) -> None:
+        from opesvault.importing import rules
+
+        if self.session is None:
+            self.rules.setRowCount(0)
+            return
+        ledger = self.session.ledger
+        rows = []
+        for rule in sorted(rules.rules(ledger).values(), key=lambda r: (not r.active, r.pattern)):
+            target = ledger.accounts.get(rule.target_account_id)
+            scope = ledger.accounts.get(rule.account_id) if rule.account_id else None
+            rows.append(
+                (
+                    [
+                        rule.pattern,
+                        target.name if target else "?",
+                        scope.name if scope else "Qualquer conta",
+                        str(rules.usage(ledger, rule.id)),
+                        "Ativa" if rule.active else "Desativada",
+                    ],
+                    rule.id,
+                )
+            )
+        set_rows(self.rules, rows)
+
+    def _selected_rule(self):  # type: ignore[no-untyped-def]
+        from opesvault.importing import rules
+
+        rule_id = selected_id(self.rules)
+        if self.session is None or rule_id is None:
+            return None
+        return rules.rules(self.session.ledger).get(rule_id)
+
+    def add_rule(self) -> None:
+        if self.session is None:
+            return
+        from opesvault.ui.rule_dialog import RuleDialog
+
+        dialog = RuleDialog(self, self.session.ledger)
+        if dialog.exec():
+            result = run_guarded(self, dialog.apply)
+            if result:
+                self.notify(f"Regra criada. {result[1]} item(ns) pendente(s) recategorizado(s).")
+                self.changed()
+
+    def edit_rule(self) -> None:
+        rule = self._selected_rule()
+        if rule is None or self.session is None:
+            return
+        from opesvault.ui.rule_dialog import RuleDialog
+
+        dialog = RuleDialog(self, self.session.ledger, rule=rule)
+        if dialog.exec():
+            result = run_guarded(self, dialog.apply)
+            if result:
+                self.notify("Regra alterada.")
+                self.changed()
+
+    def toggle_rule(self) -> None:
+        rule = self._selected_rule()
+        if rule is None or self.session is None:
+            return
+        from opesvault.importing import pipeline, rules
+        from opesvault.ui.dialogs import ask_reason
+
+        verb = "Desativar" if rule.active else "Ativar"
+        reason = ask_reason(self, f"{verb} regra")
+        ledger = self.session.ledger
+        if reason and run_guarded(self, lambda: rules.set_active(ledger, rule.id, not rule.active, reason)):
+            changed = pipeline.apply_rules(ledger)
+            self.notify(
+                f"Regra {'desativada' if rule.active else 'ativada'}. {changed} item(ns) pendente(s) revisto(s)."
+            )
             self.changed()

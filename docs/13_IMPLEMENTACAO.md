@@ -111,6 +111,39 @@ Persistência: o domínio vira registros `(id, tipo, JSON)` dentro do snapshot. 
 - **Fase 7 (preparação):** validador de layouts com corpus privado e rastreabilidade dos TAs (`15`).
 - Testes: `test_incremental_save`, `test_edits`, `test_ledger_view`, `test_onboarding`, `test_daily_use`, `test_fuzz`, `test_diagnostics`, `test_licenses`, `test_layout_validation`, `test_acceptance_gaps`.
 
+### 2.2 Rotina da família (fases 11 e 12, primeira parte)
+
+- **Regras de categoria** (`importing/rules.py`):
+  - "a descrição contém X → categoria Y", opcionalmente só para uma conta ou cartão;
+  - comparação sem acentos e sem diferenciar maiúsculas;
+  - a mais específica vence: primeiro a limitada à conta, depois o texto mais longo;
+  - ordem de prioridade: escolha à mão > regra do usuário > histórico > regras padrão (`KEYWORD_RULES`), sendo que a escolha à mão nunca é sobrescrita;
+  - ao escolher a categoria de um item na revisão, a tela oferece criar a regra, com texto sugerido sem números nem parcelas; Ctrl+R faz o mesmo;
+  - o diálogo mostra quantos itens pendentes a regra pegaria e pode aplicá-la na hora;
+  - as regras são geridas em Contas e cartões › Regras; desativar mantém o histórico.
+- **Orçamento** (`domain/budget.py`, página Orçamento):
+  - valor planejado por categoria de despesa e mês;
+  - o realizado segue a competência: compra no cartão conta no mês da compra, o pagamento da fatura não repete a despesa e o estorno reduz;
+  - o plano da categoria-mãe cobre as subcategorias;
+  - estados "dentro", "perto do limite" (≥ 90%) e "estourado", sempre em texto;
+  - "sem orçamento" soma o que foi gasto fora do plano; o plano pode ser copiado do mês anterior;
+  - quando um lançamento estoura um plano, a barra de status avisa na hora.
+- **Avisos ao abrir** (`domain/alerts.py`, painel "Atenção" na Visão geral):
+  - faturas a vencer em 7 dias ou vencidas há até 31 dias;
+  - contas recorrentes a vencer e previsões atrasadas;
+  - orçamento estourado ou perto do limite;
+  - itens importados aguardando revisão e documentos sem layout.
+
+  Ao abrir o cofre, a janela vai para a Visão geral e resume na barra de status. O painel pode ser ocultado até a próxima abertura, e cada aviso tem um botão para a tela onde se resolve. A Visão geral mostra na barra lateral quantos avisos pedem atenção.
+- **Desfazer/refazer** (`undo.py`, menu Editar):
+  - Ctrl+Z e Ctrl+Shift+Z (ou Ctrl+Y) para o que ainda não foi salvo;
+  - cada ação do usuário é um passo; o `Ledger` mantém um diário das alterações (objeto anterior e novo), e documentos importados entram e saem junto;
+  - desfazer devolve os objetos exatos de antes e remove do histórico só as entradas que nunca chegaram ao cofre;
+  - ao salvar, os passos gravados deixam de ser desfazíveis; as edições feitas durante o salvamento continuam;
+  - bloqueado enquanto uma importação ou operação do cofre está em andamento;
+  - no salvamento incremental, o que foi desfeito vira exclusão.
+- Testes: `test_rules`, `test_budget`, `test_alerts`, `test_undo` e `test_family_routine`. O `conftest` descarta as janelas ao fim de cada teste: dezenas de janelas acumuladas faziam o Qt repolir widgets meio destruídos ao trocar o tema e derrubavam o interpretador.
+
 ## 3. Cobertura de importação
 
 O catálogo fica em Configurações e em `importing/parsers/__init__.py`.

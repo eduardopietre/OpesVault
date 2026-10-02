@@ -7,6 +7,7 @@ GENERAL = """
 <tr><td><b>Ctrl+O</b></td><td>Abrir cofre</td></tr>
 <tr><td><b>Ctrl+S</b></td><td>Salvar (a senha é pedida a cada salvamento)</td></tr>
 <tr><td><b>Ctrl+W</b></td><td>Fechar cofre</td></tr>
+<tr><td><b>Ctrl+Z / Ctrl+Shift+Z</b></td><td>Desfazer / refazer o que ainda não foi salvo</td></tr>
 <tr><td><b>Ctrl+1 … Ctrl+9</b></td><td>Ir para a seção correspondente (menu Ir)</td></tr>
 <tr><td><b>Ctrl+F</b></td><td>Buscar na tela atual</td></tr>
 <tr><td><b>Ctrl+Shift+B</b></td><td>Mostrar ou ocultar a barra lateral</td></tr>
@@ -20,8 +21,21 @@ Não existe recuperação de senha: guarde backups e a senha com cuidado.</p>
 
 PAGES: dict[str, str] = {
     "Visão geral": """
+<p><b>Atenção</b> lista faturas e contas que vencem nos próximos 7 dias, o que está atrasado, orçamentos
+estourados e importações aguardando revisão. Aparece sempre que o cofre é aberto.</p>
 <p>Resumo do mês: saldos das contas, faturas abertas, receitas e despesas por competência e pendências.</p>
 <p>Valores desconhecidos aparecem como “—”, nunca como zero. Clique nos gráficos para ver de onde vem cada número.</p>
+""",
+    "Orçamento": """
+<p>Quanto você planeja gastar por categoria em cada mês, quanto já gastou e quanto resta.</p>
+<ul>
+<li>O realizado segue a competência: compra no cartão conta no mês em que aconteceu; o pagamento da fatura não
+repete a despesa; estornos do lojista reduzem o gasto.</li>
+<li>Orçamento de uma categoria-mãe inclui as subcategorias.</li>
+<li><b>Copiar do mês anterior</b> repete o plano sem apagar o que já foi definido.</li>
+<li>Ao passar de 90% a categoria aparece como “perto do limite”; acima de 100%, “estourado”. O aviso aparece
+também ao abrir o cofre e na barra de status quando um lançamento estoura o plano.</li>
+</ul>
 """,
     "Livro financeiro": """
 <p>Todos os lançamentos em partidas dobradas. Cada operação tem débitos e créditos que se equilibram.</p>
@@ -48,12 +62,16 @@ Divergência de total bloqueia a aprovação, salvo com motivo.</p>
 <tr><td><b>Ctrl+I</b></td><td>Importar arquivos</td></tr>
 <tr><td><b>↑ / ↓</b></td><td>Item anterior / próximo</td></tr>
 <tr><td><b>Ctrl+K</b></td><td>Escolher categoria do item</td></tr>
+<tr><td><b>Ctrl+R</b></td><td>Criar regra de categoria a partir do item</td></tr>
 <tr><td><b>Ctrl+Enter</b></td><td>Aprovar o item selecionado e ir ao próximo</td></tr>
 <tr><td><b>Ctrl+Shift+Enter</b></td><td>Aprovar todos os itens prontos</td></tr>
 <tr><td><b>F2</b></td><td>Corrigir o item</td></tr>
 <tr><td><b>Ctrl+M</b></td><td>Manter como lançamento separado</td></tr>
 <tr><td><b>Delete</b></td><td>Rejeitar o item</td></tr>
 </table>
+<p><b>Regras de categoria:</b> ao escolher a categoria de um item, o OpesVault oferece criar uma regra
+(“a descrição contém… → categoria”). Regras ficam em Contas e cartões › Regras e só sugerem; a escolha feita à
+mão sempre prevalece.</p>
 <p>A IA local (Ollama) é opcional e só sugere categorias; nada é gravado sem a sua aprovação.</p>
 """,
     "Contas e cartões": """

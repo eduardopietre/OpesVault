@@ -20,9 +20,11 @@ Barra lateral          Cabeçalho da página: título, contexto, ações
 - **Inspetor:** no Livro financeiro, os detalhes do lançamento selecionado ficam ao lado da tabela, em vez de num diálogo. Some sozinho em janelas estreitas e volta quando há espaço; a escolha explícita do usuário prevalece.
 - **Menus:** todo comando da barra também está no menu.
   - **Cofre:** arquivo, backup e exportação.
+  - **Editar:** desfazer e refazer.
   - **Exibir:** barra lateral, busca e bloqueio.
   - **Ir:** seções, com Ctrl+1…9.
   - **Ajuda:** F1.
+- **Atenção:** ao abrir o cofre, a Visão geral mostra o que vence, atrasou, estourou ou aguarda revisão. Cada aviso tem um botão para a tela onde se resolve, e o painel some até a próxima abertura se o usuário ocultá-lo.
 - **Sem cofre aberto:** a janela mostra um estado vazio com Novo cofre e Abrir cofre.
 
 ## 2. Fundamentos (`src/opesvault/ui/theme.py`)
@@ -63,8 +65,9 @@ Formulários (`FormDialog`) usam rótulos alinhados e um botão com verbo ("Regi
 5. A janela funciona a partir de ~900 × 640: filtros e grupos quebram linha, painéis laterais podem ser recolhidos e o inspetor se oculta sozinho.
 6. Teclado:
    - Ctrl+S, Ctrl+W, Ctrl+F, Ctrl+1…9, F1, Ctrl+L;
+   - Ctrl+Z e Ctrl+Shift+Z (ou Ctrl+Y) desfazem e refazem o que ainda não foi salvo; o menu Editar diz o que será desfeito ("Desfazer lançamento");
    - Enter edita no Livro;
-   - na revisão de importação: Ctrl+Enter, Ctrl+Shift+Enter, F2, Ctrl+M, Delete e Ctrl+K;
+   - na revisão de importação: Ctrl+Enter, Ctrl+Shift+Enter, F2, Ctrl+M, Delete, Ctrl+K e Ctrl+R (criar regra);
    - botão direito oferece os mesmos comandos de linha.
 7. Gráficos usam as cores do tema, sem moldura. Mantêm só a navegação (início, mover, zoom). A inspeção de um ponto aparece ao lado do gráfico, sem diálogo.
 8. Preferências deste computador ficam fora do cofre, em `QSettings`, e nunca guardam dados financeiros. São elas:
@@ -88,7 +91,6 @@ Formulários (`FormDialog`) usam rótulos alinhados e um botão com verbo ("Regi
 
 ## 6. Fora do alcance desta revisão
 
-- **Desfazer/refazer:** o domínio registra cada alteração com motivo e oferece estorno e cancelamento, mas não tem pilha de desfazer; criá-la exige decisão sobre o histórico.
 - **Arrastar e soltar** arquivos na importação.
 - **Liquid Glass e materiais translúcidos:** não se aplicam a Qt Widgets no Windows.
 - **Teste com leitor de tela real** (NVDA/Narrador), a fazer junto com os gates do Windows. Os controles principais já têm nome acessível.

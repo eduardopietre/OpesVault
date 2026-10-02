@@ -2,7 +2,7 @@
 
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 
 from PySide6.QtCore import QObject, QRunnable, QSettings, Qt, QThreadPool, QTimer, Signal
 from PySide6.QtGui import QAction, QCloseEvent, QColor, QKeySequence, QPainter
@@ -34,6 +34,7 @@ from opesvault.ui.common import run_guarded
 from opesvault.ui.idle_lock import IdleWatcher, LockPanel, lock_minutes, set_lock_minutes
 from opesvault.ui.pages.accounts_page import AccountsPage
 from opesvault.ui.pages.base import Page
+from opesvault.ui.pages.budget_page import BudgetPage
 from opesvault.ui.pages.documents_page import DocumentsPage
 from opesvault.ui.pages.import_page import ImportPage
 from opesvault.ui.pages.investments_page import InvestmentsPage
@@ -136,6 +137,8 @@ class MainWindow(QMainWindow):
         self.lock: VaultLock | None = None
         self._vault_busy = False
         self._page_busy_flag = False
+        self._over_budget: set[tuple[int, int, object]] = set()
+        self._budget_owner: Session | None = None
         self._jobs: set[_Job] = set()
 
         self.pages: list[Page] = self.build_pages()
@@ -152,6 +155,7 @@ class MainWindow(QMainWindow):
         for index, page in enumerate(self.pages):
             page.set_busy_hook(self._page_busy)
             page.set_notify_hook(self.notify)
+            page.set_navigate_hook(self.navigate)
             if page.section and page.section != section:
                 section = page.section
                 header = QListWidgetItem(section.upper())
@@ -293,13 +297,17 @@ class MainWindow(QMainWindow):
             for item in pipeline.items(self.session.ledger).values()
             if item.status in (ItemStatus.READY, ItemStatus.NEEDS_REVIEW)
         )
+        from opesvault.domain.alerts import Severity, alerts
+
+        current = alerts(self.session.ledger)
+        attention = sum(1 for a in current if a.severity is not Severity.INFO)
         for index, page in enumerate(self.pages):
             item = self.nav.item(self._nav_rows[index])
-            count = pending if isinstance(page, ImportPage) else 0
+            count = pending if isinstance(page, ImportPage) else attention if isinstance(page, OverviewPage) else 0
             item.setData(BADGE_ROLE, count or None)
             item.setData(
                 Qt.ItemDataRole.AccessibleTextRole,
-                f"{page.title}, {count} itens aguardando revisão" if count else page.title,
+                f"{page.title}, {count} itens pedem atenção" if count else page.title,
             )
 
     def show_page(self, index: int) -> None:
@@ -353,6 +361,7 @@ class MainWindow(QMainWindow):
         """Pages in sidebar order; later phases extend this list."""
         return [
             OverviewPage(self.on_changed),
+            BudgetPage(self.on_changed),
             LedgerPage(self.on_changed),
             ImportPage(self.on_changed),
             AccountsPage(self.on_changed),
@@ -364,6 +373,13 @@ class MainWindow(QMainWindow):
         ]
 
     def extend_menus(self) -> None:
+        edit = self.menuBar().addMenu("&Editar")
+        self.edit_menu = edit
+        self.undo_action = self._action(edit, "Desfazer", QKeySequence.StandardKey.Undo, self.undo)
+        self.redo_action = self._action(edit, "Refazer", QKeySequence.StandardKey.Redo, self.redo)
+        self.redo_action.setShortcuts([QKeySequence(QKeySequence.StandardKey.Redo), QKeySequence("Ctrl+Shift+Z")])
+        for action in (self.undo_action, self.redo_action):
+            action.setEnabled(False)
         menu = self.vault_menu
         menu.addSeparator()
         self._action(menu, "Assistente de configuração…", None, self.run_setup_wizard)
@@ -478,6 +494,24 @@ class MainWindow(QMainWindow):
                 "Este cofre usava um formato anterior e foi convertido em memória. "
                 f"Uma cópia do original foi guardada em {backup}. A conversão só é gravada quando você salvar.",
             )
+        self.show_alerts_on_open()
+
+    def show_alerts_on_open(self) -> None:
+        """Offline app, no background notifications: opening is when it says what is due."""
+        if self.session is None:
+            return
+        from opesvault.domain.alerts import Severity, alerts
+
+        found = alerts(self.session.ledger)
+        if not found:
+            return
+        self.navigate("overview")
+        overview = next((p for p in self.pages if isinstance(p, OverviewPage)), None)
+        if overview is not None:
+            overview.show_alerts()
+        urgent = sum(1 for a in found if a.severity is Severity.URGENT)
+        lead = f"{urgent} atrasado(s) ou estourado(s) · " if urgent else ""
+        self.notify(f"{lead}{len(found)} aviso(s) em Visão geral.")
 
     def _after_save(self) -> None:
         from opesvault.domain.settings import get_settings
@@ -711,10 +745,90 @@ class MainWindow(QMainWindow):
     # ── state ───────────────────────────────────────────
 
     def on_changed(self) -> None:
+        if self.session is not None:
+            self.session.undo_stack().seal()  # one user action = one undo step
         current = self.stack.currentWidget()
         if isinstance(current, Page):
             current.refresh()
         self._refresh()
+        self._check_budget()
+
+    # ── undo / redo (unsaved edits only) ───────────
+
+    def undo(self) -> None:
+        if self.session is None or self.busy or self.locked:
+            return
+        step = self.session.undo_stack().undo()
+        if step is None:
+            self.notify("Nada a desfazer desde o último salvamento.")
+            return
+        self._after_history_move(f"Desfeito: {step.label}. Ctrl+Shift+Z refaz.")
+
+    def redo(self) -> None:
+        if self.session is None or self.busy or self.locked:
+            return
+        step = self.session.undo_stack().redo()
+        if step is not None:
+            self._after_history_move(f"Refeito: {step.label}.")
+
+    def _after_history_move(self, message: str) -> None:
+        for page in self.pages:
+            if page is self.stack.currentWidget():
+                page.refresh()
+        self._refresh()
+        self.notify(message)
+
+    def _update_undo_actions(self) -> None:
+        stack = self.session.undo_stack() if self.session is not None else None
+        undo_label = stack.undo_label() if stack else None
+        redo_label = stack.redo_label() if stack else None
+        enabled = not self.busy
+        self.undo_action.setEnabled(bool(undo_label) and enabled)
+        self.redo_action.setEnabled(bool(redo_label) and enabled)
+        self.undo_action.setText(f"Desfazer {undo_label}" if undo_label else "Desfazer")
+        self.redo_action.setText(f"Refazer {redo_label}" if redo_label else "Refazer")
+
+    # ── navigation from alerts and pages ───────────
+
+    TARGETS: ClassVar[dict[str, str]] = {
+        "overview": "OverviewPage",
+        "budget": "BudgetPage",
+        "ledger": "LedgerPage",
+        "import": "ImportPage",
+        "accounts": "AccountsPage",
+        "recurrences": "RecurrencesPage",
+    }
+
+    def navigate(self, target: str) -> None:
+        name = self.TARGETS.get(target)
+        for index, page in enumerate(self.pages):
+            if type(page).__name__ == name:
+                self.show_page(index)
+                return
+
+    def _check_budget(self) -> None:
+        """Says so the moment an edit pushes a category over its plan (alert on overspend)."""
+        if self.session is None:
+            return
+        from opesvault.domain import budget
+
+        ledger = self.session.ledger
+        baseline = self._budget_owner is not self.session  # a vault just opened: no news yet
+        self._budget_owner = self.session
+        over: set[tuple[int, int, object]] = set()
+        months = {(line.month.year, line.month.month): line.month for line in budget.lines(ledger).values()}
+        for key, month in months.items():
+            over |= {(*key, row.category_id) for row in budget.status(ledger, month).over}
+        new = over - self._over_budget
+        self._over_budget = over
+        if new and not baseline:
+            from opesvault.ui.common import month_label
+
+            year, number, category_id = sorted(new, key=str)[0]
+            account = ledger.accounts.get(category_id)  # type: ignore[arg-type]
+            extra = f" e mais {len(new) - 1}" if len(new) > 1 else ""
+            label = month_label(months[(year, number)])
+            self.notify(f"Orçamento estourado: {account.name if account else '?'} em {label}{extra}.")
 
     def _set_operator(self) -> None:
         if self.session is not None:
@@ -736,6 +850,7 @@ class MainWindow(QMainWindow):
             self.setWindowTitle("OpesVault")
             self.context_label.setText("OpesVault")
             self.operator.clear()
+            self._update_undo_actions()
             return
         names = [m.name for m in self.session.ledger.members.values() if m.active]
         if [self.operator.itemText(i) for i in range(self.operator.count())] != names:
@@ -748,6 +863,7 @@ class MainWindow(QMainWindow):
             self.operator.blockSignals(False)
             self._set_operator()
         self._update_badges()
+        self._update_undo_actions()
         dirty = self.session.dirty
         family = self.session.ledger.meta.family_name
         self.setWindowTitle(f"OpesVault — {family} ({self.session.path.name}){' *' if dirty else ''}")
@@ -866,6 +982,7 @@ class MainWindow(QMainWindow):
         wizard = SetupWizard(self, ledger)
         if wizard.exec() and run_guarded(self, lambda: apply_setup(ledger, wizard.plan())):
             self.on_changed()
+        wizard.deleteLater()
 
     def open_vault(self) -> None:
         if self.busy or not self._confirm_discard():
@@ -906,10 +1023,12 @@ class MainWindow(QMainWindow):
         if self.busy or self.session is None:
             return
         session = self.session
+        steps = session.undo_stack().checkpoint()
         frozen: FrozenSnapshot = session.freeze()
 
         def saved(revision: Any) -> None:
             session.mark_saved(frozen, revision)
+            session.undo_stack().saved(steps)
             self._after_save()
 
         self._run(lambda: self.client.save_frozen(frozen), saved)

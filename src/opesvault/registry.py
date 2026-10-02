@@ -7,11 +7,13 @@ import that only exists for its side effects.
 import importlib
 
 MODULES = (
+    "opesvault.domain.budget",
     "opesvault.domain.cards",
     "opesvault.domain.periods",
     "opesvault.domain.recurrence",
     "opesvault.domain.settings",
     "opesvault.importing.model",
+    "opesvault.importing.rules",
     "opesvault.investments.model",
     "opesvault.investments.trades",
     "opesvault.investments.benchmarks",

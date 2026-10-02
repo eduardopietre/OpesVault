@@ -2,10 +2,14 @@
 
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
 from opesvault.domain.ledger import Ledger
 from opesvault.vault.model import Document, OpenedVault, Record, RevisionInfo, Snapshot, SnapshotDelta
+
+if TYPE_CHECKING:
+    from opesvault.undo import UndoStack
 
 
 @dataclass(frozen=True)
@@ -74,20 +78,50 @@ class Session:
     def dirty(self) -> bool:
         return self._edit_seq != self._saved_seq
 
+    def undo_stack(self) -> "UndoStack":
+        """Created on first use; journaling starts then, so loading never fills it."""
+        stack = self.__dict__.get("_undo")
+        if stack is None:
+            from opesvault.undo import UndoStack
+
+            stack = UndoStack(self)
+            self.__dict__["_undo"] = stack
+        return stack
+
     def add_document(self, original_name: str, data: bytes) -> Document:
         document = Document.from_bytes(original_name, data)
-        self.documents.append(document)
-        self._docs_added.add(document.meta.id)
-        self._doc_changes += 1
+        self._insert_document(document)
+        self.ledger._journal_add(("external", lambda forward, d=document: self._redo_add(d, forward)))
         return document
 
     def remove_document(self, document_id: UUID) -> None:
+        document = next((d for d in self.documents if d.meta.id == document_id), None)
+        self._drop_document(document_id)
+        if document is not None:
+            self.ledger._journal_add(("external", lambda forward, d=document: self._redo_add(d, not forward)))
+
+    def _insert_document(self, document: Document) -> None:
+        self.documents.append(document)
+        if document.meta.id in self._docs_removed:
+            self._docs_removed.discard(document.meta.id)  # removed and put back before a save
+        else:
+            self._docs_added.add(document.meta.id)
+        self._doc_changes += 1
+
+    def _drop_document(self, document_id: UUID) -> None:
         self.documents = [d for d in self.documents if d.meta.id != document_id]
         if document_id in self._docs_added:
             self._docs_added.discard(document_id)
         else:
             self._docs_removed.add(document_id)
         self._doc_changes += 1
+
+    def _redo_add(self, document: Document, present: bool) -> None:
+        """Undo/redo of a document: present=True puts it back, False takes it out."""
+        if present:
+            self._insert_document(document)
+        else:
+            self._drop_document(document.meta.id)
 
     def document(self, document_id: UUID) -> Document:
         for doc in self.documents:

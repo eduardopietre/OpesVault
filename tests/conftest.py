@@ -41,3 +41,26 @@ def dev_worker_env(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
 
 def dev_worker_command() -> list[str]:
     return [sys.executable, str(DEV_WORKER)]
+
+
+@pytest.fixture(autouse=True)
+def _dispose_windows() -> Iterator[None]:
+    """Each UI test starts without windows left by the previous one.
+
+    Real use has one main window; tests create dozens. Leaving them to the garbage
+    collector lets Qt re-polish half-destroyed widgets when a later test changes the
+    application style, which crashes the interpreter.
+    """
+    yield
+    if "PySide6.QtWidgets" not in sys.modules:
+        return
+    from PySide6.QtCore import QCoreApplication, QEvent
+    from PySide6.QtWidgets import QApplication
+
+    app = QApplication.instance()
+    if not isinstance(app, QApplication):
+        return
+    for widget in app.topLevelWidgets():
+        widget.hide()
+        widget.deleteLater()
+    QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)

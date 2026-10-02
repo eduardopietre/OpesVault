@@ -24,6 +24,7 @@ class Page(QWidget):
         self._changed = changed
         self._busy_hook: Callable[[bool], None] | None = None
         self._notify_hook: Callable[[str], None] | None = None
+        self._navigate_hook: Callable[[str], None] | None = None
         self.header = PageHeader(self.title, self.subtitle)
 
     def page_layout(self) -> QVBoxLayout:
@@ -37,6 +38,14 @@ class Page(QWidget):
 
     def set_notify_hook(self, hook: Callable[[str], None]) -> None:
         self._notify_hook = hook
+
+    def set_navigate_hook(self, hook: Callable[[str], None]) -> None:
+        self._navigate_hook = hook
+
+    def navigate(self, target: str) -> None:
+        """Opens another section by key ("budget", "import", "accounts", "recurrences", "ledger")."""
+        if self._navigate_hook is not None:
+            self._navigate_hook(target)
 
     def set_busy(self, busy: bool) -> None:
         """Background work that mutates the session must block saving and other edits."""

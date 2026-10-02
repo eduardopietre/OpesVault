@@ -16,7 +16,9 @@ from .domain_fixtures import family
 @pytest.fixture(scope="module")
 def app() -> QApplication:
     instance = QApplication.instance()
-    return instance if isinstance(instance, QApplication) else QApplication([])
+    app = instance if isinstance(instance, QApplication) else QApplication([])
+    theme.apply_theme(app, dark=False)  # metrics as the app runs them, whatever ran before
+    return app
 
 
 @pytest.fixture

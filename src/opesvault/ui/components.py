@@ -10,7 +10,6 @@ from PySide6.QtCore import QPoint, QRect, QSize, Qt, Signal
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (
     QFrame,
-    QGridLayout,
     QHBoxLayout,
     QLabel,
     QLayout,
@@ -117,7 +116,8 @@ class PageHeader(QWidget):
         super().__init__()
         self.title = text(title, "title")
         self.title.setAccessibleName(title)
-        self.subtitle = text(subtitle, "secondary")
+        self.subtitle = text(subtitle, "secondary", wrap=True)  # wraps instead of widening the window
+        self.subtitle.setMinimumWidth(160)
         self.subtitle.setVisible(bool(subtitle))
         self.trailing = QHBoxLayout()
         self.trailing.setSpacing(SPACE_S)
@@ -175,23 +175,52 @@ class EmptyState(QWidget):
 
 
 class Figures(QWidget):
-    """A row of labelled key figures (label above, value below), separated by space, not boxes."""
+    """Labelled key figures (label above, value below), separated by space, not boxes.
+
+    They wrap to a new line on narrow windows instead of widening the window.
+    """
 
     def __init__(self, labels: Sequence[str]) -> None:
         super().__init__()
-        grid = QGridLayout(self)
-        grid.setContentsMargins(0, 0, 0, 0)
-        grid.setHorizontalSpacing(SPACE_XL + SPACE_S)
-        grid.setVerticalSpacing(2)
         self.values: dict[str, QLabel] = {}
-        for column, label in enumerate(labels):
+        flow = FlowLayout(self, SPACE_XL + SPACE_S, SPACE_S)
+        for label in labels:
+            block = QWidget()
+            column = QVBoxLayout(block)
+            column.setContentsMargins(0, 0, 0, 0)
+            column.setSpacing(2)
             caption = text(label, "caption")
             value = text("—", "figure")
             value.setAccessibleName(label)
-            grid.addWidget(caption, 0, column)
-            grid.addWidget(value, 1, column)
+            column.addWidget(caption)
+            column.addWidget(value)
+            flow.addWidget(block)
             self.values[label] = value
-        grid.setColumnStretch(len(labels), 1)
+
+    def hasHeightForWidth(self) -> bool:  # noqa: N802 - Qt override
+        return True
+
+    def heightForWidth(self, width: int) -> int:  # noqa: N802 - Qt override
+        layout = self.layout()
+        return layout.heightForWidth(width) if layout is not None else super().heightForWidth(width)
+
+    def resizeEvent(self, event: object) -> None:  # noqa: N802 - Qt override
+        layout = self.layout()
+        if layout is not None:
+            needed = layout.heightForWidth(self.width())
+            if needed != self.minimumHeight():
+                self.setMinimumHeight(needed)
+        super().resizeEvent(event)  # type: ignore[arg-type]
+
+    def sizeHint(self) -> QSize:  # noqa: N802 - Qt override
+        """One line: the natural width of all figures side by side."""
+        layout = self.layout()
+        if layout is None:
+            return super().sizeHint()
+        items = [layout.itemAt(i) for i in range(layout.count())]
+        widths = [item.sizeHint().width() for item in items if item is not None]
+        heights = [item.sizeHint().height() for item in items if item is not None]
+        return QSize(sum(widths) + (SPACE_XL + SPACE_S) * max(len(widths) - 1, 0), max(heights, default=0))
 
     def set(self, label: str, value: str, tone: str | None = None) -> None:
         self.values[label].setText(value)
@@ -235,7 +264,7 @@ class MonthPicker(QWidget):
 
     changed = Signal()
 
-    def __init__(self, months_back: int = 60) -> None:
+    def __init__(self, months_back: int = 60, months_ahead: int = 0) -> None:
         from datetime import date
 
         from PySide6.QtWidgets import QComboBox
@@ -247,10 +276,10 @@ class MonthPicker(QWidget):
         self.combo = QComboBox()
         self.combo.setAccessibleName("Mês")
         today = YearMonth.of(date.today())
-        for offset in range(months_back, -1, -1):
+        for offset in range(months_back, -months_ahead - 1, -1):
             month = today.add(-offset)
             self.combo.addItem(month_label(month), month)
-        self.combo.setCurrentIndex(self.combo.count() - 1)
+        self.combo.setCurrentIndex(months_back)  # today
         self.combo.setMinimumContentsLength(16)
         previous = QToolButton()
         previous.setObjectName("Plain")

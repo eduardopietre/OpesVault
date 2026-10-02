@@ -20,8 +20,8 @@ from PySide6.QtWidgets import (
 )
 
 from opesvault.domain.ledger import DomainError
-from opesvault.domain.model import AccountType
-from opesvault.importing import pipeline
+from opesvault.domain.model import AccountSubtype, AccountType
+from opesvault.importing import pipeline, rules
 from opesvault.importing.model import BatchStatus, ExtractedItem, ImportBatch, ItemKind, ItemStatus
 from opesvault.importing.parsers import PARSERS
 from opesvault.importing.pipeline import ImportRequest
@@ -31,7 +31,7 @@ from opesvault.ui.components import EmptyState, button, flow_row, hbox, hbox_wid
 from opesvault.ui.dialogs import FormDialog, ask_reason
 from opesvault.ui.pages.base import Page
 from opesvault.ui.pages.documents_page import PdfView
-from opesvault.ui.theme import SPACE_M, SPACE_S
+from opesvault.ui.theme import SPACE_M, SPACE_S, SPACE_XS
 
 STATUS_LABELS = {
     BatchStatus.UNSUPPORTED: "Não suportado",
@@ -58,7 +58,13 @@ KIND_LABELS = {
     ItemKind.TRADE: "Negócio",
     ItemKind.FEE: "Custo",
 }
-SOURCE_LABELS = {"history": "sugestão (histórico)", "rule": "sugestão (regra)"}
+SOURCE_LABELS = {"history": "sugestão (histórico)", "rule": "sugestão (regra padrão)"}
+
+
+def source_label(source: str) -> str:
+    if source.startswith("user_rule:"):
+        return "sugestão (sua regra)"
+    return SOURCE_LABELS.get(source, f"sugestão ({source})")
 
 
 class _ImportSignals(QObject):
@@ -155,6 +161,7 @@ class ImportPage(Page):
             "Mais",
             [
                 ("Manter separado…", self.keep_separate, "Ctrl+M"),
+                ("Criar regra a partir do item…", self.create_rule, "Ctrl+R"),
                 ("Sugerir categorias com IA local", self.suggest_ai),
                 None,
                 ("Rejeitar item…", self.reject, "Del"),
@@ -168,6 +175,7 @@ class ImportPage(Page):
             (("Delete",), self.reject),
             (("Ctrl+I",), self.import_files),
             (("Ctrl+K",), self.focus_target),
+            (("Ctrl+R",), self.create_rule),
         ):
             self._shortcut(keys, slot)
         self.review_actions = (approve_all, approve_one, correct, more)
@@ -181,6 +189,22 @@ class ImportPage(Page):
         review_layout.addWidget(self.batch_info)
         review_layout.addWidget(target_row)
         review_layout.addWidget(actions)
+        # Offered right after a category is picked by hand: the moment a rule saves time.
+        self.rule_offer_text = text("", wrap=True)
+        self.rule_offer = QWidget()
+        self.rule_offer.setObjectName("FilterChip")
+        self.rule_offer.setLayout(
+            hbox(
+                self.rule_offer_text,
+                None,
+                button("Criar regra…", self._accept_rule_offer, role="primary"),
+                button("Agora não", self._dismiss_rule_offer, role="plain"),
+            )
+        )
+        self.rule_offer.layout().setContentsMargins(SPACE_S, SPACE_XS, SPACE_S, SPACE_XS)  # type: ignore[union-attr]
+        self.rule_offer.hide()
+        self._offered_item: UUID | None = None
+        review_layout.addWidget(self.rule_offer)
         review_layout.addWidget(self.items, 1)
         self.review_empty = EmptyState("Selecione um documento", "Os itens extraídos aparecem aqui para revisão.")
         self.review_stack = QStackedWidget()
@@ -354,7 +378,7 @@ class ImportPage(Page):
             if item.card_last4:
                 notes.append(f"cartão final {item.card_last4}")
             if item.suggestion_source:
-                notes.append(SOURCE_LABELS.get(item.suggestion_source, f"sugestão ({item.suggestion_source})"))
+                notes.append(source_label(item.suggestion_source))
             if item.status is ItemStatus.DUPLICATE:
                 notes.append("já existe no livro: aprovar só vincula a evidência")
             target = ledger.accounts.get(item.target_account_id) if item.target_account_id else None
@@ -412,6 +436,61 @@ class ImportPage(Page):
             return
         ledger = self.session.ledger
         if run_guarded(self, lambda: pipeline.correct_item(ledger, item_id, "target_account_id", target)):
+            self.changed()
+            self._offer_rule(item_id)
+
+    # ── categorization rules ────────────────────────
+
+    def _offer_rule(self, item_id: UUID) -> None:
+        if self.session is None:
+            return
+        ledger = self.session.ledger
+        item = pipeline.items(ledger).get(item_id)
+        target = ledger.accounts.get(item.target_account_id) if item and item.target_account_id else None
+        if item is None or target is None or target.subtype is not AccountSubtype.CATEGORY:
+            self._dismiss_rule_offer()
+            return
+        self._offered_item = item_id
+        pattern = rules.suggest_pattern(item.description)
+        self.rule_offer_text.setText(f"Usar sempre “{target.name}” para descrições com “{pattern}”?")
+        self.rule_offer.show()
+
+    def _accept_rule_offer(self) -> None:
+        item_id = self._offered_item
+        self._dismiss_rule_offer()
+        if item_id is not None:
+            self.create_rule(item_id)
+
+    def _dismiss_rule_offer(self) -> None:
+        self._offered_item = None
+        self.rule_offer.hide()
+
+    def create_rule(self, item_id: UUID | None = None) -> None:
+        """Ctrl+R: a rule from the selected item (its description and chosen category)."""
+        if self.session is None:
+            return
+        from opesvault.ui.rule_dialog import RuleDialog
+
+        ledger = self.session.ledger
+        item_id = item_id or selected_id(self.items)
+        item = pipeline.items(ledger).get(item_id) if item_id else None
+        if item is None:
+            QMessageBox.information(self, "Regra", "Selecione um item para criar a regra a partir dele.")
+            return
+        batch = pipeline.batches(ledger).get(item.batch_id)
+        dialog = RuleDialog(
+            self,
+            ledger,
+            description=item.description,
+            target_id=item.target_account_id,
+            account_id=batch.account_id if batch else None,
+        )
+        if not dialog.exec():
+            return
+        result = run_guarded(self, lambda: dialog.apply(from_item=item.id))
+        if result:
+            _, changed = result
+            self.notify(f"Regra criada. {changed} item(ns) pendente(s) recategorizado(s).")
             self.changed()
 
     def _select_item(self) -> None:

@@ -49,7 +49,7 @@ A especificação adotada é: não guardar deliberadamente a senha ou a chave de
 
 ## 5. Escopo de produto
 
-Inclui cofres, integrantes, contas conjuntas, cartões adicionais, categorias, rateio, importação em lote, conciliação, lançamentos manuais, recorrências, parcelas, fechamento mensal, gráficos, carteira de investimentos, avaliações manuais, impostos efetivos e simulados, backup, restauração e exportação deliberada.
+Inclui cofres, integrantes, contas conjuntas, cartões adicionais, categorias, regras de categorização, orçamento mensal por categoria, rateio, importação em lote, conciliação, lançamentos manuais, recorrências, parcelas, fechamento mensal, gráficos, carteira de investimentos, avaliações manuais, impostos efetivos e simulados, backup, restauração e exportação deliberada.
 
 Não inclui acesso a internet banking, Open Finance, sincronização cloud, edição simultânea do mesmo cofre, negociação de ativos, execução de pagamentos, declaração fiscal oficial, motor tributário completo, aconselhamento de investimentos ou processamento automático irrestrito de qualquer PDF ou planilha.
 

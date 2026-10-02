@@ -64,6 +64,22 @@ def demo_session(path: Path):  # type: ignore[no-untyped-def]
     for month, value in ((1, "5040"), (2, "5085"), (3, "5131")):
         inv.add_valuation(ledger, pos.id, date(2026, month, 28), value, ValueNature.GROSS)
     pipeline.import_document(session, ImportRequest("fatura-nubank-03.pdf", docs.nubank_card_pdf()))
+    from opesvault.domain import budget
+    from opesvault.domain.model import YearMonth
+    from opesvault.importing import rules
+
+    today = YearMonth.of(date.today())
+    for name, value in (
+        ("Alimentação", "600.00"),
+        ("Moradia", "2350.00"),
+        ("Transporte", "120.00"),
+        ("Saúde", "60.00"),
+    ):
+        for month in (YearMonth(year=2026, month=3), today):
+            budget.set_budget(ledger, category(ledger, name), month, value)
+    ledger.record_expense(f.bank, category(ledger, "Transporte"), "145.00", date.today(), "Posto Shell")
+    ledger.record_expense(f.bank, category(ledger, "Alimentação"), "560.00", date.today(), "Mercado do mês")
+    rules.add_rule(ledger, "padaria", category(ledger, "Alimentação"))
     _ = AccountType
     return session
 

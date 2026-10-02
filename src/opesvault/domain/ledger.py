@@ -69,6 +69,16 @@ def _now() -> datetime:
     return datetime.now(UTC)
 
 
+class _Missing:
+    """Marks 'no value' in the change journal (None is a valid stored value)."""
+
+    def __repr__(self) -> str:
+        return "MISSING"
+
+
+MISSING: Any = _Missing()
+
+
 class _TrackedDict(dict):  # type: ignore[type-arg]
     """Entity collection that reports every change, so saves can be incremental and
     caches can be invalidated even when a module writes to the collection directly."""
@@ -79,16 +89,23 @@ class _TrackedDict(dict):  # type: ignore[type-arg]
         self._kind = kind
 
     def __setitem__(self, key: UUID, value: Any) -> None:
+        before = dict.get(self, key, MISSING)
         super().__setitem__(key, value)
         self._ledger._touch(self._kind, key)
+        self._ledger._journal_add(("entity", self._kind, key, before, value))
 
     def __delitem__(self, key: UUID) -> None:
+        before = dict.get(self, key, MISSING)
         super().__delitem__(key)
         self._ledger._touch(self._kind, key)
+        self._ledger._journal_add(("entity", self._kind, key, before, MISSING))
 
     def pop(self, key: UUID, *default: Any) -> Any:  # type: ignore[override]
+        before = dict.get(self, key, MISSING)
         value = super().pop(key, *default)
         self._ledger._touch(self._kind, key)
+        if before is not MISSING:
+            self._ledger._journal_add(("entity", self._kind, key, before, MISSING))
         return value
 
     def load(self, key: UUID, value: Any) -> None:
@@ -118,6 +135,12 @@ class _TrackedList(list):  # type: ignore[type-arg]
 
     def append(self, entry: Any) -> None:
         super().append(entry)
+        self._ledger._touch("history", entry.id)
+        self._ledger._journal_add(("history", entry))
+
+    def discard(self, entry: Any) -> None:
+        """Removes an entry appended in this session (undo of an unsaved change)."""
+        list.remove(self, entry)
         self._ledger._touch("history", entry.id)
 
     def recent(self) -> Iterator[Any]:
@@ -166,6 +189,8 @@ class Ledger:
         self.history: list[HistoryEntry] = _TrackedList(self)
         self.operator: str | None = None
         self.migrated_from: int | None = None  # schema version before an in-memory migration
+        # Raw changes since the session started journaling; None while not recording.
+        self.journal: list[tuple[Any, ...]] | None = None
 
     @property
     def meta(self) -> LedgerMeta:
@@ -173,12 +198,62 @@ class Ledger:
 
     @meta.setter
     def meta(self, value: LedgerMeta) -> None:
+        before = self._meta
         self._meta = value
         self._touch("ledger.meta", META_ID)
+        self._journal_add(("meta", before, value))
 
     def _touch(self, kind: str, key: UUID) -> None:
         self.change_count += 1
         self.dirty[(kind, key)] = self.change_count
+
+    # ── change journal (undo of unsaved edits, see opesvault.undo) ──────────
+
+    def _journal_add(self, entry: tuple[Any, ...]) -> None:
+        if self.journal is not None:
+            self.journal.append(entry)
+
+    def revert(self, entries: list[tuple[Any, ...]]) -> None:
+        """Puts back the state before `entries` (newest first). Not journaled itself."""
+        saved, self.journal = self.journal, None
+        try:
+            for entry in reversed(entries):
+                self._apply(entry, forward=False)
+        finally:
+            self.journal = saved
+
+    def replay(self, entries: list[tuple[Any, ...]]) -> None:
+        """Applies `entries` again after a revert (redo). Not journaled itself."""
+        saved, self.journal = self.journal, None
+        try:
+            for entry in entries:
+                self._apply(entry, forward=True)
+        finally:
+            self.journal = saved
+
+    def _apply(self, entry: tuple[Any, ...], *, forward: bool) -> None:
+        tag = entry[0]
+        if tag == "entity":
+            _, kind, key, before, after = entry
+            value = after if forward else before
+            collection = self._collection(kind)
+            if value is MISSING:
+                if key in collection:
+                    del collection[key]
+            else:
+                collection[key] = value
+        elif tag == "history":
+            history = self.history
+            if forward:
+                history.append(entry[1])
+            elif isinstance(history, _TrackedList):
+                history.discard(entry[1])
+            else:  # pragma: no cover - history is always tracked
+                history.remove(entry[1])
+        elif tag == "meta":
+            self.meta = entry[2] if forward else entry[1]
+        elif tag == "external":
+            entry[1](forward)
 
     def mark_clean(self, up_to: int) -> None:
         """Forget changes already persisted; later edits stay pending (docs/03 §5)."""

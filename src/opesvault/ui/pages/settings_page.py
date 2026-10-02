@@ -9,16 +9,17 @@ One contract per kind, so nothing looks pending when it is not:
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
     QCheckBox,
+    QComboBox,
     QFormLayout,
     QLabel,
     QLineEdit,
-    QMessageBox,
     QSpinBox,
     QTabWidget,
     QVBoxLayout,
     QWidget,
 )
 
+from opesvault.ai.ollama import RECOMMENDED_MODELS
 from opesvault.domain.settings import get_settings, update_settings
 from opesvault.ui.common import run_guarded
 from opesvault.ui.components import button, hbox_widget, text
@@ -96,10 +97,16 @@ class SettingsPage(Page):
 
         # Local AI (stored in the vault). Off by default; the model only matters once it is on.
         self.ai_enabled = QCheckBox("Usar Ollama local para sugerir categorias")
-        self.ai_model = QLineEdit()
-        self.ai_model.setPlaceholderText("ex.: qwen2.5:7b")
+        # The installed models, as Ollama lists them; still editable for one not pulled yet.
+        self.ai_model = QComboBox()
+        self.ai_model.setEditable(True)
+        self.ai_model.setMinimumContentsLength(18)
         self.ai_model.setAccessibleName("Modelo")
-        self.ai_model_row = hbox_widget(self.ai_model, button("Testar conexão", self.test_ai))
+        model_edit = self.ai_model.lineEdit()
+        if model_edit is not None:
+            model_edit.setPlaceholderText(f"ex.: {RECOMMENDED_MODELS[0]}")
+        self.ai_status = text("", "caption", wrap=True)
+        self.ai_model_row = hbox_widget(self.ai_model, button("Verificar Ollama", self.test_ai), None)
         ai, ai_form, _ = _tab(
             VAULT_NOTE,
             "Sem IA, o aplicativo já sugere categorias pelas suas regras e pelo histórico. A IA local é opcional: "
@@ -109,6 +116,16 @@ class SettingsPage(Page):
         ai_form.addRow("", self.ai_enabled)
         self.ai_model_label = QLabel("Modelo instalado:")
         ai_form.addRow(self.ai_model_label, self.ai_model_row)
+        self.ai_hint = text(
+            "Indicado: "
+            + ", ".join(RECOMMENDED_MODELS)
+            + " (melhor resultado na avaliação de scripts/avaliar_modelos.py). Instale com “ollama pull <modelo>”; "
+            "o aplicativo não baixa nada sozinho.",
+            "caption",
+            wrap=True,
+        )
+        ai_form.addRow("", self.ai_status)
+        ai_form.addRow("", self.ai_hint)
         self.ai_enabled.toggled.connect(self._show_ai_model)
 
         self.tabs = QTabWidget()
@@ -118,9 +135,11 @@ class SettingsPage(Page):
         layout = self.page_layout()
         layout.addWidget(self.tabs, 1)
         self.header.set_subtitle("Backup e IA ficam no cofre; privacidade vale para este computador")
-        for widget in (self.backup_dir, self.ai_model):
-            widget.textEdited.connect(self._edited)
-            widget.editingFinished.connect(self.flush)
+        self.backup_dir.textEdited.connect(self._edited)
+        self.backup_dir.editingFinished.connect(self.flush)
+        self.ai_model.currentTextChanged.connect(self._edited)
+        if model_edit is not None:
+            model_edit.editingFinished.connect(self.flush)
         for box in (self.auto_backup, self.ai_enabled):
             box.toggled.connect(self._edited)
         for spin in (self.backup_keep, self.reminder):
@@ -142,7 +161,7 @@ class SettingsPage(Page):
         ledger = self.session.ledger
         wanted = {
             "ai_enabled": self.ai_enabled.isChecked(),
-            "ai_model": self.ai_model.text().strip() or None,
+            "ai_model": self.ai_model.currentText().strip() or None,
             "backup_dir": self.backup_dir.text().strip() or None,
             "backup_keep": self.backup_keep.value(),
             "auto_backup": self.auto_backup.isChecked(),
@@ -156,8 +175,8 @@ class SettingsPage(Page):
             self.changed()
 
     def _show_ai_model(self, enabled: bool) -> None:
-        self.ai_model_label.setVisible(enabled)
-        self.ai_model_row.setVisible(enabled)
+        for widget in (self.ai_model_label, self.ai_model_row, self.ai_status, self.ai_hint):
+            widget.setVisible(enabled)
 
     # ── computer preferences: written at once ──
 
@@ -203,7 +222,7 @@ class SettingsPage(Page):
         for widget in widgets:
             widget.blockSignals(True)
         self.ai_enabled.setChecked(settings.ai_enabled)
-        self.ai_model.setText(settings.ai_model or "")
+        self.ai_model.setCurrentText(settings.ai_model or "")
         self.backup_dir.setText(settings.backup_dir or "")
         self.backup_keep.setValue(settings.backup_keep)
         self.auto_backup.setChecked(settings.auto_backup)
@@ -227,15 +246,28 @@ class SettingsPage(Page):
             command()
 
     def test_ai(self) -> None:
+        """Lists the installed models and says whether the chosen one is among them."""
         from opesvault.ai.ollama import AiUnavailable, OllamaClient
 
+        chosen = self.ai_model.currentText().strip()
         try:
-            client = OllamaClient(self.ai_model.text().strip() or "teste")
-            client.suggest_categories(["teste de conexão"], ["Outras despesas"])
+            info = OllamaClient(chosen or "verificacao").server_info()
         except AiUnavailable as exc:
-            QMessageBox.information(self, "IA local", str(exc))
+            self.ai_status.setText(f"{exc} Abra o Ollama e tente de novo.")
             return
-        QMessageBox.information(self, "IA local", "Ollama local respondeu.")
+        self.ai_model.blockSignals(True)
+        self.ai_model.clear()
+        self.ai_model.addItems(list(info.models))
+        self.ai_model.setCurrentText(chosen or (info.models[0] if info.models else ""))
+        self.ai_model.blockSignals(False)
+        if not info.models:
+            state = "nenhum modelo instalado ainda."
+        elif chosen and chosen not in info.models:
+            state = f"o modelo {chosen} não está instalado."
+        else:
+            state = f"{len(info.models)} modelo(s) instalado(s)."
+        self.ai_status.setText(f"Ollama {info.version} respondeu: {state}")
+        self.flush()
 
 
 def _note(value: str, *, strong: bool = False) -> QLabel:

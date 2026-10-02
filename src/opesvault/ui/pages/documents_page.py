@@ -1,5 +1,6 @@
 """Documents stored in the vault, rendered in memory (docs/03 §6)."""
 
+from typing import Any
 from uuid import UUID
 
 from PySide6.QtCore import Qt
@@ -13,11 +14,16 @@ from opesvault.ui.pages.base import Page
 
 
 class PdfView(QWidget):
-    """Page-by-page PDF viewer over in-memory bytes."""
+    """Page-by-page PDF viewer over in-memory bytes.
+
+    The document is opened once and kept while it is on screen, so a password-protected PDF
+    asks for its password once per document shown; the password itself is not kept.
+    """
 
     def __init__(self) -> None:
         super().__init__()
         self.data: bytes | None = None
+        self._pdf: Any = None  # the open PDFium document for `data`
         self.highlight: tuple[float, float, float, float] | None = None
         self.highlight_page = 1
         self.page = QSpinBox()
@@ -33,38 +39,79 @@ class PdfView(QWidget):
         self.image.setProperty("textStyle", "secondary")
         self.image.setWordWrap(True)
         self.page.setAccessibleName("Página")
+        self.unlock_button = button("Informar senha…", self.ask_password, tip="A senha não é guardada")
+        self.unlock_button.hide()
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addLayout(hbox(text("Documento original", "headline"), None, text("Página", "secondary"), self.page))
         layout.addWidget(scroll)
+        layout.addWidget(self.unlock_button, 0, Qt.AlignmentFlag.AlignHCenter)
+
+    def _close(self) -> None:
+        if self._pdf is not None:
+            self._pdf.close()
+            self._pdf = None
 
     def show_pdf(
         self, data: bytes | None, page: int = 1, highlight: tuple[float, float, float, float] | None = None
     ) -> None:
         self.highlight = highlight
-        self.data = data
+        self.highlight_page = page
+        if data is not self.data:  # the same document again (another item of it) keeps its handle
+            self._close()
+            self.data = data
+        self.unlock_button.hide()
         if data is None:
             self.image.setText("Nenhum documento selecionado")
             return
-        from opesvault.pdf_render import page_count
-
-        try:
-            self.page.setMaximum(page_count(data))
-        except Exception:
-            self.image.setText("Não foi possível abrir este PDF (protegido por senha ou inválido).")
+        if self._pdf is None and not self._open(None):
             return
-        self.highlight_page = page
+        self._show_page(page)
+
+    def _open(self, password: str | None) -> bool:
+        from opesvault.pdf_render import PdfPasswordRequired, open_document
+
+        assert self.data is not None
+        try:
+            self._pdf = open_document(self.data, password)
+        except PdfPasswordRequired:
+            self.image.setText("Senha incorreta. Tente de novo." if password else "Este PDF é protegido por senha.")
+            self.unlock_button.show()
+            return False
+        except Exception:
+            self.image.setText("Não foi possível abrir este PDF.")
+            return False
+        self.unlock_button.hide()
+        return True
+
+    def ask_password(self) -> None:
+        from PySide6.QtWidgets import QInputDialog, QLineEdit
+
+        if self.data is None:
+            return
+        password, ok = QInputDialog.getText(
+            self, "PDF protegido", "Senha do PDF (não será guardada):", QLineEdit.EchoMode.Password
+        )
+        if ok and password and self._open(password):
+            self._show_page(self.highlight_page)
+
+    def _show_page(self, page: int) -> None:
+        if self._pdf is None:
+            return
+        self.page.blockSignals(True)
+        self.page.setMaximum(len(self._pdf))
         self.page.setValue(page)
+        self.page.blockSignals(False)
         self._render()
 
     def _render(self) -> None:
-        if self.data is None:
+        if self._pdf is None:
             return
-        from opesvault.pdf_render import render_page
+        from opesvault.pdf_render import render_document
 
         scale = 1.5
         try:
-            image = render_page(self.data, self.page.value() - 1, scale)
+            image = render_document(self._pdf, self.page.value() - 1, scale)
         except Exception:
             self.image.setText("Não foi possível renderizar esta página.")
             return

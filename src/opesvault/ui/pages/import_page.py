@@ -671,7 +671,20 @@ class ImportPage(Page):
             return
         session = self.session
         parser_id = self.layout_choice.currentData()
-        result = run_guarded(self, lambda: pipeline.reparse_with(session, batch.id, parser_id))
+        password: str | None = None
+        while True:
+            try:
+                result = run_guarded(self, lambda pw=password: pipeline.reparse_with(session, batch.id, parser_id, pw))
+                break
+            except SourceError as exc:  # protected PDF: the password was used once at import, never kept
+                if exc.problem not in (SourceProblem.PASSWORD_REQUIRED, SourceProblem.WRONG_PASSWORD):
+                    QMessageBox.information(self, "Importação", PROBLEM_MESSAGES.get(exc.problem, "Arquivo inválido."))
+                    return
+                label = PROBLEM_MESSAGES[exc.problem] + "\nSenha do PDF (não será guardada):"
+                typed, ok = QInputDialog.getText(self, "PDF protegido", label, QLineEdit.EchoMode.Password)
+                if not ok or not typed:
+                    return
+                password = typed
         if isinstance(result, ImportBatch):
             self.batch_id = result.id
             self.changed()
@@ -766,20 +779,50 @@ class ImportPage(Page):
             self._after_item_action(row)
 
     def suggest_ai(self) -> None:
+        """Asks the local model in the background; the page stays busy and the window responsive."""
         batch = self._batch()
-        if batch is None or self.session is None:
+        if batch is None or self.session is None or self._jobs:
             return
         from opesvault.ai.ollama import AiUnavailable
-        from opesvault.domain.settings import get_settings
-        from opesvault.importing.ai_suggestions import suggest_with_ai
+        from opesvault.importing.ai_suggestions import apply_suggestions, ask_ai, client_from_settings
 
-        if not get_settings(self.session.ledger).ai_enabled:
-            QMessageBox.information(self, "IA local", "A assistência por IA está desligada (Configurações).")
-            return
+        ledger = self.session.ledger
         try:
-            count = suggest_with_ai(self.session.ledger, batch.id)
+            client = client_from_settings(ledger)
         except AiUnavailable as exc:
-            QMessageBox.information(self, "IA local", f"{exc} A revisão manual continua disponível.")
+            QMessageBox.information(self, "IA local", str(exc))
             return
-        QMessageBox.information(self, "IA local", f"{count} sugestão(ões) preenchida(s). Revise antes de aprovar.")
-        self.changed()
+        if client is None:
+            QMessageBox.information(
+                self, "IA local", "A assistência por IA está desligada ou sem modelo escolhido (Configurações)."
+            )
+            return
+
+        def work() -> object:
+            try:
+                return ask_ai(ledger, batch.id, client)
+            except AiUnavailable as exc:  # expected: Ollama off, model missing, odd answer
+                return exc
+
+        job = _ImportJob(work)
+        self._jobs.add(job)
+        self.set_busy(True)
+        self.notify(f"Consultando {client.model} no Ollama local…")
+
+        def done(result: object) -> None:
+            self._jobs.discard(job)
+            self.set_busy(False)
+            if isinstance(result, AiUnavailable):
+                QMessageBox.information(self, "IA local", f"{result} A revisão manual continua disponível.")
+                return
+            if not isinstance(result, list):
+                QMessageBox.information(self, "IA local", "A consulta falhou. A revisão manual continua disponível.")
+                return
+            count = apply_suggestions(ledger, result)
+            self.notify(f"IA local: {count} sugestão(ões) preenchida(s). Revise antes de aprovar.")
+            if count:
+                self.changed()
+            self.refresh()
+
+        job.signals.done.connect(done)
+        QThreadPool.globalInstance().start(job)

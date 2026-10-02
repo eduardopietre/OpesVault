@@ -35,6 +35,8 @@ Informações acessórias, como avisos e tabelas de encargos, devem ser preserva
 
 PDF originalmente protegido permanece arquivado como recebido. Para visualizar novamente, pode exigir sua senha original; armazená-la cifrada dentro do cofre é opção explícita futura. A senha do cofre não substitui a senha do PDF.
 
+Implementação (02/10/2026): AES-256, AES-128 e RC4-128 com senha de usuário pedem a senha na importação; PDF só com senha de proprietário abre sem perguntar. O visualizador pede a senha uma vez por documento exibido ("Informar senha…") e mantém o documento aberto em memória enquanto ele está na tela; escolher outro layout pede a senha de novo. A senha nunca é guardada nem registrada (`tests/test_pdf_password.py`).
+
 ### Exportações estruturadas (CSV e OFX)
 
 Seguem o mesmo pipeline, sem as etapas de texto e coordenadas. Mesmo estruturadas, não são confiáveis por definição:
@@ -57,6 +59,14 @@ A evidência contém página e região quando disponíveis; parsers baseados som
 Ollama pode propor categoria, estabelecimento normalizado e extração alternativa. Recebe somente conteúdo necessário, sem senha do cofre ou acesso ao sistema de arquivos. Instruções contidas em PDFs são dados, não comandos. Não habilitar ferramentas, execução, downloads ou navegação.
 
 Resposta estruturada é validada em tipos e significado. JSON válido não prova exatidão. Registrar modelo, identificação da versão quando disponível, configuração e versão do prompt, além do resultado aprovado. Não exigir regeneração do resultado para abrir o cofre.
+
+Implementação (`ai/ollama.py`, `importing/ai_suggestions.py`, 02/10/2026):
+
+- só `127.0.0.1`, sem proxy, sem modelos de nuvem; a lista de modelos em Configurações vem do Ollama local e omite os de nuvem;
+- envia apenas descrições e nomes de categorias, em lotes de 40, com temperatura 0, saída por esquema JSON e raciocínio ("think") desligado; servidores ou modelos que não aceitam a opção seguem sem ela;
+- despesas e receitas são perguntadas separadamente, cada uma só com as suas categorias; categorias fora da lista e índices inválidos são descartados;
+- a consulta roda fora da thread visual e só preenche itens ainda sem categoria; cada sugestão guarda `ollama:<modelo>:<versão do prompt>`;
+- `scripts/avaliar_modelos.py` compara modelos instalados na tarefa real (acerto, erros, abstenções, linhas com instrução embutida, estabilidade, tempo e parte do modelo na GPU).
 
 Campos sem evidência precisam de revisão; não inventar CPF, conta, taxa, data ou valor. Classificações não autorizam lançamento de dinheiro. A interface distingue sugestão automática de informação documental.
 

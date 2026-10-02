@@ -153,7 +153,7 @@ ADR-01 a ADR-03 refletem escolhas aprovadas; os mecanismos específicos e demais
 | Quando rodar os gates G0–G7 e qual é a máquina Windows de referência (RAM, disco, antivírus) | Sem isso, distribuição e metas de desempenho não têm base | Fases 7, 8 e 10 |
 | Bancos e produtos prioritários, com documentos reais (faturas, extratos, CSV/OFX) | Layouts sintéticos só viram suporte com amostras | Fase 7 |
 | Classes de investimento que a família usa e eventos necessários | Orienta regras por classe e layouts de extratos de investimento | Fases 13 e 14 |
-| Modelo Ollama local, se a IA for usada | Escolha por benchmark, não por suposição | Fase 14 |
+| Modelo Ollama local, se a IA for usada. Avaliação de 02/10/2026 (Ollama 0.35.1, RTX 4070 Ti 12 GB, 63 lançamentos sintéticos, 3 rodadas, todos 100% na GPU e estáveis, nenhum classificou as linhas com instrução embutida): **`gemma4:12b` 97% de acerto, 1 sugestão errada, 10 s por rodada**; `qwen3.5:9b` 77%, 13 erradas, 24 s; `granite4.2:8b` 56%, 27 erradas, 24 s. Indicado: `gemma4:12b`. Falta confirmar com descrições reais da família (fase 7) | Escolha por benchmark, não por suposição | Fase 7 |
 | Ícone do aplicativo | Distribuição | Fase 10 |
 
 ## 5. Controle de mudanças

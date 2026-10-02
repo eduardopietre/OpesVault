@@ -4,7 +4,20 @@ OpesVault: aplicativo desktop Windows, 100% offline, para finanças familiares, 
 
 ## Estado atual
 
-O repositório só tem documentação. A próxima etapa autorizada é a **fase 0, de viabilidade** (`docs/09` §1 e `docs/02` §8): executável Windows com SQLCipher, Qt e PDFium empacotados, salvar/restaurar pelo processo transitório e medição de RAM. Não construa telas em escala nem módulos de domínio amplos antes de os gates passarem.
+**Fase 0, de viabilidade**, implementada e validada no Linux. Falta executar os gates G0–G7 no Windows (`docs/11` §4). Não construa telas em escala nem módulos de domínio amplos antes de esses gates passarem e de a decisão sobre o custo de salvar (`docs/11` §5) ser tomada.
+
+## Comandos
+
+```
+uv sync                                  # dependências (uv sync --group build para o Nuitka)
+uv run pytest -q                         # testes; os marcados "windows" são pulados fora do Windows
+uv run ruff format . && uv run ruff check . && uv run pyright
+uv run python -m opesvault               # janela de teste da fase 0
+uv run python scripts/fase0_medir_ram.py --mib 50 250
+uv run --group build python scripts/build.py
+```
+
+No Linux, o Qt precisa de `libegl1`, `libgl1`, `libxkbcommon0` e `libfontconfig1`; sem tela, use `QT_QPA_PLATFORM=offscreen`.
 
 ## Decisões tomadas depois dos docs (prevalecem sobre eles)
 
@@ -26,6 +39,7 @@ O repositório só tem documentação. A próxima etapa autorizada é a **fase 0
 | Telas e gráficos | `docs/07` |
 | Testes de aceitação TA-01…TA-36 | `docs/08` |
 | ADRs, riscos, pendências | `docs/09` |
+| Resultados da fase 0 e roteiro Windows | `docs/11` |
 
 Se dois documentos entrarem em conflito, vale o `docs/00` §2. Conflitos de segurança ou cálculo devem ser levados ao usuário, nunca resolvidos pela interpretação mais simples. Mudar de stack, adicionar cloud, reter chave para autosave ou permitir edição simultânea exige nova decisão do usuário.
 
@@ -39,6 +53,7 @@ Se dois documentos entrarem em conflito, vale o `docs/00` §2. Conflitos de segu
 - **Empacotamento:** use Nuitka em modo `standalone`, não `onefile`. O `onefile` descompacta em `%TEMP%` a cada execução, o que viola a higiene de disco e deixa lento cada processo de salvar.
 - **Logs:** apenas códigos de erro e IDs opacos. Nada de nomes, valores, descrições, CPF ou conteúdo de PDF, nem em mensagens de exceção que possam acabar logadas.
 - **IA:** a saída do Ollama é sugestão sem escrita direta. Texto de PDF é dado, nunca instrução. O app precisa funcionar inteiro sem Ollama.
+- **Worker do cofre:** cada abrir/salvar inicia `--vault-worker`, que pede a senha e morre. A UI nunca recebe a senha. `scripts/dev_worker.py` aceita senha por variável de ambiente e **só** pode ser usado em testes; ele fica fora do pacote de propósito.
 - **Thread da UI:** não extraia PDF, não chame modelo e não faça operação de cofre na thread visual.
 
 ## Dados de teste

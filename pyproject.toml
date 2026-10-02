@@ -1,0 +1,60 @@
+[project]
+name = "opesvault"
+version = "0.1.0"
+description = "Organizador financeiro familiar local para Windows, com cofre cifrado por família."
+requires-python = ">=3.12,<3.13"
+# Exact versions are pinned in uv.lock; they become the distribution contract
+# only after the phase 0 gates pass on Windows (docs/02 §3).
+dependencies = [
+    "pdfplumber>=0.11.10",
+    "pydantic>=2.13.5",
+    "pypdfium2>=5.13.0",
+    "pyside6>=6.11.2",
+    "sqlcipher3==0.6.2",
+]
+
+[project.scripts]
+opesvault = "opesvault:main"
+
+[build-system]
+requires = ["uv_build>=0.8.17,<0.9.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+build = [
+    "nuitka>=4.2.2",
+    "patchelf>=0.19.1.0; sys_platform == 'linux'",
+]
+dev = [
+    "psutil>=7.2.2",
+    "pyright>=1.1.414",
+    "pytest>=9.1.1",
+    "ruff>=0.16.10",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "N", "SIM", "RUF", "S"]
+ignore = [
+    "S101",   # assert is fine in tests and invariants
+    "S603",   # subprocess with trusted, fixed argv
+    "S608",   # SQL is built from constants only
+    "RUF001", # Portuguese UI strings
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S105", "S106", "S108"]
+"scripts/**" = ["S105"]
+"src/opesvault/vault/errors.py" = ["S105"]  # error code names, not passwords
+
+[tool.pyright]
+include = ["src", "tests", "scripts"]
+pythonVersion = "3.12"
+typeCheckingMode = "standard"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"

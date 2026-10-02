@@ -347,3 +347,30 @@ def test_registry_loads_every_kind_in_a_fresh_process() -> None:
         "assert Ledger._operation_guards and Ledger._update_guards"
     )
     subprocess.run([sys.executable, "-c", code], check=True)
+
+
+def test_query_index_follows_every_change() -> None:
+    f = family()
+    f.ledger.record_opening_balance(f.bank, "100.00", date(2026, 1, 1))
+    assert queries.balance(f.ledger, f.bank) == Decimal("100.00")
+    op = f.ledger.record_expense(f.bank, f.groceries, "10.00", date(2026, 1, 2), "x")
+    assert queries.balance(f.ledger, f.bank) == Decimal("90.00")
+    # Even a direct write to a collection invalidates the cache.
+    f.ledger.operations[op.id] = op.model_copy(
+        update={"status": __import__("opesvault.domain.model", fromlist=["OperationStatus"]).OperationStatus.CANCELLED}
+    )
+    assert queries.balance(f.ledger, f.bank) == Decimal("100.00")
+    assert queries.balance(f.ledger, f.bank, date(2025, 12, 31)) == 0
+
+
+def test_dirty_tracking_and_mark_clean() -> None:
+    f = family()
+    restored = Ledger.from_records(f.ledger.to_records())
+    assert restored.dirty == {}
+    restored.add_member("Carla")
+    seq = restored.change_count
+    keys = {kind for kind, _ in restored.dirty}
+    assert keys == {"member", "history"}
+    restored.add_member("Davi")
+    restored.mark_clean(seq)
+    assert len([k for k in restored.dirty if k[0] == "member"]) == 1

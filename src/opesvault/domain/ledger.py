@@ -69,6 +69,43 @@ def _now() -> datetime:
     return datetime.now(UTC)
 
 
+class _TrackedDict(dict):  # type: ignore[type-arg]
+    """Entity collection that reports every change, so saves can be incremental and
+    caches can be invalidated even when a module writes to the collection directly."""
+
+    def __init__(self, ledger: "Ledger", kind: str) -> None:
+        super().__init__()
+        self._ledger = ledger
+        self._kind = kind
+
+    def __setitem__(self, key: UUID, value: Any) -> None:
+        super().__setitem__(key, value)
+        self._ledger._touch(self._kind, key)
+
+    def __delitem__(self, key: UUID) -> None:
+        super().__delitem__(key)
+        self._ledger._touch(self._kind, key)
+
+    def pop(self, key: UUID, *default: Any) -> Any:  # type: ignore[override]
+        value = super().pop(key, *default)
+        self._ledger._touch(self._kind, key)
+        return value
+
+    def load(self, key: UUID, value: Any) -> None:
+        """Insert while opening a vault: not a change."""
+        super().__setitem__(key, value)
+
+
+class _TrackedList(list):  # type: ignore[type-arg]
+    def __init__(self, ledger: "Ledger") -> None:
+        super().__init__()
+        self._ledger = ledger
+
+    def append(self, entry: Any) -> None:
+        super().append(entry)
+        self._ledger._touch("history", entry.id)
+
+
 class Ledger:
     """In-memory family ledger. Collections are keyed by entity kind."""
 
@@ -83,12 +120,31 @@ class Ledger:
     def __init__(self, meta: LedgerMeta | None = None) -> None:
         import opesvault.registry  # noqa: F401 - kinds and guards must exist before any change
 
-        self.meta = meta or LedgerMeta()
-        self._store: dict[str, dict[UUID, Any]] = {kind: {} for kind in self.KINDS}
-        self.history: list[HistoryEntry] = []
-        self.operator: str | None = None
+        # (kind, id) → change_count of its last change since the last save; drives incremental saves.
+        self.dirty: dict[tuple[str, UUID], int] = {}
         self.change_count = 0
+        self._meta = meta or LedgerMeta()
+        self._store: dict[str, dict[UUID, Any]] = {kind: _TrackedDict(self, kind) for kind in self.KINDS}
+        self.history: list[HistoryEntry] = _TrackedList(self)
+        self.operator: str | None = None
         self.migrated_from: int | None = None  # schema version before an in-memory migration
+
+    @property
+    def meta(self) -> LedgerMeta:
+        return self._meta
+
+    @meta.setter
+    def meta(self, value: LedgerMeta) -> None:
+        self._meta = value
+        self._touch("ledger.meta", META_ID)
+
+    def _touch(self, kind: str, key: UUID) -> None:
+        self.change_count += 1
+        self.dirty[(kind, key)] = self.change_count
+
+    def mark_clean(self, up_to: int) -> None:
+        """Forget changes already persisted; later edits stay pending (docs/03 §5)."""
+        self.dirty = {k: seq for k, seq in self.dirty.items() if seq > up_to}
 
     # ── construction ────────────────────────────────────
 
@@ -112,7 +168,7 @@ class Ledger:
 
     def _collection(self, kind: str) -> dict[UUID, Any]:
         if kind not in self._store:
-            self._store[kind] = {}
+            self._store[kind] = _TrackedDict(self, kind)
         return self._store[kind]
 
     # ── typed accessors ─────────────────────────────────
@@ -577,9 +633,28 @@ class Ledger:
                 raise DomainError("Cofre contém dados de uma versão mais nova do OpesVault.")
             entity = model.model_validate(payload)
             if kind == "history":
-                ledger.history.append(entity)  # type: ignore[arg-type]
+                list.append(ledger.history, entity)
             else:
-                ledger._collection(kind)[getattr(entity, "id")] = entity  # noqa: B009
+                collection = ledger._collection(kind)
+                assert isinstance(collection, _TrackedDict)
+                collection.load(getattr(entity, "id"), entity)  # noqa: B009
         ledger.history.sort(key=lambda h: h.at)
         ledger.change_count = 0
+        ledger.dirty = {}
         return ledger
+
+    def record_for(self, kind: str, key: UUID) -> dict[str, Any] | None:
+        """Current JSON payload of one persisted row, or None if it no longer exists."""
+        if kind == "ledger.meta":
+            return self.meta.model_dump(mode="json")
+        if kind == "history":
+            entry = next((h for h in reversed(self.history) if h.id == key), None)
+            return entry.model_dump(mode="json") if entry else None
+        entity = self._store.get(kind, {}).get(key)
+        return entity.model_dump(mode="json") if entity is not None else None
+
+    def row_counts(self) -> dict[str, int]:
+        counts = {kind: len(c) for kind, c in self._store.items() if kind != "history" and c}
+        counts["history"] = len(self.history)
+        counts["ledger.meta"] = 1
+        return {k: v for k, v in counts.items() if v}

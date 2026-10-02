@@ -3,6 +3,7 @@
 The same facts produce every view; nothing here mutates the ledger.
 """
 
+from bisect import bisect_right
 from collections import defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass, field
@@ -20,27 +21,79 @@ def _natural_sign(account: LedgerAccount) -> int:
     return 1 if account.type in (AccountType.ASSET, AccountType.EXPENSE) else -1
 
 
+class _Index:
+    """Per-ledger lookup tables, rebuilt only when the ledger changes.
+
+    Balances use prefix sums per account (bisect by date) and month views read
+    pre-grouped operations, so charts over many months stay linear.
+    """
+
+    def __init__(self, ledger: Ledger) -> None:
+        self.dates: dict[UUID, list[date]] = defaultdict(list)
+        self.prefix: dict[UUID, list[Decimal]] = defaultdict(list)
+        self.undated: dict[UUID, Decimal] = defaultdict(lambda: ZERO)
+        self.by_competence: dict[YearMonth, list[Operation]] = defaultdict(list)
+        self.by_cash_month: dict[YearMonth, list[Operation]] = defaultdict(list)
+        dated: dict[UUID, list[tuple[date, Decimal]]] = defaultdict(list)
+        for op in ledger.active_operations():
+            when = op.cash_date or op.occurred_on
+            for p in op.postings:
+                if when is None:
+                    self.undated[p.account_id] += p.amount
+                else:
+                    dated[p.account_id].append((when, p.amount))
+            if op.competence is not None:
+                self.by_competence[op.competence].append(op)
+            if op.cash_date is not None:
+                self.by_cash_month[YearMonth.of(op.cash_date)].append(op)
+        for account_id, entries in dated.items():
+            entries.sort(key=lambda e: e[0])
+            running = ZERO
+            for when, amount in entries:
+                running += amount
+                self.dates[account_id].append(when)
+                self.prefix[account_id].append(running)
+
+    def raw_balance(self, account_id: UUID, at: date | None) -> Decimal:
+        prefix = self.prefix.get(account_id)
+        if at is None:
+            dated = prefix[-1] if prefix else ZERO
+            return dated + self.undated.get(account_id, ZERO)
+        if not prefix:
+            return ZERO
+        position = bisect_right(self.dates[account_id], at)
+        return prefix[position - 1] if position else ZERO
+
+    def accounts(self) -> set[UUID]:
+        return set(self.prefix) | set(self.undated)
+
+
+def index(ledger: Ledger) -> _Index:
+    cached = getattr(ledger, "_query_index", None)
+    if cached is not None and cached[0] == ledger.change_count:
+        return cached[1]
+    built = _Index(ledger)
+    ledger._query_index = (ledger.change_count, built)  # type: ignore[attr-defined]
+    return built
+
+
 def balance(ledger: Ledger, account_id: UUID, at: date | None = None) -> Decimal:
-    """Balance in the account's natural sign, by cash date, up to `at` inclusive."""
+    """Balance in the account's natural sign, by cash date, up to `at` inclusive.
+
+    Operations without any date count only in the undated (overall) balance.
+    """
     account = ledger.account(account_id)
-    total = ZERO
-    for op in ledger.active_operations():
-        when = op.cash_date or op.occurred_on
-        if at is not None and (when is None or when > at):
-            continue
-        total += sum((p.amount for p in op.postings if p.account_id == account_id), ZERO)
-    return total * _natural_sign(account)
+    return index(ledger).raw_balance(account_id, at) * _natural_sign(account)
 
 
 def balances(ledger: Ledger, at: date | None = None) -> dict[UUID, Decimal]:
-    totals: dict[UUID, Decimal] = defaultdict(lambda: ZERO)
-    for op in ledger.active_operations():
-        when = op.cash_date or op.occurred_on
-        if at is not None and (when is None or when > at):
-            continue
-        for p in op.postings:
-            totals[p.account_id] += p.amount
-    return {aid: total * _natural_sign(ledger.account(aid)) for aid, total in totals.items()}
+    idx = index(ledger)
+    out = {}
+    for aid in idx.accounts():
+        raw = idx.raw_balance(aid, at)
+        if raw != 0 or at is None or (idx.dates.get(aid) and idx.dates[aid][0] <= at):
+            out[aid] = raw * _natural_sign(ledger.account(aid))
+    return out
 
 
 @dataclass
@@ -105,24 +158,26 @@ def cash_flow(
     while cursor <= end:
         months[cursor] = MonthFlow()
         cursor = cursor.add(1)
-    for op in ledger.active_operations():
-        when = op.cash_date
-        if when is None or op.kind is OperationKind.OPENING_BALANCE:
-            continue  # an opening balance is a starting point, not a flow
-        month = YearMonth.of(when)
-        if month not in months:
-            continue
-        inside = [p for p in op.postings if p.account_id in selected]
-        if not inside:
-            continue
-        if all(p.account_id in selected for p in op.postings):
-            continue  # internal transfer within the perimeter
-        delta = sum((p.amount for p in inside), ZERO)
-        if delta > 0:
-            months[month].inflow += delta
-        elif delta < 0:
-            months[month].outflow += -delta
+    idx = index(ledger)
+    for month in list(months):
+        for op in idx.by_cash_month.get(month, ()):
+            _add_flow(months[month], op, selected)
     return months
+
+
+def _add_flow(flow: "MonthFlow", op: Operation, selected: set[UUID]) -> None:
+    if op.kind is OperationKind.OPENING_BALANCE:
+        return  # an opening balance is a starting point, not a flow
+    inside = [p for p in op.postings if p.account_id in selected]
+    if not inside:
+        return
+    if all(p.account_id in selected for p in op.postings):
+        return  # internal transfer within the perimeter
+    delta = sum((p.amount for p in inside), ZERO)
+    if delta > 0:
+        flow.inflow += delta
+    elif delta < 0:
+        flow.outflow += -delta
 
 
 @dataclass
@@ -146,9 +201,7 @@ class Statement:
 def income_statement(ledger: Ledger, month: YearMonth, member_id: UUID | None = None) -> Statement:
     """Revenues and expenses by competence. With `member_id`, only that member's rateio shares."""
     statement = Statement()
-    for op in ledger.active_operations():
-        if op.competence != month:
-            continue
+    for op in index(ledger).by_competence.get(month, ()):
         for p in op.postings:
             account = ledger.account(p.account_id)
             if member_id is not None and (p.member_id or op.member_id) != member_id:
@@ -162,11 +215,12 @@ def income_statement(ledger: Ledger, month: YearMonth, member_id: UUID | None = 
 
 def expenses_by_category(ledger: Ledger, start: YearMonth, end: YearMonth) -> dict[UUID, Decimal]:
     totals: dict[UUID, Decimal] = defaultdict(lambda: ZERO)
-    for op in ledger.active_operations():
-        comp = op.competence
-        if comp is None or not (start <= comp <= end):
+    idx = index(ledger)
+    for comp, ops in idx.by_competence.items():
+        if not (start <= comp <= end):
             continue
-        for p in op.postings:
-            if ledger.account(p.account_id).type is AccountType.EXPENSE:
-                totals[p.account_id] += p.amount
+        for op in ops:
+            for p in op.postings:
+                if ledger.account(p.account_id).type is AccountType.EXPENSE:
+                    totals[p.account_id] += p.amount
     return dict(totals)

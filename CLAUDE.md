@@ -8,7 +8,6 @@ O repositório só tem documentação. A próxima etapa autorizada é a **fase 0
 
 ## Decisões tomadas depois dos docs (prevalecem sobre eles)
 
-- Nome do produto: **OpesVault**. Extensão do cofre: **`.opesvault`**. Os docs ainda dizem "Organizador Financeiro Local" e `.fincofre`.
 - Idioma: código, identificadores, comentários e commits em **inglês**. Textos de interface, mensagens ao usuário e `docs/` em **português brasileiro**.
 - Tooling: **Python 3.12**, **uv** (com lockfile versionado), **ruff** (lint e formatação), **pyright** e **pytest**.
 - Repositório **privado** e **sem CI** por enquanto. Os gates específicos do Windows são executados manualmente pelo usuário numa máquina Windows.

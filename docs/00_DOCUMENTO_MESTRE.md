@@ -1,8 +1,8 @@
-# Organizador financeiro local — Documento mestre
+# OpesVault — Documento mestre
 
 Versão documental: 1.0 • Data: 1 de outubro de 2026 • Idioma: português brasileiro.
 
-Nome de trabalho: Organizador Financeiro Local. Extensão proposta: `.fincofre`.
+Nome do produto: OpesVault. Extensão do cofre: `.opesvault`.
 
 Este conjunto contém somente documentação. Não inclui implementação, scripts, esquema SQL, configurações executáveis ou promessa de compatibilidade já testada. A stack foi aprovada pelo solicitante; os detalhes de engenharia abaixo são especificações propostas para orientar o desenvolvimento e sua validação.
 

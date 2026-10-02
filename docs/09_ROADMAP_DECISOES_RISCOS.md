@@ -52,7 +52,7 @@ ADR-01 a ADR-03 refletem escolhas aprovadas; os mecanismos específicos e demais
 
 ## 4. Pendências que não bloqueiam estes documentos
 
-- Nome final, ícone e extensão definitiva.
+- Ícone do aplicativo (nome OpesVault e extensão `.opesvault` já decididos).
 - Ordem exata dos bancos/produtos prioritários, conforme amostras reais.
 - Classes de investimento usadas pela família e eventos necessários.
 - Máquina Windows de referência, RAM, GPU e VRAM para dimensionamento.

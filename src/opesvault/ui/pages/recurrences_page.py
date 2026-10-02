@@ -2,16 +2,14 @@
 
 from datetime import date, timedelta
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QComboBox,
-    QHBoxLayout,
     QInputDialog,
-    QLabel,
     QLineEdit,
     QMessageBox,
-    QPushButton,
     QSpinBox,
-    QVBoxLayout,
+    QSplitter,
 )
 
 from opesvault.domain.ledger import DomainError, Ledger
@@ -45,6 +43,7 @@ from opesvault.ui.common import (
     selected_id,
     set_rows,
 )
+from opesvault.ui.components import Section, button, flow_row
 from opesvault.ui.dialogs import FormDialog, balance_accounts, category_items
 from opesvault.ui.pages.base import Page
 
@@ -111,34 +110,33 @@ class RuleDialog(FormDialog):
 
 class RecurrencesPage(Page):
     title = "Recorrências"
+    section = "Cadastros"
 
     def __init__(self, changed) -> None:  # type: ignore[no-untyped-def]
         super().__init__(changed)
         self.rules = make_table(["Descrição", "Valor", "Frequência", "Dia", "Situação"])
         self.forecast_table = make_table(["Data", "Descrição", "Valor", "Situação"])
         self._forecasts: list[Forecast] = []
-        rule_bar = QHBoxLayout()
-        for label, slot in (("Nova recorrência", self.add), ("Pausar/retomar", self.toggle)):
-            button = QPushButton(label)
-            button.clicked.connect(slot)
-            rule_bar.addWidget(button)
-        rule_bar.addStretch()
-        forecast_bar = QHBoxLayout()
-        for label, slot in (
-            ("Vincular sugestões únicas", self.link_suggestions),
-            ("Vincular realizado…", self.link_selected),
-            ("Pular previsão", self.skip_selected),
-        ):
-            button = QPushButton(label)
-            button.clicked.connect(slot)
-            forecast_bar.addWidget(button)
-        forecast_bar.addStretch()
-        layout = QVBoxLayout(self)
-        layout.addLayout(rule_bar)
-        layout.addWidget(self.rules)
-        layout.addWidget(QLabel("Previsões (3 meses atrás a 6 meses à frente). Previsões não alteram saldos."))
-        layout.addLayout(forecast_bar)
-        layout.addWidget(self.forecast_table)
+        self.header.add(button("Nova recorrência…", self.add, role="primary"))
+        rules_section = Section("Regras", "Contas fixas e receitas esperadas.")
+        rules_section.add(flow_row(button("Pausar ou retomar", self.toggle)))
+        rules_section.add(self.rules, 1)
+        forecasts_section = Section("Previsões", "De 3 meses atrás a 6 meses à frente. Previsões nunca alteram saldos.")
+        forecasts_section.add(
+            flow_row(
+                button("Vincular realizado…", self.link_selected),
+                button("Vincular sugestões únicas", self.link_suggestions, tip="Só quando há um único candidato"),
+                button("Pular previsão…", self.skip_selected),
+            )
+        )
+        forecasts_section.add(self.forecast_table, 1)
+        split = QSplitter(Qt.Orientation.Vertical)
+        split.setChildrenCollapsible(False)
+        split.addWidget(rules_section)
+        split.addWidget(forecasts_section)
+        split.setSizes([260, 420])
+        layout = self.page_layout()
+        layout.addWidget(split, 1)
 
     def _window(self) -> tuple[date, date]:
         today = date.today()

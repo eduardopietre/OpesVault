@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
     QHeaderView,
     QLineEdit,
     QMessageBox,
+    QTableView,
     QTableWidget,
     QTableWidgetItem,
     QWidget,
@@ -78,26 +79,73 @@ def combo_value(combo: QComboBox) -> Any:
 
 
 def select_combo(combo: QComboBox, value: Any) -> None:
-    index = combo.findData(value)
-    if index >= 0:
-        combo.setCurrentIndex(index)
+    # Compare values: findData compares wrapped Python objects by identity.
+    for index in range(combo.count()):
+        if combo.itemData(index) == value:
+            combo.setCurrentIndex(index)
+            return
+
+
+MONTHS = (
+    "janeiro",
+    "fevereiro",
+    "março",
+    "abril",
+    "maio",
+    "junho",
+    "julho",
+    "agosto",
+    "setembro",
+    "outubro",
+    "novembro",
+    "dezembro",
+)
+
+
+def month_label(month: Any) -> str:
+    """YearMonth -> 'março de 2026' (how people say it, not '2026-03')."""
+    return f"{MONTHS[month.month - 1]} de {month.year}"
+
+
+def style_table(table: QAbstractItemView) -> None:
+    """Shared table look and behavior: rows, no grid, zebra, keyboard-friendly."""
+    table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+    table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+    table.setAlternatingRowColors(True)
+    table.setHorizontalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
+    table.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
+    if isinstance(table, QTableView):
+        table.setShowGrid(False)
+        table.setWordWrap(False)
+        table.setCornerButtonEnabled(False)
+        table.verticalHeader().setVisible(False)
+        table.verticalHeader().setDefaultSectionSize(26)
+        header = table.horizontalHeader()
+        header.setDefaultAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        header.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
+        header.setStretchLastSection(True)
+        header.setHighlightSections(False)
+
+
+def stretch_column(table: QTableView, column: int = 0) -> None:
+    """For short summary tables: the name column takes the slack, figures stay next to it."""
+    header = table.horizontalHeader()
+    header.setStretchLastSection(False)
+    header.setSectionResizeMode(column, QHeaderView.ResizeMode.Stretch)
 
 
 def make_table(headers: list[str]) -> QTableWidget:
     table = QTableWidget(0, len(headers))
     table.setHorizontalHeaderLabels(headers)
-    table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+    style_table(table)
     table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
-    table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
     table.setSortingEnabled(True)
-    table.verticalHeader().setVisible(False)
-    table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
-    table.horizontalHeader().setStretchLastSection(True)
     return table
 
 
 def set_rows(table: QTableWidget, rows: list[tuple[list[Any], Any]]) -> None:
     """Rows are (cells, id); the id is stored in column 0 for selection lookups."""
+    sortable = table.isSortingEnabled()
     table.setSortingEnabled(False)
     table.setRowCount(len(rows))
     for r, (cells, row_id) in enumerate(rows):
@@ -105,10 +153,13 @@ def set_rows(table: QTableWidget, rows: list[tuple[list[Any], Any]]) -> None:
             item = QTableWidgetItem(str(value))
             if isinstance(value, str) and value.startswith(("R$", "-R$", "+R$")):
                 item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+                header = table.horizontalHeaderItem(c)
+                if header is not None:
+                    header.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             if c == 0:
                 item.setData(Qt.ItemDataRole.UserRole, row_id)
             table.setItem(r, c, item)
-    table.setSortingEnabled(True)
+    table.setSortingEnabled(sortable)
     table.resizeColumnsToContents()
 
 
@@ -129,3 +180,38 @@ def run_guarded(parent: QWidget, action: Callable[[], Any]) -> Any:
     except ValueError:
         QMessageBox.warning(parent, "OpesVault", "Dados inválidos. Revise os campos.")
     return None
+
+
+def install_column_chooser(view: QTableView, settings_key: str, required: set[int] | None = None) -> None:
+    """Right-click on the header shows/hides columns; the choice is remembered per computer."""
+    from PySide6.QtCore import QSettings
+    from PySide6.QtWidgets import QMenu
+
+    header = view.horizontalHeader()
+    model = view.model()
+    required = required or {0}
+    settings = QSettings("OpesVault", "OpesVault")
+    stored = settings.value(f"{settings_key}/colunas_ocultas", [], type=list)
+    hidden = [str(c) for c in stored] if isinstance(stored, list) else []
+    for column in range(model.columnCount()):
+        view.setColumnHidden(column, str(column) in hidden and column not in required)
+
+    def show_menu(position: Any) -> None:
+        menu = QMenu(view)
+        for column in range(model.columnCount()):
+            title = model.headerData(column, Qt.Orientation.Horizontal, Qt.ItemDataRole.DisplayRole)
+            action = menu.addAction(str(title))
+            action.setCheckable(True)
+            action.setChecked(not view.isColumnHidden(column))
+            action.setEnabled(column not in required)
+            action.toggled.connect(lambda visible, c=column: toggle(c, visible))
+        menu.exec(header.mapToGlobal(position))
+
+    def toggle(column: int, visible: bool) -> None:
+        view.setColumnHidden(column, not visible)
+        columns = [str(c) for c in range(model.columnCount()) if view.isColumnHidden(c)]
+        settings.setValue(f"{settings_key}/colunas_ocultas", columns)
+
+    header.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+    header.customContextMenuRequested.connect(show_menu)
+    header.setToolTip("Clique com o botão direito para escolher as colunas")

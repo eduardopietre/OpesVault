@@ -187,7 +187,7 @@ def test_review_keyboard_flow(window: MainWindow, monkeypatch: pytest.MonkeyPatc
     window._refresh()
     batch = pipeline.import_document(window.session, ImportRequest("nu.pdf", docs.nubank_card_pdf()))
     page = next(p for p in window.pages if isinstance(p, ImportPage))
-    window.nav.setCurrentRow(window.pages.index(page))
+    window.show_page(window.pages.index(page))
     page.batch_id = batch.id
     page.refresh()
     assert page.items.rowCount() >= 3

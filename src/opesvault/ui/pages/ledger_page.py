@@ -1,23 +1,29 @@
-"""Livro financeiro: virtual operations table with filters, full edit, bulk reclassification
-and history (RF-10, RF-22). The model only formats rows that are on screen, so tens of
-thousands of operations stay responsive."""
+"""Livro financeiro: every operation, with search, filters, a details inspector and the
+corrections the docs allow (RF-10, RF-22).
+
+Layout: header (title, count, search, "Novo lançamento"), one filter row, then the
+table beside an inspector that follows the selection. Row commands live in the
+"Ações" menu, the context menu and the keyboard (Enter edits). The model only
+formats rows on screen, so tens of thousands of operations stay responsive.
+"""
 
 from collections.abc import Callable
-from datetime import date
+from datetime import date, timedelta
 from typing import Any
 from uuid import UUID
 
-from PySide6.QtCore import QAbstractTableModel, QModelIndex, QPersistentModelIndex, Qt, QTimer
-from PySide6.QtGui import QKeySequence, QShortcut
+from PySide6.QtCore import QAbstractTableModel, QModelIndex, QPersistentModelIndex, QPoint, Qt, QTimer
+from PySide6.QtGui import QColor, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QComboBox,
-    QHBoxLayout,
-    QHeaderView,
     QLabel,
     QLineEdit,
+    QMenu,
     QMessageBox,
-    QPushButton,
+    QScrollArea,
+    QSplitter,
+    QStackedWidget,
     QTableView,
     QVBoxLayout,
     QWidget,
@@ -28,10 +34,21 @@ from opesvault.domain.ledger import DomainError, Ledger
 from opesvault.domain.model import AccountSubtype, AccountType, Operation, OperationKind, OriginKind
 from opesvault.domain.money import ZERO
 from opesvault.domain.search import OperationFilter, StatusFilter, find_operations
-from opesvault.ui.common import combo_value, fill_combo, fmt, fmt_date, run_guarded
+from opesvault.ui.common import (
+    combo_value,
+    fill_combo,
+    fmt,
+    fmt_date,
+    install_column_chooser,
+    run_guarded,
+    select_combo,
+    style_table,
+)
+from opesvault.ui.components import EmptyState, button, fill_menu, flow_row, hbox, menu_button, separator, text
 from opesvault.ui.dialogs import FormDialog, OperationDialog, ask_reason, category_items
 from opesvault.ui.operation_edit import OperationEditDialog, OptionalDate
 from opesvault.ui.pages.base import Page
+from opesvault.ui.theme import SPACE_M, SPACE_S, tokens
 
 KIND_LABELS = {
     OperationKind.OPENING_BALANCE: "Saldo de abertura",
@@ -60,6 +77,31 @@ STATUS_LABELS = {
     StatusFilter.ACTIVE: "Só ativos",
     StatusFilter.CANCELLED: "Só cancelados",
 }
+PERIODS = (
+    ("Todo o período", "all"),
+    ("Este mês", "this_month"),
+    ("Mês passado", "last_month"),
+    ("Últimos 3 meses", "last_3"),
+    ("Este ano", "this_year"),
+    ("Personalizado", "custom"),
+)
+
+
+def period_range(key: str, today: date) -> tuple[date | None, date | None]:
+    first = today.replace(day=1)
+    if key == "this_month":
+        return first, today
+    if key == "last_month":
+        end = first - timedelta(days=1)
+        return end.replace(day=1), end
+    if key == "last_3":
+        start = first
+        for _ in range(2):
+            start = (start - timedelta(days=1)).replace(day=1)
+        return start, today
+    if key == "this_year":
+        return today.replace(month=1, day=1), today
+    return None, None
 
 
 def operation_total(op: Operation):  # type: ignore[no-untyped-def]
@@ -77,8 +119,9 @@ def operation_accounts(ledger: Ledger, op: Operation) -> str:
 
 
 class OperationsModel(QAbstractTableModel):
-    HEADERS = ("Data", "Competência", "Descrição", "Tipo", "Contas (crédito → débito)", "Valor", "Origem", "Situação")
-    AMOUNT_COLUMN = 5
+    # Most useful first; the rest can be hidden from the header's context menu.
+    HEADERS = ("Data", "Descrição", "De → Para", "Valor", "Competência", "Tipo", "Origem", "Situação")
+    DATE, DESCRIPTION, ACCOUNTS, AMOUNT, COMPETENCE, KIND, ORIGIN, STATUS = range(8)
 
     def __init__(self) -> None:
         super().__init__()
@@ -97,8 +140,13 @@ class OperationsModel(QAbstractTableModel):
         return 0 if parent.isValid() else len(self.HEADERS)
 
     def headerData(self, section: int, orientation: Qt.Orientation, role: int = Qt.ItemDataRole.DisplayRole) -> Any:  # noqa: N802
-        if orientation is Qt.Orientation.Horizontal and role == Qt.ItemDataRole.DisplayRole:
+        if orientation is not Qt.Orientation.Horizontal:
+            return None
+        if role == Qt.ItemDataRole.DisplayRole:
             return self.HEADERS[section]
+        if role == Qt.ItemDataRole.TextAlignmentRole:
+            side = Qt.AlignmentFlag.AlignRight if section == self.AMOUNT else Qt.AlignmentFlag.AlignLeft
+            return int(side | Qt.AlignmentFlag.AlignVCenter)
         return None
 
     def data(self, index: QModelIndex | QPersistentModelIndex, role: int = Qt.ItemDataRole.DisplayRole) -> Any:
@@ -108,9 +156,11 @@ class OperationsModel(QAbstractTableModel):
         column = index.column()
         if role == Qt.ItemDataRole.DisplayRole:
             return self._cell(op, column)
-        if role == Qt.ItemDataRole.TextAlignmentRole and column == self.AMOUNT_COLUMN:
+        if role == Qt.ItemDataRole.TextAlignmentRole and column == self.AMOUNT:
             return int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-        if role == Qt.ItemDataRole.ToolTipRole and column == 2 and op.notes:
+        if role == Qt.ItemDataRole.ForegroundRole and not op.active:
+            return QColor(tokens().tertiary)  # paired with the "Cancelado" text, never color alone
+        if role == Qt.ItemDataRole.ToolTipRole and column == self.DESCRIPTION and op.notes:
             return op.notes
         if role == Qt.ItemDataRole.UserRole:
             return op.id
@@ -119,34 +169,113 @@ class OperationsModel(QAbstractTableModel):
     def _cell(self, op: Operation, column: int) -> str:
         assert self.ledger is not None
         match column:
-            case 0:
+            case self.DATE:
                 return fmt_date(op.occurred_on or op.cash_date)
-            case 1:
-                return str(op.competence) if op.competence else "—"
-            case 2:
+            case self.DESCRIPTION:
                 return op.description
-            case 3:
-                return KIND_LABELS.get(op.kind, op.kind.value)
-            case 4:
+            case self.ACCOUNTS:
                 return operation_accounts(self.ledger, op)
-            case 5:
+            case self.AMOUNT:
                 return operation_amount(op)
-            case 6:
+            case self.COMPETENCE:
+                return str(op.competence) if op.competence else "—"
+            case self.KIND:
+                return KIND_LABELS.get(op.kind, op.kind.value)
+            case self.ORIGIN:
                 return ORIGIN_LABELS[op.origin.kind]
             case _:
                 return "Ativo" if op.active else "Cancelado"
 
     def sort(self, column: int, order: Qt.SortOrder = Qt.SortOrder.AscendingOrder) -> None:
         keys: dict[int, Callable[[Operation], Any]] = {
-            0: lambda o: o.occurred_on or o.cash_date or date.min,
-            1: lambda o: (o.competence.year, o.competence.month) if o.competence else (0, 0),
-            5: operation_total,
-            7: lambda o: o.active,
+            self.DATE: lambda o: o.occurred_on or o.cash_date or date.min,
+            self.COMPETENCE: lambda o: (o.competence.year, o.competence.month) if o.competence else (0, 0),
+            self.AMOUNT: operation_total,
+            self.STATUS: lambda o: o.active,
         }
         key = keys.get(column, lambda o: self._cell(o, column).casefold())
         self.layoutAboutToBeChanged.emit()
         self.ops.sort(key=key, reverse=order is Qt.SortOrder.DescendingOrder)
         self.layoutChanged.emit()
+
+
+def _pair(label: str, value: str) -> QWidget:
+    widget = QWidget()
+    widget.setLayout(hbox(text(label, "secondary"), None, text(value)))
+    return widget
+
+
+class OperationInspector(QScrollArea):
+    """Details of the selected operation, kept beside the table instead of in a dialog."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.setWidgetResizable(True)
+        self.setFrameShape(QScrollArea.Shape.NoFrame)
+        self.setMinimumWidth(240)
+        body = QWidget()
+        body.setObjectName("Surface")
+        self.body = QVBoxLayout(body)
+        self.body.setContentsMargins(SPACE_M, 0, 0, 0)
+        self.body.setSpacing(SPACE_S)
+        self.setWidget(body)
+        self.setAccessibleName("Detalhes do lançamento")
+
+    def _clear(self) -> None:
+        while self.body.count():
+            item = self.body.takeAt(0)
+            widget = item.widget() if item is not None else None
+            if widget is not None:
+                widget.deleteLater()
+
+    def show_operation(self, ledger: Ledger | None, op: Operation | None, selected: int) -> None:
+        self._clear()
+        add = self.body.addWidget
+        if ledger is None or op is None:
+            message = "Nenhum lançamento selecionado" if selected == 0 else f"{selected} lançamentos selecionados"
+            add(text(message, "secondary", wrap=True))
+            if selected > 1:
+                add(text("Use Ações › Reclassificar para mudar a categoria de todos.", "caption", wrap=True))
+            self.body.addStretch(1)
+            return
+        add(text(op.description, "headline", wrap=True))
+        status = "Ativo" if op.active else "Cancelado"
+        kind = KIND_LABELS.get(op.kind, op.kind.value)
+        add(text(f"{kind} · {status} · {ORIGIN_LABELS[op.origin.kind]}", "secondary", wrap=True))
+        add(text(operation_amount(op), "figure"))
+        add(separator())
+        member = ledger.members.get(op.member_id) if op.member_id else None
+        for label, value in (
+            ("Ocorrência", fmt_date(op.occurred_on)),
+            ("Lançamento", fmt_date(op.booked_on)),
+            ("Liquidação", fmt_date(op.settled_on)),
+            ("Vencimento", fmt_date(op.due_on)),
+            ("Competência", str(op.competence) if op.competence else "—"),
+            ("Responsável", member.name if member else "Família"),
+        ):
+            add(_pair(label, value))
+        add(separator())
+        add(text("Partidas", "headline"))
+        for posting in op.postings:
+            account = ledger.accounts.get(posting.account_id)
+            side = "débito" if posting.amount > 0 else "crédito"
+            share = ledger.members.get(posting.member_id) if posting.member_id else None
+            detail = f"{side} · {share.name}" if share else side
+            add(_pair(account.name if account else "?", f"{fmt(abs(posting.amount))} ({detail})"))
+        if op.notes:
+            add(separator())
+            add(text("Observações", "headline"))
+            add(text(op.notes, wrap=True))
+        history = ledger.history_of(op.id)
+        if history:
+            add(separator())
+            add(text("Histórico", "headline"))
+            for entry in history[-5:]:
+                who = entry.operator or "operador não informado"
+                add(text(f"{entry.at:%d/%m/%Y %H:%M} · v{entry.version} · {who}", "caption", wrap=True))
+                if entry.reason:
+                    add(text(f"Motivo: {entry.reason}", wrap=True))
+        self.body.addStretch(1)
 
 
 class ReclassifyDialog(FormDialog):
@@ -157,9 +286,9 @@ class ReclassifyDialog(FormDialog):
         items += [(f"Receita: {label}", i) for label, i in category_items(ledger, AccountType.INCOME)]
         fill_combo(self.target, items)
         self.reason = QLineEdit()
-        self.form.addRow(
-            QLabel(f"{count} lançamento(s) selecionado(s). Rateios com mais de uma categoria ficam como estão.")
-        )
+        self.reason.setPlaceholderText("obrigatório; fica no histórico")
+        note = f"{count} lançamento(s) selecionado(s). Rateios com mais de uma categoria ficam como estão."
+        self.form.addRow(text(note, "secondary", wrap=True))
         self.form.addRow("Nova categoria:", self.target)
         self.form.addRow("Motivo:", self.reason)
 
@@ -172,96 +301,161 @@ class ReclassifyDialog(FormDialog):
 
 class LedgerPage(Page):
     title = "Livro financeiro"
+    section = "Dia a dia"
 
     def __init__(self, changed) -> None:  # type: ignore[no-untyped-def]
         super().__init__(changed)
-        self.model = OperationsModel()
-        self.table = QTableView()
-        self.table.setModel(self.model)
-        self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-        self.table.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
-        self.table.setSortingEnabled(True)
-        self.table.sortByColumn(0, Qt.SortOrder.DescendingOrder)
-        self.table.verticalHeader().setVisible(False)
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
-        self.table.horizontalHeader().setStretchLastSection(True)
-        self.table.doubleClicked.connect(lambda _: self.edit())
-        for key in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
-            enter = QShortcut(QKeySequence(key), self.table)
-            enter.setContext(Qt.ShortcutContext.WidgetShortcut)
-            enter.activated.connect(self.edit)
-        for column, width in enumerate((90, 80, 280, 130, 300, 110, 90)):
-            self.table.setColumnWidth(column, width)
-
+        # ── header: search and the primary action
         self.filter_text = QLineEdit()
-        self.filter_text.setPlaceholderText("Descrição ou observação…")
+        self.filter_text.setPlaceholderText("Buscar descrição ou observação")
+        self.filter_text.setClearButtonEnabled(True)
+        self.filter_text.setAccessibleName("Buscar lançamentos")
+        self.filter_text.setToolTip("Buscar (Ctrl+F)")
+        self.filter_text.setMinimumWidth(200)
         self._debounce = QTimer(self)
         self._debounce.setSingleShot(True)
         self._debounce.setInterval(250)
         self._debounce.timeout.connect(self.refresh)
         self.filter_text.textChanged.connect(lambda _: self._debounce.start())
+        new_entries: list[tuple[str, Callable[[], object]]] = [
+            (label, lambda k=kind: self.new_operation(k)) for kind, label in OperationDialog.KINDS.items()
+        ]
+        self.new_button = menu_button("Novo lançamento", new_entries, tip="Registrar uma operação manual")
+        self.new_button.setProperty("role", "primary")
+        self.header.add(self.filter_text, self.new_button)
+
+        # ── one row of filters
+        self.period = QComboBox()
+        self.period.setAccessibleName("Período")
+        fill_combo(self.period, list(PERIODS))
         self.filter_start = OptionalDate(None)
         self.filter_end = OptionalDate(None)
+        for optional in (self.filter_start, self.filter_end):
+            optional.known.setChecked(True)
+            optional.known.hide()
+        self.custom_dates = QWidget()
+        self.custom_dates.setLayout(hbox(self.filter_start, text("até", "secondary"), self.filter_end))
+        self.custom_dates.hide()
         self.filter_account = QComboBox()
+        self.filter_account.setAccessibleName("Conta ou categoria")
         self.filter_member = QComboBox()
+        self.filter_member.setAccessibleName("Integrante")
         self.filter_status = QComboBox()
+        self.filter_status.setAccessibleName("Situação")
         fill_combo(self.filter_status, [(label, s) for s, label in STATUS_LABELS.items()])
         self.filter_origin = QComboBox()
+        self.filter_origin.setAccessibleName("Origem")
         fill_combo(self.filter_origin, [(label, o) for o, label in ORIGIN_LABELS.items()], empty="Todas as origens")
+        for combo in (self.period, self.filter_account, self.filter_member, self.filter_status, self.filter_origin):
+            combo.setMinimumContentsLength(9)
+            combo.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
+        self.period.currentIndexChanged.connect(self._period_changed)
         for combo in (self.filter_account, self.filter_member, self.filter_status, self.filter_origin):
             combo.currentIndexChanged.connect(self.refresh)
         for optional in (self.filter_start, self.filter_end):
-            optional.known.toggled.connect(self.refresh)
             optional.edit.dateChanged.connect(self.refresh)
-        self.count = QLabel()
-
-        top = QHBoxLayout()
-        for label, kind in OperationDialog.KINDS.items():
-            button = QPushButton(kind)
-            button.clicked.connect(lambda _=False, k=label: self.new_operation(k))
-            top.addWidget(button)
-        top.addStretch()
-        actions = QHBoxLayout()
-        for label, slot in (
-            ("Editar…", self.edit),
-            ("Reclassificar selecionados…", self.reclassify_selected),
-            ("Estornar", self.reverse),
-            ("Cancelar lançamento", self.cancel),
+        self.clear_filters = button("Limpar filtros", self.reset_filters, role="plain")
+        row_commands: list[Any] = [
+            ("Editar…", self.edit, "Return"),
+            ("Reclassificar…", self.reclassify_selected),
+            ("Estornar…", self.reverse),
             ("Histórico", self.show_history),
-        ):
-            button = QPushButton(label)
-            button.clicked.connect(slot)
-            actions.addWidget(button)
-        actions.addStretch()
-        actions.addWidget(self.count)
-        filters = QHBoxLayout()
-        filters.addWidget(QLabel("De:"))
-        filters.addWidget(self.filter_start)
-        filters.addWidget(QLabel("Até:"))
-        filters.addWidget(self.filter_end)
-        for widget in (self.filter_account, self.filter_member, self.filter_status, self.filter_origin):
-            filters.addWidget(widget)
-        filters.addWidget(self.filter_text, 1)
-        layout = QVBoxLayout(self)
-        layout.addLayout(top)
+            None,
+            ("Cancelar lançamento…", self.cancel),
+        ]
+        self._row_commands = row_commands
+        self.actions_button = menu_button(
+            "Ações", row_commands, tip="Comandos para os lançamentos selecionados (também no botão direito)"
+        )
+        self.details_button = button("Detalhes", self.toggle_inspector, role="plain", tip="Mostrar ou ocultar detalhes")
+        self.details_button.setCheckable(True)
+        self.details_button.setChecked(True)
+        self._inspector_chosen = False
+        flow_host = flow_row(
+            self.period,
+            self.custom_dates,
+            self.filter_account,
+            self.filter_member,
+            self.filter_status,
+            self.filter_origin,
+            self.clear_filters,
+        )
+        filters = hbox(flow_host, self.actions_button, self.details_button)
+        filters.setAlignment(self.actions_button, Qt.AlignmentFlag.AlignTop)
+        filters.setAlignment(self.details_button, Qt.AlignmentFlag.AlignTop)
+
+        # ── table beside the inspector
+        self.model = OperationsModel()
+        self.table = QTableView()
+        self.table.setModel(self.model)
+        style_table(self.table)
+        self.table.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
+        self.table.setSortingEnabled(True)
+        self.table.sortByColumn(OperationsModel.DATE, Qt.SortOrder.DescendingOrder)
+        self.table.doubleClicked.connect(lambda _: self.edit())
+        self.table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.table.customContextMenuRequested.connect(self._context_menu)
+        self.table.setAccessibleName("Lançamentos")
+        for key in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            enter = QShortcut(QKeySequence(key), self.table)
+            enter.setContext(Qt.ShortcutContext.WidgetShortcut)
+            enter.activated.connect(self.edit)
+        for column, width in enumerate((104, 240, 240, 110, 96, 130, 90)):
+            self.table.setColumnWidth(column, width)
+        install_column_chooser(
+            self.table, "livro", required={OperationsModel.DATE, OperationsModel.DESCRIPTION, OperationsModel.AMOUNT}
+        )
+        self.table.selectionModel().selectionChanged.connect(lambda *_: self._update_selection())
+
+        self.empty = EmptyState("", "", [button("Limpar filtros", self.reset_filters)])
+        self.empty_new = EmptyState(
+            "Nenhum lançamento ainda",
+            "Importe uma fatura ou um extrato em “Importar e revisar”, ou registre uma operação em Novo lançamento.",
+        )
+        self.views = QStackedWidget()
+        for widget in (self.table, self.empty, self.empty_new):
+            self.views.addWidget(widget)
+        self.inspector = OperationInspector()
+        self.split = QSplitter(Qt.Orientation.Horizontal)
+        self.split.setChildrenCollapsible(False)
+        self.split.addWidget(self.views)
+        self.split.addWidget(self.inspector)
+        self.split.setStretchFactor(0, 1)
+        self.split.setSizes([900, 300])
+
+        self.count = QLabel()  # kept for scripts and tests; the visible count is the header subtitle
+        layout = self.page_layout()
         layout.addLayout(filters)
-        layout.addLayout(actions)
-        layout.addWidget(self.table)
+        layout.addWidget(self.split, 1)
 
     # ── data ────────────────────────────────────────
+
+    def focus_search(self) -> bool:
+        self.filter_text.setFocus()
+        self.filter_text.selectAll()
+        return True
 
     def _refill(self, combo: QComboBox, items: list[tuple[str, Any]], empty: str) -> None:
         current = combo.currentData()
         combo.blockSignals(True)
         fill_combo(combo, items, empty=empty)
-        index = combo.findData(current)
-        combo.setCurrentIndex(max(index, 0))
+        combo.setCurrentIndex(0)
+        select_combo(combo, current)
         combo.blockSignals(False)
 
+    def _period_changed(self) -> None:
+        self.custom_dates.setVisible(self.period.currentData() == "custom")
+        self.refresh()
+
     def current_filter(self) -> OperationFilter:
+        key = self.period.currentData() or "all"
+        if key == "custom":
+            start, end = self.filter_start.value(), self.filter_end.value()
+        else:
+            start, end = period_range(key, date.today())
         return OperationFilter(
-            start=self.filter_start.value(),
-            end=self.filter_end.value(),
+            start=start,
+            end=end,
             account_id=self.filter_account.currentData(),
             member_id=self.filter_member.currentData(),
             text=self.filter_text.text(),
@@ -269,10 +463,27 @@ class LedgerPage(Page):
             origin=self.filter_origin.currentData(),
         )
 
+    def filters_active(self) -> bool:
+        combos = (self.period, self.filter_account, self.filter_member, self.filter_status, self.filter_origin)
+        return any(c.currentIndex() > 0 for c in combos) or bool(self.filter_text.text().strip())
+
+    def reset_filters(self) -> None:
+        for combo in (self.period, self.filter_account, self.filter_member, self.filter_status, self.filter_origin):
+            combo.blockSignals(True)
+            combo.setCurrentIndex(0)
+            combo.blockSignals(False)
+        self.custom_dates.hide()
+        self.filter_text.blockSignals(True)
+        self.filter_text.clear()
+        self.filter_text.blockSignals(False)
+        self.refresh()
+
     def refresh(self) -> None:
         if self.session is None:
             self.model.reset(None, [])
             self.count.setText("")
+            self.header.set_subtitle("")
+            self.inspector.show_operation(None, None, 0)
             return
         ledger = self.session.ledger
         accounts = sorted(ledger.accounts.values(), key=lambda a: (a.type.value, a.name.casefold()))
@@ -283,7 +494,7 @@ class LedgerPage(Page):
                 for a in accounts
                 if a.type in (AccountType.ASSET, AccountType.LIABILITY) or a.subtype is AccountSubtype.CATEGORY
             ],
-            "Todas as contas e categorias",
+            "Todas as contas",
         )
         self._refill(self.filter_member, [(m.name, m.id) for m in ledger.members.values()], "Todos os integrantes")
         selected = set(self.selected_ids())
@@ -291,9 +502,21 @@ class LedgerPage(Page):
         self.model.reset(ledger, ops)
         header = self.table.horizontalHeader()
         self.model.sort(header.sortIndicatorSection(), header.sortIndicatorOrder())
-        self.count.setText(f"{len(ops)} de {len(ledger.operations)} lançamentos")
+        total = len(ledger.operations)
+        active = self.filters_active()
+        self.count.setText(f"{len(ops)} de {total} lançamentos")
+        self.header.set_subtitle(f"{len(ops)} de {total} lançamentos" if active else f"{total} lançamentos")
+        self.clear_filters.setVisible(active)
+        if total == 0:
+            self.views.setCurrentWidget(self.empty_new)
+        elif not ops:
+            self.empty.set_text("Nenhum lançamento com estes filtros", "Ajuste a busca ou limpe os filtros.")
+            self.views.setCurrentWidget(self.empty)
+        else:
+            self.views.setCurrentWidget(self.table)
         if selected:
             self._select(selected)
+        self._update_selection()
 
     def _select(self, ids: set[UUID]) -> None:
         selection = self.table.selectionModel()
@@ -312,9 +535,38 @@ class LedgerPage(Page):
         if self.session is None:
             return None
         index = self.table.currentIndex()
-        if not index.isValid():
+        if not index.isValid() or index.row() >= len(self.model.ops):
             return None
         return self.session.ledger.operations.get(self.model.ops[index.row()].id)
+
+    def _update_selection(self) -> None:
+        ids = self.selected_ids()
+        ledger = self.session.ledger if self.session else None
+        op = ledger.operations.get(ids[0]) if ledger is not None and len(ids) == 1 else None
+        self.inspector.show_operation(ledger, op, len(ids))
+        self.actions_button.setEnabled(bool(ids))
+
+    def toggle_inspector(self) -> None:
+        self._inspector_chosen = True  # an explicit choice wins over the automatic one
+        self.inspector.setVisible(self.details_button.isChecked())
+
+    def resizeEvent(self, event: object) -> None:  # noqa: N802 - Qt override
+        # Narrow windows give the table the room; the details come back when there is space.
+        if not self._inspector_chosen:
+            wide = self.width() >= 900
+            self.inspector.setVisible(wide)
+            self.details_button.setChecked(wide)
+        super().resizeEvent(event)  # type: ignore[arg-type]
+
+    def _context_menu(self, position: QPoint) -> None:
+        index = self.table.indexAt(position)
+        if not index.isValid():
+            return
+        if index.row() not in {i.row() for i in self.table.selectionModel().selectedRows()}:
+            self.table.selectRow(index.row())
+        menu = QMenu(self)
+        fill_menu(menu, self._row_commands)
+        menu.exec(self.table.viewport().mapToGlobal(position))
 
     # ── actions ─────────────────────────────────────
 
@@ -323,6 +575,7 @@ class LedgerPage(Page):
             return
         dialog = OperationDialog(self, self.session.ledger, kind)
         if dialog.exec() and run_guarded(self, lambda: dialog.apply() or True):
+            self.notify(f"{OperationDialog.KINDS[kind]}: lançamento registrado.")
             self.changed()
 
     def edit(self) -> None:
@@ -334,6 +587,7 @@ class LedgerPage(Page):
             return
         dialog = OperationEditDialog(self, self.session.ledger, op)
         if dialog.exec() and run_guarded(self, dialog.apply):
+            self.notify("Lançamento corrigido. A versão anterior ficou no histórico.")
             self.changed()
 
     def reclassify_selected(self) -> None:
@@ -351,8 +605,9 @@ class LedgerPage(Page):
             return
         message = f"{result.changed} reclassificado(s), {result.skipped} mantido(s)."
         if result.errors:
-            message += "\n\n" + "\n".join(result.errors[:10])
-        QMessageBox.information(self, "Reclassificação", message)
+            QMessageBox.information(self, "Reclassificação", message + "\n\n" + "\n".join(result.errors[:10]))
+        else:
+            self.notify(message)
         if result.changed:
             self.changed()
 
@@ -363,6 +618,7 @@ class LedgerPage(Page):
         reason = ask_reason(self, "Estornar lançamento")
         ledger = self.session.ledger
         if reason and run_guarded(self, lambda: ledger.reverse_operation(op.id, date.today(), reason)):
+            self.notify("Estorno registrado como nova operação; o original foi mantido.")
             self.changed()
 
     def cancel(self) -> None:
@@ -372,6 +628,7 @@ class LedgerPage(Page):
         reason = ask_reason(self, "Cancelar lançamento")
         ledger = self.session.ledger
         if reason and run_guarded(self, lambda: ledger.cancel_operation(op.id, reason)):
+            self.notify("Lançamento cancelado. Ele continua visível em “Só cancelados”.")
             self.changed()
 
     def show_history(self) -> None:

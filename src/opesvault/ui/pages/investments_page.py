@@ -9,12 +9,10 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
-    QHBoxLayout,
-    QLabel,
     QLineEdit,
     QMessageBox,
-    QPushButton,
     QSplitter,
+    QStackedWidget,
     QTabWidget,
     QVBoxLayout,
     QWidget,
@@ -47,8 +45,10 @@ from opesvault.ui.common import (
     selected_id,
     set_rows,
 )
+from opesvault.ui.components import EmptyState, button, hbox, menu_button, text
 from opesvault.ui.dialogs import FormDialog, asset_accounts
 from opesvault.ui.pages.base import Page
+from opesvault.ui.theme import SPACE_S, SPACE_XS
 
 EVENT_LABELS = {
     EventKind.CONTRIBUTION: "Aporte",
@@ -109,6 +109,7 @@ def _combo(items: list[tuple[str, Any]], empty: str | None = None) -> QComboBox:
 
 class InvestmentsPage(Page):
     title = "Investimentos"
+    section = "Patrimônio"
 
     def __init__(self, changed) -> None:  # type: ignore[no-untyped-def]
         super().__init__(changed)
@@ -127,36 +128,46 @@ class InvestmentsPage(Page):
             ]
         )
         self.positions.itemSelectionChanged.connect(self._show_detail)
-        actions = QHBoxLayout()
-        for label, slot in (
-            ("Novo investimento", self.new_position),
-            ("Nova avaliação", self.new_valuation),
-            ("Aporte", self.contribution),
-            ("Provento", self.distribution),
-            ("Resgate", self.redemption),
-            ("Resgate só com líquido", self.net_only),
-            ("Completar resgate", self.complete),
-            ("Simular resgate", self.simulate),
-            ("Pagar imposto", self.pay_tax),
-            ("Regra de imposto", self.new_rule),
-        ):
-            button = QPushButton(label)
-            button.clicked.connect(slot)
-            actions.addWidget(button)
-        actions.addStretch()
-        trade_actions = QHBoxLayout()
-        for label, slot in (
-            ("Compra", self.buy),
-            ("Venda", self.sell),
-            ("Posição inicial", self.opening),
-            ("Desdobramento/grupamento", self.split),
-            ("Bonificação", self.bonus),
-            ("Importar índice…", self.import_benchmark),
-        ):
-            button = QPushButton(label)
-            button.clicked.connect(slot)
-            trade_actions.addWidget(button)
-        trade_actions.addStretch()
+        self.positions.setAccessibleName("Investimentos")
+        new = button("Novo investimento…", self.new_position, role="primary")
+        record = menu_button(
+            "Registrar",
+            [
+                ("Avaliação…", self.new_valuation),
+                None,
+                ("Aporte…", self.contribution),
+                ("Provento…", self.distribution),
+                ("Resgate…", self.redemption),
+                ("Resgate só com o líquido…", self.net_only),
+                ("Completar resgate…", self.complete),
+                None,
+                ("Pagamento de imposto…", self.pay_tax),
+            ],
+            tip="Eventos do investimento selecionado",
+        )
+        trade = menu_button(
+            "Negociação",
+            [
+                ("Compra…", self.buy),
+                ("Venda…", self.sell),
+                ("Posição inicial…", self.opening),
+                None,
+                ("Desdobramento ou grupamento…", self.split),
+                ("Bonificação…", self.bonus),
+            ],
+            tip="Ativos acompanhados por quantidade",
+        )
+        more = menu_button(
+            "Mais",
+            [
+                ("Simular resgate…", self.simulate),
+                ("Regra de imposto…", self.new_rule),
+                None,
+                ("Importar índice de referência…", self.import_benchmark),
+            ],
+        )
+        self.header.add(record, trade, more, new)
+        self.position_actions = (record, trade)
 
         self.valuations = make_table(["Data", "Valor", "Natureza", "Fonte", "Usada", "Quantidade", "Observação"])
         self.events = make_table(
@@ -164,16 +175,14 @@ class InvestmentsPage(Page):
         )
         self.evolution = ChartWidget()
         self.result_chart = ChartWidget()
-        valuation_actions = QHBoxLayout()
-        use = QPushButton("Usar esta observação")
-        use.clicked.connect(self.use_valuation)
-        fix = QPushButton("Corrigir observação")
-        fix.clicked.connect(self.fix_valuation)
-        valuation_actions.addWidget(use)
-        valuation_actions.addWidget(fix)
-        valuation_actions.addStretch()
+        valuation_actions = hbox(
+            button("Usar esta observação", self.use_valuation),
+            button("Corrigir observação…", self.fix_valuation),
+            None,
+        )
         valuation_box = QWidget()
         vb = QVBoxLayout(valuation_box)
+        vb.setContentsMargins(0, SPACE_S, 0, 0)
         vb.addLayout(valuation_actions)
         vb.addWidget(self.valuations)
         tabs = QTabWidget()
@@ -188,39 +197,49 @@ class InvestmentsPage(Page):
         self.period_start = QComboBox()
         self.period_end = QComboBox()
         self.benchmark = QComboBox()
-        compute = QPushButton("Calcular")
-        compute.clicked.connect(self._show_returns)
+        compute = button("Calcular", self._show_returns)
         returns_box = QWidget()
         rb = QVBoxLayout(returns_box)
-        period = QHBoxLayout()
-        for widget in (
-            QLabel("De:"),
+        rb.setContentsMargins(0, SPACE_S, 0, 0)
+        period = hbox(
+            text("De", "secondary"),
             self.period_start,
-            QLabel("Até:"),
+            text("até", "secondary"),
             self.period_end,
-            QLabel("Índice:"),
+            SPACE_S,
+            text("Índice", "secondary"),
             self.benchmark,
             compute,
-        ):
-            period.addWidget(widget)
-        period.addStretch()
+            None,
+        )
         rb.addLayout(period)
         rb.addWidget(self.returns_table)
         rb.addWidget(self.returns_chart)
         tabs.addTab(returns_box, "Rentabilidade")
-        self.summary = QLabel()
-        self.summary.setWordWrap(True)
+        self.summary = text("", "secondary", wrap=True)
+        self.detail_title = text("", "headline")
         detail = QWidget()
         dl = QVBoxLayout(detail)
+        dl.setContentsMargins(0, SPACE_S, 0, 0)
+        dl.setSpacing(SPACE_XS)
+        dl.addWidget(self.detail_title)
         dl.addWidget(self.summary)
-        dl.addWidget(tabs)
+        dl.addWidget(tabs, 1)
+        self.empty = EmptyState(
+            "Nenhum investimento",
+            "Cadastre um investimento para acompanhar avaliações, aportes, resgates e rentabilidade.",
+            [button("Novo investimento…", self.new_position)],
+        )
         splitter = QSplitter(Qt.Orientation.Vertical)
+        splitter.setChildrenCollapsible(False)
         splitter.addWidget(self.positions)
         splitter.addWidget(detail)
-        layout = QVBoxLayout(self)
-        layout.addLayout(actions)
-        layout.addLayout(trade_actions)
-        layout.addWidget(splitter)
+        splitter.setSizes([180, 520])
+        self.views = QStackedWidget()
+        self.views.addWidget(splitter)
+        self.views.addWidget(self.empty)
+        layout = self.page_layout()
+        layout.addWidget(self.views, 1)
 
     # ── data ────────────────────────────────────────
 
@@ -230,7 +249,7 @@ class InvestmentsPage(Page):
             return
         ledger = self.session.ledger
         today = date.today()
-        rows = []
+        rows: list[tuple[list[Any], Any]] = []
         for pos in inv.positions(ledger).values():
             asset = inv.assets(ledger)[pos.asset_id]
             observed = value_at(ledger, pos.id, today)
@@ -254,6 +273,12 @@ class InvestmentsPage(Page):
                 )
             )
         set_rows(self.positions, rows)
+        self.views.setCurrentIndex(0 if rows else 1)
+        open_count = sum(1 for p in inv.positions(ledger).values() if not p.closed)
+        total = f" · {len(rows)} no total" if len(rows) != open_count else ""
+        self.header.set_subtitle(f"{open_count} em carteira{total}")
+        if rows and selected_id(self.positions) is None:
+            self.positions.selectRow(0)  # the detail area is never blank when there is something to show
         self._show_detail()
 
     def _position_id(self) -> UUID | None:
@@ -261,11 +286,16 @@ class InvestmentsPage(Page):
 
     def _show_detail(self) -> None:
         pos_id = self._position_id()
+        for action in self.position_actions:
+            action.setEnabled(pos_id is not None)
         if self.session is None or pos_id is None:
             self.valuations.setRowCount(0)
             self.events.setRowCount(0)
+            self.detail_title.setText("")
             self.summary.setText("Selecione um investimento.")
             return
+        position = inv.positions(self.session.ledger)[pos_id]
+        self.detail_title.setText(inv.assets(self.session.ledger)[position.asset_id].name)
         from opesvault.charts.data import investment_evolution, investment_result
 
         ledger = self.session.ledger

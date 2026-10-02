@@ -2,7 +2,7 @@
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap
-from PySide6.QtWidgets import QHBoxLayout, QLabel, QScrollArea, QSpinBox, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QLabel, QScrollArea, QSpinBox, QVBoxLayout, QWidget
 
 from opesvault.ui.common import make_table, selected_id, set_rows
 from opesvault.ui.pages.base import Page
@@ -24,12 +24,14 @@ class PdfView(QWidget):
         scroll = QScrollArea()
         scroll.setWidget(self.image)
         scroll.setWidgetResizable(True)
+        from opesvault.ui.components import hbox, text
+
+        self.image.setProperty("textStyle", "secondary")
+        self.image.setWordWrap(True)
+        self.page.setAccessibleName("Página")
         layout = QVBoxLayout(self)
-        bar = QHBoxLayout()
-        bar.addWidget(QLabel("Página:"))
-        bar.addWidget(self.page)
-        bar.addStretch()
-        layout.addLayout(bar)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addLayout(hbox(text("Documento original", "headline"), None, text("Página", "secondary"), self.page))
         layout.addWidget(scroll)
 
     def show_pdf(
@@ -78,15 +80,32 @@ class PdfView(QWidget):
 
 class DocumentsPage(Page):
     title = "Documentos"
+    section = "Arquivo"
 
     def __init__(self, changed) -> None:  # type: ignore[no-untyped-def]
         super().__init__(changed)
+        from PySide6.QtWidgets import QSplitter, QStackedWidget
+
+        from opesvault.ui.components import EmptyState
+
         self.table = make_table(["Arquivo", "Tamanho", "Resumo (SHA-256)"])
+        self.table.setAccessibleName("Documentos no cofre")
         self.table.itemSelectionChanged.connect(self._show)
         self.viewer = PdfView()
-        layout = QHBoxLayout(self)
-        layout.addWidget(self.table, 2)
-        layout.addWidget(self.viewer, 3)
+        split = QSplitter(Qt.Orientation.Horizontal)
+        split.setChildrenCollapsible(False)
+        split.addWidget(self.table)
+        split.addWidget(self.viewer)
+        split.setSizes([420, 640])
+        self.empty = EmptyState(
+            "Nenhum documento no cofre",
+            "Os arquivos importados ficam guardados aqui, cifrados, como evidência dos lançamentos.",
+        )
+        self.views = QStackedWidget()
+        self.views.addWidget(split)
+        self.views.addWidget(self.empty)
+        layout = self.page_layout()
+        layout.addWidget(self.views, 1)
 
     def refresh(self) -> None:
         if self.session is None:
@@ -100,6 +119,10 @@ class DocumentsPage(Page):
                 for d in self.session.documents
             ],
         )
+        documents = self.session.documents
+        self.views.setCurrentIndex(0 if documents else 1)
+        size = sum(d.meta.size for d in documents) / (1024 * 1024)
+        self.header.set_subtitle(f"{len(documents)} arquivo(s) · {size:.1f} MiB" if documents else "")
 
     def _show(self) -> None:
         doc_id = selected_id(self.table)

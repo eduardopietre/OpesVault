@@ -17,6 +17,7 @@ from matplotlib.backends.backend_qt import NavigationToolbar2QT
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
 from matplotlib.ticker import FuncFormatter
+from PySide6.QtCore import QSize, Qt
 from PySide6.QtWidgets import QVBoxLayout, QWidget
 
 from opesvault.charts.data import Chart, Point
@@ -35,9 +36,18 @@ def _label(value: Decimal | None, unit: str) -> str:
 
 def draw(figure: Figure, chart: Chart) -> list[tuple[Any, list[Point], str]]:
     """Draws `chart` on `figure`; returns (artist, points, series name) for hover lookups."""
+    from opesvault.ui.theme import tokens
+
+    t = tokens()
     figure.clear()
+    figure.set_facecolor(t.content)
     ax = figure.add_subplot(111)
-    ax.set_title(chart.title)
+    ax.set_facecolor(t.content)
+    ax.set_title(chart.title, loc="left", fontsize=10, fontweight="bold", color=t.text)
+    for side in ("top", "right", "left"):
+        ax.spines[side].set_visible(False)
+    ax.spines["bottom"].set_color(t.separator)
+    ax.tick_params(colors=t.secondary, labelsize=8, length=0)
     hover: list[tuple[Any, list[Point], str]] = []
     categorical = any(isinstance(p.x, str) for s in chart.series for p in s.points)
     bar_series = [s for s in chart.series if s.style in ("bar", "forecast")]
@@ -81,12 +91,15 @@ def draw(figure: Figure, chart: Chart) -> list[tuple[Any, list[Point], str]]:
     ax.yaxis.set_major_formatter(
         FuncFormatter(lambda v, _pos: f"{v * 100:.0f}%" if unit == "%" else format_brl(Decimal(str(round(v, 2)))))
     )
-    ax.grid(axis="y", alpha=0.3)
+    ax.grid(axis="y", color=t.separator, linewidth=0.8)
+    ax.set_axisbelow(True)
     if len(chart.series) > 1:
-        ax.legend(loc="best", fontsize="small")
+        legend = ax.legend(loc="best", fontsize="small", frameon=False)
+        for item in legend.get_texts():
+            item.set_color(t.text)
     footer = " · ".join(chart.notes)
     if footer:
-        figure.text(0.01, 0.01, footer, fontsize=7, alpha=0.8)
+        figure.text(0.01, 0.01, footer, fontsize=7, color=t.secondary)
     figure.tight_layout(rect=(0, 0.04, 1, 1))
     return hover
 
@@ -99,12 +112,21 @@ class ChartWidget(QWidget):
         self.figure = Figure(figsize=(8, 4.5))
         self.canvas = FigureCanvasQTAgg(self.figure)
         self.toolbar = NavigationToolbar2QT(self.canvas, self)
+        # Keep navigation (reset, pan, zoom); configuration dialogs are noise here and
+        # saving goes through the page's own export command.
+        for action in self.toolbar.actions():
+            if action.text() in ("Subplots", "Customize", "Save", "Back", "Forward"):
+                self.toolbar.removeAction(action)
+        self.toolbar.setIconSize(QSize(16, 16))
+        self.toolbar.setToolTip("Início: desfaz o zoom · Mover · Zoom por retângulo")
         self.chart: Chart | None = None
         self._hover: list[tuple[Any, list[Point], str]] = []
         self._annotation = None
         self._on_inspect = on_inspect
         layout = QVBoxLayout(self)
-        layout.addWidget(self.toolbar)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+        layout.addWidget(self.toolbar, alignment=Qt.AlignmentFlag.AlignRight)
         layout.addWidget(self.canvas)
         self.canvas.mpl_connect("motion_notify_event", self._on_move)
         self.canvas.mpl_connect("button_press_event", self._on_click)
@@ -118,7 +140,8 @@ class ChartWidget(QWidget):
             xy=(0, 0),
             xytext=(12, 12),
             textcoords="offset points",
-            bbox={"boxstyle": "round", "fc": "white", "alpha": 0.95},
+            bbox={"boxstyle": "round", "fc": _tokens().raised, "ec": _tokens().separator, "alpha": 0.97},
+            color=_tokens().text,
             fontsize=8,
         )
         self._annotation.set_visible(False)
@@ -175,3 +198,9 @@ class ChartWidget(QWidget):
 
     def export_png(self, path: str) -> None:
         self.figure.savefig(path, dpi=150)
+
+
+def _tokens():  # type: ignore[no-untyped-def]
+    from opesvault.ui.theme import tokens
+
+    return tokens()

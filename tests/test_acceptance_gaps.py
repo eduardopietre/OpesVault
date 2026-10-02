@@ -99,7 +99,7 @@ def app() -> QApplication:
 def _visible_texts(window: MainWindow) -> str:
     texts: list[str] = []
     for page in window.pages:
-        window.nav.setCurrentRow(window.pages.index(page))
+        window.show_page(window.pages.index(page))
         QApplication.processEvents()
         for table in page.findChildren(QTableWidget):
             items = [table.item(r, c) for r in range(table.rowCount()) for c in range(table.columnCount())]

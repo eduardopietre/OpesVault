@@ -14,9 +14,14 @@ from PySide6.QtWidgets import (
     QInputDialog,
     QLabel,
     QListWidget,
+    QListWidgetItem,
     QMainWindow,
     QMessageBox,
+    QSizePolicy,
+    QSplitter,
     QStackedWidget,
+    QToolBar,
+    QToolButton,
     QWidget,
 )
 
@@ -34,6 +39,7 @@ from opesvault.ui.pages.overview_page import OverviewPage
 from opesvault.ui.pages.recurrences_page import RecurrencesPage
 from opesvault.ui.pages.reports_page import ReportsPage
 from opesvault.ui.pages.settings_page import SettingsPage
+from opesvault.ui.theme import restyle
 from opesvault.vault.client import VaultClient
 from opesvault.vault.errors import ErrorCode, VaultError
 from opesvault.vault.lock import VaultLock
@@ -96,29 +102,54 @@ class MainWindow(QMainWindow):
         self._jobs: set[_Job] = set()
 
         self.pages: list[Page] = self.build_pages()
-        self.nav = QListWidget()
-        self.nav.setMaximumWidth(220)
         self.stack = QStackedWidget()
-        for page in self.pages:
+        self.stack.setObjectName("Pages")
+        self.nav = QListWidget()
+        self.nav.setObjectName("Sidebar")
+        self.nav.setAccessibleName("Seções")
+        self.nav.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.nav.setTextElideMode(Qt.TextElideMode.ElideRight)
+        self._nav_rows: list[int] = []  # page index -> sidebar row
+        go_menu_entries: list[tuple[str, int]] = []
+        section = None
+        for index, page in enumerate(self.pages):
             page.set_busy_hook(self._page_busy)
-            self.nav.addItem(page.title)
+            page.set_notify_hook(self.notify)
+            if page.section and page.section != section:
+                section = page.section
+                header = QListWidgetItem(section.upper())
+                header.setFlags(Qt.ItemFlag.NoItemFlags)  # a label, not a destination
+                self.nav.addItem(header)
+            item = QListWidgetItem(page.title)
+            item.setData(Qt.ItemDataRole.UserRole, index)
+            item.setToolTip(f"{page.title} (Ctrl+{index + 1})" if index < 9 else page.title)
+            self.nav.addItem(item)
+            self._nav_rows.append(self.nav.count() - 1)
             self.stack.addWidget(page)
-        self.nav.currentRowChanged.connect(self._show_page)
-        # Ctrl+1..9 jump between sections (keyboard navigation, RNF-08).
-        for index in range(min(len(self.pages), 9)):
-            shortcut = QAction(self)
-            shortcut.setShortcut(QKeySequence(f"Ctrl+{index + 1}"))
-            shortcut.triggered.connect(lambda _=False, i=index: self.nav.setCurrentRow(i))
-            self.addAction(shortcut)
+            go_menu_entries.append((page.title, index))
+        self.nav.currentRowChanged.connect(self._nav_row_changed)
+
+        self.splitter = QSplitter(Qt.Orientation.Horizontal)
+        self.splitter.setChildrenCollapsible(False)
+        self.splitter.addWidget(self.nav)
+        self.splitter.addWidget(self.stack)
+        self.splitter.setStretchFactor(1, 1)
+        self.nav.setMinimumWidth(160)
+        self.nav.setMaximumWidth(300)
+        self.splitter.setSizes([200, 1080])
         self.content = QWidget()
+        self.content.setObjectName("Content")
         layout = QHBoxLayout(self.content)
-        layout.addWidget(self.nav)
-        layout.addWidget(self.stack, 1)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(self.splitter)
+
         self.lock_panel = LockPanel()
         self.lock_panel.unlock_requested.connect(self.unlock_screen)
+        self.welcome = self._build_welcome()
         self.shell = QStackedWidget()
         self.shell.addWidget(self.content)
         self.shell.addWidget(self.lock_panel)
+        self.shell.addWidget(self.welcome)
         self.setCentralWidget(self.shell)
         self.locked = False
         self._disabled_actions: list[QAction] = []
@@ -127,24 +158,132 @@ class MainWindow(QMainWindow):
         self.vault_menu = menu
         self._action(menu, "&Novo cofre…", QKeySequence.StandardKey.New, self.new_vault)
         self._action(menu, "&Abrir cofre…", QKeySequence.StandardKey.Open, self.open_vault)
-        self._action(menu, "&Salvar", QKeySequence.StandardKey.Save, self.save_vault)
-        self._action(menu, "&Fechar cofre", None, self.close_vault)
+        self.save_action = self._action(menu, "&Salvar", QKeySequence.StandardKey.Save, self.save_vault)
+        self._action(menu, "&Fechar cofre", QKeySequence("Ctrl+W"), self.close_vault)
         self.extend_menus()
+        go = self.menuBar().addMenu("&Ir")
+        self.go_menu = go
+        for title, index in go_menu_entries:
+            shortcut = QKeySequence(f"Ctrl+{index + 1}") if index < 9 else None
+            self._action(go, title, shortcut, lambda _=False, i=index: self.show_page(i))
+        self.menuBar().insertMenu(self.help_menu.menuAction(), go)
+        self.menuBar().insertMenu(go.menuAction(), self.view_menu)
 
         self.operator = QComboBox()
+        self.operator.setToolTip("Quem está operando: fica registrado no histórico de cada alteração")
+        self.operator.setAccessibleName("Operador")
         self.operator.currentIndexChanged.connect(self._set_operator)
         self.status = QLabel()
-        self.statusBar().addWidget(QLabel("Operador:"))
-        self.statusBar().addWidget(self.operator)
-        self.statusBar().addPermanentWidget(self.status)
-        self.resize(1280, 800)
-        self.nav.setCurrentRow(0)
+        self.status.setObjectName("SaveState")
+        self.status.setAccessibleName("Estado do salvamento")
+        self._build_toolbar()
+        self.statusBar().setSizeGripEnabled(True)
+        self._restore_geometry()
+        self.show_page(0)
         self.idle = IdleWatcher(self, lock_minutes())
         self.idle.idle.connect(self._on_idle)
         app = QApplication.instance()
         if app is not None:
             app.installEventFilter(self.idle)
         self._refresh()
+
+    # ── shell ───────────────────────────────────────────
+
+    def _build_toolbar(self) -> None:
+        from opesvault.ui.components import button, text
+        from opesvault.ui.icons import sidebar_icon
+
+        bar = QToolBar("Barra de ferramentas")
+        bar.setObjectName("MainToolbar")
+        bar.setMovable(False)
+        bar.setFloatable(False)
+        bar.toggleViewAction().setEnabled(False)
+        self.toggle_sidebar_action.setIcon(sidebar_icon(self.palette().windowText().color()))
+        self.toggle_sidebar_action.setToolTip("Mostrar ou ocultar a barra lateral (Ctrl+Shift+B)")
+        self.sidebar_button = QToolButton()
+        self.sidebar_button.setObjectName("Plain")
+        self.sidebar_button.setDefaultAction(self.toggle_sidebar_action)
+        self.sidebar_button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
+        self.sidebar_button.setAccessibleName("Barra lateral")
+        bar.addWidget(self.sidebar_button)
+        self.context_label = text("", "headline")
+        self.context_label.setAccessibleName("Cofre aberto")
+        bar.addWidget(self.context_label)
+        spacer = QWidget()
+        spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        bar.addWidget(spacer)
+        self.save_dot = QLabel("●")
+        self.save_dot.setObjectName("SaveDot")
+        self.save_dot.setAccessibleName("Indicador de salvamento")
+        self.save_button = button(
+            "Salvar", self.save_vault, tip="Salvar o cofre (Ctrl+S). A senha é pedida a cada vez."
+        )
+        self.operator_label = text("Operador", "secondary")
+        gap = QWidget()
+        gap.setFixedWidth(12)
+        # Toolbar visibility is controlled through the actions addWidget returns.
+        self._session_actions = [
+            bar.addWidget(widget)
+            for widget in (self.save_dot, self.status, self.save_button, gap, self.operator_label, self.operator)
+        ]
+        self.addToolBar(Qt.ToolBarArea.TopToolBarArea, bar)
+        self.toolbar = bar
+
+    def _build_welcome(self) -> QWidget:
+        from opesvault.ui.components import EmptyState, button
+
+        self.welcome_new = button("Novo cofre…", self.new_vault, role="primary")
+        self.welcome_open = button("Abrir cofre…", self.open_vault)
+        state = EmptyState(
+            "Nenhum cofre aberto",
+            "Cada família tem um cofre: um arquivo .opesvault cifrado com a sua senha, com lançamentos e "
+            "documentos. Nada sai deste computador.",
+            [self.welcome_new, self.welcome_open],
+        )
+        state.setObjectName("Content")
+        return state
+
+    def show_page(self, index: int) -> None:
+        """Selects a section by page index (sidebar rows also contain group labels)."""
+        if 0 <= index < len(self.pages):
+            self.nav.setCurrentRow(self._nav_rows[index])
+
+    def _nav_row_changed(self, row: int) -> None:
+        item = self.nav.item(row)
+        index = item.data(Qt.ItemDataRole.UserRole) if item is not None else None
+        if isinstance(index, int):
+            self._show_page(index)
+
+    def toggle_sidebar(self) -> None:
+        self.nav.setVisible(not self.nav.isVisible())
+        self.toggle_sidebar_action.setChecked(self.nav.isVisible())
+
+    def focus_search(self) -> None:
+        page = self.stack.currentWidget()
+        if isinstance(page, Page) and not page.focus_search():
+            self.notify("Esta tela não tem busca.")
+
+    def notify(self, message: str) -> None:
+        self.statusBar().showMessage(message, 5000)
+
+    def _restore_geometry(self) -> None:
+        settings = self.app_settings()
+        geometry = settings.value("janela/geometria")
+        if geometry is not None:
+            self.restoreGeometry(geometry)  # type: ignore[arg-type]
+        else:
+            self.resize(1280, 800)
+        sizes = settings.value("janela/lateral")
+        if sizes is not None:
+            self.splitter.restoreState(sizes)  # type: ignore[arg-type]
+        self.nav.setVisible(bool(settings.value("janela/lateral_visivel", True, type=bool)))
+        self.toggle_sidebar_action.setChecked(self.nav.isVisible())
+
+    def _save_geometry(self) -> None:
+        settings = self.app_settings()
+        settings.setValue("janela/geometria", self.saveGeometry())
+        settings.setValue("janela/lateral", self.splitter.saveState())
+        settings.setValue("janela/lateral_visivel", self.nav.isVisible())
 
     @property
     def busy(self) -> bool:
@@ -177,9 +316,18 @@ class MainWindow(QMainWindow):
         self._action(menu, "Exportar dados para intercâmbio (JSON)…", None, lambda: self.export("json"))
         menu.addSeparator()
         view = self.menuBar().addMenu("E&xibir")
+        self.view_menu = view
+        self.toggle_sidebar_action = self._action(
+            view, "Barra lateral", QKeySequence("Ctrl+Shift+B"), self.toggle_sidebar
+        )
+        self.toggle_sidebar_action.setCheckable(True)
+        self.toggle_sidebar_action.setChecked(True)
+        self._action(view, "Buscar nesta tela", QKeySequence.StandardKey.Find, self.focus_search)
+        view.addSeparator()
         self._action(view, "Ocultar conteúdo agora", QKeySequence("Ctrl+L"), self.lock_screen)
         self._action(view, "Bloqueio por inatividade…", None, self.configure_lock)
         help_menu = self.menuBar().addMenu("A&juda")
+        self.help_menu = help_menu
         self._action(help_menu, "Ajuda desta tela", QKeySequence.StandardKey.HelpContents, self.show_help)
         self._action(help_menu, "Sobre o OpesVault", None, self.show_about)
         self.recent_menu = menu.addMenu("Recentes")
@@ -465,6 +613,7 @@ class MainWindow(QMainWindow):
         for action in self._disabled_actions:
             action.setEnabled(False)
         self.statusBar().hide()
+        self.toolbar.hide()
         self.setWindowTitle("OpesVault — bloqueado")
         self.lock_panel.button.setFocus()
 
@@ -490,14 +639,15 @@ class MainWindow(QMainWindow):
             action.setEnabled(True)
         self._disabled_actions = []
         self.statusBar().show()
+        self.toolbar.show()
         self.shell.setCurrentWidget(self.content)
         self.idle.last_input = self.idle._now()
         self._refresh()
 
-    def _show_page(self, row: int) -> None:
-        if 0 <= row < len(self.pages):
-            self.stack.setCurrentIndex(row)
-            self.pages[row].refresh()
+    def _show_page(self, index: int) -> None:
+        if 0 <= index < len(self.pages):
+            self.stack.setCurrentIndex(index)
+            self.pages[index].refresh()
 
     # ── state ───────────────────────────────────────────
 
@@ -517,9 +667,15 @@ class MainWindow(QMainWindow):
         for page in self.pages:
             if page.session is not self.session:
                 page.set_session(self.session)
+        has_session = self.session is not None
+        self.shell.setCurrentWidget(self.content if has_session else self.welcome)
+        for action in self._session_actions:
+            action.setVisible(has_session)
+        self.save_action.setEnabled(has_session)
+        self.go_menu.setEnabled(has_session)
         if self.session is None:
             self.setWindowTitle("OpesVault")
-            self.status.setText("Nenhum cofre aberto · use Cofre › Novo ou Abrir")
+            self.context_label.setText("OpesVault")
             self.operator.clear()
             return
         names = [m.name for m in self.session.ledger.members.values() if m.active]
@@ -532,11 +688,24 @@ class MainWindow(QMainWindow):
                 self.operator.setCurrentText(current)
             self.operator.blockSignals(False)
             self._set_operator()
-        state = "Não salvo" if self.session.dirty else "Salvo"
-        rev = self.session.revision.revision if self.session.revision else "—"
+        dirty = self.session.dirty
         family = self.session.ledger.meta.family_name
-        self.setWindowTitle(f"OpesVault — {family} ({self.session.path.name}){' *' if self.session.dirty else ''}")
-        self.status.setText(f"{state} · revisão {rev}")
+        self.setWindowTitle(f"OpesVault — {family} ({self.session.path.name}){' *' if dirty else ''}")
+        self.context_label.setText(f"{family}  ·  {self.session.path.name}")
+        self.context_label.setToolTip(str(self.session.path))
+        if self._vault_busy:
+            return
+        if dirty:
+            self.status.setText("Alterações não salvas")
+        elif self.session.revision is not None:
+            self.status.setText(f"Salvo · revisão {self.session.revision.revision}")
+        else:
+            self.status.setText("Novo cofre")
+        self.save_dot.setProperty("state", "dirty" if dirty else "clean")
+        self.save_dot.setToolTip("Há alterações só na memória" if dirty else "Tudo gravado no cofre")
+        self.save_button.setProperty("role", "primary" if dirty else "")
+        for widget in (self.save_dot, self.save_button):
+            restyle(widget)
 
     def _run(
         self,
@@ -545,7 +714,7 @@ class MainWindow(QMainWindow):
         on_failed: Callable[[ErrorCode], None] | None = None,
     ) -> None:
         self._vault_busy = True
-        self.status.setText("Aguardando operação do cofre…")
+        self.status.setText("Aguardando o cofre…")
         job = _Job(fn)
         self._jobs.add(job)
 
@@ -695,5 +864,6 @@ class MainWindow(QMainWindow):
         if self.busy or not self._confirm_discard():
             event.ignore()
             return
+        self._save_geometry()
         self._drop_session()
         event.accept()

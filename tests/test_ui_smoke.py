@@ -36,10 +36,11 @@ def window(app: QApplication, tmp_path: Path) -> MainWindow:
 
 
 def test_all_pages_render(window: MainWindow) -> None:
-    for row in range(window.nav.count()):
-        window.nav.setCurrentRow(row)
+    for index in range(len(window.pages)):
+        window.show_page(index)
         QApplication.processEvents()
-    assert "Não salvo" in window.status.text()
+        assert window.stack.currentWidget() is window.pages[index]
+    assert "não salvas" in window.status.text()
 
 
 def test_expense_dialog_applies(window: MainWindow) -> None:
@@ -89,7 +90,7 @@ def test_import_page_review_flow(window: MainWindow) -> None:
     assert window.session is not None
     batch = pipeline.import_document(window.session, ImportRequest("nu.pdf", docs.nubank_card_pdf()))
     page = next(p for p in window.pages if isinstance(p, ImportPage))
-    window.nav.setCurrentRow(window.pages.index(page))
+    window.show_page(window.pages.index(page))
     page.batch_id = batch.id
     page.refresh()
     assert page.items.rowCount() == len(pipeline.items_of(window.session.ledger, batch.id))
@@ -139,7 +140,7 @@ def test_phase4_investments_and_reports(window: MainWindow) -> None:
     inv.add_valuation(ledger, pos.id, date(2026, 2, 1), "510", ValueNature.GROSS)
     inv.add_valuation(ledger, pos.id, date(2026, 3, 1), "505", ValueNature.NET_INFORMED)
     page = next(p for p in window.pages if isinstance(p, InvestmentsPage))
-    window.nav.setCurrentRow(window.pages.index(page))
+    window.show_page(window.pages.index(page))
     page.positions.selectRow(0)
     page._show_detail()
     assert page.valuations.rowCount() == 3
@@ -149,7 +150,7 @@ def test_phase4_investments_and_reports(window: MainWindow) -> None:
     assert "R$" in tooltip and "natureza" in tooltip
     reports = next(p for p in window.pages if isinstance(p, ReportsPage))
     for index in range(len(CHARTS)):
-        reports.kind.setCurrentIndex(index)
+        reports.kind.setCurrentRow(index)
         reports.refresh()
     in_out = charts.monthly_in_out(ledger, YearMonth(year=2026, month=1), YearMonth(year=2026, month=3))
     assert in_out.regime == "caixa"
@@ -171,7 +172,7 @@ def test_phase5_returns_tab(window: MainWindow) -> None:
     inv.add_valuation(ledger, pos.id, date(2026, 1, 2), "100", ValueNature.GROSS)
     inv.add_valuation(ledger, pos.id, date(2026, 2, 2), "110", ValueNature.GROSS)
     page = next(p for p in window.pages if isinstance(p, InvestmentsPage))
-    window.nav.setCurrentRow(window.pages.index(page))
+    window.show_page(window.pages.index(page))
     page.positions.selectRow(0)
     page._show_detail()
     assert page.lots.rowCount() == 1
@@ -191,7 +192,7 @@ def test_phase6_commands(window: MainWindow, tmp_path: Path, monkeypatch: pytest
     from opesvault.ui.pages.settings_page import SettingsPage
 
     page = next(p for p in window.pages if isinstance(p, SettingsPage))
-    window.nav.setCurrentRow(window.pages.index(page))
+    window.show_page(window.pages.index(page))
     assert page.coverage.rowCount() >= 8
     labels = [a.text() for a in window.vault_menu.actions()]
     assert "Trocar senha…" in labels and "Restaurar backup…" in labels

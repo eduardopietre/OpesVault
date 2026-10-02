@@ -18,9 +18,12 @@ def main() -> int:
 
     from opesvault import diagnostics
     from opesvault.ui.main_window import MainWindow
+    from opesvault.ui.theme import apply_theme, follow_system
 
     app = QApplication(sys.argv)
     app.setApplicationName("OpesVault")
+    apply_theme(app)
+    follow_system(app)
 
     def report(incident: str) -> None:
         QMessageBox.critical(

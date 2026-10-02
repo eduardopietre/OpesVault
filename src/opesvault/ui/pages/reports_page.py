@@ -2,12 +2,24 @@
 
 from datetime import date
 
-from PySide6.QtWidgets import QComboBox, QFileDialog, QHBoxLayout, QLabel, QMessageBox, QPushButton, QVBoxLayout
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import (
+    QComboBox,
+    QFileDialog,
+    QHBoxLayout,
+    QListWidget,
+    QListWidgetItem,
+    QMessageBox,
+    QVBoxLayout,
+    QWidget,
+)
 
 from opesvault.charts import data as charts
 from opesvault.charts.data import Point
 from opesvault.domain.model import YearMonth
+from opesvault.ui.components import button, text
 from opesvault.ui.pages.base import Page
+from opesvault.ui.theme import SPACE_M
 
 CHARTS = (
     ("Entradas e saídas mensais", "in_out"),
@@ -22,32 +34,44 @@ CHARTS = (
 
 class ReportsPage(Page):
     title = "Relatórios"
+    section = "Patrimônio"
 
     def __init__(self, changed) -> None:  # type: ignore[no-untyped-def]
         super().__init__(changed)
         from opesvault.charts.render import ChartWidget
 
-        self.kind = QComboBox()
+        # Report list on the left (master), the chart on the right (detail).
+        self.kind = QListWidget()
+        self.kind.setAccessibleName("Relatórios")
         for label, key in CHARTS:
-            self.kind.addItem(label, key)
+            item = QListWidgetItem(label)
+            item.setData(Qt.ItemDataRole.UserRole, key)
+            self.kind.addItem(item)
+        self.kind.setCurrentRow(0)
+        self.kind.setMaximumWidth(240)
+        self.kind.setMinimumWidth(170)
         self.months = QComboBox()
+        self.months.setAccessibleName("Período")
         for label, count in (("Últimos 6 meses", 6), ("Últimos 12 meses", 12), ("Últimos 24 meses", 24)):
             self.months.addItem(label, count)
         self.months.setCurrentIndex(1)
-        draw = QPushButton("Atualizar")
-        export = QPushButton("Exportar imagem…")
-        export.clicked.connect(self.export)
-        self.kind.currentIndexChanged.connect(self.refresh)
+        self.kind.currentRowChanged.connect(lambda _: self.refresh())
         self.months.currentIndexChanged.connect(self.refresh)
-        draw.clicked.connect(self.refresh)
+        self.header.add(self.months, button("Exportar imagem…", self.export))
         self.chart = ChartWidget(self.inspect)
-        bar = QHBoxLayout()
-        for widget in (QLabel("Gráfico:"), self.kind, QLabel("Período:"), self.months, draw, export):
-            bar.addWidget(widget)
-        bar.addStretch()
-        layout = QVBoxLayout(self)
-        layout.addLayout(bar)
-        layout.addWidget(self.chart)
+        self.point = text("Clique em um ponto do gráfico para ver de onde vem o valor.", "secondary", wrap=True)
+        self.point.setAccessibleName("Dados do ponto selecionado")
+        right = QWidget()
+        rl = QVBoxLayout(right)
+        rl.setContentsMargins(SPACE_M, 0, 0, 0)
+        rl.addWidget(self.chart, 1)
+        rl.addWidget(self.point)
+        body = QHBoxLayout()
+        body.setSpacing(SPACE_M)
+        body.addWidget(self.kind)
+        body.addWidget(right, 1)
+        layout = self.page_layout()
+        layout.addLayout(body, 1)
 
     def build(self) -> charts.Chart | None:
         if self.session is None:
@@ -55,7 +79,8 @@ class ReportsPage(Page):
         ledger = self.session.ledger
         end = YearMonth.of(date.today())
         start = end.add(-(self.months.currentData() - 1))
-        key = self.kind.currentData()
+        current = self.kind.currentItem()
+        key = current.data(Qt.ItemDataRole.UserRole) if current is not None else "in_out"
         if key == "in_out":
             return charts.monthly_in_out(ledger, start, end)
         if key == "result":
@@ -74,9 +99,13 @@ class ReportsPage(Page):
         chart = self.build()
         if chart is not None:
             self.chart.show_chart(chart)
+            current = self.kind.currentItem()
+            self.header.set_subtitle(current.text() if current is not None else "")
+            self.point.setText("Clique em um ponto do gráfico para ver de onde vem o valor.")
 
     def inspect(self, series: str, point: Point) -> None:
-        QMessageBox.information(self, "Dados do ponto", self.chart.tooltip_text(series, point))
+        # Shown beside the chart instead of a dialog, so the user can keep exploring.
+        self.point.setText(self.chart.tooltip_text(series, point))
 
     def export(self) -> None:
         if self.chart.chart is None:

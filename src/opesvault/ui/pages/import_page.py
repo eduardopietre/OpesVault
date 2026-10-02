@@ -10,14 +10,11 @@ from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QComboBox,
     QFileDialog,
-    QFormLayout,
-    QHBoxLayout,
     QInputDialog,
-    QLabel,
     QLineEdit,
     QMessageBox,
-    QPushButton,
     QSplitter,
+    QStackedWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -30,9 +27,11 @@ from opesvault.importing.parsers import PARSERS
 from opesvault.importing.pipeline import ImportRequest
 from opesvault.importing.source import PROBLEM_MESSAGES, SourceError, SourceProblem
 from opesvault.ui.common import fill_combo, fmt, fmt_date, make_table, read_money, run_guarded, selected_id, set_rows
+from opesvault.ui.components import EmptyState, button, flow_row, hbox, hbox_widget, menu_button, text
 from opesvault.ui.dialogs import FormDialog, ask_reason
 from opesvault.ui.pages.base import Page
 from opesvault.ui.pages.documents_page import PdfView
+from opesvault.ui.theme import SPACE_M, SPACE_S
 
 STATUS_LABELS = {
     BatchStatus.UNSUPPORTED: "Não suportado",
@@ -109,74 +108,109 @@ class ItemDialog(FormDialog):
 
 class ImportPage(Page):
     title = "Importar e revisar"
+    section = "Dia a dia"
 
     def __init__(self, changed) -> None:  # type: ignore[no-untyped-def]
         super().__init__(changed)
         self.batch_id: UUID | None = None
         self._jobs: set[_ImportJob] = set()
         self._queue: list[Path] = []
+        self._viewer_document: UUID | None = None
 
-        self.batches = make_table(["Arquivo", "Layout", "Situação", "Itens", "Conferência"])
+        # ── documents (left)
+        self.batches = make_table(["Documento", "Situação", "Itens"])
+        self.batches.setAccessibleName("Documentos importados")
         self.batches.itemSelectionChanged.connect(self._select_batch)
-        import_button = QPushButton("Importar arquivos…")
-        import_button.clicked.connect(self.import_files)
-        left = QWidget()
-        left_layout = QVBoxLayout(left)
-        left_layout.addWidget(import_button)
-        left_layout.addWidget(self.batches)
+        self.batches.setMinimumWidth(160)
+        import_button = button("Importar arquivos…", self.import_files, role="primary", tip="PDF, CSV ou OFX (Ctrl+I)")
+        self.header.add(import_button)
 
-        self.header = QLabel()
-        self.header.setWordWrap(True)
+        # ── review (center): document facts, target, actions, items
+        self.batch_title = text("", "headline")
+        self.batch_info = text("", "secondary", wrap=True)
+        self.batch_info.setTextFormat(Qt.TextFormat.RichText)
         self.target = QComboBox()
+        self.target.setAccessibleName("Conta ou cartão do documento")
+        self.target.setMinimumContentsLength(14)
         self.target.activated.connect(self._change_target)
         self.layout_choice = QComboBox()
-        choose = QPushButton("Usar layout")
-        choose.clicked.connect(self._choose_layout)
-        target_row = QFormLayout()
-        target_row.addRow("Conta/cartão do documento:", self.target)
-        layout_row = QHBoxLayout()
-        layout_row.addWidget(self.layout_choice)
-        layout_row.addWidget(choose)
-        target_row.addRow("Layout:", layout_row)
+        self.layout_choice.setAccessibleName("Layout")
+        choose = button("Usar layout", self._choose_layout)
+        self.layout_row = QWidget()
+        self.layout_row.setLayout(hbox(text("Layout", "secondary"), self.layout_choice, choose))
+        target_row = flow_row(hbox_widget(text("Conta ou cartão", "secondary"), self.target), self.layout_row)
 
-        self.items = make_table(
-            ["Situação", "Data", "Descrição", "Tipo", "Valor", "Categoria/contrapartida", "Observações"]
-        )
+        self.items = make_table(["Situação", "Data", "Descrição", "Tipo", "Valor", "Categoria", "Observações"])
+        self.items.setAccessibleName("Itens extraídos")
         self.items.itemSelectionChanged.connect(self._select_item)
-        buttons = QHBoxLayout()
-        for label, slot, keys in (
-            ("Aprovar prontos", self.approve_all, ("Ctrl+Shift+Return", "Ctrl+Shift+Enter")),
-            ("Aprovar selecionado", self.approve_selected, ("Ctrl+Return", "Ctrl+Enter")),
-            ("Corrigir", self.correct, ("F2",)),
-            ("Manter separado", self.keep_separate, ("Ctrl+M",)),
-            ("Rejeitar", self.reject, ("Delete",)),
-            ("Sugerir com IA", self.suggest_ai, ()),
+        approve_all = button(
+            "Aprovar prontos",
+            self.approve_all,
+            role="primary",
+            tip="Cria os lançamentos dos itens prontos (Ctrl+Shift+Enter)",
+        )
+        approve_one = button("Aprovar selecionado", self.approve_selected, tip="Ctrl+Enter")
+        correct = button("Corrigir…", self.correct, tip="F2")
+        more = menu_button(
+            "Mais",
+            [
+                ("Manter separado…", self.keep_separate, "Ctrl+M"),
+                ("Sugerir categorias com IA local", self.suggest_ai),
+                None,
+                ("Rejeitar item…", self.reject, "Del"),
+            ],
+        )
+        for keys, slot in (
+            (("Ctrl+Shift+Return", "Ctrl+Shift+Enter"), self.approve_all),
+            (("Ctrl+Return", "Ctrl+Enter"), self.approve_selected),
+            (("F2",), self.correct),
+            (("Ctrl+M",), self.keep_separate),
+            (("Delete",), self.reject),
+            (("Ctrl+I",), self.import_files),
+            (("Ctrl+K",), self.focus_target),
         ):
-            button = QPushButton(label)
-            button.clicked.connect(slot)
-            if keys:
-                button.setToolTip(f"Atalho: {keys[0]}")
-            buttons.addWidget(button)
             self._shortcut(keys, slot)
-        self._shortcut(("Ctrl+I",), self.import_files)
-        self._shortcut(("Ctrl+K",), self.focus_target)
-        buttons.addStretch()
+        self.review_actions = (approve_all, approve_one, correct, more)
+        actions = flow_row(approve_all, approve_one, correct, more)
 
         review = QWidget()
         review_layout = QVBoxLayout(review)
-        review_layout.addWidget(self.header)
-        review_layout.addLayout(target_row)
-        review_layout.addLayout(buttons)
-        review_layout.addWidget(self.items)
+        review_layout.setContentsMargins(SPACE_M, 0, SPACE_M, 0)
+        review_layout.setSpacing(SPACE_S)
+        review_layout.addWidget(self.batch_title)
+        review_layout.addWidget(self.batch_info)
+        review_layout.addWidget(target_row)
+        review_layout.addWidget(actions)
+        review_layout.addWidget(self.items, 1)
+        self.review_empty = EmptyState("Selecione um documento", "Os itens extraídos aparecem aqui para revisão.")
+        self.review_stack = QStackedWidget()
+        self.review_stack.addWidget(review)
+        self.review_stack.addWidget(self.review_empty)
 
+        # ── original document (right): the evidence of the selected item
         self.viewer = PdfView()
+        self.viewer.setMinimumWidth(200)
         splitter = QSplitter(Qt.Orientation.Horizontal)
-        splitter.addWidget(left)
+        splitter.setChildrenCollapsible(False)
+        splitter.addWidget(self.batches)
+        splitter.addWidget(self.review_stack)
         splitter.addWidget(self.viewer)
-        splitter.addWidget(review)
-        splitter.setSizes([280, 520, 700])
-        layout = QVBoxLayout(self)
-        layout.addWidget(splitter)
+        splitter.setStretchFactor(1, 1)
+        splitter.setSizes([260, 700, 420])
+        # Narrow windows: the side panes can be dragged closed; the review never shrinks away.
+        splitter.setCollapsible(0, True)
+        splitter.setCollapsible(2, True)
+        self.empty = EmptyState(
+            "Nenhum documento importado",
+            "Importe faturas de cartão, extratos e notas de corretagem em PDF, CSV ou OFX. "
+            "Cada item é revisado aqui antes de virar lançamento; o arquivo original fica guardado no cofre.",
+            [button("Importar arquivos…", self.import_files)],
+        )
+        self.views = QStackedWidget()
+        self.views.addWidget(splitter)
+        self.views.addWidget(self.empty)
+        layout = self.page_layout()
+        layout.addWidget(self.views, 1)
 
     # ── data ────────────────────────────────────────
 
@@ -185,7 +219,9 @@ class ImportPage(Page):
             self.batches.setRowCount(0)
             self.items.setRowCount(0)
             self.viewer.show_pdf(None)
-            self.header.setText("")
+            self._viewer_document = None
+            self.batch_id = None
+            self.batch_info.setText("")
             return
         ledger = self.session.ledger
         rows = []
@@ -200,10 +236,34 @@ class ImportPage(Page):
                     else ("divergente" if any(r.ok is False for r in batch.reconciliations) else "não comparável")
                 )
             rows.append(
-                ([name, batch.parser_id or "—", STATUS_LABELS[batch.status], str(len(batch_items)), check], batch.id)
+                (
+                    [
+                        name,
+                        STATUS_LABELS[batch.status] + (" · total divergente" if check == "divergente" else ""),
+                        str(len(batch_items)),
+                    ],
+                    batch.id,
+                )
             )
         set_rows(self.batches, rows)
+        self.views.setCurrentIndex(0 if rows else 1)
+        waiting = sum(
+            1 for i in pipeline.items(ledger).values() if i.status in (ItemStatus.READY, ItemStatus.NEEDS_REVIEW)
+        )
+        self.header.set_subtitle(f"{len(rows)} documento(s) · {waiting} item(ns) aguardando revisão" if rows else "")
+        if self.batch_id is None and rows:
+            self.batch_id = rows[0][1]  # open on the most recent document
+        self._reselect_batch()
         self._show_batch()
+
+    def _reselect_batch(self) -> None:
+        for row in range(self.batches.rowCount()):
+            cell = self.batches.item(row, 0)
+            if cell is not None and cell.data(Qt.ItemDataRole.UserRole) == self.batch_id:
+                self.batches.blockSignals(True)
+                self.batches.selectRow(row)
+                self.batches.blockSignals(False)
+                return
 
     def _batch(self) -> ImportBatch | None:
         if self.session is None or self.batch_id is None:
@@ -213,24 +273,35 @@ class ImportPage(Page):
     def _select_batch(self) -> None:
         self.batch_id = selected_id(self.batches)
         self._show_batch()
-        batch = self._batch()
-        if batch is not None and self.session is not None:
-            document = self.session.document(batch.document_id)
-            if document.meta.original_name.lower().endswith(".pdf"):
-                self.viewer.show_pdf(document.data)
-            else:
-                self.viewer.show_pdf(None)
-                self.viewer.image.setText("Arquivo estruturado: veja a linha de origem em Observações.")
+
+    def _load_viewer(self, batch: ImportBatch | None) -> None:
+        """Shows the batch's original file; skipped when it is already on screen."""
+        document_id = batch.document_id if batch is not None else None
+        if document_id == self._viewer_document or self.session is None:
+            return
+        self._viewer_document = document_id
+        if batch is None:
+            self.viewer.show_pdf(None)
+            return
+        document = self.session.document(batch.document_id)
+        if document.meta.original_name.lower().endswith(".pdf"):
+            self.viewer.show_pdf(document.data)
+        else:
+            self.viewer.show_pdf(None)
+            self.viewer.image.setText("Arquivo estruturado: a linha de origem de cada item aparece aqui.")
 
     def _show_batch(self) -> None:
         batch = self._batch()
+        self._load_viewer(batch)
         if batch is None or self.session is None:
             self.items.setRowCount(0)
-            self.header.setText("Selecione um documento.")
+            self.review_stack.setCurrentWidget(self.review_empty)
             return
+        self.review_stack.setCurrentIndex(0)
         ledger = self.session.ledger
         h = batch.header
-        parts = [f"<b>{h.institution or 'Instituição não identificada'}</b>"]
+        self.batch_title.setText(self.session.document(batch.document_id).meta.original_name)
+        parts = [h.institution or "Instituição não identificada", STATUS_LABELS[batch.status]]
         if batch.parser_id:
             parts.append(f"layout {batch.parser_id} v{batch.parser_version}")
         if h.due_on:
@@ -248,7 +319,7 @@ class ImportPage(Page):
         if batch.unmapped_lines:
             lines.append(f"{batch.unmapped_lines} linha(s) não mapeada(s) preservadas no original.")
         lines.extend(f"⚠ {w}" for w in batch.warnings)
-        self.header.setText("<br>".join(lines))
+        self.batch_info.setText("<br>".join(lines))
 
         self.target.blockSignals(True)
         if batch.doc_type is not None and batch.doc_type.value == "card_statement":
@@ -268,7 +339,9 @@ class ImportPage(Page):
         self.target.setCurrentIndex(max(index, 0))
         self.target.blockSignals(False)
         fill_combo(self.layout_choice, [(f"{p.institution} — {p.product} ({p.id})", p.id) for p in PARSERS])
-        self.layout_choice.setEnabled(batch.status in (BatchStatus.AMBIGUOUS, BatchStatus.UNSUPPORTED))
+        needs_layout = batch.status in (BatchStatus.AMBIGUOUS, BatchStatus.UNSUPPORTED)
+        self.layout_choice.setEnabled(needs_layout)
+        self.layout_row.setVisible(needs_layout)  # only when the user has a decision to make
 
         rows = []
         batch_items = sorted(pipeline.items_of(ledger, batch.id), key=lambda i: (i.occurred_on is None, i.occurred_on))

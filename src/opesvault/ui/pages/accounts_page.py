@@ -1,34 +1,32 @@
 """Members, accounts, cards and categories (RF-03, RF-04)."""
 
-from PySide6.QtWidgets import QComboBox, QHBoxLayout, QInputDialog, QPushButton, QTabWidget, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QComboBox, QInputDialog, QTabWidget, QVBoxLayout, QWidget
 
 from opesvault.domain import queries
 from opesvault.domain.model import AccountType
 from opesvault.ui.common import fmt, make_table, run_guarded, selected_id, set_rows
+from opesvault.ui.components import button, hbox, text
 from opesvault.ui.dialogs import SUBTYPE_LABELS, AccountDialog, CardDialog, CategoryDialog
 from opesvault.ui.pages.base import Page
+from opesvault.ui.theme import SPACE_M, SPACE_S
 
 
 class AccountsPage(Page):
     title = "Contas e cartões"
+    section = "Cadastros"
 
     def __init__(self, changed) -> None:  # type: ignore[no-untyped-def]
         super().__init__(changed)
         tabs = QTabWidget()
+        tabs.setDocumentMode(True)
         self.members = make_table(["Integrante", "Situação"])
         self.accounts = make_table(["Conta", "Tipo", "Instituição", "Titulares", "Saldo"])
         self.cards = make_table(["Cartão", "Portador", "Final", "Fechamento", "Vencimento", "Fatura em aberto"])
         self.categories = make_table(["Categoria", "Tipo", "Dentro de"])
-        tabs.addTab(self._with_buttons(self.members, [("Novo integrante", self.add_member)]), "Integrantes")
-        tabs.addTab(
-            self._with_buttons(self.accounts, [("Nova conta", self.add_account), ("Editar", self.edit_account)]),
-            "Contas",
-        )
-        tabs.addTab(
-            self._with_buttons(self.cards, [("Novo cartão", self.add_card), ("Editar", self.edit_card)]), "Cartões"
-        )
-        tabs.addTab(self._with_buttons(self.categories, [("Nova categoria", self.add_category)]), "Categorias")
+        self.accounts.doubleClicked.connect(lambda _: self.edit_account())
+        self.cards.doubleClicked.connect(lambda _: self.edit_card())
         self.bill_card = QComboBox()
+        self.bill_card.setAccessibleName("Cartão")
         self.bill_card.currentIndexChanged.connect(self._refresh_bills)
         self.bills = make_table(
             [
@@ -44,25 +42,27 @@ class AccountsPage(Page):
                 "Situação",
             ]
         )
-        bills_box = QWidget()
-        bills_layout = QVBoxLayout(bills_box)
-        bills_layout.addWidget(self.bill_card)
-        bills_layout.addWidget(self.bills)
-        tabs.addTab(bills_box, "Faturas")
-        layout = QVBoxLayout(self)
-        layout.addWidget(tabs)
+        # Most used first: where the money is, then cards and their bills, then the setup lists.
+        tabs.addTab(
+            self._with_buttons(self.accounts, [("Nova conta…", self.add_account), ("Editar…", self.edit_account)]),
+            "Contas",
+        )
+        tabs.addTab(
+            self._with_buttons(self.cards, [("Novo cartão…", self.add_card), ("Editar…", self.edit_card)]), "Cartões"
+        )
+        tabs.addTab(self._with_buttons(self.bills, [], lead=[text("Cartão", "secondary"), self.bill_card]), "Faturas")
+        tabs.addTab(self._with_buttons(self.categories, [("Nova categoria…", self.add_category)]), "Categorias")
+        tabs.addTab(self._with_buttons(self.members, [("Novo integrante…", self.add_member)]), "Integrantes")
+        layout = self.page_layout()
+        layout.addWidget(tabs, 1)
 
-    def _with_buttons(self, table, buttons) -> QWidget:  # type: ignore[no-untyped-def]
+    def _with_buttons(self, table, buttons, lead=()) -> QWidget:  # type: ignore[no-untyped-def]
         box = QWidget()
         layout = QVBoxLayout(box)
-        row = QHBoxLayout()
-        for label, slot in buttons:
-            button = QPushButton(label)
-            button.clicked.connect(slot)
-            row.addWidget(button)
-        row.addStretch()
-        layout.addLayout(row)
-        layout.addWidget(table)
+        layout.setContentsMargins(0, SPACE_M, 0, 0)
+        layout.setSpacing(SPACE_S)
+        layout.addLayout(hbox(*lead, *(button(label, slot) for label, slot in buttons), None))
+        layout.addWidget(table, 1)
         return box
 
     def refresh(self) -> None:
@@ -124,6 +124,10 @@ class AccountsPage(Page):
                 for kind in (AccountType.EXPENSE, AccountType.INCOME)
                 for a in ledger.categories(kind)
             ],
+        )
+        n_accounts = sum(1 for a in ledger.accounts.values() if a.type in (AccountType.ASSET, AccountType.LIABILITY))
+        self.header.set_subtitle(
+            f"{n_accounts} contas · {len(ledger.cards)} cartões · {len(ledger.members)} integrantes"
         )
         current = self.bill_card.currentData()
         self.bill_card.blockSignals(True)

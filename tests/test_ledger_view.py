@@ -92,7 +92,7 @@ def window(app: QApplication, tmp_path: Path) -> MainWindow:
 
 def ledger_page(window: MainWindow) -> LedgerPage:
     page = next(p for p in window.pages if isinstance(p, LedgerPage))
-    window.nav.setCurrentRow(window.pages.index(page))
+    window.show_page(window.pages.index(page))
     return page
 
 
@@ -165,10 +165,10 @@ def test_virtual_table_sorts_selects_and_reclassifies(window: MainWindow) -> Non
     page = ledger_page(window)
     page.refresh()
     assert page.model.rowCount() == 20
-    assert page.model.data(page.model.index(0, 2)) == "Compra 20"  # default: newest first
-    page.table.sortByColumn(5, Qt.SortOrder.AscendingOrder)
-    assert page.model.data(page.model.index(0, 5)) == "R$ 1,00"
-    assert page.model.data(page.model.index(0, 5), Qt.ItemDataRole.TextAlignmentRole) is not None
+    assert page.model.data(page.model.index(0, 1)) == "Compra 20"  # default: newest first
+    page.table.sortByColumn(3, Qt.SortOrder.AscendingOrder)
+    assert page.model.data(page.model.index(0, 3)) == "R$ 1,00"
+    assert page.model.data(page.model.index(0, 3), Qt.ItemDataRole.TextAlignmentRole) is not None
 
     page.filter_text.setText("Compra 1")
     page._debounce.timeout.emit()

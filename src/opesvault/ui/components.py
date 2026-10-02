@@ -9,6 +9,8 @@ from collections.abc import Callable, Iterable, Sequence
 from PySide6.QtCore import QPoint, QRect, QSize, Qt, Signal
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (
+    QDialog,
+    QDialogButtonBox,
     QFrame,
     QHBoxLayout,
     QLabel,
@@ -16,13 +18,16 @@ from PySide6.QtWidgets import (
     QLayoutItem,
     QMenu,
     QPushButton,
+    QScrollArea,
     QSizePolicy,
     QToolButton,
     QVBoxLayout,
     QWidget,
 )
 
-from opesvault.ui.theme import SPACE_L, SPACE_M, SPACE_S, SPACE_XL, SPACE_XS, restyle
+from opesvault.ui.theme import SPACE_L, SPACE_M, SPACE_S, SPACE_XL, SPACE_XS, SPACE_XXL, restyle
+
+FIGURE_GAP = SPACE_XL + SPACE_S  # between key figures of one group
 
 # (label, slot) or (label, slot, shortcut); None draws a separator.
 MenuEntry = tuple[str, Callable[[], object]] | tuple[str, Callable[[], object], str] | None
@@ -47,6 +52,15 @@ def separator() -> QFrame:
     line = QFrame()
     line.setObjectName("Separator")
     line.setFrameShape(QFrame.Shape.NoFrame)
+    return line
+
+
+def vseparator() -> QFrame:
+    """A thin vertical rule between groups of controls (toolbar)."""
+    line = QFrame()
+    line.setObjectName("VSeparator")
+    line.setFrameShape(QFrame.Shape.NoFrame)
+    line.setFixedHeight(20)
     return line
 
 
@@ -135,9 +149,13 @@ class PageHeader(QWidget):
         self.subtitle.setText(value)
         self.subtitle.setVisible(bool(value))
 
-    def add(self, *widgets: QWidget) -> None:
+    def add(self, *widgets: QWidget | int) -> None:
+        """Trailing actions; an int adds that much space (separates unrelated groups)."""
         for widget in widgets:
-            self.trailing.addWidget(widget, alignment=Qt.AlignmentFlag.AlignVCenter)
+            if isinstance(widget, int):
+                self.trailing.addSpacing(widget)
+            else:
+                self.trailing.addWidget(widget, alignment=Qt.AlignmentFlag.AlignVCenter)
 
 
 class EmptyState(QWidget):
@@ -183,12 +201,12 @@ class Figures(QWidget):
     def __init__(self, labels: Sequence[str]) -> None:
         super().__init__()
         self.values: dict[str, QLabel] = {}
-        flow = FlowLayout(self, SPACE_XL + SPACE_S, SPACE_S)
+        flow = FlowLayout(self, FIGURE_GAP, SPACE_M)
         for label in labels:
             block = QWidget()
             column = QVBoxLayout(block)
             column.setContentsMargins(0, 0, 0, 0)
-            column.setSpacing(2)
+            column.setSpacing(SPACE_XS)
             caption = text(label, "caption")
             value = text("—", "figure")
             value.setAccessibleName(label)
@@ -220,7 +238,7 @@ class Figures(QWidget):
         items = [layout.itemAt(i) for i in range(layout.count())]
         widths = [item.sizeHint().width() for item in items if item is not None]
         heights = [item.sizeHint().height() for item in items if item is not None]
-        return QSize(sum(widths) + (SPACE_XL + SPACE_S) * max(len(widths) - 1, 0), max(heights, default=0))
+        return QSize(sum(widths) + FIGURE_GAP * max(len(widths) - 1, 0), max(heights, default=0))
 
     def set(self, label: str, value: str, tone: str | None = None) -> None:
         self.values[label].setText(value)
@@ -228,25 +246,60 @@ class Figures(QWidget):
 
 
 class Section(QWidget):
-    """A titled group: heading, optional caption, then content. Hierarchy by type and space."""
+    """A titled group: heading (with its actions on the right), optional caption, then content.
+
+    Hierarchy by type and space; the actions sit on the heading's line so they read as
+    belonging to this group, not floating above its content.
+    """
 
     def __init__(self, title: str, caption: str = "") -> None:
         super().__init__()
         self.heading = text(title, "headline")
         self.caption = text(caption, "caption", wrap=True)
+        self.caption.setMinimumWidth(160)
         self.caption.setVisible(bool(caption))
+        self.action_row = QHBoxLayout()
+        self.action_row.setSpacing(SPACE_S)
+        top = QHBoxLayout()
+        top.setContentsMargins(0, 0, 0, 0)
+        top.setSpacing(SPACE_L)
+        top.addWidget(self.heading, 0, Qt.AlignmentFlag.AlignBottom)
+        top.addStretch(1)
+        top.addLayout(self.action_row)
         self.body = QVBoxLayout()
         self.body.setSpacing(SPACE_S)
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, SPACE_M, 0, 0)
+        layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(SPACE_XS)
-        layout.addWidget(self.heading)
+        layout.addLayout(top)
         layout.addWidget(self.caption)
-        layout.addSpacing(SPACE_XS)
+        layout.addSpacing(SPACE_S)
         layout.addLayout(self.body)
 
     def add(self, widget: QWidget, stretch: int = 0) -> None:
         self.body.addWidget(widget, stretch)
+
+    def add_actions(self, *widgets: QWidget) -> None:
+        for widget in widgets:
+            self.action_row.addWidget(widget)
+
+
+def scroll_body() -> tuple[QScrollArea, QVBoxLayout]:
+    """A page body that scrolls vertically, with section spacing (32 px) between its parts.
+
+    Used by pages made of several sections, so a short window scrolls instead of growing.
+    """
+    body = QWidget()
+    body.setObjectName("Surface")
+    layout = QVBoxLayout(body)
+    layout.setContentsMargins(0, SPACE_S, 0, SPACE_L)
+    layout.setSpacing(SPACE_XXL)
+    scroll = QScrollArea()
+    scroll.setWidgetResizable(True)
+    scroll.setFrameShape(QScrollArea.Shape.NoFrame)
+    scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+    scroll.setWidget(body)
+    return scroll, layout
 
 
 def page_margins(layout: QVBoxLayout | QHBoxLayout) -> None:
@@ -282,20 +335,21 @@ class MonthPicker(QWidget):
         self.combo.setCurrentIndex(months_back)  # today
         self.combo.setMinimumContentsLength(16)
         previous = QToolButton()
-        previous.setObjectName("Plain")
+        previous.setObjectName("Stepper")
         previous.setText("‹")
         previous.setToolTip("Mês anterior (Alt+←)")
         previous.setAccessibleName("Mês anterior")
         previous.setShortcut(QKeySequence("Alt+Left"))
         previous.clicked.connect(lambda: self.step(-1))
         following = QToolButton()
-        following.setObjectName("Plain")
+        following.setObjectName("Stepper")
         following.setText("›")
         following.setToolTip("Próximo mês (Alt+→)")
         following.setAccessibleName("Próximo mês")
         following.setShortcut(QKeySequence("Alt+Right"))
         following.clicked.connect(lambda: self.step(1))
-        row = hbox(previous, self.combo, following, spacing=SPACE_XS)
+        self.combo.setMinimumHeight(previous.sizeHint().height())
+        row = hbox(previous, self.combo, following, spacing=2)
         self.setLayout(row)
         self.combo.currentIndexChanged.connect(lambda _: self.changed.emit())
 
@@ -397,7 +451,72 @@ def flow_row(*widgets: QWidget, spacing: int = SPACE_S, line_spacing: int | None
     return host
 
 
-def hbox_widget(*items: QWidget | int | None) -> QWidget:
+def hbox_widget(*items: QWidget | int | None, spacing: int = SPACE_S) -> QWidget:
     host = QWidget()
-    host.setLayout(hbox(*items))
+    host.setLayout(hbox(*items, spacing=spacing))
     return host
+
+
+# A choice offered by `decide`: (key, label, role). Roles: "accept" (the default, first on
+# Windows), "destructive" and "reject" (Esc).
+Choice = tuple[str, str, str]
+
+
+class Decision(QDialog):
+    """A question as the title, the consequence below, and buttons named by what they do.
+
+    No icon: the title already says it is a decision. Replaces QMessageBox.question, whose
+    Yes/No buttons and generic title make the user read the body to know what is asked.
+    """
+
+    def __init__(self, parent: QWidget | None, title: str, message: str, choices: Sequence[Choice]) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("OpesVault")
+        self.choice: str | None = None
+        heading = text(title, "headline", wrap=True)
+        heading.setAccessibleName(title)
+        body = text(message, "secondary", wrap=True)
+        body.setVisible(bool(message))
+        buttons = QDialogButtonBox()
+        roles = {
+            "accept": QDialogButtonBox.ButtonRole.AcceptRole,
+            "destructive": QDialogButtonBox.ButtonRole.DestructiveRole,
+            "reject": QDialogButtonBox.ButtonRole.RejectRole,
+        }
+        for key, label, role in choices:
+            widget = buttons.addButton(label, roles[role])
+            if widget is None:
+                continue
+            widget.setAutoDefault(False)
+            if role == "accept":
+                widget.setProperty("role", "primary")
+                widget.setDefault(True)
+            widget.clicked.connect(lambda _=False, k=key: self._choose(k))
+        buttons.rejected.connect(self.reject)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(SPACE_XL, SPACE_XL, SPACE_XL, SPACE_L)
+        layout.setSpacing(SPACE_S)
+        layout.addWidget(heading)
+        layout.addWidget(body)
+        layout.addSpacing(SPACE_L)
+        layout.addWidget(buttons)
+        self.setMinimumWidth(420)
+        self.setMaximumWidth(560)
+
+    def _choose(self, key: str) -> None:
+        self.choice = key
+        self.accept()
+
+
+def decide(parent: QWidget | None, title: str, message: str, choices: Sequence[Choice]) -> str | None:
+    """Shows a `Decision` and returns the chosen key, or None when cancelled (Esc, close)."""
+    dialog = Decision(parent, title, message, choices)
+    dialog.exec()
+    choice = dialog.choice
+    dialog.deleteLater()
+    return choice
+
+
+def confirm(parent: QWidget | None, title: str, message: str, action: str) -> bool:
+    """A yes/cancel decision whose confirm button is the action itself ("Exportar", "Vincular")."""
+    return decide(parent, title, message, [("ok", action, "accept"), ("cancel", "Cancelar", "reject")]) == "ok"

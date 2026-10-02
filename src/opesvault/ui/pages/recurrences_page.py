@@ -2,14 +2,13 @@
 
 from datetime import date, timedelta
 
-from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QComboBox,
     QInputDialog,
     QLineEdit,
     QMessageBox,
     QSpinBox,
-    QSplitter,
 )
 
 from opesvault.domain.ledger import DomainError, Ledger
@@ -33,19 +32,22 @@ from opesvault.ui.common import (
     combo_value,
     date_edit,
     fill_combo,
+    fit_to_rows,
     fmt,
     fmt_date,
     from_qdate,
-    make_table,
     money_edit,
     read_money,
     run_guarded,
     selected_id,
     set_rows,
+    stretch_column,
+    summary_table,
 )
-from opesvault.ui.components import Section, button, flow_row
+from opesvault.ui.components import Section, button, confirm, menu_button, scroll_body
 from opesvault.ui.dialogs import FormDialog, balance_accounts, category_items
 from opesvault.ui.pages.base import Page
+from opesvault.ui.theme import tokens
 
 FORECAST_LABELS = {
     ForecastStatus.PENDING: "Prevista",
@@ -114,29 +116,34 @@ class RecurrencesPage(Page):
 
     def __init__(self, changed) -> None:  # type: ignore[no-untyped-def]
         super().__init__(changed)
-        self.rules = make_table(["Descrição", "Valor", "Frequência", "Dia", "Situação"])
-        self.forecast_table = make_table(["Data", "Descrição", "Valor", "Situação"])
+        self.rules = summary_table(["Descrição", "Valor", "Frequência", "Dia", "Situação"], max_rows=8)
+        self.forecast_table = summary_table(["Data", "Descrição", "Valor", "Situação"], max_rows=12)
+        stretch_column(self.rules, 0)
+        stretch_column(self.forecast_table, 1)
         self._forecasts: list[Forecast] = []
         self.header.add(button("Nova recorrência…", self.add, role="primary"))
         rules_section = Section("Regras", "Contas fixas e receitas esperadas.")
-        rules_section.add(flow_row(button("Pausar ou retomar", self.toggle)))
-        rules_section.add(self.rules, 1)
+        rules_section.add_actions(button("Pausar ou retomar", self.toggle))
+        rules_section.add(self.rules)
         forecasts_section = Section("Previsões", "De 3 meses atrás a 6 meses à frente. Previsões nunca alteram saldos.")
-        forecasts_section.add(
-            flow_row(
-                button("Vincular realizado…", self.link_selected),
-                button("Vincular sugestões únicas", self.link_suggestions, tip="Só quando há um único candidato"),
-                button("Pular previsão…", self.skip_selected),
-            )
+        forecasts_section.add_actions(
+            button("Vincular realizado…", self.link_selected),
+            menu_button(
+                "Mais",
+                [
+                    ("Vincular sugestões únicas", self.link_suggestions),
+                    ("Pular previsão…", self.skip_selected),
+                ],
+                tip="Vincular quando há um único candidato, ou pular uma previsão",
+            ),
         )
-        forecasts_section.add(self.forecast_table, 1)
-        split = QSplitter(Qt.Orientation.Vertical)
-        split.setChildrenCollapsible(False)
-        split.addWidget(rules_section)
-        split.addWidget(forecasts_section)
-        split.setSizes([260, 420])
+        forecasts_section.add(self.forecast_table)
+        scroll, body = scroll_body()
+        body.addWidget(rules_section)
+        body.addWidget(forecasts_section)
+        body.addStretch(1)
         layout = self.page_layout()
-        layout.addWidget(split, 1)
+        layout.addWidget(scroll, 1)
 
     def _window(self) -> tuple[date, date]:
         today = date.today()
@@ -148,6 +155,7 @@ class RecurrencesPage(Page):
             self.forecast_table.setRowCount(0)
             return
         ledger = self.session.ledger
+        all_rules = list(rules(ledger).values())
         set_rows(
             self.rules,
             [
@@ -161,7 +169,7 @@ class RecurrencesPage(Page):
                     ],
                     r.id,
                 )
-                for r in rules(ledger).values()
+                for r in all_rules
             ],
         )
         start, end = self._window()
@@ -171,6 +179,18 @@ class RecurrencesPage(Page):
             for index, f in enumerate(self._forecasts)
         ]
         set_rows(self.forecast_table, rows)  # type: ignore[arg-type] - row key is the forecast index
+        late = [r for r, f in enumerate(self._forecasts) if f.status is ForecastStatus.LATE]
+        for row in late:  # the state is in words; color only reinforces it
+            item = self.forecast_table.item(row, 3)
+            if item is not None:
+                item.setForeground(QColor(tokens().warning))
+        for table in (self.rules, self.forecast_table):
+            fit_to_rows(table)
+        active = sum(1 for r in all_rules if not r.paused)
+        summary = [f"{active} regra(s) ativa(s)"] if all_rules else []
+        if late:
+            summary.append(f"{len(late)} previsão(ões) atrasada(s)")
+        self.header.set_subtitle(" · ".join(summary))
 
     def _selected_forecast(self) -> Forecast | None:
         index = selected_id(self.forecast_table)
@@ -207,7 +227,7 @@ class RecurrencesPage(Page):
         summary = "\n".join(
             f"{fmt_date(f.due_on)} {f.description} ← {op.description} {fmt_date(op.cash_date)}" for f, op in pairs
         )
-        if QMessageBox.question(self, "Confirmar vínculos", summary) != QMessageBox.StandardButton.Yes:
+        if not confirm(self, f"Vincular {len(pairs)} previsão(ões) aos lançamentos?", summary, "Vincular"):
             return
         for forecast, op in pairs:
             run_guarded(self, lambda f=forecast, o=op: realize(ledger, f.rule_id, f.due_on, o.id))

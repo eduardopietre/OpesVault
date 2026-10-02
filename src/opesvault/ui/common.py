@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
     QHeaderView,
     QLineEdit,
     QMessageBox,
+    QSizePolicy,
     QTableView,
     QTableWidget,
     QTableWidgetItem,
@@ -60,6 +61,18 @@ def read_money(edit: QLineEdit, *, allow_empty: bool = False) -> Decimal | None:
 
 def fmt(value: Decimal | None) -> str:
     return "—" if value is None else format_brl(value)
+
+
+def file_size(size: int) -> str:
+    """Bytes as people read them: '840 bytes', '12 KB', '3,4 MB' (decimal comma)."""
+    if size < 1024:
+        return f"{size} bytes"
+    for unit, scale in (("KB", 1024), ("MB", 1024**2), ("GB", 1024**3)):
+        value = size / scale
+        if value < 1024 or unit == "GB":
+            shown = f"{value:.0f}" if value >= 10 else f"{value:.1f}".replace(".", ",")
+            return f"{shown} {unit}"
+    return f"{size} bytes"  # unreachable
 
 
 def fmt_date(value: date | None) -> str:
@@ -143,6 +156,41 @@ def make_table(headers: list[str]) -> QTableWidget:
     return table
 
 
+def summary_table(headers: list[str], *, max_rows: int = 8) -> QTableWidget:
+    """A short read-only table that sits in the page: no frame, no zebra, as tall as its rows.
+
+    Call `fit_to_rows` after filling it; past `max_rows` it scrolls.
+    """
+    table = frameless(make_table(headers))
+    table.setProperty("maxRows", max_rows)
+    table.setSortingEnabled(False)
+    table.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+    table.setSizeAdjustPolicy(QAbstractItemView.SizeAdjustPolicy.AdjustIgnored)
+    table.setSizePolicy(table.sizePolicy().horizontalPolicy(), QSizePolicy.Policy.Fixed)
+    fit_to_rows(table)
+    return table
+
+
+def frameless(table: QTableWidget) -> QTableWidget:
+    """No outer frame and no zebra: the header rule and row dividers organize the lines.
+
+    For tables that sit directly on the page or inside a tab; the frame is kept only for
+    the large scrolling work areas (Livro, Importar), where it bounds the scrolled region.
+    """
+    table.setProperty("variant", "plain")
+    table.setAlternatingRowColors(False)
+    table.setFrameShape(QTableWidget.Shape.NoFrame)
+    return table
+
+
+def fit_to_rows(table: QTableWidget) -> None:
+    """Height follows the content (at least one row) up to the table's `maxRows`."""
+    limit = table.property("maxRows") or 8
+    rows = min(max(table.rowCount(), 1), int(limit))
+    header = table.horizontalHeader().sizeHint().height()
+    table.setFixedHeight(header + rows * table.verticalHeader().defaultSectionSize() + 2 * table.frameWidth())
+
+
 def set_rows(table: QTableWidget, rows: list[tuple[list[Any], Any]]) -> None:
     """Rows are (cells, id); the id is stored in column 0 for selection lookups."""
     sortable = table.isSortingEnabled()
@@ -168,7 +216,14 @@ def set_rows(table: QTableWidget, rows: list[tuple[list[Any], Any]]) -> None:
                 item.setData(Qt.ItemDataRole.UserRole, row_id)
             table.setItem(r, c, item)
     table.setSortingEnabled(sortable)
+    header = table.horizontalHeader()
+    stretched = [c for c in range(table.columnCount()) if header.sectionResizeMode(c) == QHeaderView.ResizeMode.Stretch]
     table.resizeColumnsToContents()
+    for column in stretched:  # resizing to contents leaves a Stretch column at its content width
+        header.setSectionResizeMode(column, QHeaderView.ResizeMode.Stretch)
+    if header.stretchLastSection():  # same for the last section, until the flag is set again
+        header.setStretchLastSection(False)
+        header.setStretchLastSection(True)
 
 
 def selected_id(table: QTableWidget) -> Any:

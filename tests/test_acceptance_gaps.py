@@ -181,11 +181,11 @@ def test_ta35_approved_but_unsaved_work_is_not_masked(
     window.session = session
     asked: list[str] = []
 
-    def question(*args: object, **kwargs: object) -> QMessageBox.StandardButton:
-        asked.append(str(args[2]) if len(args) > 2 else "")
-        return QMessageBox.StandardButton.Cancel
+    def decide(_parent: object, title: str, *_args: object) -> str | None:
+        asked.append(title)
+        return "cancel"
 
-    monkeypatch.setattr(QMessageBox, "question", question)
+    monkeypatch.setattr("opesvault.ui.main_window.decide", decide)
     assert not window._confirm_discard()  # closing is not silent
     assert asked
 

@@ -4,11 +4,11 @@ from PySide6.QtWidgets import QComboBox, QInputDialog, QTabWidget, QVBoxLayout, 
 
 from opesvault.domain import queries
 from opesvault.domain.model import AccountType
-from opesvault.ui.common import fmt, make_table, run_guarded, selected_id, set_rows
+from opesvault.ui.common import fmt, frameless, make_table, run_guarded, selected_id, set_rows, stretch_column
 from opesvault.ui.components import button, hbox, text
 from opesvault.ui.dialogs import SUBTYPE_LABELS, AccountDialog, CardDialog, CategoryDialog
 from opesvault.ui.pages.base import Page
-from opesvault.ui.theme import SPACE_M, SPACE_S
+from opesvault.ui.theme import SPACE_L, SPACE_M
 
 
 class AccountsPage(Page):
@@ -18,7 +18,6 @@ class AccountsPage(Page):
     def __init__(self, changed) -> None:  # type: ignore[no-untyped-def]
         super().__init__(changed)
         tabs = QTabWidget()
-        tabs.setDocumentMode(True)
         self.members = make_table(["Integrante", "Situação"])
         self.accounts = make_table(["Conta", "Tipo", "Instituição", "Titulares", "Saldo"])
         self.cards = make_table(["Cartão", "Portador", "Final", "Fechamento", "Vencimento", "Fatura em aberto"])
@@ -42,6 +41,9 @@ class AccountsPage(Page):
                 "Situação",
             ]
         )
+        # Names take the slack so amounts sit next to what they belong to.
+        for table in (self.accounts, self.cards, self.categories, self.members):
+            stretch_column(table)
         # Most used first: where the money is, then cards and their bills, then the setup lists.
         tabs.addTab(
             self._with_buttons(self.accounts, [("Nova conta…", self.add_account), ("Editar…", self.edit_account)]),
@@ -54,6 +56,7 @@ class AccountsPage(Page):
         tabs.addTab(self._with_buttons(self.categories, [("Nova categoria…", self.add_category)]), "Categorias")
         self.rules = make_table(["A descrição contém", "Categoria", "Vale para", "Usos", "Situação"])
         self.rules.setAccessibleName("Regras de categoria")
+        stretch_column(self.rules)
         self.rules.doubleClicked.connect(lambda _: self.edit_rule())
         rules_box = self._with_buttons(
             self.rules,
@@ -77,10 +80,10 @@ class AccountsPage(Page):
     def _with_buttons(self, table, buttons, lead=()) -> QWidget:  # type: ignore[no-untyped-def]
         box = QWidget()
         layout = QVBoxLayout(box)
-        layout.setContentsMargins(0, SPACE_M, 0, 0)
-        layout.setSpacing(SPACE_S)
+        layout.setContentsMargins(0, SPACE_L, 0, 0)
+        layout.setSpacing(SPACE_M)
         layout.addLayout(hbox(*lead, *(button(label, slot) for label, slot in buttons), None))
-        layout.addWidget(table, 1)
+        layout.addWidget(frameless(table), 1)
         return box
 
     def refresh(self) -> None:

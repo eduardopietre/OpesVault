@@ -4,7 +4,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import QLabel, QScrollArea, QSpinBox, QVBoxLayout, QWidget
 
-from opesvault.ui.common import make_table, selected_id, set_rows
+from opesvault.ui.common import file_size, frameless, make_table, selected_id, set_rows
 from opesvault.ui.pages.base import Page
 
 
@@ -88,7 +88,7 @@ class DocumentsPage(Page):
 
         from opesvault.ui.components import EmptyState
 
-        self.table = make_table(["Arquivo", "Tamanho", "Resumo (SHA-256)"])
+        self.table = frameless(make_table(["Arquivo", "Tamanho", "Resumo (SHA-256)"]))
         self.table.setAccessibleName("Documentos no cofre")
         self.table.itemSelectionChanged.connect(self._show)
         self.viewer = PdfView()
@@ -115,14 +115,14 @@ class DocumentsPage(Page):
         set_rows(
             self.table,
             [
-                ([d.meta.original_name, f"{d.meta.size / 1024:.0f} KiB", d.meta.sha256[:16]], d.meta.id)
+                ([d.meta.original_name, file_size(d.meta.size), d.meta.sha256[:16]], d.meta.id)
                 for d in self.session.documents
             ],
         )
         documents = self.session.documents
         self.views.setCurrentIndex(0 if documents else 1)
-        size = sum(d.meta.size for d in documents) / (1024 * 1024)
-        self.header.set_subtitle(f"{len(documents)} arquivo(s) · {size:.1f} MiB" if documents else "")
+        size = file_size(sum(d.meta.size for d in documents))
+        self.header.set_subtitle(f"{len(documents)} arquivo(s) · {size}" if documents else "")
 
     def _show(self) -> None:
         doc_id = selected_id(self.table)

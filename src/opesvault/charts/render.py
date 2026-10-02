@@ -23,7 +23,8 @@ from PySide6.QtWidgets import QVBoxLayout, QWidget
 from opesvault.charts.data import Chart, Point
 from opesvault.domain.money import format_brl
 
-PALETTE = ["#2f6db3", "#d1495b", "#2e933c", "#edae49", "#7b4b94", "#00798c"]
+# Muted, distinguishable hues: charts inform, they do not compete with the figures around them.
+PALETTE = ["#3b6ea8", "#c0605a", "#4f8a5b", "#c49a3e", "#7d6b9e", "#3f8f99"]
 
 
 def _label(value: Decimal | None, unit: str) -> str:
@@ -34,20 +35,44 @@ def _label(value: Decimal | None, unit: str) -> str:
     return format_brl(value)
 
 
+MONTH_ABBREVIATIONS = ("jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez")
+
+
+def _month_tick(label: str) -> str:
+    """'2026-03' -> 'mar/26' (how months are written in Brazil); other labels unchanged."""
+    year, dash, month = label.partition("-")
+    if dash and len(year) == 4 and year.isdigit() and month.isdigit() and 1 <= int(month) <= 12:
+        return f"{MONTH_ABBREVIATIONS[int(month) - 1]}/{year[2:]}"
+    return label
+
+
+def _use_ui_font() -> None:
+    """Charts use the interface font (Segoe UI on Windows), falling back to Matplotlib's own."""
+    from PySide6.QtWidgets import QApplication
+
+    app = QApplication.instance()
+    family = app.font().family() if isinstance(app, QApplication) else ""
+    families = [family, "DejaVu Sans"] if family else ["DejaVu Sans"]
+    if matplotlib.rcParams["font.sans-serif"][: len(families)] != families:
+        matplotlib.rcParams["font.family"] = "sans-serif"
+        matplotlib.rcParams["font.sans-serif"] = families + list(matplotlib.rcParams["font.sans-serif"])
+
+
 def draw(figure: Figure, chart: Chart) -> list[tuple[Any, list[Point], str]]:
     """Draws `chart` on `figure`; returns (artist, points, series name) for hover lookups."""
     from opesvault.ui.theme import tokens
 
     t = tokens()
+    _use_ui_font()
     figure.clear()
     figure.set_facecolor(t.content)
     ax = figure.add_subplot(111)
     ax.set_facecolor(t.content)
-    ax.set_title(chart.title, loc="left", fontsize=10, fontweight="bold", color=t.text)
+    ax.set_title(chart.title, loc="left", fontsize=11, fontweight="semibold", color=t.text, pad=12)
     for side in ("top", "right", "left"):
         ax.spines[side].set_visible(False)
     ax.spines["bottom"].set_color(t.separator)
-    ax.tick_params(colors=t.secondary, labelsize=8, length=0)
+    ax.tick_params(colors=t.secondary, labelsize=9, length=0)
     hover: list[tuple[Any, list[Point], str]] = []
     categorical = any(isinstance(p.x, str) for s in chart.series for p in s.points)
     bar_series = [s for s in chart.series if s.style in ("bar", "forecast")]
@@ -84,8 +109,11 @@ def draw(figure: Figure, chart: Chart) -> list[tuple[Any, list[Point], str]]:
         hover.append((artist, known, s.name))
     if categorical:
         ax.set_xticks(range(len(labels)))
-        ax.set_xticklabels(labels, rotation=45, ha="right")
+        ax.set_xticklabels([_month_tick(label) for label in labels], rotation=45, ha="right")
     else:
+        from matplotlib.dates import DateFormatter
+
+        ax.xaxis.set_major_formatter(DateFormatter("%d/%m/%y"))
         figure.autofmt_xdate()
     unit = chart.unit
     ax.yaxis.set_major_formatter(
@@ -94,12 +122,12 @@ def draw(figure: Figure, chart: Chart) -> list[tuple[Any, list[Point], str]]:
     ax.grid(axis="y", color=t.separator, linewidth=0.8)
     ax.set_axisbelow(True)
     if len(chart.series) > 1:
-        legend = ax.legend(loc="best", fontsize="small", frameon=False)
+        legend = ax.legend(loc="best", fontsize=9, frameon=False)
         for item in legend.get_texts():
             item.set_color(t.text)
     footer = " · ".join(chart.notes)
     if footer:
-        figure.text(0.01, 0.01, footer, fontsize=7, color=t.secondary)
+        figure.text(0.01, 0.01, footer, fontsize=8, color=t.secondary)
     figure.tight_layout(rect=(0, 0.04, 1, 1))
     return hover
 
@@ -167,7 +195,7 @@ class ChartWidget(QWidget):
 
     def tooltip_text(self, name: str, point: Point) -> str:
         assert self.chart is not None
-        when = point.x.strftime("%d/%m/%Y") if isinstance(point.x, date) else str(point.x)
+        when = point.x.strftime("%d/%m/%Y") if isinstance(point.x, date) else _month_tick(str(point.x))
         lines = [name, when, _label(point.y, self.chart.unit) + (" (BRL)" if self.chart.unit == "BRL" else "")]
         if self.chart.regime:
             lines.append(f"regime: {self.chart.regime}")

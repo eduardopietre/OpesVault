@@ -16,6 +16,7 @@ class Page(QWidget):
     title = ""
     subtitle = ""
     section = ""  # sidebar group
+    footer = False  # pinned below the sidebar groups
 
     def __init__(self, changed: Callable[[], None]) -> None:
         super().__init__()

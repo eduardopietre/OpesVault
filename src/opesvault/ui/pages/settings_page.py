@@ -4,6 +4,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QCheckBox,
     QFormLayout,
+    QLabel,
     QLineEdit,
     QMessageBox,
     QSpinBox,
@@ -13,7 +14,7 @@ from PySide6.QtWidgets import (
 )
 
 from opesvault.domain.settings import get_settings, update_settings
-from opesvault.ui.common import make_table, run_guarded, set_rows
+from opesvault.ui.common import frameless, make_table, run_guarded, set_rows
 from opesvault.ui.components import button, hbox_widget, text
 from opesvault.ui.pages.base import Page
 from opesvault.ui.theme import SPACE_L, SPACE_M, SPACE_S
@@ -21,7 +22,7 @@ from opesvault.ui.theme import SPACE_L, SPACE_M, SPACE_S
 
 class SettingsPage(Page):
     title = "Configurações"
-    section = "Arquivo"
+    footer = True
 
     def __init__(self, changed) -> None:  # type: ignore[no-untyped-def]
         super().__init__(changed)
@@ -51,11 +52,13 @@ class SettingsPage(Page):
         backup_form.addRow("Lembrar de salvar após:", self.reminder)
         backup_form.addRow(
             "",
-            text(
-                "Backups copiam a última revisão salva, cifrada, nunca o trabalho em memória. "
-                "Cópias para pendrive são manuais. Trocar a senha não altera backups antigos.",
-                "caption",
-                wrap=True,
+            _note(
+                text(
+                    "Backups copiam a última revisão salva, cifrada, nunca o trabalho em memória. "
+                    "Cópias para pendrive são manuais. Trocar a senha não altera backups antigos.",
+                    "caption",
+                    wrap=True,
+                )
             ),
         )
 
@@ -74,11 +77,13 @@ class SettingsPage(Page):
         privacy_form.addRow("Ocultar o conteúdo após:", self.lock_minutes)
         privacy_form.addRow(
             "",
-            text(
-                "Estas opções valem para este computador e ficam fora do cofre. Caminhos recentes não guardam "
-                "saldos nem nomes. O bloqueio oculta a tela; para mostrar de novo, a senha do cofre é pedida.",
-                "caption",
-                wrap=True,
+            _note(
+                text(
+                    "Estas opções valem para este computador e ficam fora do cofre. Caminhos recentes não guardam "
+                    "saldos nem nomes. O bloqueio oculta a tela; para mostrar de novo, a senha do cofre é pedida.",
+                    "caption",
+                    wrap=True,
+                )
             ),
         )
 
@@ -93,12 +98,14 @@ class SettingsPage(Page):
         ai_form.addRow("Modelo instalado:", hbox_widget(self.ai_model, button("Testar conexão", self.test_ai)))
         ai_form.addRow(
             "",
-            text(
-                "Somente o Ollama em 127.0.0.1 é usado; modelos em nuvem são recusados. Apenas descrições e "
-                "nomes de categorias são enviados. Sugestões nunca aprovam lançamentos. O aplicativo funciona "
-                "por completo sem IA.",
-                "caption",
-                wrap=True,
+            _note(
+                text(
+                    "Somente o Ollama em 127.0.0.1 é usado; modelos em nuvem são recusados. Apenas descrições e "
+                    "nomes de categorias são enviados. Sugestões nunca aprovam lançamentos. O aplicativo funciona "
+                    "por completo sem IA.",
+                    "caption",
+                    wrap=True,
+                )
             ),
         )
 
@@ -116,10 +123,9 @@ class SettingsPage(Page):
                 wrap=True,
             )
         )
-        cl.addWidget(self.coverage, 1)
+        cl.addWidget(frameless(self.coverage), 1)
 
         self.tabs = QTabWidget()
-        self.tabs.setDocumentMode(True)
         self.tabs.addTab(backup, "Backup e salvamento")
         self.tabs.addTab(privacy, "Privacidade")
         self.tabs.addTab(ai, "IA local")
@@ -247,6 +253,13 @@ class SettingsPage(Page):
             QMessageBox.information(self, "IA local", str(exc))
             return
         QMessageBox.information(self, "IA local", "Ollama local respondeu.")
+
+
+def _note(label: QLabel) -> QLabel:
+    """A form's explanatory caption, kept right under the fields it explains."""
+    label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+    label.setMinimumWidth(240)
+    return label
 
 
 def _form(host: QWidget) -> QFormLayout:

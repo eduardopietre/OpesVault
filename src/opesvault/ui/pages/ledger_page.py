@@ -346,9 +346,12 @@ class LedgerPage(Page):
         self.filter_origin = QComboBox()
         self.filter_origin.setAccessibleName("Origem")
         fill_combo(self.filter_origin, [(label, o) for o, label in ORIGIN_LABELS.items()], empty="Todas as origens")
-        for combo in (self.period, self.filter_account, self.filter_member, self.filter_status, self.filter_origin):
-            combo.setMinimumContentsLength(9)
-            combo.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
+        # Short, fixed option lists show their whole text (the row wraps on narrow windows);
+        # account names can be long, so that one keeps a bounded width.
+        for combo in (self.period, self.filter_member, self.filter_status, self.filter_origin):
+            combo.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToContents)
+        self.filter_account.setMinimumContentsLength(18)
+        self.filter_account.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
         self.period.currentIndexChanged.connect(self._period_changed)
         for combo in (self.filter_account, self.filter_member, self.filter_status, self.filter_origin):
             combo.currentIndexChanged.connect(self.refresh)

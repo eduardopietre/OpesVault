@@ -3,7 +3,7 @@
 Widgets never hard-code colors. They opt into semantic styles through dynamic
 properties that the stylesheet below understands:
 
-    label.setProperty("textStyle", "title" | "headline" | "secondary" | "caption" | "figure")
+    label.setProperty("textStyle", "title" | "headline" | "strong" | "secondary" | "caption" | "figure")
     button.setProperty("role", "primary" | "destructive" | "plain")
     label.setProperty("tone", "positive" | "negative" | "warning")
 
@@ -16,14 +16,24 @@ from PySide6.QtCore import QLibraryInfo, QLocale, Qt, QTranslator
 from PySide6.QtGui import QColor, QFont, QPalette
 from PySide6.QtWidgets import QApplication, QWidget
 
-# Spacing scale (px): inside a control, between related items, between groups, between sections.
+# Spacing scale (px): inside a control, between related items, within a group, between groups,
+# between sections of a page.
 SPACE_XS = 4
 SPACE_S = 8
 SPACE_M = 12
 SPACE_L = 16
 SPACE_XL = 24
+SPACE_XXL = 32
 RADIUS = 6
 ROW_HEIGHT = 26
+NAV_ROW_HEIGHT = 28
+
+# Type scale (px). One family (the system UI font: Segoe UI on Windows), two weights.
+FONT_BODY_PT = 10.0  # ~13 px at 100%: navigation, tables, forms
+TITLE_PX = 22
+HEADLINE_PX = 15
+CAPTION_PX = 12
+FIGURE_PX = 26
 
 
 @dataclass(frozen=True)
@@ -60,8 +70,8 @@ LIGHT = Tokens(
     selection="#0a64c8",
     selection_inactive="#dcdce2",
     hover="#ececf0",
-    positive="#1b7f3b",
-    negative="#c4271c",
+    positive="#2a7a46",
+    negative="#a63830",  # muted: a loss is information, not an alarm
     warning="#9a6400",
 )
 
@@ -79,8 +89,8 @@ DARK = Tokens(
     selection="#2f6fc0",
     selection_inactive="#3a3a40",
     hover="#2e2e32",
-    positive="#4cc472",
-    negative="#ff6b5f",
+    positive="#5cbf7d",
+    negative="#e8867c",
     warning="#e0a43a",
 )
 
@@ -138,22 +148,30 @@ QSplitter::handle {{ background: {t.separator}; }}
 QSplitter::handle:horizontal {{ width: 1px; }}
 QSplitter::handle:vertical {{ height: 1px; }}
 
-QListWidget#Sidebar {{ padding: {SPACE_S}px {SPACE_XS}px; outline: 0; }}
-QListWidget#Sidebar::item {{
-    min-height: {ROW_HEIGHT}px; padding: 0 {SPACE_S}px; border-radius: {RADIUS}px; color: {t.text};
+QListWidget#Sidebar {{ padding: {SPACE_S}px {SPACE_S}px 0 {SPACE_S}px; outline: 0; border-radius: 0; }}
+QListWidget#SidebarFooter {{
+    background: {t.window}; padding: {SPACE_S}px; border: none; border-top: 1px solid {t.separator};
+    border-radius: 0; outline: 0;
 }}
-QListWidget#Sidebar::item:hover {{ background: {t.hover}; }}
-QListWidget#Sidebar::item:selected {{ background: {t.selection_inactive}; color: {t.text}; font-weight: 600; }}
-QListWidget#Sidebar::item:selected:active {{ background: {t.selection}; color: {t.accent_text}; }}
+QListWidget#Sidebar::item, QListWidget#SidebarFooter::item {{
+    min-height: {NAV_ROW_HEIGHT}px; padding: 0 {SPACE_S}px; border-radius: {RADIUS}px; color: {t.text};
+}}
+QListWidget#Sidebar::item:hover, QListWidget#SidebarFooter::item:hover {{ background: {t.hover}; }}
+/* Selection is a quiet fill and a stronger weight; accent stays reserved for actions and focus. */
+QListWidget#Sidebar::item:selected, QListWidget#SidebarFooter::item:selected {{
+    background: {t.selection_inactive}; color: {t.text}; font-weight: 600;
+}}
 QListWidget#Sidebar::item:disabled {{
-    color: {t.tertiary}; font-size: 11px; font-weight: 600; padding-top: {SPACE_S}px; background: transparent;
+    color: {t.secondary}; font-size: {CAPTION_PX}px; font-weight: 600; background: transparent;
+    min-height: {ROW_HEIGHT}px; padding-top: {SPACE_M}px;
 }}
 
-QLabel[textStyle="title"] {{ font-size: 20px; font-weight: 600; color: {t.text}; }}
-QLabel[textStyle="headline"] {{ font-size: 13px; font-weight: 600; color: {t.text}; }}
+QLabel[textStyle="title"] {{ font-size: {TITLE_PX}px; font-weight: 600; color: {t.text}; }}
+QLabel[textStyle="headline"] {{ font-size: {HEADLINE_PX}px; font-weight: 600; color: {t.text}; }}
+QLabel[textStyle="strong"] {{ font-weight: 600; color: {t.text}; }}
 QLabel[textStyle="secondary"] {{ color: {t.secondary}; }}
-QLabel[textStyle="caption"] {{ color: {t.secondary}; font-size: 11px; }}
-QLabel[textStyle="figure"] {{ font-size: 22px; font-weight: 600; color: {t.text}; }}
+QLabel[textStyle="caption"] {{ color: {t.secondary}; font-size: {CAPTION_PX}px; }}
+QLabel[textStyle="figure"] {{ font-size: {FIGURE_PX}px; font-weight: 600; color: {t.text}; }}
 QLabel[tone="positive"] {{ color: {t.positive}; }}
 QLabel[tone="negative"] {{ color: {t.negative}; }}
 QLabel[tone="warning"] {{ color: {t.warning}; }}
@@ -209,6 +227,18 @@ QListWidget::item {{ min-height: {ROW_HEIGHT}px; padding: 0 {SPACE_S}px; }}
 QListWidget::item:hover {{ background: {t.hover}; }}
 QListWidget::item:selected {{ background: {t.selection_inactive}; color: {t.text}; }}
 QListWidget::item:selected:active {{ background: {t.selection}; color: {t.accent_text}; }}
+/* Selection already shows where focus is; the dotted current-cell box only adds noise. */
+QTableView, QTableWidget {{ outline: 0; }}
+/* A quiet source list (Relatórios): like the sidebar, neutral selection and stronger text. */
+QListWidget[variant="plain"] {{ border: none; background: transparent; outline: 0; }}
+QListWidget[variant="plain"]::item {{ min-height: {NAV_ROW_HEIGHT}px; border-radius: {RADIUS}px; }}
+QListWidget[variant="plain"]::item:selected, QListWidget[variant="plain"]::item:selected:active {{
+    background: {t.selection_inactive}; color: {t.text}; font-weight: 600;
+}}
+/* Summary tables: no outer frame, no zebra; a header rule and row dividers organize the lines. */
+QTableWidget[variant="plain"] {{ border: none; border-radius: 0; background: transparent; }}
+QTableWidget[variant="plain"]::item {{ border-bottom: 1px solid {t.separator}; }}
+QTableWidget[variant="plain"] QHeaderView::section {{ background: {t.content}; }}
 QHeaderView::section {{
     background: {t.raised}; color: {t.secondary}; border: none; border-bottom: 1px solid {t.separator};
     padding: {SPACE_XS}px {SPACE_S}px; font-weight: 600;
@@ -216,6 +246,8 @@ QHeaderView::section {{
 QTableCornerButton::section {{ background: {t.raised}; border: none; }}
 
 QTabWidget::pane {{ border: none; border-top: 1px solid {t.separator}; top: -1px; }}
+/* The pane's rule is the only line under the tabs (Fusion's own base line ignores the palette). */
+QTabBar {{ qproperty-drawBase: 0; }}
 QTabBar::tab {{
     background: transparent; color: {t.secondary}; padding: {SPACE_XS + 2}px {SPACE_M}px;
     border: none; border-bottom: 2px solid transparent; margin-right: {SPACE_XS}px;
@@ -238,6 +270,15 @@ QMenu::separator {{ height: 1px; background: {t.separator}; margin: {SPACE_XS}px
 QToolTip {{ background: {t.raised}; color: {t.text}; border: 1px solid {t.separator}; padding: {SPACE_XS}px; }}
 
 QFrame#Separator {{ background: {t.separator}; max-height: 1px; min-height: 1px; border: none; }}
+QFrame#VSeparator {{ background: {t.separator}; max-width: 1px; min-width: 1px; border: none; }}
+QToolButton#Stepper {{
+    background: {t.raised}; color: {t.text}; border: 1px solid {t.separator}; border-radius: {RADIUS}px;
+    min-width: 26px; min-height: 22px; font-size: 16px; padding: 0;
+}}
+QToolButton#Stepper:hover {{ background: {t.hover}; }}
+QToolButton#Stepper:pressed {{ background: {t.selection_inactive}; }}
+QToolButton#Stepper:focus {{ border: 2px solid {t.accent}; }}
+QToolButton#Stepper:disabled {{ color: {t.tertiary}; }}
 QFrame#FilterChip {{ background: {t.hover}; border-radius: {RADIUS}px; }}
 QLabel#SaveDot[state="dirty"] {{ color: {t.warning}; }}
 QLabel#SaveDot[state="clean"] {{ color: {t.positive}; }}
@@ -267,8 +308,9 @@ def apply_theme(app: QApplication, dark: bool | None = None) -> Tokens:
     app.setStyle("Fusion")  # identical metrics on every platform; the palette carries the look
     app.setPalette(_palette(_current))
     font = QFont(app.font())
-    if font.pointSizeF() < 9.5:
-        font.setPointSizeF(9.5)
+    if font.pointSizeF() < FONT_BODY_PT:
+        font.setPointSizeF(FONT_BODY_PT)
+    font.setFeature(QFont.Tag("tnum"), 1)  # tabular figures: amounts line up in columns
     app.setFont(font)
     app.setStyleSheet(stylesheet(_current))
     return _current

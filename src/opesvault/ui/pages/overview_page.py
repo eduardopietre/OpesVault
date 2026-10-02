@@ -3,18 +3,50 @@ spending by category, plus what still needs attention (docs/07 §2)."""
 
 from datetime import date
 from decimal import Decimal
+from typing import Any
 
-from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QGridLayout, QScrollArea, QTableWidget, QVBoxLayout, QWidget
+from PySide6.QtCore import QRectF, Qt
+from PySide6.QtGui import QColor, QPainter
+from PySide6.QtWidgets import (
+    QGridLayout,
+    QStyledItemDelegate,
+    QStyleOptionViewItem,
+    QTableWidget,
+    QVBoxLayout,
+)
 
 from opesvault.domain import queries
 from opesvault.domain.model import AccountType, YearMonth
 from opesvault.domain.money import ZERO
 from opesvault.ui.alerts_panel import AlertsPanel
-from opesvault.ui.common import fmt, make_table, month_label, set_rows, stretch_column
-from opesvault.ui.components import Figures, MonthPicker, Section, button, flow_row, text
+from opesvault.ui.common import fit_to_rows, fmt, fmt_date, month_label, set_rows, stretch_column, summary_table
+from opesvault.ui.components import Figures, MonthPicker, Section, button, scroll_body, separator, text
 from opesvault.ui.pages.base import Page
-from opesvault.ui.theme import SPACE_XL
+from opesvault.ui.theme import SPACE_M, SPACE_S, SPACE_XL, SPACE_XS, SPACE_XXL, tokens
+
+SHARE_ROLE = Qt.ItemDataRole.UserRole + 2
+SHARE_BARS_FROM = 3  # categories needed before a bar adds anything to the percentage
+
+
+class ShareBarDelegate(QStyledItemDelegate):
+    """A short neutral bar left of the percentage; the number stays the primary reading."""
+
+    def paint(self, painter: QPainter, option: QStyleOptionViewItem, index: Any) -> None:
+        super().paint(painter, option, index)
+        share = index.data(SHARE_ROLE)
+        if not isinstance(share, float):
+            return
+        rect = option.rect  # type: ignore[attr-defined]
+        track = QRectF(rect.left() + SPACE_S, rect.center().y() - 2, max(rect.width() - 64, 0), 4)
+        t = tokens()
+        painter.save()
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QColor(t.separator))
+        painter.drawRoundedRect(track, 2, 2)
+        painter.setBrush(QColor(t.tertiary))
+        painter.drawRoundedRect(QRectF(track.left(), track.top(), track.width() * min(share, 1.0), 4), 2, 2)
+        painter.restore()
 
 
 def _tone(value: Decimal | None) -> str | None:
@@ -33,59 +65,74 @@ class OverviewPage(Page):
         self.month.changed.connect(self.refresh)
         self.close_button = button("Fechar mês…", self.close_month, tip="Bloqueia alterações no mês")
         self.reopen_button = button("Reabrir mês…", self.reopen_month, tip="Libera alterações; exige motivo")
-        self.header.add(self.month, self.close_button, self.reopen_button)
+        # Time navigation and the month action are separate groups.
+        self.header.add(self.month, SPACE_XL, self.close_button, self.reopen_button)
         self._month_chosen = False
         self.alerts = AlertsPanel(self.navigate)
 
         self.cash = Figures(["Entradas", "Saídas", "Saldo do mês"])
         self.result = Figures(["Receitas", "Despesas", "Resultado"])
         self.worth = Figures(["Ativos", "Passivos", "Patrimônio líquido"])
-        cash = Section("Caixa", "O que entrou e saiu das contas. Transferências entre contas próprias não contam.")
-        cash.add(self.cash)
-        result = Section("Resultado por competência", "Despesas no mês em que aconteceram, inclusive no cartão.")
-        result.add(self.result)
-        worth = Section("Patrimônio no fim do mês")
-        worth.add(self.worth)
+        # Cash and competence are two readings of the same month: equal columns, and heading,
+        # caption and figures share grid rows so they line up across the columns.
+        month_grid = QGridLayout()
+        month_grid.setContentsMargins(0, 0, 0, 0)
+        month_grid.setHorizontalSpacing(SPACE_XXL)
+        month_grid.setVerticalSpacing(SPACE_XS)
+        columns = (
+            ("Caixa", "O que entrou e saiu das contas. Transferências entre contas próprias não contam.", self.cash),
+            ("Resultado por competência", "Despesas no mês em que aconteceram, inclusive no cartão.", self.result),
+        )
+        for column, (title, caption, figures) in enumerate(columns):
+            month_grid.addWidget(text(title, "headline"), 0, column)
+            note = text(caption, "caption", wrap=True)
+            note.setMinimumWidth(160)
+            month_grid.addWidget(note, 1, column, Qt.AlignmentFlag.AlignTop)
+            month_grid.addWidget(figures, 3, column, Qt.AlignmentFlag.AlignTop)
+            month_grid.setColumnStretch(column, 1)
+        month_grid.setRowMinimumHeight(2, SPACE_S)
+
+        # Net worth is a position, not a flow: its own band, below a rule.
+        self.worth_caption = text("", "caption")
+        worth = QVBoxLayout()
+        worth.setContentsMargins(0, 0, 0, 0)
+        worth.setSpacing(SPACE_XS)
+        worth.addWidget(separator())
+        worth.addSpacing(SPACE_XL)
+        worth.addWidget(text("Patrimônio no fim do mês", "headline"))
+        worth.addWidget(self.worth_caption)
+        worth.addSpacing(SPACE_M)
+        worth.addWidget(self.worth)
 
         self.pending = text("", wrap=True)
         self.pending.setProperty("tone", "warning")
         self.pending_section = Section("Pendências do mês")
         self.pending_section.add(self.pending)
 
-        self.balances = make_table(["Conta", "Saldo"])
-        self.categories = make_table(["Categoria", "Despesa", "Parte"])
+        self.balances = summary_table(["Conta", "Saldo"])
+        self.categories = summary_table(["Categoria", "Despesa", "% do total"])
+        self.categories.setItemDelegateForColumn(2, ShareBarDelegate(self.categories))
         for table in (self.balances, self.categories):
-            table.setSortingEnabled(False)
-            table.setMinimumHeight(160)
             stretch_column(table)
-        balances = Section("Saldos das contas")
-        balances.add(self.balances, 1)
-        categories = Section("Despesas por categoria")
-        categories.add(self.categories, 1)
-
-        # The three groups sit side by side on wide windows and wrap on narrow ones.
-        for group in (cash, result, worth):
-            group.setMinimumWidth(group.sizeHint().width())
-            group.setFixedHeight(group.sizeHint().height())
-        figures = flow_row(cash, result, worth, spacing=SPACE_XL * 2, line_spacing=0)
         tables = QGridLayout()
-        tables.setHorizontalSpacing(SPACE_XL)
-        tables.addWidget(balances, 0, 0)
-        tables.addWidget(categories, 0, 1)
+        tables.setContentsMargins(0, 0, 0, 0)
+        tables.setHorizontalSpacing(SPACE_XXL)
+        tables.setVerticalSpacing(SPACE_S)
+        for column, (title, table) in enumerate(
+            (("Saldos das contas", self.balances), ("Despesas por categoria", self.categories))
+        ):
+            tables.addWidget(text(title, "headline"), 0, column)
+            tables.addWidget(table, 1, column, Qt.AlignmentFlag.AlignTop)
+            tables.setColumnStretch(column, 1)
+
         # Short windows scroll the content instead of forcing a taller window.
-        body = QWidget()
-        body.setObjectName("Surface")
-        content = QVBoxLayout(body)
-        content.setContentsMargins(0, 0, 0, 0)
+        scroll, content = scroll_body()
         content.addWidget(self.alerts)
-        content.addWidget(figures)
+        content.addLayout(month_grid)
+        content.addLayout(worth)
         content.addWidget(self.pending_section)
-        content.addLayout(tables, 1)
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QScrollArea.Shape.NoFrame)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        scroll.setWidget(body)
+        content.addLayout(tables)
+        content.addStretch(1)
         layout = self.page_layout()
         layout.addWidget(scroll, 1)
 
@@ -138,8 +185,9 @@ class OverviewPage(Page):
 
         closed = is_closed(ledger, month)
         pending = pending_items(ledger, month)
-        state = "fechado" if closed else "aberto"
-        self.header.set_subtitle(f"{month_label(month).capitalize()} · mês {state}")
+        # The month itself is shown once, in the picker.
+        self.header.set_subtitle("Mês fechado" if closed else "Mês aberto")
+        self.worth_caption.setText(f"Saldos de todas as contas em {fmt_date(month.last_day())}.")
         self.close_button.setVisible(not closed)
         self.reopen_button.setVisible(closed)
         self.pending.setText("\n".join(f"• {p}" for p in pending))
@@ -163,6 +211,15 @@ class OverviewPage(Page):
             rows.append(([ledger.accounts[account_id].name, fmt(value), share], account_id))
         set_rows(self.categories, rows)
         _align_right(self.categories, 2)
+        # Bars only help when there is something to compare.
+        bars = bool(total) and len(rows) >= SHARE_BARS_FROM
+        for row, (_cells, account_id) in enumerate(rows):
+            item = self.categories.item(row, 2)
+            if item is not None and bars:
+                item.setData(SHARE_ROLE, float(spending[account_id] / total))
+        self.categories.setColumnWidth(2, 150 if bars else 96)
+        fit_to_rows(self.balances)
+        fit_to_rows(self.categories)
 
     def close_month(self) -> None:
         if self.session is None:
@@ -198,8 +255,10 @@ class OverviewPage(Page):
 
 
 def _align_right(table: QTableWidget, column: int) -> None:
-    from PySide6.QtCore import Qt
-
+    """Numeric column: header and cells on the right edge."""
+    header = table.horizontalHeaderItem(column)
+    if header is not None:
+        header.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
     for row in range(table.rowCount()):
         item = table.item(row, column)
         if item is not None:

@@ -13,19 +13,20 @@ from opesvault.domain.ledger import DomainError
 from opesvault.domain.model import AccountType, YearMonth
 from opesvault.ui.common import (
     fill_combo,
+    fit_to_rows,
     fmt,
-    make_table,
     money_edit,
     month_label,
     read_money,
     run_guarded,
     select_combo,
     stretch_column,
+    summary_table,
 )
 from opesvault.ui.components import EmptyState, Figures, MonthPicker, button, menu_button
 from opesvault.ui.dialogs import FormDialog, category_items
 from opesvault.ui.pages.base import Page
-from opesvault.ui.theme import tokens
+from opesvault.ui.theme import SPACE_L, SPACE_S, SPACE_XL, tokens
 
 STATE_LABELS = {BudgetState.OK: "Dentro", BudgetState.NEAR: "Perto do limite", BudgetState.OVER: "Estourado"}
 
@@ -72,14 +73,13 @@ class BudgetPage(Page):
                 ("Remover do orçamento", self.remove_selected),
             ],
         )
-        self.header.add(self.month, more, button("Definir orçamento…", self.define, role="primary"))
+        self.header.add(self.month, SPACE_XL, more, button("Definir orçamento…", self.define, role="primary"))
         self.more = more
 
         self.figures = Figures(["Planejado", "Realizado", "Restante", "Sem orçamento"])
-        self.table = make_table(["Categoria", "Planejado", "Realizado", "Restante", "Uso", "Situação"])
+        self.table = summary_table(["Categoria", "Planejado", "Realizado", "Restante", "Uso", "Situação"], max_rows=16)
         self.table.setAccessibleName("Orçamento por categoria")
         self.table.doubleClicked.connect(lambda _: self.edit_selected())
-        self.table.setSortingEnabled(False)
         stretch_column(self.table)
         self.empty = EmptyState(
             "Sem orçamento neste mês",
@@ -91,8 +91,11 @@ class BudgetPage(Page):
         self.views.addWidget(self.table)
         self.views.addWidget(self.empty)
         layout = self.page_layout()
+        layout.addSpacing(SPACE_S)
         layout.addWidget(self.figures)
-        layout.addWidget(self.views, 1)
+        layout.addSpacing(SPACE_L)
+        layout.addWidget(self.views)
+        layout.addStretch(1)
 
     def _selected_category(self) -> UUID | None:
         row = self.table.currentRow()
@@ -113,11 +116,14 @@ class BudgetPage(Page):
         self.figures.set("Restante", fmt(remaining), "negative" if remaining < 0 else None)
         self.figures.set("Sem orçamento", fmt(status.unbudgeted))
         over, near = len(status.over), len(status.near)
-        summary = [month_label(month).capitalize()]
+        # The month is shown once, in the picker; the subtitle says how it is going.
+        summary = []
         if over:
             summary.append(f"{over} categoria(s) estourada(s)")
         if near:
             summary.append(f"{near} perto do limite")
+        if status.rows and not summary:
+            summary.append("Todas as categorias dentro do planejado")
         self.header.set_subtitle(" · ".join(summary))
         self.views.setCurrentWidget(self.table if status.rows else self.empty)
         self.table.setRowCount(len(status.rows))
@@ -142,6 +148,7 @@ class BudgetPage(Page):
                 self.table.setItem(r, c, item)
         for column in range(1, self.table.columnCount()):  # figures at their width; the name takes the rest
             self.table.resizeColumnToContents(column)
+        fit_to_rows(self.table)
 
     # ── actions ─────────────────────────────────────
 

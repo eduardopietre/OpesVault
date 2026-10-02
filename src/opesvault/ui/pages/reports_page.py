@@ -6,10 +6,10 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QComboBox,
     QFileDialog,
+    QFrame,
     QHBoxLayout,
     QListWidget,
     QListWidgetItem,
-    QMessageBox,
     QVBoxLayout,
     QWidget,
 )
@@ -17,9 +17,10 @@ from PySide6.QtWidgets import (
 from opesvault.charts import data as charts
 from opesvault.charts.data import Point
 from opesvault.domain.model import YearMonth
-from opesvault.ui.components import button, text
+from opesvault.ui.common import month_label
+from opesvault.ui.components import button, confirm, text
 from opesvault.ui.pages.base import Page
-from opesvault.ui.theme import SPACE_M
+from opesvault.ui.theme import SPACE_L, SPACE_S
 
 CHARTS = (
     ("Entradas e saídas mensais", "in_out"),
@@ -34,7 +35,7 @@ CHARTS = (
 
 class ReportsPage(Page):
     title = "Relatórios"
-    section = "Patrimônio"
+    section = "Acompanhamento"
 
     def __init__(self, changed) -> None:  # type: ignore[no-untyped-def]
         super().__init__(changed)
@@ -50,6 +51,8 @@ class ReportsPage(Page):
         self.kind.setCurrentRow(0)
         self.kind.setMaximumWidth(240)
         self.kind.setMinimumWidth(170)
+        self.kind.setProperty("variant", "plain")
+        self.kind.setFrameShape(QListWidget.Shape.NoFrame)
         self.months = QComboBox()
         self.months.setAccessibleName("Período")
         for label, count in (("Últimos 6 meses", 6), ("Últimos 12 meses", 12), ("Últimos 24 meses", 24)):
@@ -59,16 +62,20 @@ class ReportsPage(Page):
         self.months.currentIndexChanged.connect(self.refresh)
         self.header.add(self.months, button("Exportar imagem…", self.export))
         self.chart = ChartWidget(self.inspect)
-        self.point = text("Clique em um ponto do gráfico para ver de onde vem o valor.", "secondary", wrap=True)
+        self.point = text("Clique em um ponto do gráfico para ver de onde vem o valor.", "caption", wrap=True)
         self.point.setAccessibleName("Dados do ponto selecionado")
         right = QWidget()
         rl = QVBoxLayout(right)
-        rl.setContentsMargins(SPACE_M, 0, 0, 0)
+        rl.setContentsMargins(0, 0, 0, 0)
         rl.addWidget(self.chart, 1)
         rl.addWidget(self.point)
         body = QHBoxLayout()
-        body.setSpacing(SPACE_M)
+        body.setContentsMargins(0, SPACE_S, 0, 0)
+        body.setSpacing(SPACE_L)
         body.addWidget(self.kind)
+        rule = QFrame()
+        rule.setObjectName("VSeparator")
+        body.addWidget(rule)
         body.addWidget(right, 1)
         layout = self.page_layout()
         layout.addLayout(body, 1)
@@ -99,8 +106,10 @@ class ReportsPage(Page):
         chart = self.build()
         if chart is not None:
             self.chart.show_chart(chart)
-            current = self.kind.currentItem()
-            self.header.set_subtitle(current.text() if current is not None else "")
+            # The chart names itself; the subtitle says which months it covers.
+            end = YearMonth.of(date.today())
+            start = end.add(-(self.months.currentData() - 1))
+            self.header.set_subtitle(f"De {month_label(start)} a {month_label(end)}")
             self.point.setText("Clique em um ponto do gráfico para ver de onde vem o valor.")
 
     def inspect(self, series: str, point: Point) -> None:
@@ -113,10 +122,10 @@ class ReportsPage(Page):
         path, _ = QFileDialog.getSaveFileName(self, "Exportar imagem", "grafico.png", "PNG (*.png)")
         if not path:
             return
-        confirm = QMessageBox.question(
+        if confirm(
             self,
+            "Exportar imagem sem criptografia?",
+            "A imagem será gravada fora do cofre, sem criptografia.",
             "Exportar",
-            "A imagem será gravada fora do cofre, sem criptografia. Continuar?",
-        )
-        if confirm == QMessageBox.StandardButton.Yes:
+        ):
             self.chart.export_png(path)

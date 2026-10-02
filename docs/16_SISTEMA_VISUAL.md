@@ -1,22 +1,24 @@
 # Sistema visual e de interação
 
-Versão 1.0 • 02/10/2026. Complementa o `07` (telas e gráficos) com as regras de interface adotadas na revisão orientada pelos princípios de interação de desktop da Apple (HIG): hierarquia clara, conteúdo acima de cromo, teclado como recurso de primeira classe e consistência entre telas. A meta não é imitar a aparência do macOS: o alvo continua sendo Windows, com Qt Widgets.
+Versão 1.1 • 02/10/2026. Complementa o `07` (telas e gráficos) com as regras de interface adotadas na revisão orientada pelos princípios de interação de desktop da Apple (HIG): hierarquia clara, conteúdo acima de cromo, teclado como recurso de primeira classe e consistência entre telas. A meta não é imitar a aparência do macOS: o alvo continua sendo Windows, com Qt Widgets.
 
 ## 1. Arquitetura da janela
 
 ```
-Barra de ferramentas:  [barra lateral] Família · arquivo        ● estado  [Salvar]  Operador
+Barra de ferramentas:  [barra lateral] Família arquivo      ● estado  [Salvar] │ Operador [▾]
 Barra lateral          Cabeçalho da página: título, contexto, ações
 (grupos)               Conteúdo principal                     | Inspetor (quando útil)
+Configurações (rodapé)
 ```
 
-- **Barra lateral:** destinos agrupados (Dia a dia, Cadastros, Patrimônio, Arquivo). É redimensionável e pode ser ocultada (Ctrl+Shift+B). Um contador mostra itens de importação aguardando revisão.
+- **Barra lateral:** destinos agrupados (Dia a dia, Cadastros, Acompanhamento, Arquivo), com Configurações fixa no rodapé, por tratar do aplicativo e não do dinheiro da família. Itens de 28 px; o selecionado tem fundo neutro discreto e texto em semibold, sem a cor de destaque. É redimensionável e pode ser ocultada (Ctrl+Shift+B). Um contador mostra itens de importação aguardando revisão.
 - **Barra de ferramentas:** só o essencial e sempre visível:
-  - qual cofre está aberto;
-  - se há alterações não salvas (ponto + texto, nunca só cor);
-  - o botão Salvar, que vira ação primária quando há alterações;
-  - o operador do histórico.
-- **Cabeçalho de página:** título ("onde estou"), linha de contexto (contagem, mês, filtros) e as ações da página. Há no máximo uma ação primária por tela.
+  - qual cofre está aberto: o nome da família em destaque e o nome do arquivo como texto secundário;
+  - se há alterações não salvas (ponto + texto, nunca só cor), agrupado com o botão Salvar, que vira ação primária quando há alterações;
+  - o operador do histórico, separado por uma divisória.
+
+  O título da janela é "Família — OpesVault", sem asterisco: o estado de salvamento fica só na barra.
+- **Cabeçalho de página:** título ("onde estou"), linha de contexto (contagem, estado, filtros) e as ações da página. Há no máximo uma ação primária por tela. Uma informação aparece num só lugar: o mês fica no seletor, e o subtítulo diz só "Mês aberto" ou o estado do orçamento. Grupos de ações sem relação (navegar no tempo × fechar o mês) ficam separados por 24 px.
 - **Inspetor:** no Livro financeiro, os detalhes do lançamento selecionado ficam ao lado da tabela, em vez de num diálogo. Some sozinho em janelas estreitas e volta quando há espaço; a escolha explícita do usuário prevalece.
 - **Menus:** todo comando da barra também está no menu.
   - **Cofre:** arquivo, backup e exportação.
@@ -35,9 +37,18 @@ Barra lateral          Cabeçalho da página: título, contexto, ações
   - destaque, seleção, foco, hover;
   - positivo, negativo e alerta.
 
-  O tema segue o modo do sistema e muda junto com ele. Widgets não usam cores fixas: escolhem um estilo por propriedade (`textStyle`, `role`, `tone`).
-- **Espaçamento:** 4 / 8 / 12 / 16 / 24 px (dentro do controle, entre itens relacionados, entre grupos, entre seções). Raio de 6 px. Linhas de tabela de 26 px.
-- **Tipografia:** fonte do sistema. Estilos: título de página, título de seção, corpo, secundário, legenda e número em destaque. A hierarquia vem de peso e cor, não só de tamanho.
+  O tema segue o modo do sistema e muda junto com ele. Widgets não usam cores fixas: escolhem um estilo por propriedade (`textStyle`, `role`, `tone`). O azul fica reservado para ação principal, seleção em tabelas e foco. O vermelho de valores negativos é dessaturado (`#a63830` no claro), e o sinal "-" continua presente.
+- **Espaçamento:** 4 / 8 / 12 / 16 / 24 / 32 px (dentro do controle, entre itens relacionados, dentro de um grupo, entre grupos, entre seções da página). Raio de 6 px. Linhas de tabela de 26 px.
+- **Tipografia:** uma família (Segoe UI no Windows), dois pesos. Corpo, navegação e tabelas com 10 pt (~13 px); a hierarquia vem de peso e cor, não só de tamanho. Algarismos tabulares (`tnum`) em toda a aplicação, para quantias alinharem em colunas.
+
+  | Estilo (`textStyle`) | Uso | Tamanho |
+  |---|---|---|
+  | `title` | Título da página | 22 px, semibold |
+  | `headline` | Título de seção | 15 px, semibold |
+  | `strong` | Ênfase no corpo (nome do cofre) | corpo, semibold |
+  | `secondary` | Contexto e rótulos | corpo, cinza |
+  | `caption` | Descrições auxiliares e rótulos de números | 12 px, cinza |
+  | `figure` | Valores principais | 26 px, semibold |
 - **Estilo Qt:** Fusion, para métricas iguais em todos os sistemas. Combos e campos de número mantêm o desenho nativo do Fusion, para não perder as setas.
 - **Tradução:** os textos do próprio Qt (botões padrão, diálogos de arquivo) usam `qtbase_pt_BR`.
 
@@ -47,11 +58,16 @@ Barra lateral          Cabeçalho da página: título, contexto, ações
 |---|---|
 | `PageHeader` | Título, contexto e ações de cada página |
 | `EmptyState` | O que é a área, por que está vazia e o que fazer |
-| `Figures` / `Section` | Números-chave e grupos titulados, sem caixas |
+| `Figures` / `Section` | Números-chave e grupos titulados, sem caixas. Grupos lado a lado usam uma grade de colunas iguais, com título, descrição e números nas mesmas linhas |
+| `summary_table` / `fit_to_rows` | Tabelas curtas de resumo (Visão geral, Orçamento, Recorrências, carteira de Investimentos): sem moldura nem zebra, divisórias entre linhas, altura igual ao conteúdo até um limite (depois rola). A coluna do nome ocupa a sobra; colunas numéricas à direita, cabeçalho incluído |
+| `frameless` | Listas dentro de abas ou ao lado de um visualizador (Contas e cartões, Investimentos, Documentos, Configurações): sem moldura nem zebra, ocupando a altura da aba. A moldura fica só nas grandes áreas de trabalho que rolam (Livro, Importar), onde delimita a região rolada |
+| `Section.add_actions` | As ações de um grupo ficam na linha do título dele, à direita, e não soltas acima do conteúdo; comandos raros vão para "Mais" |
+| `scroll_body` | Corpo de página com várias seções: rola na vertical, com 32 px entre seções |
+| `decide` / `confirm` | Decisões: o título é a pergunta ("Salvar alterações antes de fechar o cofre?"), o texto diz a consequência e cada botão diz o que faz ("Salvar…", "Descartar alterações", "Cancelar"). Sem ícone e sem Sim/Não |
 | `menu_button` | Agrupa comandos secundários sem escondê-los |
 | `button(role=…)` | Hierarquia: `primary`, padrão, `plain`, `destructive` |
 | `flow_row` / `FlowLayout` | Filtros e ações quebram linha em janelas estreitas |
-| `MonthPicker` | Mês por extenso, com ‹ › e Alt+← / Alt+→ |
+| `MonthPicker` | Mês por extenso, com botões ‹ › do mesmo tamanho e moldura do seletor, e Alt+← / Alt+→ |
 | `style_table`, `install_column_chooser` | Tabelas sem grade, zebradas, colunas escolhidas pelo botão direito e lembradas |
 
 Formulários (`FormDialog`) usam rótulos alinhados e um botão com verbo ("Registrar", "Salvar correção"). O erro aparece **dentro** do formulário, sem segundo diálogo. A senha é conferida enquanto o usuário digita: o botão só se habilita quando as senhas coincidem.
@@ -69,7 +85,7 @@ Formulários (`FormDialog`) usam rótulos alinhados e um botão com verbo ("Regi
    - Enter edita no Livro;
    - na revisão de importação: Ctrl+Enter, Ctrl+Shift+Enter, F2, Ctrl+M, Delete, Ctrl+K e Ctrl+R (criar regra);
    - botão direito oferece os mesmos comandos de linha.
-7. Gráficos usam as cores do tema, sem moldura. Mantêm só a navegação (início, mover, zoom). A inspeção de um ponto aparece ao lado do gráfico, sem diálogo.
+7. Gráficos usam a fonte da interface, uma paleta dessaturada e as cores do tema, sem moldura, e mantêm só a navegação (início, mover, zoom). Datas no eixo seguem o uso brasileiro ("mar/26", "01/03/26"). O nome do gráfico aparece no próprio gráfico; o subtítulo da página diz o período. A inspeção de um ponto aparece ao lado do gráfico, sem diálogo. Não se acrescenta gráfico para preencher espaço: na Visão geral, a distribuição por categoria só ganha barras neutras a partir de três categorias.
 8. Preferências deste computador ficam fora do cofre, em `QSettings`, e nunca guardam dados financeiros. São elas:
    - geometria da janela;
    - largura e visibilidade da barra lateral;

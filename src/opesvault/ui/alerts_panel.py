@@ -2,6 +2,7 @@
 
 from collections.abc import Callable
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QGridLayout, QHBoxLayout, QVBoxLayout, QWidget
 
 from opesvault.domain.alerts import Alert, Severity
@@ -83,9 +84,9 @@ class AlertsPanel(QWidget):
             act = button(ACTION_LABELS.get(alert.target.value, "Ver"), lambda t=alert.target.value: self._navigate(t))
             act.setProperty("role", "plain")
             act.setAccessibleName(f"{ACTION_LABELS.get(alert.target.value, 'Ver')}: {alert.title}")
-            self.grid.addWidget(word, row, 0)
+            self.grid.addWidget(word, row, 0, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
             self.grid.addWidget(body, row, 1)
-            self.grid.addWidget(act, row, 2)
+            self.grid.addWidget(act, row, 2, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         hidden = len(self._alerts) - MAX_VISIBLE
         self.toggle.setVisible(hidden > 0)
         self.toggle.setText("Mostrar menos" if self._expanded else f"Mostrar todos ({len(self._alerts)})")

@@ -1,6 +1,7 @@
 """Importar e revisar: queue of documents and side-by-side review (docs/07 §2, RF-05..RF-09)."""
 
 from collections.abc import Callable
+from html import escape
 from pathlib import Path
 from typing import Any
 from uuid import UUID
@@ -31,7 +32,7 @@ from opesvault.ui.components import EmptyState, button, flow_row, hbox, hbox_wid
 from opesvault.ui.dialogs import FormDialog, ask_reason
 from opesvault.ui.pages.base import Page
 from opesvault.ui.pages.documents_page import PdfView
-from opesvault.ui.theme import SPACE_M, SPACE_S, SPACE_XS
+from opesvault.ui.theme import SPACE_L, SPACE_S, SPACE_XS, tokens
 
 STATUS_LABELS = {
     BatchStatus.UNSUPPORTED: "Não suportado",
@@ -133,7 +134,8 @@ class ImportPage(Page):
 
         # ── review (center): document facts, target, actions, items
         self.batch_title = text("", "headline")
-        self.batch_info = text("", "secondary", wrap=True)
+        self.batch_info = text("", "caption", wrap=True)
+        self.batch_info.setMinimumWidth(160)
         self.batch_info.setTextFormat(Qt.TextFormat.RichText)
         self.target = QComboBox()
         self.target.setAccessibleName("Conta ou cartão do documento")
@@ -183,12 +185,14 @@ class ImportPage(Page):
 
         review = QWidget()
         review_layout = QVBoxLayout(review)
-        review_layout.setContentsMargins(SPACE_M, 0, SPACE_M, 0)
+        review_layout.setContentsMargins(SPACE_L, 0, SPACE_L, 0)
         review_layout.setSpacing(SPACE_S)
         review_layout.addWidget(self.batch_title)
         review_layout.addWidget(self.batch_info)
+        review_layout.addSpacing(SPACE_S)
         review_layout.addWidget(target_row)
         review_layout.addWidget(actions)
+        review_layout.addSpacing(SPACE_XS)
         # Offered right after a category is picked by hand: the moment a rule saves time.
         self.rule_offer_text = text("", wrap=True)
         self.rule_offer = QWidget()
@@ -336,13 +340,22 @@ class ImportPage(Page):
             parts.append(f"período {fmt_date(h.period_start)} a {fmt_date(h.period_end)}")
         if h.net_amount is not None:
             parts.append(f"líquido {fmt(h.net_amount)}")
-        lines = [" · ".join(parts)]
+        t = tokens()
+        # One line of facts, then each check with its verdict in words (tone only reinforces it).
+        lines = [escape(" · ".join(parts))]
         for r in batch.reconciliations:
-            mark = {True: "✔ confere", False: "✘ diverge", None: "não comparável"}[r.ok]
-            lines.append(f"{r.label}: documento {fmt(r.expected)}, calculado {fmt(r.computed)} — {mark}")
+            verdict, color = {
+                True: ("confere", t.positive),
+                False: ("diverge", t.negative),
+                None: ("não comparável", t.secondary),
+            }[r.ok]
+            lines.append(
+                f"{escape(r.label)}: documento {fmt(r.expected)}, calculado {fmt(r.computed)} · "
+                f'<span style="color:{color}; font-weight:600">{verdict}</span>'
+            )
         if batch.unmapped_lines:
             lines.append(f"{batch.unmapped_lines} linha(s) não mapeada(s) preservadas no original.")
-        lines.extend(f"⚠ {w}" for w in batch.warnings)
+        lines.extend(f'<span style="color:{t.warning}">Atenção: {escape(w)}</span>' for w in batch.warnings)
         self.batch_info.setText("<br>".join(lines))
 
         self.target.blockSignals(True)

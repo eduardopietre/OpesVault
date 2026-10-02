@@ -5,13 +5,11 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
-from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QLineEdit,
     QMessageBox,
-    QSplitter,
     QStackedWidget,
     QTabWidget,
     QVBoxLayout,
@@ -35,8 +33,10 @@ from opesvault.ui.common import (
     combo_value,
     date_edit,
     fill_combo,
+    fit_to_rows,
     fmt,
     fmt_date,
+    frameless,
     from_qdate,
     make_table,
     money_edit,
@@ -44,11 +44,13 @@ from opesvault.ui.common import (
     run_guarded,
     selected_id,
     set_rows,
+    stretch_column,
+    summary_table,
 )
-from opesvault.ui.components import EmptyState, button, hbox, menu_button, text
+from opesvault.ui.components import EmptyState, button, hbox, menu_button, separator, text
 from opesvault.ui.dialogs import FormDialog, asset_accounts
 from opesvault.ui.pages.base import Page
-from opesvault.ui.theme import SPACE_S, SPACE_XS
+from opesvault.ui.theme import SPACE_M, SPACE_S, SPACE_XL, SPACE_XS
 
 EVENT_LABELS = {
     EventKind.CONTRIBUTION: "Aporte",
@@ -109,13 +111,13 @@ def _combo(items: list[tuple[str, Any]], empty: str | None = None) -> QComboBox:
 
 class InvestmentsPage(Page):
     title = "Investimentos"
-    section = "Patrimônio"
+    section = "Acompanhamento"
 
     def __init__(self, changed) -> None:  # type: ignore[no-untyped-def]
         super().__init__(changed)
         from opesvault.charts.render import ChartWidget
 
-        self.positions = make_table(
+        self.positions = summary_table(
             [
                 "Investimento",
                 "Classe",
@@ -125,8 +127,10 @@ class InvestmentsPage(Page):
                 "Data-base",
                 "Não realizado",
                 "Realizado",
-            ]
+            ],
+            max_rows=6,
         )
+        stretch_column(self.positions)
         self.positions.itemSelectionChanged.connect(self._show_detail)
         self.positions.setAccessibleName("Investimentos")
         new = button("Novo investimento…", self.new_position, role="primary")
@@ -166,12 +170,14 @@ class InvestmentsPage(Page):
                 ("Importar índice de referência…", self.import_benchmark),
             ],
         )
-        self.header.add(record, trade, more, new)
+        self.header.add(record, trade, more, SPACE_S, new)
         self.position_actions = (record, trade)
 
-        self.valuations = make_table(["Data", "Valor", "Natureza", "Fonte", "Usada", "Quantidade", "Observação"])
-        self.events = make_table(
-            ["Data", "Evento", "Bruto", "Custo atribuído", "Imposto", "Taxas", "Líquido", "Qualidade"]
+        self.valuations = frameless(
+            make_table(["Data", "Valor", "Natureza", "Fonte", "Usada", "Quantidade", "Observação"])
+        )
+        self.events = frameless(
+            make_table(["Data", "Evento", "Bruto", "Custo atribuído", "Imposto", "Taxas", "Líquido", "Qualidade"])
         )
         self.evolution = ChartWidget()
         self.result_chart = ChartWidget()
@@ -182,7 +188,8 @@ class InvestmentsPage(Page):
         )
         valuation_box = QWidget()
         vb = QVBoxLayout(valuation_box)
-        vb.setContentsMargins(0, SPACE_S, 0, 0)
+        vb.setContentsMargins(0, SPACE_M, 0, 0)
+        vb.setSpacing(SPACE_M)
         vb.addLayout(valuation_actions)
         vb.addWidget(self.valuations)
         tabs = QTabWidget()
@@ -190,17 +197,20 @@ class InvestmentsPage(Page):
         tabs.addTab(self.result_chart, "Resultado")
         tabs.addTab(valuation_box, "Avaliações")
         tabs.addTab(self.events, "Movimentos")
-        self.lots = make_table(["Aquisição", "Origem", "Quantidade", "Custo", "Qtd. restante", "Custo restante"])
+        self.lots = frameless(
+            make_table(["Aquisição", "Origem", "Quantidade", "Custo", "Qtd. restante", "Custo restante"])
+        )
         tabs.addTab(self.lots, "Lotes")
         self.returns_chart = ChartWidget()
-        self.returns_table = make_table(["Método", "Resultado", "Qualidade", "Observações"])
+        self.returns_table = frameless(make_table(["Método", "Resultado", "Qualidade", "Observações"]))
         self.period_start = QComboBox()
         self.period_end = QComboBox()
         self.benchmark = QComboBox()
         compute = button("Calcular", self._show_returns)
         returns_box = QWidget()
         rb = QVBoxLayout(returns_box)
-        rb.setContentsMargins(0, SPACE_S, 0, 0)
+        rb.setContentsMargins(0, SPACE_M, 0, 0)
+        rb.setSpacing(SPACE_M)
         period = hbox(
             text("De", "secondary"),
             self.period_start,
@@ -216,27 +226,32 @@ class InvestmentsPage(Page):
         rb.addWidget(self.returns_table)
         rb.addWidget(self.returns_chart)
         tabs.addTab(returns_box, "Rentabilidade")
-        self.summary = text("", "secondary", wrap=True)
+        self.summary = text("", "caption", wrap=True)
+        self.summary.setMinimumWidth(160)
         self.detail_title = text("", "headline")
         detail = QWidget()
         dl = QVBoxLayout(detail)
-        dl.setContentsMargins(0, SPACE_S, 0, 0)
+        dl.setContentsMargins(0, 0, 0, 0)
         dl.setSpacing(SPACE_XS)
         dl.addWidget(self.detail_title)
         dl.addWidget(self.summary)
+        dl.addSpacing(SPACE_S)
         dl.addWidget(tabs, 1)
         self.empty = EmptyState(
             "Nenhum investimento",
             "Cadastre um investimento para acompanhar avaliações, aportes, resgates e rentabilidade.",
             [button("Novo investimento…", self.new_position)],
         )
-        splitter = QSplitter(Qt.Orientation.Vertical)
-        splitter.setChildrenCollapsible(False)
-        splitter.addWidget(self.positions)
-        splitter.addWidget(detail)
-        splitter.setSizes([180, 520])
+        # The portfolio is as tall as its rows; the selected investment takes the rest.
+        portfolio = QWidget()
+        pl = QVBoxLayout(portfolio)
+        pl.setContentsMargins(0, SPACE_S, 0, 0)
+        pl.setSpacing(SPACE_XL)
+        pl.addWidget(self.positions)
+        pl.addWidget(separator())
+        pl.addWidget(detail, 1)
         self.views = QStackedWidget()
-        self.views.addWidget(splitter)
+        self.views.addWidget(portfolio)
         self.views.addWidget(self.empty)
         layout = self.page_layout()
         layout.addWidget(self.views, 1)
@@ -273,6 +288,7 @@ class InvestmentsPage(Page):
                 )
             )
         set_rows(self.positions, rows)
+        fit_to_rows(self.positions)
         self.views.setCurrentIndex(0 if rows else 1)
         open_count = sum(1 for p in inv.positions(ledger).values() if not p.closed)
         total = f" · {len(rows)} no total" if len(rows) != open_count else ""
@@ -302,8 +318,9 @@ class InvestmentsPage(Page):
         today = date.today()
         gain = unrealized(ledger, pos_id, today)
         self.summary.setText(
-            f"Resultado não realizado: {fmt(gain.value) if gain.available else 'indisponível'} — {gain.method}"
-            + (f" ({'; '.join(gain.notes)})" if gain.notes else "")
+            " · ".join(
+                [f"Não realizado: {fmt(gain.value) if gain.available else 'indisponível'}", gain.method, *gain.notes]
+            )
         )
         set_rows(
             self.valuations,

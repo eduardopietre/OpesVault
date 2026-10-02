@@ -1,6 +1,6 @@
 # Roadmap, decisões e riscos
 
-Versão 1.1 • 02/10/2026. As fases 0 a 6 estão implementadas (`13`); este documento passa a planejar da fase 7 em diante.
+Versão 1.2 • 02/10/2026. As fases 0 a 6 estão implementadas (`13`). Das fases 7 a 10, tudo o que não depende do Windows nem de documentos reais também foi feito (§1.3).
 
 ## 1. Fases e critérios de saída
 
@@ -30,17 +30,39 @@ O que falta para o produto ser confiável não é mais funcionalidade nova: é v
 
 Fases 9 e 10 podem andar em paralelo depois da 8. Expansões da fase 11 entram uma a uma, por prioridade do usuário, nunca em bloco.
 
-### 1.3 Dívida técnica conhecida
+### 1.3 Andamento das fases 7 a 10
 
-| Item | Efeito | Fase |
+| Fase | Feito | Falta |
 |---|---|---|
-| Salvar reescreve e reverifica o cofre inteiro, com o snapshot inteiro em JSON | ~21 s e ~800 MiB com 50 mil lançamentos (`13` §4) | 8 |
-| Tabelas usam `QTableWidget` preenchido por completo | Lento com dezenas de milhares de linhas | 8 |
-| Consultas percorrem todas as operações a cada chamada (saldos, séries mensais) | Gráficos de patrimônio custam meses × operações | 8 |
-| Livro financeiro corrige só a descrição; rateio por integrante só via domínio | Correções de valor exigem estorno e novo lançamento | 9 |
-| Importação roda em thread enquanto a página fica desabilitada, mas o Ctrl+S não é bloqueado nesse intervalo | Corrida rara entre salvar e importar | 9 |
-| Histórico cresce sem limite (cada alteração guarda a versão anterior) | Snapshot maior com o tempo | 8 |
-| Layouts de faturas e extratos são sintéticos | Podem falhar com documentos reais | 7 |
+| 7 | `scripts/validar_layouts.py` (corpus privado com esperado conferido, regra dos 3 documentos); rastreabilidade TA-01…TA-36 (`15`): 29 automatizados, 7 parciais, nenhum pendente | Gates G0–G7 no Windows; documentos reais; cópia das notas de terceiros |
+| 8 | Gravação incremental (`11` §5); abertura com registros em JSON e verificação de todas as páginas; consultas com índice e somas acumuladas; livro em tabela virtual | Abrir ainda leva ~8,7 s no Linux (meta ≤ 5 s); medir no Windows de referência |
+| 9 | Assistente de primeiro uso; edição completa de lançamentos com rateio; filtros; reclassificação em lote; revisão por teclado; ajuda F1; bloqueio visual por inatividade | Critério humano: jornadas feitas por uma pessoa sem ajuda, em 100/150/200%, só com teclado |
+| 10 | Fuzzing; registro técnico só com códigos; inventário de licenças e SBOM; revisão do worker e das exportações (`14`) | Versões fixadas após G1; assinatura do instalador; ícone; enxugar módulos Qt |
+
+Números do Linux de referência (50 mil lançamentos, 250 MiB de PDFs):
+
+| Métrica | Antes | Agora | Meta da fase 8 |
+|---|---|---|---|
+| Salvar (Ctrl+S) | ~21 s | ~3,7 s | ≤ 3 s |
+| Abrir | ~15 s | ~8,7 s | ≤ 5 s |
+| Pico de RAM do worker ao salvar | ~820 MiB | ~50 MiB | ≤ 600 MiB |
+| Pico de RAM da UI | ~760 MiB | ~580–690 MiB | ≤ 600 MiB |
+| Filtrar o livro (50 mil linhas) | lento (tabela preenchida) | ≤ 0,2 s | ≤ 200 ms |
+
+O piso da abertura é decifrar ~263 MB e interpretar 50 mil operações (~3,7 s só para interpretar).
+
+### 1.4 Dívida técnica conhecida
+
+| Item | Efeito | Situação |
+|---|---|---|
+| Salvar reescrevia e reverificava o cofre inteiro | ~21 s e ~800 MiB com 50 mil lançamentos | **Resolvido**: gravação incremental, ~3,7 s e ~50 MiB |
+| Tabelas usavam `QTableWidget` preenchido por completo | Lento com dezenas de milhares de linhas | **Resolvido** no livro (tabela virtual). Telas de importação e contas continuam com `QTableWidget`, com dezenas a centenas de linhas |
+| Consultas percorriam todas as operações a cada chamada | Gráficos custavam meses × operações | **Resolvido**: índice por data com somas acumuladas, invalidado a cada alteração |
+| Livro corrigia só a descrição | Correções de valor exigiam estorno | **Resolvido**: edição completa com rateio e motivo |
+| Ctrl+S não era bloqueado durante a importação | Corrida rara entre salvar e importar | **Resolvido**: importações em fila, uma por vez, bloqueando salvar e editar |
+| Histórico cresce sem limite | Snapshot maior com o tempo | **Mitigado**: guarda só a versão anterior, é lido sob demanda e o salvamento incremental grava só o que mudou. Compactar histórico exige decisão do usuário (perda de rastreabilidade) |
+| Abertura acima da meta | ~8,7 s com 50 mil lançamentos | Aberto; próximo passo seria carregar documentos sob demanda, o que muda o formato de snapshot em RAM |
+| Layouts de faturas e extratos são sintéticos | Podem falhar com documentos reais | Aberto; depende da fase 7 |
 
 ## 2. Decisões arquiteturais
 
@@ -80,7 +102,9 @@ ADR-01 a ADR-03 refletem escolhas aprovadas; os mecanismos específicos e demais
 
 | Decisão | Por que importa | Bloqueia |
 |---|---|---|
-| Método de gravação (`11` §5): manter reescrita completa, verificar menos ou gravar só o que mudou | Define o formato interno do cofre e a meta de tempo de salvamento | Fase 8 |
+| Desbloqueio após inatividade pede a senha do cofre (implementado assim; cofre nunca salvo desbloqueia sem senha) e o tempo padrão é 10 min | Equilíbrio entre proteção e incômodo | Revisável |
+| Compactar o histórico antigo de alterações | Reduz o cofre, mas perde versões anteriores | Fase 8 (opcional) |
+| Certificado de assinatura de código | Evita alertas do SmartScreen no instalador | Fase 10 |
 | Quando rodar os gates G0–G7 e qual é a máquina Windows de referência (RAM, disco, antivírus) | Sem isso, distribuição e metas de desempenho não têm base | Fases 7, 8 e 10 |
 | Bancos e produtos prioritários, com documentos reais (faturas, extratos, CSV/OFX) | Layouts sintéticos só viram suporte com amostras | Fase 7 |
 | Classes de investimento que a família usa e eventos necessários | Orienta regras por classe e layouts de extratos de investimento | Fase 11 |
@@ -99,6 +123,8 @@ Cada alteração de escopo registra motivo, documentos afetados, migração de d
 | 02/10/2026 | Importação de CSV e OFX, além de PDF | Formatos exportados pelos bancos são mais confiáveis que o texto de PDF (doc 12) | 00, 01, 05, 12 | Arquivo original guardado no cofre como os PDFs | Planilhas nunca executam fórmulas ou macros; CSV/OFX recebem a mesma higiene de log e disco dos PDFs | Fixtures sintéticos por layout CSV/OFX, codificações e separadores |
 | 02/10/2026 | Fases 1 a 6 implementadas; instalador opcional | Pedido do usuário | 13, CLAUDE.md | Novos tipos persistidos registrados; histórico guarda só a versão anterior nas alterações | Exportações claras com aviso; backups cifrados; IA só em loopback | 186 testes automatizados, jornada offline |
 | 02/10/2026 | Roadmap ampliado com as fases 7 a 11 e dívida técnica | Pedido do usuário após concluir as fases 1 a 6 | 09, 13, CLAUDE.md | Nenhum | Nenhum | Critérios de saída mensuráveis por fase |
+| 02/10/2026 | Gravação incremental (opção c do `11` §5) e abertura rápida | Pedido do usuário para resolver as dívidas | 09, 11, 13 | Mesmo formato de arquivo; só muda como é gravado | Toda página é autenticada na abertura; candidato verificado antes de substituir | `test_incremental_save`, adulteração página a página |
+| 02/10/2026 | Fases 7 a 10 no que não depende do Windows nem de documentos reais | Pedido do usuário | 09, 13, 14, 15, CLAUDE.md | Nenhum tipo persistido novo; preferências de bloqueio fora do cofre | Desbloqueio confere senha e revisão no worker; registro técnico só com códigos; parsers isolados por `run_parser` | 274 testes; fuzzing longo com 3000 variações |
 
 ## 6. Definição de pronto documental (versão 1.0, mantida como histórico)
 

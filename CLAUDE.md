@@ -4,7 +4,7 @@ OpesVault: aplicativo desktop Windows, 100% offline, para finanças familiares, 
 
 ## Estado atual
 
-As **fases 0 a 6** estão implementadas e testadas em Python no Linux (`docs/13`). Os gates do Windows (`docs/11` §4) são presumidos aprovados e continuam pendentes de execução real. Os layouts de faturas e extratos são sintéticos até haver documentos reais. A decisão sobre o custo de salvar (`docs/11` §5) continua em aberto. A próxima etapa é a **fase 7 — validação real** (`docs/09` §1.2); a dívida técnica conhecida está em `docs/09` §1.3.
+As **fases 0 a 6** estão implementadas e testadas em Python no Linux (`docs/13`). Das fases 7 a 10 foi feito tudo o que não depende do Windows nem de documentos reais (`docs/09` §1.3). Os gates do Windows (`docs/11` §4) são presumidos aprovados e continuam pendentes de execução real. Os layouts de faturas e extratos são sintéticos até haver documentos reais. O salvamento é incremental (`docs/11` §5); a abertura (~8,7 s com 50 mil lançamentos) segue acima da meta. A próxima etapa é a **fase 7 — validação real** (`docs/09` §1.2); a dívida técnica conhecida está em `docs/09` §1.3.
 
 ## Comandos
 
@@ -15,6 +15,9 @@ uv run ruff format . && uv run ruff check . && uv run pyright
 uv run python -m opesvault               # janela de teste da fase 0
 uv run python scripts/fase0_medir_ram.py --mib 50 250
 uv run --group build python scripts/build.py   # opcional, ~25 min (--installer: Inno Setup, também opcional)
+OPV_FUZZ_ITERATIONS=3000 uv run pytest tests/test_fuzz.py   # fuzzing longo (~45 s)
+uv run python scripts/inventario_licencas.py [--check]       # licenças + SBOM em build/licencas
+uv run python scripts/validar_layouts.py PASTA_DO_CORPUS     # documentos reais, fora do git (docs/15 §2)
 ```
 
 Desenvolva e teste direto em Python. O build Nuitka é **opcional**: só rode quando o usuário pedir ou quando a mudança afetar empacotamento (dependências nativas, plugins Qt, relançamento do worker).
@@ -45,6 +48,8 @@ No Linux, o Qt precisa de `libegl1`, `libgl1`, `libxkbcommon0` e `libfontconfig1
 | Resultados da fase 0 e roteiro Windows | `docs/11` |
 | Projetos de referência e particularidades de layouts | `docs/12` |
 | O que foi implementado por fase, cobertura e pendências | `docs/13` |
+| Fuzzing, registro técnico, licenças, SBOM, OpenSSL | `docs/14` |
+| Qual teste cobre cada TA; validação de layouts reais | `docs/15` |
 
 Se dois documentos entrarem em conflito, vale o `docs/00` §2. Conflitos de segurança ou cálculo devem ser levados ao usuário, nunca resolvidos pela interpretação mais simples. Mudar de stack, adicionar cloud, reter chave para autosave ou permitir edição simultânea exige nova decisão do usuário.
 
@@ -62,7 +67,10 @@ Se dois documentos entrarem em conflito, vale o `docs/00` §2. Conflitos de segu
 - **Tipos persistidos:** todo módulo que registra um tipo com `Ledger.register_kind` ou uma guarda precisa constar em `registry.MODULES`. Imports só por efeito colateral não sobrevivem ao `ruff --fix`; por isso a lista é explícita e testada.
 - **Parsers:** um por instituição + produto + layout, com `version`, `limitations` e `validated_with_real_documents`. Nunca deduza o ano pelo relógio; use a data do próprio documento.
 - **Investimentos:** avaliação não é fluxo, aporte não é rendimento, e resultado indisponível é `None` com motivo. Métodos de retorno só calculam quando os dados permitem.
-- **Thread da UI:** não extraia PDF, não chame modelo e não faça operação de cofre na thread visual.
+- **Thread da UI:** não extraia PDF, não chame modelo e não faça operação de cofre na thread visual. Trabalho em segundo plano que altera a sessão chama `Page.set_busy`, que bloqueia salvar e editar.
+- **Gravação incremental:** o salvamento só leva o que está em `Ledger.dirty`. Toda alteração passa por `Ledger.put`, pelas coleções rastreadas ou pelo setter de `meta`; mutar um objeto já guardado não é visto e não é gravado. Documentos entram e saem por `Session.add_document` e `remove_document`.
+- **Parsers como código não confiável:** chame-os por `pipeline.run_parser`, que isola falhas em `ParseFailed`. Valor ilegível ou data impossível vai para as linhas não mapeadas, nunca vira exceção. Rode o fuzzing depois de mexer num parser.
+- **Exceções:** mensagens de `DomainError` são para o usuário e podem citar dados; por isso o registro técnico (`diagnostics.record`) guarda só código, tipo e local. Nunca registre `str(exc)`.
 
 ## Dados de teste
 

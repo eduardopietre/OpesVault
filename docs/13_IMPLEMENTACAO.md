@@ -1,6 +1,6 @@
-# Implementação das fases 1 a 6
+# Implementação das fases 1 a 10
 
-Versão 1.0 • 02/10/2026. Registra o que foi construído em cada fase do roadmap (`09` §1), como os critérios de saída foram verificados e o que continua pendente. A fase 0 está em `11`.
+Versão 1.1 • 02/10/2026. Registra o que foi construído em cada fase do roadmap (`09` §1), como os critérios de saída foram verificados e o que continua pendente. A fase 0 está em `11`. Das fases 7 a 10 foi feito o que não depende do Windows nem de documentos reais (§2.1); o andamento detalhado está no `09` §1.3.
 
 **Escopo da verificação:** tudo foi testado em Python no Linux, com testes automatizados e interface em modo `offscreen`. Os gates do Windows continuam presumidos aprovados (`11` §4). Os layouts de faturas e extratos são sintéticos até haver documentos reais.
 
@@ -8,12 +8,13 @@ Versão 1.0 • 02/10/2026. Registra o que foi construído em cada fase do roadm
 
 | Pacote | Conteúdo |
 |---|---|
-| `domain/` | Dinheiro exato (`money`), entidades (`model`), agregado `Ledger` com invariantes e histórico, consultas de caixa, competência e patrimônio (`queries`), faturas e parcelas (`cards`), recorrências (`recurrence`), fechamento mensal (`periods`), configurações (`settings`), migrações de esquema |
+| `domain/` | Dinheiro exato (`money`), entidades (`model`), agregado `Ledger` com invariantes, histórico e registro de alterações para a gravação incremental, consultas indexadas de caixa, competência e patrimônio (`queries`), filtros do livro (`search`), reclassificação em lote (`edits`), configuração inicial (`onboarding`), faturas e parcelas (`cards`), recorrências (`recurrence`), fechamento mensal (`periods`), configurações (`settings`), migrações de esquema |
 | `importing/` | Fonte em memória (PDF/CSV/OFX), parsers por layout, pipeline de importação, sugestões por IA local |
 | `investments/` | Posições, avaliações e fluxos (`service`), resultados (`performance`), simulador, lotes e negociações (`trades`), TWR/XIRR/Dietz (`returns`), notas de corretagem (`notes`), índices locais (`benchmarks`) |
 | `charts/` | Dados dos gráficos com proveniência (`data`) e renderização Matplotlib com tooltip e inspeção (`render`) |
-| `vault/` | Cofre SQLCipher, worker transitório, backup e troca de senha |
-| `ui/` | Janela principal e uma página por seção do `07` |
+| `vault/` | Cofre SQLCipher (gravação completa ou incremental), worker transitório, backup, troca de senha e desbloqueio da tela |
+| `ui/` | Janela principal e uma página por seção do `07`; edição completa de lançamentos (`operation_edit`), assistente de primeiro uso (`setup_wizard`), ajuda F1 (`help`), bloqueio visual (`idle_lock`) |
+| `diagnostics.py` | Registro técnico só com códigos e ganchos globais de exceção (`14` §2) |
 | `exports.py` | Exportações explícitas (CSV do livro e JSON de intercâmbio) |
 | `registry.py` | Lista explícita dos módulos que registram tipos persistidos e guardas |
 
@@ -90,6 +91,26 @@ Persistência: o domínio vira registros `(id, tipo, JSON)` dentro do snapshot. 
 - Instalador Inno Setup **opcional**.
 - Teste de jornada completa com rede externa bloqueada (TA-30, `tests/test_journey.py`).
 
+### 2.1 Depois da fase 6
+
+- **Fase 8 (desempenho):**
+  - salvar grava só os registros e documentos alterados numa cópia do arquivo cifrado, verifica a cópia inteira e substitui de forma atômica;
+  - abrir entrega os registros como JSON para o domínio interpretar uma única vez e autentica todas as páginas, inclusive as de índice;
+  - consultas usam um índice por data com somas acumuladas;
+  - o livro usa tabela virtual.
+- **Fase 9 (uso diário):**
+  - assistente de primeiro uso;
+  - edição completa de lançamentos (datas, competência, partidas, rateio por integrante), com motivo;
+  - filtros por período, conta ou categoria, integrante, situação, origem e texto;
+  - reclassificação em lote que nunca desfaz um rateio;
+  - atalhos na revisão de importação que avançam para o próximo item;
+  - ajuda F1;
+  - bloqueio visual por inatividade, com senha conferida no worker;
+  - importações em fila, que bloqueiam salvar e editar enquanto rodam.
+- **Fase 10 (robustez):** fuzzing, registro técnico, licenças e SBOM (`14`).
+- **Fase 7 (preparação):** validador de layouts com corpus privado e rastreabilidade dos TAs (`15`).
+- Testes: `test_incremental_save`, `test_edits`, `test_ledger_view`, `test_onboarding`, `test_daily_use`, `test_fuzz`, `test_diagnostics`, `test_licenses`, `test_layout_validation`, `test_acceptance_gaps`.
+
 ## 3. Cobertura de importação
 
 O catálogo fica em Configurações e em `importing/parsers/__init__.py`.
@@ -107,14 +128,15 @@ Um layout só passa a ser declarado suportado depois de conferido com documentos
 
 Cenário: 50 mil lançamentos com histórico e 250 MiB de PDFs.
 
-| Métrica | Resultado |
-|---|---|
-| Salvar | ~21 s |
-| Abrir | ~10 s |
-| Pico de RAM da UI | ~760 MiB |
-| Pico de RAM do worker | ~820 MiB |
+| Métrica | Fase 6 | Agora |
+|---|---|---|
+| Salvar | ~21 s | ~3,7 s (incremental) |
+| Abrir | ~10–15 s | ~8,7 s |
+| Pico de RAM da UI | ~760 MiB | ~580–690 MiB |
+| Pico de RAM do worker | ~820 MiB | ~50 MiB ao salvar |
+| Atualizar ou filtrar o livro | — | ≤ 0,2 s |
 
-Com 10 MiB de PDFs, salvar ainda leva ~10 s: o custo agora vem principalmente da serialização e validação dos 50 mil lançamentos, e não só da reescrita cifrada. Isso reforça a decisão pendente do `11` §5 (gravação incremental).
+A abertura continua acima da meta de 5 s. O piso é decifrar o arquivo e interpretar as 50 mil operações (`09` §1.4).
 
 ## 5. Formato de intercâmbio (exportação JSON, versão 1)
 
@@ -134,13 +156,12 @@ O planejamento das próximas fases, com critérios de saída, está no `09` §1.
 
 
 1. **Gates do Windows** G0–G7 (`11` §4): presumidos, não executados.
-2. **Decisão sobre o custo de salvar** (`11` §5): agora com números do domínio real.
+2. **Abertura** acima da meta de 5 s (`09` §1.4).
 3. **Documentos reais** de faturas, extratos, CSV e OFX para validar os layouts sintéticos. Notas de corretagem de terceiros aguardam a cópia manual (`tests/fixtures/terceiros/notas_corretagem/README.md`).
 4. **Fora da entrega atual:**
    - OCR;
    - moedas estrangeiras com câmbio;
    - tabelas fiscais por classe;
    - derivativos e mercado futuro;
-   - bloqueio visual por inatividade;
    - planilhas `.xlsx`.
-5. **Inventário de licenças** de Qt, PDFium, OpenSSL e Matplotlib para distribuição.
+5. **Distribuição:** versões fixadas após G1, assinatura do instalador e ícone (`14` §5).

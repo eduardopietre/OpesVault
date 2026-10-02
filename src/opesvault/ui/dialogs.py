@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (
 from opesvault.domain.ledger import DomainError, Ledger
 from opesvault.domain.model import AccountSubtype, AccountType, Card, LedgerAccount, YearMonth
 from opesvault.ui.common import (
+    CompetenceCombo,
     combo_value,
     date_edit,
     fill_combo,
@@ -313,8 +314,7 @@ class OperationDialog(FormDialog):
         self.description = QLineEdit()
         self.amount = money_edit()
         self.when = date_edit()
-        self.competence = QLineEdit()
-        self.competence.setPlaceholderText("AAAA-MM (vazio = mês da data)")
+        self.competence = CompetenceCombo()
         self.source = QComboBox()
         self.target = QComboBox()
         self.member = QComboBox()
@@ -365,13 +365,7 @@ class OperationDialog(FormDialog):
             self.form.addRow("Responsável:", self.member)
 
     def _competence(self) -> YearMonth | None:
-        text = self.competence.text().strip()
-        if not text:
-            return None
-        try:
-            return YearMonth.parse(text)
-        except (ValueError, TypeError):
-            raise DomainError("Competência inválida; use AAAA-MM.") from None
+        return self.competence.value()
 
     def validate(self) -> None:
         if combo_value(self.source) is None or combo_value(self.target) is None:
@@ -415,6 +409,59 @@ class OperationDialog(FormDialog):
                 self.ledger.record_card_purchase(source, target, value, on, description, **extra)
         elif self.kind == "card_payment":
             self.ledger.record_card_payment(source, target, value, on)
+
+
+class BillPaymentDialog(FormDialog):
+    """Pays one card bill from where it is seen: the remaining amount comes filled in."""
+
+    def __init__(self, parent: QWidget | None, ledger: Ledger, card: Card, bill: Any) -> None:
+        from opesvault.domain.money import format_brl
+        from opesvault.ui.common import fmt_date
+        from opesvault.ui.components import text
+
+        super().__init__(parent, f"Pagar fatura — {card.name}", "Registrar pagamento")
+        self.ledger = ledger
+        self.card = card
+        self.due = bill.cycle.due
+        self.amount = money_edit()
+        self.amount.setText(format_brl(bill.remaining).replace("R$", "").strip())
+        self.when = date_edit()
+        self.account = QComboBox()
+        self.account.setAccessibleName("Pago pela conta")
+        fill_combo(self.account, liquid_accounts(ledger))
+        self.late = text("", "caption", wrap=True)
+        self.late.setProperty("tone", "warning")
+        self.when.dateChanged.connect(lambda _: self._update_note())
+        summary = (
+            f"Vencimento {fmt_date(bill.cycle.due)} · total {format_brl(bill.total)} · "
+            f"pago {format_brl(bill.payments)} · falta {format_brl(bill.remaining)}"
+        )
+        self.form.addRow("", text(summary, "caption", wrap=True))
+        self.form.addRow("Pago pela conta:", self.account)
+        self.form.addRow("Valor:", self.amount)
+        self.form.addRow("Data do pagamento:", self.when)
+        self.form.addRow("", self.late)
+        self._update_note()
+
+    def _update_note(self) -> None:
+        # Bills count payments made up to their due date (domain.cards.bills); say so before it happens.
+        paid_on = from_qdate(self.when.date())
+        late = paid_on > self.due
+        self.late.setText("Pagamentos depois do vencimento entram na conta da fatura seguinte." if late else "")
+        self.late.setVisible(late)
+
+    def validate(self) -> None:
+        if combo_value(self.account) is None:
+            raise DomainError("Cadastre a conta de onde sai o pagamento.")
+        value = read_money(self.amount)
+        if value is None or value <= 0:
+            raise DomainError("Informe um valor positivo.")
+
+    def apply(self) -> object:
+        value = read_money(self.amount)
+        return self.ledger.record_card_payment(
+            self.card.id, combo_value(self.account), value, from_qdate(self.when.date())
+        )
 
 
 def ask_reason(parent: QWidget, title: str) -> str | None:

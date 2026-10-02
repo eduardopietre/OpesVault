@@ -13,17 +13,19 @@ MAX_VISIBLE = 6
 SEVERITY_WORDS = {Severity.URGENT: "Atrasado", Severity.SOON: "Em breve", Severity.INFO: "Aguardando"}
 SEVERITY_TONES = {Severity.URGENT: "negative", Severity.SOON: "warning", Severity.INFO: None}
 ACTION_LABELS = {
-    "accounts": "Ver faturas",
-    "recurrences": "Ver recorrências",
+    "accounts": "Ver fatura",
+    "recurrences": "Ver previsão",
     "import": "Revisar",
-    "budget": "Ver orçamento",
+    "budget": "Ver no orçamento",
 }
+# Alerts whose fix is one command open it directly, with the object already chosen.
+ACT_LABELS = {"accounts": "Pagar…", "recurrences": "Vincular…"}
 
 
 class AlertsPanel(QWidget):
     """Shown above the month figures; hidden when nothing needs attention."""
 
-    def __init__(self, navigate: Callable[[str], None]) -> None:
+    def __init__(self, navigate: Callable[..., None]) -> None:
         super().__init__()
         self._navigate = navigate
         self._expanded = False
@@ -81,9 +83,15 @@ class AlertsPanel(QWidget):
             lines.setSpacing(0)
             lines.addWidget(text(alert.title, wrap=True))
             lines.addWidget(text(alert.detail, "caption", wrap=True))
-            act = button(ACTION_LABELS.get(alert.target.value, "Ver"), lambda t=alert.target.value: self._navigate(t))
+            target = alert.target.value
+            # A bill can be paid before or after it is due; a forecast is linked only once it is late.
+            direct = alert.ref is not None and (
+                target == "accounts" or (target == "recurrences" and alert.severity is Severity.URGENT)
+            )
+            label = ACT_LABELS[target] if direct else ACTION_LABELS.get(target, "Ver")
+            act = button(label, lambda t=target, r=alert.ref, d=direct: self._navigate(t, r, act=d))
             act.setProperty("role", "plain")
-            act.setAccessibleName(f"{ACTION_LABELS.get(alert.target.value, 'Ver')}: {alert.title}")
+            act.setAccessibleName(f"{label}: {alert.title}")
             self.grid.addWidget(word, row, 0, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
             self.grid.addWidget(body, row, 1)
             self.grid.addWidget(act, row, 2, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)

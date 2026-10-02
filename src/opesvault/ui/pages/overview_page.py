@@ -62,7 +62,8 @@ class OverviewPage(Page):
     def __init__(self, changed) -> None:  # type: ignore[no-untyped-def]
         super().__init__(changed)
         self.month = MonthPicker()
-        self.month.changed.connect(self.refresh)
+        self._following = False
+        self.month.changed.connect(self._month_changed)
         self.close_button = button("Fechar mês…", self.close_month, tip="Bloqueia alterações no mês")
         self.reopen_button = button("Reabrir mês…", self.reopen_month, tip="Libera alterações; exige motivo")
         # Time navigation and the month action are separate groups.
@@ -106,7 +107,8 @@ class OverviewPage(Page):
 
         self.pending = text("", wrap=True)
         self.pending.setProperty("tone", "warning")
-        self.pending_section = Section("Pendências do mês")
+        # What blocks closing the month, apart from "Atenção" (what is due or waiting today).
+        self.pending_section = Section("Antes de fechar o mês")
         self.pending_section.add(self.pending)
 
         self.balances = summary_table(["Conta", "Saldo"])
@@ -114,6 +116,11 @@ class OverviewPage(Page):
         self.categories.setItemDelegateForColumn(2, ShareBarDelegate(self.categories))
         for table in (self.balances, self.categories):
             stretch_column(table)
+            # Each line opens its operations in the Ledger, for this month.
+            table.cellClicked.connect(lambda row, _column, t=table: self._open_row(t, row))
+            table.itemActivated.connect(lambda item, t=table: self._open_row(t, item.row()))
+            table.viewport().setCursor(Qt.CursorShape.PointingHandCursor)
+            table.setToolTip("Clique para ver os lançamentos deste mês no Livro financeiro")
         tables = QGridLayout()
         tables.setContentsMargins(0, 0, 0, 0)
         tables.setHorizontalSpacing(SPACE_XXL)
@@ -147,6 +154,21 @@ class OverviewPage(Page):
             self.month.set_month(latest)
             self.month.blockSignals(False)
             self._month_chosen = True
+            self.month_chosen(latest)  # Budget and Ledger open on the same month
+
+    def _month_changed(self) -> None:
+        self._month_chosen = True  # a month picked here or elsewhere wins over the automatic default
+        self.refresh()
+        if not self._following:
+            self.month_chosen(self.month.current())
+
+    def follow_month(self, month: object) -> None:
+        self._month_chosen = True
+        self._following = True
+        try:
+            self.month.set_month(month)
+        finally:
+            self._following = False
 
     def show_alerts(self) -> None:
         """Called when a vault opens: the panel comes back even if it was hidden before."""
@@ -220,6 +242,12 @@ class OverviewPage(Page):
         self.categories.setColumnWidth(2, 150 if bars else 96)
         fit_to_rows(self.balances)
         fit_to_rows(self.categories)
+
+    def _open_row(self, table: QTableWidget, row: int) -> None:
+        item = table.item(row, 0)
+        account_id = item.data(Qt.ItemDataRole.UserRole) if item is not None else None
+        if account_id is not None:
+            self.navigate("ledger", ("filter", account_id, self.month.current()))
 
     def close_month(self) -> None:
         if self.session is None:

@@ -6,8 +6,8 @@ from pathlib import Path
 from typing import Any
 from uuid import UUID
 
-from PySide6.QtCore import QObject, QRunnable, Qt, QThreadPool, Signal
-from PySide6.QtGui import QKeySequence, QShortcut
+from PySide6.QtCore import QMimeData, QObject, QRunnable, Qt, QThreadPool, Signal
+from PySide6.QtGui import QDragEnterEvent, QDropEvent, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QComboBox,
     QFileDialog,
@@ -32,7 +32,7 @@ from opesvault.ui.components import EmptyState, button, flow_row, hbox, hbox_wid
 from opesvault.ui.dialogs import FormDialog, ask_reason
 from opesvault.ui.pages.base import Page
 from opesvault.ui.pages.documents_page import PdfView
-from opesvault.ui.theme import SPACE_L, SPACE_S, SPACE_XS, tokens
+from opesvault.ui.theme import SPACE_L, SPACE_S, SPACE_XS, restyle, tokens
 
 STATUS_LABELS = {
     BatchStatus.UNSUPPORTED: "Não suportado",
@@ -129,8 +129,12 @@ class ImportPage(Page):
         self.batches.setAccessibleName("Documentos importados")
         self.batches.itemSelectionChanged.connect(self._select_batch)
         self.batches.setMinimumWidth(160)
-        import_button = button("Importar arquivos…", self.import_files, role="primary", tip="PDF, CSV ou OFX (Ctrl+I)")
-        self.header.add(import_button)
+        self.import_button = button(
+            "Importar arquivos…", self.import_files, role="primary", tip="PDF, CSV ou OFX (Ctrl+I); ou arraste para cá"
+        )
+        coverage = button("Layouts suportados", self.show_coverage, role="plain", tip="Bancos e documentos lidos")
+        self.header.add(coverage, self.import_button)
+        self.setAcceptDrops(True)  # dropping the files on the page is the natural gesture here
 
         # ── review (center): document facts, target, actions, items
         self.batch_title = text("", "headline")
@@ -181,6 +185,7 @@ class ImportPage(Page):
         ):
             self._shortcut(keys, slot)
         self.review_actions = (approve_all, approve_one, correct, more)
+        self.approve_all_button = approve_all
         actions = flow_row(approve_all, approve_one, correct, more)
 
         review = QWidget()
@@ -231,7 +236,8 @@ class ImportPage(Page):
         self.empty = EmptyState(
             "Nenhum documento importado",
             "Importe faturas de cartão, extratos e notas de corretagem em PDF, CSV ou OFX. "
-            "Cada item é revisado aqui antes de virar lançamento; o arquivo original fica guardado no cofre.",
+            "Cada item é revisado aqui antes de virar lançamento; o arquivo original fica guardado no cofre. "
+            "Você também pode arrastar os arquivos para esta janela.",
             [button("Importar arquivos…", self.import_files)],
         )
         self.views = QStackedWidget()
@@ -298,6 +304,50 @@ class ImportPage(Page):
             return None
         return pipeline.batches(self.session.ledger).get(self.batch_id)
 
+    def reveal(self, ref: object, *, act: bool = False) -> None:
+        """An import alert: open the document waiting for review."""
+        for row in range(self.batches.rowCount()):
+            item = self.batches.item(row, 0)
+            if item is not None and item.data(Qt.ItemDataRole.UserRole) == ref:
+                self.batches.selectRow(row)
+                self.items.setFocus()  # ready for Ctrl+Enter
+                return
+
+    def _primary(self, reviewing: bool) -> None:
+        """One primary action at a time: approving while a document is open, importing otherwise."""
+        self.import_button.setProperty("role", "" if reviewing else "primary")
+        self.approve_all_button.setProperty("role", "primary" if reviewing else "")
+        for widget in (self.import_button, self.approve_all_button):
+            restyle(widget)
+
+    def show_coverage(self) -> None:
+        from opesvault.ui.coverage import CoverageDialog
+
+        dialog = CoverageDialog(self)
+        dialog.exec()
+        dialog.deleteLater()
+
+    def dragEnterEvent(self, event: QDragEnterEvent) -> None:  # noqa: N802 - Qt override
+        if self.session is not None and self._dropped_paths(event.mimeData()):
+            event.acceptProposedAction()
+
+    def dropEvent(self, event: QDropEvent) -> None:  # noqa: N802 - Qt override
+        paths = self._dropped_paths(event.mimeData())
+        if self.session is None or not paths:
+            return
+        event.acceptProposedAction()
+        self._queue.extend(paths)
+        self._next_import()
+
+    @staticmethod
+    def _dropped_paths(mime: QMimeData) -> list[Path]:
+        suffixes = {".pdf", ".csv", ".ofx", ".txt"}
+        return [
+            Path(url.toLocalFile())
+            for url in mime.urls()
+            if url.isLocalFile() and Path(url.toLocalFile()).suffix.lower() in suffixes
+        ]
+
     def _select_batch(self) -> None:
         self.batch_id = selected_id(self.batches)
         self._show_batch()
@@ -324,8 +374,10 @@ class ImportPage(Page):
         if batch is None or self.session is None:
             self.items.setRowCount(0)
             self.review_stack.setCurrentWidget(self.review_empty)
+            self._primary(False)
             return
         self.review_stack.setCurrentIndex(0)
+        self._primary(True)
         ledger = self.session.ledger
         h = batch.header
         self.batch_title.setText(self.session.document(batch.document_id).meta.original_name)

@@ -24,9 +24,9 @@ from PySide6.QtWidgets import (
 )
 
 from opesvault.domain.ledger import DomainError, Ledger
-from opesvault.domain.model import AccountSubtype, AccountType, Operation, Posting, YearMonth
+from opesvault.domain.model import AccountSubtype, AccountType, Operation, OperationKind, Posting, YearMonth
 from opesvault.domain.money import ZERO, MoneyError, format_brl, parse_brl
-from opesvault.ui.common import combo_value, fill_combo, from_qdate, select_combo, to_qdate
+from opesvault.ui.common import CompetenceCombo, combo_value, fill_combo, from_qdate, select_combo, to_qdate
 from opesvault.ui.dialogs import FormDialog
 
 TYPE_PREFIX = {
@@ -136,8 +136,7 @@ class OperationEditDialog(FormDialog):
         self.booked = OptionalDate(op.booked_on)
         self.settled = OptionalDate(op.settled_on)
         self.due = OptionalDate(op.due_on)
-        self.competence = QLineEdit(str(op.accrual_month) if op.accrual_month else "")
-        self.competence.setPlaceholderText("AAAA-MM (vazio = mês da data)")
+        self.competence = CompetenceCombo(op.accrual_month, op.occurred_on or op.cash_date)
         self.member = QComboBox()
         fill_combo(self.member, self._members, empty="(família)")
         select_combo(self.member, op.member_id)
@@ -227,13 +226,7 @@ class OperationEditDialog(FormDialog):
     # ── result ──────────────────────────────────────
 
     def _competence(self) -> YearMonth | None:
-        text = self.competence.text().strip()
-        if not text:
-            return None
-        try:
-            return YearMonth.parse(text)
-        except (ValueError, TypeError):
-            raise DomainError("Competência inválida; use AAAA-MM.") from None
+        return self.competence.value()
 
     def build(self) -> Operation:
         description = self.description.text().strip()
@@ -251,6 +244,151 @@ class OperationEditDialog(FormDialog):
             "postings": build_postings(self.rows()),
         }
         return self.original.model_copy(update=update)
+
+    def validate(self) -> None:
+        if not self.reason.text().strip():
+            raise DomainError("O motivo da correção é obrigatório.")
+        updated = self.build()
+        if updated == self.original:
+            raise DomainError("Nada foi alterado.")
+        self.ledger.validate_operation(updated)
+
+    def apply(self) -> Operation:
+        return self.ledger.update_operation(self.build(), self.reason.text().strip())
+
+
+SIMPLE_KINDS = {
+    # kind: (label of the credited side, label of the debited side, which side may change)
+    OperationKind.EXPENSE: ("Conta de origem:", "Categoria:", "both"),
+    OperationKind.INCOME: ("Categoria:", "Conta de destino:", "both"),
+    OperationKind.TRANSFER: ("De:", "Para:", "both"),
+    OperationKind.CARD_PURCHASE: ("Cartão:", "Categoria:", "debit"),
+    OperationKind.CARD_PAYMENT: ("Pago pela conta:", "Cartão:", "credit"),
+}
+
+
+def is_simple(ledger: Ledger, op: Operation) -> bool:
+    """One amount between two accounts, not part of an installment plan: editable without postings."""
+    if op.kind not in SIMPLE_KINDS or len(op.postings) != 2:
+        return False
+    first, second = op.postings
+    if first.amount + second.amount != 0 or first.amount == 0:
+        return False
+    from opesvault.domain.cards import plans
+
+    return not any(op.id in plan.operation_ids for plan in plans(ledger).values())
+
+
+def _side_choices(ledger: Ledger, kind: OperationKind, debit: bool) -> list[tuple[str, UUID]]:
+    from opesvault.ui.dialogs import asset_accounts, balance_accounts, category_items
+
+    if kind is OperationKind.TRANSFER:
+        return balance_accounts(ledger)
+    if kind is OperationKind.EXPENSE or kind is OperationKind.CARD_PURCHASE:
+        return category_items(ledger, AccountType.EXPENSE) if debit else asset_accounts(ledger)
+    if kind is OperationKind.INCOME:
+        return asset_accounts(ledger) if debit else category_items(ledger, AccountType.INCOME)
+    return asset_accounts(ledger)  # card payment: the paying account (credited)
+
+
+class SimpleEditDialog(FormDialog):
+    """Correction of a day-to-day operation in the words it was recorded with.
+
+    Value, date, accounts or category, competence and member; the postings are rebuilt from
+    them. "Corrigir partidas…" opens the full editor for anything else.
+    """
+
+    def __init__(self, parent: QWidget | None, ledger: Ledger, op: Operation) -> None:
+        from opesvault.ui.common import date_edit, money_edit
+        from opesvault.ui.components import button
+
+        super().__init__(parent, "Corrigir lançamento", "Salvar correção")
+        self.ledger = ledger
+        self.original = op
+        self.wants_full_editor = False
+        credit_label, debit_label, editable = SIMPLE_KINDS[op.kind]
+        self.debit_posting = next(p for p in op.postings if p.amount > 0)
+        self.credit_posting = next(p for p in op.postings if p.amount < 0)
+        self.description = QLineEdit(op.description)
+        self.amount = money_edit()
+        self.amount.setText(f"{self.debit_posting.amount:f}".replace(".", ","))
+        self.when = date_edit(op.occurred_on or op.cash_date)
+        self.credit = self._side(op.kind, False, self.credit_posting.account_id, editable in ("both", "credit"))
+        self.debit = self._side(op.kind, True, self.debit_posting.account_id, editable in ("both", "debit"))
+        self.competence = CompetenceCombo(op.accrual_month, op.occurred_on or op.cash_date)
+        self.member = QComboBox()
+        members = [(m.name, m.id) for m in ledger.members.values() if m.active or m.id == op.member_id]
+        fill_combo(self.member, members, empty="(família)")
+        select_combo(self.member, op.member_id)
+        self.notes = QLineEdit(op.notes or "")
+        self.reason = QLineEdit()
+        self.reason.setPlaceholderText("obrigatório; fica no histórico")
+        full = button(
+            "Corrigir partidas…", self._open_full, role="plain", tip="Editor completo, com débitos e créditos"
+        )
+
+        self.form.addRow("Descrição:", self.description)
+        self.form.addRow("Valor:", self.amount)
+        self.form.addRow("Data:", self.when)
+        self.form.addRow(credit_label, self.credit)
+        self.form.addRow(debit_label, self.debit)
+        if op.kind in (OperationKind.EXPENSE, OperationKind.INCOME, OperationKind.CARD_PURCHASE):
+            self.form.addRow("Competência:", self.competence)
+            self.form.addRow("Responsável:", self.member)
+        self.form.addRow("Observações:", self.notes)
+        self.form.addRow("Motivo da correção:", self.reason)
+        self.form.addRow("", full)
+
+    def _side(self, kind: OperationKind, debit: bool, current: UUID, editable: bool) -> QComboBox:
+        combo = QComboBox()
+        choices = _side_choices(self.ledger, kind, debit)
+        if current not in {value for _, value in choices}:
+            account = self.ledger.accounts.get(current)
+            choices = [(account.name if account else "?", current), *choices]
+        fill_combo(combo, choices)
+        select_combo(combo, current)
+        combo.setEnabled(editable)  # a card purchase stays on its card; the full editor can move it
+        return combo
+
+    def _open_full(self) -> None:
+        self.wants_full_editor = True
+        self.reject()
+
+    def build(self) -> Operation:
+        from opesvault.ui.common import read_money
+
+        description = self.description.text().strip()
+        if not description:
+            raise DomainError("Informe a descrição.")
+        value = read_money(self.amount)
+        if value is None or value <= 0:
+            raise DomainError("Informe um valor positivo.")
+        debit_id, credit_id = combo_value(self.debit), combo_value(self.credit)
+        if debit_id is None or credit_id is None or debit_id == credit_id:
+            raise DomainError("Escolha contas diferentes para a origem e o destino.")
+        old = self.original
+        new_date = from_qdate(self.when.date())
+        previous = old.occurred_on or old.cash_date
+        dates = {
+            # The day-to-day forms record one date in several fields; move those that held it.
+            name: new_date if getattr(old, name) == previous else getattr(old, name)
+            for name in ("occurred_on", "booked_on", "settled_on")
+        }
+        postings = tuple(
+            p.model_copy(update={"account_id": debit_id, "amount": value})
+            if p.amount > 0
+            else p.model_copy(update={"account_id": credit_id, "amount": -value})
+            for p in old.postings
+        )
+        update: dict[str, Any] = {
+            "description": description,
+            **dates,
+            "accrual_month": self.competence.value(),
+            "member_id": combo_value(self.member),
+            "notes": self.notes.text().strip() or None,
+            "postings": postings,
+        }
+        return old.model_copy(update=update)
 
     def validate(self) -> None:
         if not self.reason.text().strip():

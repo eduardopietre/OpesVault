@@ -33,7 +33,7 @@ from opesvault.domain.ledger import DomainError
 from opesvault.session import FrozenSnapshot, Session
 from opesvault.ui.common import run_guarded
 from opesvault.ui.components import confirm, decide
-from opesvault.ui.idle_lock import IdleWatcher, LockPanel, lock_minutes, set_lock_minutes
+from opesvault.ui.idle_lock import IdleWatcher, LockPanel, lock_minutes
 from opesvault.ui.pages.accounts_page import AccountsPage
 from opesvault.ui.pages.base import Page
 from opesvault.ui.pages.budget_page import BudgetPage
@@ -157,6 +157,7 @@ class MainWindow(QMainWindow):
             page.set_busy_hook(self._page_busy)
             page.set_notify_hook(self.notify)
             page.set_navigate_hook(self.navigate)
+            page.set_month_hook(self._month_chosen)
             target = self.nav_footer if page.footer else self.nav
             if not page.footer and page.section and page.section != section:
                 section = page.section
@@ -298,18 +299,78 @@ class MainWindow(QMainWindow):
         self.toolbar = bar
 
     def _build_welcome(self) -> QWidget:
-        from opesvault.ui.components import EmptyState, button
+        """No vault open: create, open or restore, and the vaults this computer remembers."""
+        from PySide6.QtWidgets import QCheckBox
+
+        from opesvault.ui.components import EmptyState, button, text
 
         self.welcome_new = button("Novo cofre…", self.new_vault, role="primary")
         self.welcome_open = button("Abrir cofre…", self.open_vault)
+        self.welcome_restore = button("Restaurar backup…", self.restore_backup)
         state = EmptyState(
             "Nenhum cofre aberto",
             "Cada família tem um cofre: um arquivo .opesvault cifrado com a sua senha, com lançamentos e "
             "documentos. Nada sai deste computador.",
-            [self.welcome_new, self.welcome_open],
+            [self.welcome_new, self.welcome_open, self.welcome_restore],
         )
+        # Recent vaults: only paths, only with consent (docs/07 §1), never balances or names.
+        self.recent_list = QListWidget()
+        self.recent_list.setProperty("variant", "plain")
+        self.recent_list.setFrameShape(QListWidget.Shape.NoFrame)
+        self.recent_list.setAccessibleName("Cofres recentes")
+        self.recent_list.itemActivated.connect(self._open_recent_item)
+        self.recent_list.itemClicked.connect(self._open_recent_item)
+        self.recent_list.viewport().setCursor(Qt.CursorShape.PointingHandCursor)
+        self.recent_title = text("Abertos recentemente neste computador", "headline")
+        self.remember_recents = QCheckBox("Lembrar os cofres abertos neste computador (só o caminho do arquivo)")
+        self.remember_recents.toggled.connect(self._consent_recents)
+        recent = QWidget()
+        recent.setMaximumWidth(560)
+        column = QVBoxLayout(recent)
+        column.setContentsMargins(0, 0, 0, 0)
+        column.setSpacing(SPACE_S)
+        column.addWidget(self.recent_title)
+        column.addWidget(self.recent_list)
+        column.addWidget(self.remember_recents)
+        # Right under the actions, inside the empty state's own column (before its bottom stretch).
+        column_layout = state.layout()
+        assert isinstance(column_layout, QVBoxLayout)
+        column_layout.insertSpacing(column_layout.count() - 1, SPACE_M * 2)
+        column_layout.insertWidget(column_layout.count() - 1, recent, 0, Qt.AlignmentFlag.AlignHCenter)
         state.setObjectName("Content")
+        state.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)  # custom widget: paint the surface
         return state
+
+    def _refresh_welcome(self) -> None:
+        enabled = bool(self.app_settings().value("recentes/ativo", False, type=bool))
+        paths = self._recent_paths()[:6] if enabled else []
+        self.recent_list.clear()
+        for path in paths:
+            exists = Path(path).exists()
+            item = QListWidgetItem(
+                f"{Path(path).name}  ·  {Path(path).parent}" if exists else f"{path} (não encontrado)"
+            )
+            item.setData(Qt.ItemDataRole.UserRole, path)
+            item.setToolTip(path)
+            if not exists:
+                item.setFlags(Qt.ItemFlag.NoItemFlags)
+            self.recent_list.addItem(item)
+        self.recent_list.setFixedHeight(len(paths) * (NAV_ROW_HEIGHT + 2) + 4)
+        self.recent_title.setVisible(bool(paths))
+        self.recent_list.setVisible(bool(paths))
+        self.remember_recents.blockSignals(True)
+        self.remember_recents.setChecked(enabled)
+        self.remember_recents.blockSignals(False)
+        self.remember_recents.setVisible(not enabled)  # once on, it is changed in Configurações
+
+    def _open_recent_item(self, item: QListWidgetItem) -> None:
+        path = item.data(Qt.ItemDataRole.UserRole)
+        if isinstance(path, str) and Path(path).exists():
+            self._open_recent(Path(path))
+
+    def _consent_recents(self, enabled: bool) -> None:
+        self.app_settings().setValue("recentes/ativo", enabled)
+        self.notify("Os próximos cofres abertos aparecerão aqui. Para desligar, use Configurações.")
 
     def _update_badges(self) -> None:
         """Counts that need attention, next to the section name (with an accessible description)."""
@@ -432,7 +493,6 @@ class MainWindow(QMainWindow):
         self._action(view, "Buscar nesta tela", QKeySequence.StandardKey.Find, self.focus_search)
         view.addSeparator()
         self._action(view, "Ocultar conteúdo agora", QKeySequence("Ctrl+L"), self.lock_screen)
-        self._action(view, "Bloqueio por inatividade…", None, self.configure_lock)
         help_menu = self.menuBar().addMenu("A&juda")
         self.help_menu = help_menu
         self._action(help_menu, "Ajuda desta tela", QKeySequence.StandardKey.HelpContents, self.show_help)
@@ -467,7 +527,7 @@ class MainWindow(QMainWindow):
         return [str(item) for item in value] if isinstance(value, list) else []
 
     def _open_recent(self, path: Path) -> None:
-        if not self.busy and self._confirm_discard("abrir outro cofre"):
+        if not self.busy and self._confirm_discard("abrir outro cofre", lambda: self._open_recent(path)):
             self.open_path(path)
 
     def _remember(self, path: Path) -> None:
@@ -587,7 +647,7 @@ class MainWindow(QMainWindow):
         QMessageBox.information(self, "Backup", f"Backup da revisão {session.revision.revision} criado:\n{target}")
 
     def restore_backup(self) -> None:
-        if self.busy or not self._confirm_discard("restaurar o backup"):
+        if self.busy or not self._confirm_discard("restaurar o backup", self.restore_backup):
             return
         name, _ = QFileDialog.getOpenFileName(self, "Backup a restaurar", "", VAULT_FILTER)
         if not name:
@@ -678,7 +738,7 @@ class MainWindow(QMainWindow):
         action = QAction(text, self)
         if shortcut is not None:
             action.setShortcut(shortcut)
-        action.triggered.connect(slot)
+        action.triggered.connect(lambda _=False: slot())  # never forward `checked` as an argument
         menu.addAction(action)
         return action
 
@@ -706,17 +766,11 @@ class MainWindow(QMainWindow):
         )
 
     def configure_lock(self) -> None:
-        minutes, ok = QInputDialog.getInt(
-            self,
-            "Bloqueio por inatividade",
-            "Ocultar o conteúdo após quantos minutos sem uso? (0 desliga)\nVale para este computador.",
-            self.idle.minutes,
-            0,
-            240,
-        )
-        if ok:
-            set_lock_minutes(minutes)
-            self.idle.minutes = minutes
+        """The idle lock is set in one place: Configurações, privacy of this computer."""
+        for index, page in enumerate(self.pages):
+            if isinstance(page, SettingsPage):
+                self.show_page(index)
+                page.show_privacy()
 
     def _on_idle(self) -> None:
         if self.session is not None and not self.locked:
@@ -830,12 +884,20 @@ class MainWindow(QMainWindow):
         "recurrences": "RecurrencesPage",
     }
 
-    def navigate(self, target: str) -> None:
+    def navigate(self, target: str, ref: object = None, *, act: bool = False) -> None:
         name = self.TARGETS.get(target)
         for index, page in enumerate(self.pages):
             if type(page).__name__ == name:
                 self.show_page(index)
+                if ref is not None or act:
+                    page.reveal(ref, act=act)
                 return
+
+    def _month_chosen(self, source: Page, month: object) -> None:
+        """Overview, Budget and Ledger look at the same month: a choice in one moves the others."""
+        for page in self.pages:
+            if page is not source:
+                page.follow_month(month)
 
     def _check_budget(self) -> None:
         """Says so the moment an edit pushes a category over its plan (alert on overspend)."""
@@ -878,6 +940,7 @@ class MainWindow(QMainWindow):
         self.save_action.setEnabled(has_session)
         self.go_menu.setEnabled(has_session)
         if self.session is None:
+            self._refresh_welcome()
             self.setWindowTitle("OpesVault")
             self.context_label.setText("OpesVault")
             self.file_label.clear()
@@ -885,6 +948,9 @@ class MainWindow(QMainWindow):
             self._update_undo_actions()
             return
         names = [m.name for m in self.session.ledger.members.values() if m.active]
+        # "Who is operating" only means something when more than one person uses the vault.
+        for action in self._session_actions[1:]:
+            action.setVisible(len(names) > 1)
         if [self.operator.itemText(i) for i in range(self.operator.count())] != names:
             current = self.session.ledger.operator
             self.operator.blockSignals(True)
@@ -968,11 +1034,20 @@ class MainWindow(QMainWindow):
             self.lock.release()
             self.lock = None
 
-    def _confirm_discard(self, action: str = "sair") -> bool:
+    def _flush_pages(self) -> None:
+        """Edits a page is still gathering (a setting being typed) enter the session first."""
+        if self.session is not None and not self.busy:
+            for page in self.pages:
+                page.flush()
+
+    def _confirm_discard(self, action: str = "sair", then: Callable[[], object] | None = None) -> bool:
         """Returns True when it is fine to drop the current session.
 
-        `action` completes "Salvar alterações antes de …?" with what the user is doing.
+        `action` completes "Salvar alterações antes de …?" with what the user is doing. When
+        the user chooses to save, `then` repeats that action once the vault is written, so
+        "Salvar…" really means "save and carry on".
         """
+        self._flush_pages()
         if self.session is None or not self.session.dirty:
             return True
         choice = decide(
@@ -986,14 +1061,14 @@ class MainWindow(QMainWindow):
             ],
         )
         if choice == "save":
-            self.save_vault()
-            return False  # Saving is asynchronous; the user repeats the action afterwards.
+            self.save_vault(then)
+            return False  # Saving is asynchronous; `then` resumes the action after it.
         return choice == "discard"
 
     # ── commands ────────────────────────────────────────
 
     def new_vault(self) -> None:
-        if self.busy or not self._confirm_discard("criar outro cofre"):
+        if self.busy or not self._confirm_discard("criar outro cofre", self.new_vault):
             return
         name, _ = QFileDialog.getSaveFileName(self, "Novo cofre", "", VAULT_FILTER)
         if not name:
@@ -1026,7 +1101,7 @@ class MainWindow(QMainWindow):
         wizard.deleteLater()
 
     def open_vault(self) -> None:
-        if self.busy or not self._confirm_discard("abrir outro cofre"):
+        if self.busy or not self._confirm_discard("abrir outro cofre", self.open_vault):
             return
         name, _ = QFileDialog.getOpenFileName(self, "Abrir cofre", "", VAULT_FILTER)
         if name:
@@ -1060,7 +1135,9 @@ class MainWindow(QMainWindow):
 
         self._run(load, opened, failed)
 
-    def save_vault(self) -> None:
+    def save_vault(self, then: Callable[[], object] | None = None) -> None:
+        """Saves through the worker (it asks the password). `then` runs only after a good save."""
+        self._flush_pages()
         if self.busy or self.session is None:
             return
         session = self.session
@@ -1071,17 +1148,19 @@ class MainWindow(QMainWindow):
             session.mark_saved(frozen, revision)
             session.undo_stack().saved(steps)
             self._after_save()
+            if then is not None:
+                QTimer.singleShot(0, then)  # after the shell refreshed its saved state
 
         self._run(lambda: self.client.save_frozen(frozen), saved)
 
     def close_vault(self) -> None:
-        if self.busy or not self._confirm_discard("fechar o cofre"):
+        if self.busy or not self._confirm_discard("fechar o cofre", self.close_vault):
             return
         self._drop_session()
         self._refresh()
 
     def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802 - Qt override
-        if self.busy or not self._confirm_discard():
+        if self.busy or not self._confirm_discard("sair", self.close):
             event.ignore()
             return
         self._save_geometry()

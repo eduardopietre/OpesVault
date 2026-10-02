@@ -2,6 +2,7 @@
 
 from datetime import date, timedelta
 
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QComboBox,
@@ -9,6 +10,7 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QMessageBox,
     QSpinBox,
+    QStackedWidget,
 )
 
 from opesvault.domain.ledger import DomainError, Ledger
@@ -44,7 +46,7 @@ from opesvault.ui.common import (
     stretch_column,
     summary_table,
 )
-from opesvault.ui.components import Section, button, confirm, menu_button, scroll_body
+from opesvault.ui.components import EmptyState, Section, button, confirm, menu_button, scroll_body, text
 from opesvault.ui.dialogs import FormDialog, balance_accounts, category_items
 from opesvault.ui.pages.base import Page
 from opesvault.ui.theme import tokens
@@ -71,6 +73,9 @@ class RuleDialog(FormDialog):
         )
         self.amount = money_edit()
         self.tolerance = money_edit("0,00")
+        self.tolerance.setToolTip(
+            "Quanto o valor pago pode variar para mais ou para menos e ainda ser o mesmo compromisso"
+        )
         self.frequency = QComboBox()
         fill_combo(self.frequency, [(label, f) for f, label in FREQUENCY_LABELS.items()])
         self.day = QSpinBox()
@@ -82,12 +87,19 @@ class RuleDialog(FormDialog):
             ("Conta:", self.account),
             ("Categoria:", self.counterpart),
             ("Valor esperado:", self.amount),
-            ("Tolerância:", self.tolerance),
+            ("Variação aceita:", self.tolerance),
             ("Frequência:", self.frequency),
             ("Dia:", self.day),
             ("Início:", self.start),
         ):
             self.form.addRow(label, widget)
+        self.form.insertRow(
+            5,
+            "",
+            text(
+                "Quanto o valor pago pode variar e ainda ser este compromisso (0 = valor exato).", "caption", wrap=True
+            ),
+        )
 
     def validate(self) -> None:
         self.build()
@@ -142,8 +154,18 @@ class RecurrencesPage(Page):
         body.addWidget(rules_section)
         body.addWidget(forecasts_section)
         body.addStretch(1)
+        self.empty = EmptyState(
+            "Nenhuma recorrência",
+            "Cadastre contas fixas e receitas esperadas (aluguel, salário, escola). O aplicativo prevê cada "
+            "vencimento, avisa quando atrasa e liga a previsão ao lançamento quando ele acontece. "
+            "Previsões nunca alteram saldos.",
+            [button("Nova recorrência…", self.add)],
+        )
+        self.views = QStackedWidget()
+        self.views.addWidget(scroll)
+        self.views.addWidget(self.empty)
         layout = self.page_layout()
-        layout.addWidget(scroll, 1)
+        layout.addWidget(self.views, 1)
 
     def _window(self) -> tuple[date, date]:
         today = date.today()
@@ -156,6 +178,7 @@ class RecurrencesPage(Page):
             return
         ledger = self.session.ledger
         all_rules = list(rules(ledger).values())
+        self.views.setCurrentIndex(0 if all_rules else 1)
         set_rows(
             self.rules,
             [
@@ -232,6 +255,22 @@ class RecurrencesPage(Page):
         for forecast, op in pairs:
             run_guarded(self, lambda f=forecast, o=op: realize(ledger, f.rule_id, f.due_on, o.id))
         self.changed()
+
+    def reveal(self, ref: object, *, act: bool = False) -> None:
+        """A forecast alert: select that forecast and, when it is late, open Vincular."""
+        if not (isinstance(ref, tuple) and len(ref) == 2):
+            return
+        rule_id, due_on = ref
+        for row in range(self.forecast_table.rowCount()):
+            item = self.forecast_table.item(row, 0)
+            index = item.data(Qt.ItemDataRole.UserRole) if item is not None else None
+            if isinstance(index, int) and index < len(self._forecasts):
+                forecast = self._forecasts[index]
+                if (forecast.rule_id, forecast.due_on) == (rule_id, due_on):
+                    self.forecast_table.selectRow(row)
+                    if act:
+                        self.link_selected()
+                    return
 
     def link_selected(self) -> None:
         forecast = self._selected_forecast()

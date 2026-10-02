@@ -142,6 +142,7 @@ class InvestmentsPage(Page):
                 ("Aporte…", self.contribution),
                 ("Provento…", self.distribution),
                 ("Resgate…", self.redemption),
+                ("Simular resgate (não grava)…", self.simulate),
                 ("Resgate só com o líquido…", self.net_only),
                 ("Completar resgate…", self.complete),
                 None,
@@ -164,7 +165,6 @@ class InvestmentsPage(Page):
         more = menu_button(
             "Mais",
             [
-                ("Simular resgate…", self.simulate),
                 ("Regra de imposto…", self.new_rule),
                 None,
                 ("Importar índice de referência…", self.import_benchmark),
@@ -247,7 +247,20 @@ class InvestmentsPage(Page):
         pl = QVBoxLayout(portfolio)
         pl.setContentsMargins(0, SPACE_S, 0, 0)
         pl.setSpacing(SPACE_XL)
-        pl.addWidget(self.positions)
+        holdings = QVBoxLayout()
+        holdings.setSpacing(SPACE_S)
+        holdings.addWidget(self.positions)
+        pl.addLayout(holdings)
+        # The table speaks the language of the calculation; one line says what each figure means.
+        holdings.addWidget(
+            text(
+                "Custo remanescente: o que você aplicou e ainda não resgatou. Não realizado: último valor menos esse "
+                "custo, ganho ou perda que ainda não saiu do investimento. Realizado: o resultado do que já foi "
+                "resgatado ou vendido. “Indisponível” e “sem avaliação” indicam falta de dado, nunca zero.",
+                "caption",
+                wrap=True,
+            )
+        )
         pl.addWidget(separator())
         pl.addWidget(detail, 1)
         self.views = QStackedWidget()

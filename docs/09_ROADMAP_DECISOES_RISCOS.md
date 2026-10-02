@@ -105,6 +105,7 @@ O piso da abertura é decifrar ~263 MB e interpretar 50 mil operações (~3,7 s 
 | Histórico cresce sem limite | Cofre maior com o tempo | Mitigado; compactação opcional na fase 12 |
 | Layouts de faturas e extratos são sintéticos | Podem falhar com documentos reais | Aberto; fase 7 |
 | Interface conferida só no Linux com fonte DejaVu | Métricas e quebras podem mudar com Segoe UI e escalas do Windows | Aberto; fase 7 |
+| Fluxos de interface ainda abertos: assistente com contas em grade (deveria ser formulário para a primeira conta); primeiro orçamento uma categoria por vez (deveria ser a grade do mês); Relatórios sem filtro por conta, integrante ou categoria e sem abrir os lançamentos; integrante sem papel (titular, dependente) | Mais passos ou menos precisão do que o necessário | Aberto; fase 11 (`16` §5) |
 | Itens resolvidos nesta rodada: salvar inteiro, tabelas cheias, consultas lineares, livro só com descrição, corrida importar/salvar | — | Resolvidos (ver `13` §2.1) |
 
 ## 2. Decisões arquiteturais
@@ -155,6 +156,7 @@ ADR-01 a ADR-03 refletem escolhas aprovadas; os mecanismos específicos e demais
 | Classes de investimento que a família usa e eventos necessários | Orienta regras por classe e layouts de extratos de investimento | Fases 13 e 14 |
 | Modelo Ollama local, se a IA for usada | Escolha por benchmark, não por suposição | Fase 14 |
 | Ícone do aplicativo | Distribuição | Fase 10 |
+| Pagamento de fatura feito **depois do vencimento**: hoje conta para a fatura seguinte (`domain.cards.bills` usa o intervalo entre vencimentos). A alternativa é atribuí-lo à fatura vencida em aberto mais antiga | Muda saldos de faturas e avisos; é regra de cálculo, não de interface | Revisável (`16` §5) |
 
 ## 5. Controle de mudanças
 
@@ -172,6 +174,7 @@ Cada alteração de escopo registra motivo, documentos afetados, migração de d
 | 02/10/2026 | Fases 7 a 10 no que não depende do Windows nem de documentos reais | Pedido do usuário | 09, 13, 14, 15, CLAUDE.md | Nenhum tipo persistido novo; preferências de bloqueio fora do cofre | Desbloqueio confere senha e revisão no worker; registro técnico só com códigos; parsers isolados por `run_parser` | 276 testes; fuzzing longo com 3000 variações |
 | 02/10/2026 | Revisão da interface (princípios de desktop) | Pedido do usuário | 16, CLAUDE.md | Preferências de janela e colunas fora do cofre | Nenhum segredo novo na UI; senha segue só no worker | `test_ui_design`, capturas claro/escuro/estreito |
 | 02/10/2026 | Regras de categoria editáveis, orçamento mensal, avisos ao abrir e desfazer/refazer de edições não salvas | Pedido do usuário (aprova orçamento no escopo e desfazer só do que não foi salvo) | 00, 09, 13, 16, CLAUDE.md | Novos tipos persistidos `category_rule` e `budget_line` (versões antigas do app recusam o cofre) | Desfazer remove do histórico só o que nunca chegou ao cofre; nada novo sai da memória | `test_rules`, `test_budget`, `test_alerts`, `test_undo`, `test_family_routine` |
+| 02/10/2026 | Fluxos de interface: avisos levam ao objeto e à ação, pagar fatura na aba Faturas, Configurações sem Aplicar, salvar e seguir, mês compartilhado, início com recentes consentidos e Restaurar, correção pelo formulário do dia a dia | Pedido do usuário (revisão de fluxos) | 09, 16 | Nenhum tipo persistido novo; preferências do computador seguem fora do cofre | Recentes só com consentimento; nada novo sai da memória | `test_flows` |
 | 02/10/2026 | Roadmap 1.3: fases 11 a 14 com funcionalidades propostas (orçamento, regras editáveis, alertas, comprovantes, desfazer, verificação de backup, fechamento do ano) | Pedido do usuário | 09, CLAUDE.md | A definir por item | A definir por item | Critérios de saída por fase |
 
 ## 6. Definição de pronto documental (versão 1.0, mantida como histórico)

@@ -1,5 +1,8 @@
 """Members, accounts, cards and categories (RF-03, RF-04)."""
 
+from typing import Any
+
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QComboBox, QInputDialog, QTabWidget, QVBoxLayout, QWidget
 
 from opesvault.domain import queries
@@ -18,6 +21,8 @@ class AccountsPage(Page):
     def __init__(self, changed) -> None:  # type: ignore[no-untyped-def]
         super().__init__(changed)
         tabs = QTabWidget()
+        self.tabs = tabs
+        self._bills: dict[Any, Any] = {}  # bill month -> Bill
         self.members = make_table(["Integrante", "Situação"])
         self.accounts = make_table(["Conta", "Tipo", "Instituição", "Titulares", "Saldo"])
         self.cards = make_table(["Cartão", "Portador", "Final", "Fechamento", "Vencimento", "Fatura em aberto"])
@@ -52,7 +57,14 @@ class AccountsPage(Page):
         tabs.addTab(
             self._with_buttons(self.cards, [("Novo cartão…", self.add_card), ("Editar…", self.edit_card)]), "Cartões"
         )
-        tabs.addTab(self._with_buttons(self.bills, [], lead=[text("Cartão", "secondary"), self.bill_card]), "Faturas")
+        self.pay_button = button(
+            "Pagar…", self.pay_bill, role="primary", tip="Registra o pagamento da fatura selecionada"
+        )
+        self.bills.itemSelectionChanged.connect(self._bill_selected)
+        self.bills.doubleClicked.connect(lambda _: self.pay_bill())
+        bills_box = self._with_buttons(self.bills, [], lead=[text("Cartão", "secondary"), self.bill_card])
+        bills_box.layout().itemAt(0).layout().insertWidget(2, self.pay_button)  # type: ignore[union-attr]
+        self.bills_tab = tabs.addTab(bills_box, "Faturas")
         tabs.addTab(self._with_buttons(self.categories, [("Nova categoria…", self.add_category)]), "Categorias")
         self.rules = make_table(["A descrição contém", "Categoria", "Vale para", "Usos", "Situação"])
         self.rules.setAccessibleName("Regras de categoria")
@@ -165,6 +177,8 @@ class AccountsPage(Page):
         card_id = self.bill_card.currentData()
         if self.session is None or card_id is None:
             self.bills.setRowCount(0)
+            self._bills = {}
+            self._bill_selected()
             return
         from datetime import date
 
@@ -175,6 +189,7 @@ class AccountsPage(Page):
         ledger = self.session.ledger
         today = date.today()
         months = [YearMonth.of(today).add(offset) for offset in range(-6, 7)]
+        self._bills = {}
         imported = {
             YearMonth.of(b.header.due_on): b.header.total
             for b in batches(ledger).values()
@@ -195,6 +210,7 @@ class AccountsPage(Page):
                 doc_label += " (diverge)"
             if bill.total == 0 and bill.payments == 0 and document_total is None:
                 continue
+            self._bills[bill.cycle.month] = bill
             rows.append(
                 (
                     [
@@ -209,10 +225,52 @@ class AccountsPage(Page):
                         doc_label,
                         labels[bill.status(today)],
                     ],
-                    None,
+                    bill.cycle.month,
                 )
             )
         set_rows(self.bills, rows)
+        self._bill_selected()
+
+    def _selected_bill(self):  # type: ignore[no-untyped-def]
+        month = selected_id(self.bills)
+        return self._bills.get(month) if month is not None else None
+
+    def _bill_selected(self) -> None:
+        bill = self._selected_bill()
+        self.pay_button.setEnabled(bill is not None and bill.remaining > 0)
+
+    def pay_bill(self) -> None:
+        """Pays the selected bill: the card, the remaining amount and today come filled in."""
+        bill = self._selected_bill()
+        card_id = self.bill_card.currentData()
+        if self.session is None or bill is None or card_id is None or bill.remaining <= 0:
+            return
+        from opesvault.ui.dialogs import BillPaymentDialog
+
+        ledger = self.session.ledger
+        dialog = BillPaymentDialog(self, ledger, ledger.cards[card_id], bill)
+        if dialog.exec() and run_guarded(self, dialog.apply):
+            self.notify(f"Pagamento da fatura de {ledger.cards[card_id].name} registrado.")
+            self.changed()
+
+    def reveal(self, ref: object, *, act: bool = False) -> None:
+        """A bill alert: open Faturas on that card, select the bill and, if asked, pay it."""
+        if not (isinstance(ref, tuple) and len(ref) == 2):
+            return
+        card_id, month = ref
+        self.tabs.setCurrentIndex(self.bills_tab)
+        for index in range(self.bill_card.count()):
+            if self.bill_card.itemData(index) == card_id:
+                self.bill_card.setCurrentIndex(index)
+                break
+        self._refresh_bills()
+        for row in range(self.bills.rowCount()):
+            item = self.bills.item(row, 0)
+            if item is not None and item.data(Qt.ItemDataRole.UserRole) == month:
+                self.bills.selectRow(row)
+                break
+        if act:
+            self.pay_bill()
 
     def add_member(self) -> None:
         if self.session is None:

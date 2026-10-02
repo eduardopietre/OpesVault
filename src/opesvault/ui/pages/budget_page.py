@@ -63,7 +63,8 @@ class BudgetPage(Page):
     def __init__(self, changed) -> None:  # type: ignore[no-untyped-def]
         super().__init__(changed)
         self.month = MonthPicker(months_ahead=12)
-        self.month.changed.connect(self.refresh)
+        self._following = False
+        self.month.changed.connect(self._month_changed)
         more = menu_button(
             "Mais",
             [
@@ -76,7 +77,8 @@ class BudgetPage(Page):
         self.header.add(self.month, SPACE_XL, more, button("Definir orçamento…", self.define, role="primary"))
         self.more = more
 
-        self.figures = Figures(["Planejado", "Realizado", "Restante", "Sem orçamento"])
+        self.figures = Figures(["Planejado", "Realizado", "Restante", "Gasto fora do plano"])
+        self.figures.values["Gasto fora do plano"].setToolTip("Despesas do mês em categorias sem orçamento")
         self.table = summary_table(["Categoria", "Planejado", "Realizado", "Restante", "Uso", "Situação"], max_rows=16)
         self.table.setAccessibleName("Orçamento por categoria")
         self.table.doubleClicked.connect(lambda _: self.edit_selected())
@@ -97,6 +99,30 @@ class BudgetPage(Page):
         layout.addWidget(self.views)
         layout.addStretch(1)
 
+    def _month_changed(self) -> None:
+        self.refresh()
+        if not self._following:
+            self.month_chosen(self.month.current())
+
+    def follow_month(self, month: object) -> None:
+        self._following = True
+        try:
+            self.month.set_month(month)
+        finally:
+            self._following = False
+
+    def reveal(self, ref: object, *, act: bool = False) -> None:
+        """A budget alert: open its month with the category selected."""
+        if not (isinstance(ref, tuple) and len(ref) == 2):
+            return
+        category_id, month = ref
+        self.month.set_month(month)
+        for row in range(self.table.rowCount()):
+            item = self.table.item(row, 0)
+            if item is not None and item.data(Qt.ItemDataRole.UserRole) == category_id:
+                self.table.selectRow(row)
+                return
+
     def _selected_category(self) -> UUID | None:
         row = self.table.currentRow()
         item = self.table.item(row, 0) if row >= 0 else None
@@ -114,7 +140,7 @@ class BudgetPage(Page):
         self.figures.set("Planejado", fmt(status.total_planned))
         self.figures.set("Realizado", fmt(status.total_actual))
         self.figures.set("Restante", fmt(remaining), "negative" if remaining < 0 else None)
-        self.figures.set("Sem orçamento", fmt(status.unbudgeted))
+        self.figures.set("Gasto fora do plano", fmt(status.unbudgeted))
         over, near = len(status.over), len(status.near)
         # The month is shown once, in the picker; the subtitle says how it is going.
         summary = []

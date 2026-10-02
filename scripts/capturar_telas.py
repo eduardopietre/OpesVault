@@ -105,6 +105,7 @@ def main() -> int:
     window = MainWindow()
     window.resize(width, height)
     window.show()
+    app.processEvents()  # let layout and styles settle before the first capture
     window.grab().save(str(args.out / "00-sem-cofre.png"))
     window.session = demo_session(args.out / "demo.opesvault")
     window._refresh()

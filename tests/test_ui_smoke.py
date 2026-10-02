@@ -193,7 +193,11 @@ def test_phase6_commands(window: MainWindow, tmp_path: Path, monkeypatch: pytest
 
     page = next(p for p in window.pages if isinstance(p, SettingsPage))
     window.show_page(window.pages.index(page))
-    assert page.coverage.rowCount() >= 8
+    from opesvault.ui.coverage import CoverageDialog
+
+    coverage = CoverageDialog(window)
+    assert coverage.table.rowCount() >= 8
+    coverage.deleteLater()
     labels = [a.text() for a in window.vault_menu.actions()]
     assert "Trocar senha…" in labels and "Restaurar backup…" in labels
     assert window.session is not None

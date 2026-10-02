@@ -39,6 +39,9 @@ class Alert:
     detail: str
     target: Target
     due_on: date | None = None
+    # What the alert is about, so the screen can open it ready to act: (card id, bill
+    # month), (rule id, due date), (category id, month) or a batch id. Opaque to this module.
+    ref: object = None
 
 
 def _when(due: date, today: date) -> str:
@@ -79,6 +82,7 @@ def card_alerts(ledger: Ledger, today: date, horizon: int = HORIZON_DAYS) -> lis
                     f"{_when(due, today)} · falta pagar {format_brl(bill.remaining)}",
                     Target.ACCOUNTS,
                     due,
+                    (card.id, bill.cycle.month),
                 )
             )
     return out
@@ -99,6 +103,7 @@ def recurrence_alerts(ledger: Ledger, today: date, horizon: int = HORIZON_DAYS) 
                     f"esperada em {forecast.due_on:%d/%m} · {value} · vincule ao lançamento ou pule",
                     Target.RECURRENCES,
                     forecast.due_on,
+                    (forecast.rule_id, forecast.due_on),
                 )
             )
         elif forecast.status is ForecastStatus.PENDING and forecast.due_on >= today:
@@ -111,6 +116,7 @@ def recurrence_alerts(ledger: Ledger, today: date, horizon: int = HORIZON_DAYS) 
                     f"{_when(forecast.due_on, today)} · {value}",
                     Target.RECURRENCES,
                     forecast.due_on,
+                    (forecast.rule_id, forecast.due_on),
                 )
             )
     return out
@@ -130,6 +136,7 @@ def import_alerts(ledger: Ledger) -> list[Alert]:
                 f"{len(pending)} item(ns) importado(s) aguardando revisão",
                 f"em {documents} documento(s); só entram nas contas depois de aprovados",
                 Target.IMPORT,
+                ref=pending[0].batch_id,
             )
         )
     undecided = [
@@ -142,6 +149,7 @@ def import_alerts(ledger: Ledger) -> list[Alert]:
                 f"{len(undecided)} documento(s) sem layout definido",
                 "escolha o layout ou registre os lançamentos manualmente",
                 Target.IMPORT,
+                ref=undecided[0].id,
             )
         )
     return out
@@ -158,6 +166,7 @@ def budget_alerts(ledger: Ledger, today: date) -> list[Alert]:
             f"Orçamento estourado: {row.name}",
             f"gasto {format_brl(row.actual)} de {format_brl(row.planned)} ({int(row.used * 100)}%)",
             Target.BUDGET,
+            ref=(row.category_id, month),
         )
         for row in current.over
     ]
@@ -167,6 +176,7 @@ def budget_alerts(ledger: Ledger, today: date) -> list[Alert]:
             f"Orçamento quase no limite: {row.name}",
             f"resta {format_brl(row.remaining)} de {format_brl(row.planned)}",
             Target.BUDGET,
+            ref=(row.category_id, month),
         )
         for row in current.near
     ]

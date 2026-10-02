@@ -31,7 +31,7 @@ from PySide6.QtWidgets import (
 
 from opesvault.domain.edits import reclassify
 from opesvault.domain.ledger import DomainError, Ledger
-from opesvault.domain.model import AccountSubtype, AccountType, Operation, OperationKind, OriginKind
+from opesvault.domain.model import AccountSubtype, AccountType, Operation, OperationKind, OriginKind, YearMonth
 from opesvault.domain.money import ZERO
 from opesvault.domain.search import OperationFilter, StatusFilter, find_operations
 from opesvault.ui.common import (
@@ -40,13 +40,14 @@ from opesvault.ui.common import (
     fmt,
     fmt_date,
     install_column_chooser,
+    month_label,
     run_guarded,
     select_combo,
     style_table,
 )
 from opesvault.ui.components import EmptyState, button, fill_menu, flow_row, hbox, menu_button, separator, text
 from opesvault.ui.dialogs import FormDialog, OperationDialog, ask_reason, category_items
-from opesvault.ui.operation_edit import OperationEditDialog, OptionalDate
+from opesvault.ui.operation_edit import OperationEditDialog, OptionalDate, SimpleEditDialog, is_simple
 from opesvault.ui.pages.base import Page
 from opesvault.ui.theme import SPACE_M, SPACE_S, tokens
 
@@ -79,12 +80,15 @@ STATUS_LABELS = {
 }
 PERIODS = (
     ("Todo o período", "all"),
+    ("Mês selecionado", "month"),  # relabelled with the month itself (shared with Overview and Budget)
     ("Este mês", "this_month"),
     ("Mês passado", "last_month"),
     ("Últimos 3 meses", "last_3"),
     ("Este ano", "this_year"),
     ("Personalizado", "custom"),
 )
+
+MONTH_PERIOD = 1  # index of the shared month in the period filter
 
 
 def period_range(key: str, today: date) -> tuple[date | None, date | None]:
@@ -328,6 +332,8 @@ class LedgerPage(Page):
         self.period = QComboBox()
         self.period.setAccessibleName("Período")
         fill_combo(self.period, list(PERIODS))
+        self._month = YearMonth.of(date.today())
+        self._label_month()
         self.filter_start = OptionalDate(None)
         self.filter_end = OptionalDate(None)
         for optional in (self.filter_start, self.filter_end):
@@ -359,7 +365,8 @@ class LedgerPage(Page):
             optional.edit.dateChanged.connect(self.refresh)
         self.clear_filters = button("Limpar filtros", self.reset_filters, role="plain")
         row_commands: list[Any] = [
-            ("Editar…", self.edit, "Return"),
+            ("Corrigir…", self.edit, "Return"),
+            ("Corrigir partidas…", self.edit_postings),
             ("Reclassificar…", self.reclassify_selected),
             ("Estornar…", self.reverse),
             ("Histórico", self.show_history),
@@ -410,7 +417,8 @@ class LedgerPage(Page):
         )
         self.table.selectionModel().selectionChanged.connect(lambda *_: self._update_selection())
 
-        self.empty = EmptyState("", "", [button("Limpar filtros", self.reset_filters)])
+        self.empty_action = button("Limpar filtros", self._empty_action)
+        self.empty = EmptyState("", "", [self.empty_action])
         self.empty_new = EmptyState(
             "Nenhum lançamento ainda",
             "Importe uma fatura ou um extrato em “Importar e revisar”, ou registre uma operação em Novo lançamento.",
@@ -446,6 +454,40 @@ class LedgerPage(Page):
         select_combo(combo, current)
         combo.blockSignals(False)
 
+    def _label_month(self) -> None:
+        self.period.setItemText(MONTH_PERIOD, month_label(self._month).capitalize())
+
+    def follow_month(self, month: object) -> None:
+        """The month chosen in the Overview or the Budget; shown when the period is "the month"."""
+        if not isinstance(month, YearMonth) or month == self._month:
+            return
+        self._month = month
+        self._label_month()
+        if self.period.currentData() == "month":
+            self.refresh()
+
+    def reveal(self, ref: object, *, act: bool = False) -> None:
+        """("filter", account or category, month): the operations behind an Overview line."""
+        if not (isinstance(ref, tuple) and len(ref) == 3 and ref[0] == "filter"):
+            return
+        _, account_id, month = ref
+        for combo in (self.period, self.filter_account, self.filter_member, self.filter_status, self.filter_origin):
+            combo.blockSignals(True)
+            combo.setCurrentIndex(MONTH_PERIOD if combo is self.period else 0)
+            combo.blockSignals(False)
+        self.custom_dates.hide()
+        self.filter_text.blockSignals(True)
+        self.filter_text.clear()
+        self.filter_text.blockSignals(False)
+        if isinstance(month, YearMonth):
+            self._month = month
+            self._label_month()
+        self.refresh()  # fills the account list before choosing from it
+        self.filter_account.blockSignals(True)
+        select_combo(self.filter_account, account_id)
+        self.filter_account.blockSignals(False)
+        self.refresh()
+
     def _period_changed(self) -> None:
         self.custom_dates.setVisible(self.period.currentData() == "custom")
         self.refresh()
@@ -454,6 +496,8 @@ class LedgerPage(Page):
         key = self.period.currentData() or "all"
         if key == "custom":
             start, end = self.filter_start.value(), self.filter_end.value()
+        elif key == "month":
+            start, end = self._month.first_day(), self._month.last_day()
         else:
             start, end = period_range(key, date.today())
         return OperationFilter(
@@ -469,6 +513,13 @@ class LedgerPage(Page):
     def filters_active(self) -> bool:
         combos = (self.period, self.filter_account, self.filter_member, self.filter_status, self.filter_origin)
         return any(c.currentIndex() > 0 for c in combos) or bool(self.filter_text.text().strip())
+
+    def _only_period_filter(self) -> bool:
+        others = (self.filter_account, self.filter_member, self.filter_status, self.filter_origin)
+        return not any(c.currentIndex() > 0 for c in others) and not self.filter_text.text().strip()
+
+    def _empty_action(self) -> None:
+        self.reset_filters()  # back to "Todo o período", which is also what "Ver todo o período" means
 
     def reset_filters(self) -> None:
         for combo in (self.period, self.filter_account, self.filter_member, self.filter_status, self.filter_origin):
@@ -513,7 +564,14 @@ class LedgerPage(Page):
         if total == 0:
             self.views.setCurrentWidget(self.empty_new)
         elif not ops:
-            self.empty.set_text("Nenhum lançamento com estes filtros", "Ajuste a busca ou limpe os filtros.")
+            month_only = self.period.currentData() == "month" and self._only_period_filter()
+            if month_only:
+                self.empty.set_text(
+                    f"Nenhum lançamento em {month_label(self._month)}", "Veja todo o período ou escolha outro mês."
+                )
+            else:
+                self.empty.set_text("Nenhum lançamento com estes filtros", "Ajuste a busca ou limpe os filtros.")
+            self.empty_action.setText("Ver todo o período" if month_only else "Limpar filtros")
             self.views.setCurrentWidget(self.empty)
         else:
             self.views.setCurrentWidget(self.table)
@@ -582,11 +640,32 @@ class LedgerPage(Page):
             self.changed()
 
     def edit(self) -> None:
+        """Enter / double click: the day-to-day form; the postings editor only when needed."""
         op = self._selected()
         if op is None or self.session is None:
             return
         if not op.active:
-            QMessageBox.information(self, "Editar", "Lançamento cancelado não pode ser editado.")
+            QMessageBox.information(self, "Corrigir", "Lançamento cancelado não pode ser corrigido.")
+            return
+        ledger = self.session.ledger
+        if is_simple(ledger, op):
+            simple = SimpleEditDialog(self, ledger, op)
+            if simple.exec():
+                if run_guarded(self, simple.apply):
+                    self.notify("Lançamento corrigido. A versão anterior ficou no histórico.")
+                    self.changed()
+                return
+            if not simple.wants_full_editor:
+                return
+        self.edit_postings()
+
+    def edit_postings(self) -> None:
+        """The full editor: dates, competence and every posting (debits and credits)."""
+        op = self._selected()
+        if op is None or self.session is None:
+            return
+        if not op.active:
+            QMessageBox.information(self, "Corrigir", "Lançamento cancelado não pode ser corrigido.")
             return
         dialog = OperationEditDialog(self, self.session.ledger, op)
         if dialog.exec() and run_guarded(self, dialog.apply):

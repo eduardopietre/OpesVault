@@ -23,8 +23,13 @@ PAGES: dict[str, str] = {
     "Visão geral": """
 <p><b>Atenção</b> lista faturas e contas que vencem nos próximos 7 dias, o que está atrasado, orçamentos
 estourados e importações aguardando revisão. Aparece sempre que o cofre é aberto.</p>
-<p>Resumo do mês: saldos das contas, faturas abertas, receitas e despesas por competência e pendências.</p>
-<p>Valores desconhecidos aparecem como “—”, nunca como zero. Clique nos gráficos para ver de onde vem cada número.</p>
+<p>Cada aviso tem um botão que abre o ponto exato: a fatura com <b>Pagar</b>, a previsão atrasada com
+<b>Vincular</b>, a categoria no orçamento do mês, o documento na revisão.</p>
+<p>Resumo do mês: caixa, resultado por competência, patrimônio, saldos das contas e despesas por categoria.
+Clique numa conta ou categoria para ver os lançamentos daquele mês no Livro financeiro.</p>
+<p>O mês escolhido aqui vale também no Orçamento e na opção de mês do Livro financeiro.
+<b>Antes de fechar o mês</b> lista o que impede o fechamento.</p>
+<p>Valores desconhecidos aparecem como “—”, nunca como zero.</p>
 """,
     "Orçamento": """
 <p>Quanto você planeja gastar por categoria em cada mês, quanto já gastou e quanto resta.</p>
@@ -44,8 +49,10 @@ também ao abrir o cofre e na barra de status quando um lançamento estoura o pl
 <li><b>Busca</b> (Ctrl+F) e <b>Limpar filtros</b>, que aparece quando algum filtro está ativo.</li>
 <li><b>Detalhes</b>: o painel à direita mostra datas, partidas, rateio e histórico do lançamento selecionado.
 Clique com o botão direito no cabeçalho da tabela para escolher as colunas.</li>
-<li><b>Editar</b> (duplo clique, Enter ou botão direito): datas, competência, responsável, observações e partidas,
-incluindo o rateio por integrante. O indicador mostra se débitos e créditos fecham.</li>
+<li><b>Corrigir</b> (duplo clique, Enter ou botão direito): o mesmo formulário de receita, despesa,
+transferência, compra ou pagamento, com valor, data, conta, categoria e competência.</li>
+<li><b>Corrigir partidas</b>: o editor completo, com datas, débitos e créditos e o rateio por integrante.
+O indicador mostra se débitos e créditos fecham.</li>
 <li><b>Reclassificar selecionados</b>: troca a categoria de vários lançamentos de uma vez.
 Selecione com Shift ou Ctrl. Rateios com mais de uma categoria não são alterados.</li>
 <li><b>Estornar</b> cria uma operação oposta; <b>Cancelar</b> tira o lançamento das contas.
@@ -97,8 +104,11 @@ ser inspecionado até os lançamentos que o compõem.</p>
 Os documentos nunca são gravados em disco sem cifra.</p>
 """,
     "Configurações": """
-<p>Pasta e retenção de backups, lembrete de salvamento, IA local e o catálogo de layouts suportados.
-Layouts marcados como não validados com documentos reais exibem um aviso a cada importação.</p>
+<p><b>Backup e salvamento</b> e <b>IA local</b> ficam no cofre: a mudança vale na hora e é gravada com
+Salvar (Ctrl+S), como qualquer outra alteração. <b>Privacidade deste computador</b> (cofres recentes e bloqueio
+por inatividade) fica fora do cofre e é gravada na hora.</p>
+<p>Fazer backup, restaurar e trocar a senha também estão no menu Cofre. Os layouts suportados ficam em
+Importar e revisar.</p>
 """,
 }
 

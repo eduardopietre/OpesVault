@@ -1,6 +1,6 @@
 # Sistema visual e de interação
 
-Versão 1.1 • 02/10/2026. Complementa o `07` (telas e gráficos) com as regras de interface adotadas na revisão orientada pelos princípios de interação de desktop da Apple (HIG): hierarquia clara, conteúdo acima de cromo, teclado como recurso de primeira classe e consistência entre telas. A meta não é imitar a aparência do macOS: o alvo continua sendo Windows, com Qt Widgets.
+Versão 1.2 • 02/10/2026. Complementa o `07` (telas e gráficos) com as regras de interface adotadas na revisão orientada pelos princípios de interação de desktop da Apple (HIG): hierarquia clara, conteúdo acima de cromo, teclado como recurso de primeira classe e consistência entre telas. A meta não é imitar a aparência do macOS: o alvo continua sendo Windows, com Qt Widgets.
 
 ## 1. Arquitetura da janela
 
@@ -93,7 +93,29 @@ Formulários (`FormDialog`) usam rótulos alinhados e um botão com verbo ("Regi
    - bloqueio por inatividade;
    - cofres recentes.
 
-## 5. Verificação
+## 5. Fluxos: ver, ir ao ponto e concluir
+
+Regra: quem vê um problema chega ao objeto e ao comando que o resolve, sem procurá-lo em outra seção.
+
+| Ponto de partida | Para onde leva | Implementação |
+|---|---|---|
+| Aviso de fatura (vencida ou a vencer) | Contas e cartões › Faturas, no cartão e na fatura do aviso, com **Pagar…** já aberto | `Alert.ref` = (cartão, mês); `AccountsPage.reveal` |
+| Previsão atrasada | Recorrências, com a previsão selecionada e **Vincular…** aberto | `RecurrencesPage.reveal` |
+| Orçamento estourado ou perto do limite | Orçamento no mês do aviso, com a categoria selecionada | `BudgetPage.reveal` |
+| Itens aguardando revisão | Importar, com o documento aberto e o foco nos itens (Ctrl+Enter) | `ImportPage.reveal` |
+| Linha de saldo ou de categoria na Visão geral | Livro financeiro filtrado pela conta ou categoria, no mesmo mês | `LedgerPage.reveal(("filter", conta, mês))` |
+| Documento | A revisão do lote ligado a ele (**Abrir na revisão**) | `DocumentsPage` |
+
+- **Pagar fatura:** a aba Faturas tem **Pagar…** (também duplo clique na fatura). O formulário já traz a conta, o valor restante e a data de hoje. Pagamentos depois do vencimento contam para a fatura seguinte (`domain.cards.bills`), e o formulário avisa isso antes de registrar.
+- **Mês compartilhado:** o mês escolhido na Visão geral vale no Orçamento e é a segunda opção de período do Livro, que abre em "Todo o período" para não esconder lançamentos de quem chega pela barra lateral. Ao abrir o cofre, a Visão geral escolhe o último mês com movimento e os outros a seguem.
+- **Salvar e seguir:** em "Salvar alterações antes de …?", **Salvar…** pede a senha e, quando o cofre grava, a ação interrompida continua sozinha: fechar a janela, fechar o cofre, abrir ou criar outro, restaurar. Se o salvamento falhar ou for cancelado, nada continua.
+- **Configurações com um contrato:** o que é do cofre (backup, lembrete, IA) vale no cofre na hora e é gravado pelo Salvar da barra, como qualquer edição; o que é deste computador (cofres recentes, bloqueio) é gravado na hora. Não há botão Aplicar. Cada aba diz de qual tipo é. O bloqueio por inatividade é configurado só ali. Backup agora, restaurar e trocar senha também aparecem ali, além do menu Cofre.
+- **Início:** Novo, Abrir e Restaurar. Os cofres recentes aparecem só depois de consentimento (`07` §1), com o caminho e nunca saldos ou nomes.
+- **Correção no Livro:** Enter e duplo clique abrem o mesmo formulário do lançamento do dia a dia (valor, data, contas ou categoria, competência). **Corrigir partidas…** abre o editor completo. Competência é escolhida como mês, nunca digitada como `AAAA-MM`.
+- **Importar:** uma ação primária por vez (**Importar arquivos…** sem documento aberto; **Aprovar prontos** com documento aberto). Arquivos podem ser arrastados para a tela. **Layouts suportados** abre a cobertura de layouts.
+- **Operador:** só aparece na barra quando há mais de um integrante ativo.
+
+## 6. Verificação
 
 - `uv run python scripts/capturar_telas.py [--dark] [--size 900x640]` renderiza cada tela com dados sintéticos em `build/telas/`. Use antes e depois de mudar a interface.
 - `tests/test_ui_design.py` cobre:
@@ -104,9 +126,9 @@ Formulários (`FormDialog`) usam rótulos alinhados e um botão com verbo ("Regi
   - limpar filtros;
   - erro inline;
   - temas claro e escuro.
+- `tests/test_flows.py` cobre os fluxos do §5: aviso de fatura até o pagamento, aviso de orçamento, mês compartilhado e linha da Visão geral abrindo o Livro, Configurações sem Aplicar, salvar e seguir, correção pelo formulário simples, recentes só com consentimento e operador oculto com um integrante. As preferências do computador vão para um arquivo temporário, nunca para o perfil do usuário.
 
-## 6. Fora do alcance desta revisão
+## 7. Fora do alcance desta revisão
 
-- **Arrastar e soltar** arquivos na importação.
 - **Liquid Glass e materiais translúcidos:** não se aplicam a Qt Widgets no Windows.
 - **Teste com leitor de tela real** (NVDA/Narrador), a fazer junto com os gates do Windows. Os controles principais já têm nome acessível.

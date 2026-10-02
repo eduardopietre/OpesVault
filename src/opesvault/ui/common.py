@@ -120,6 +120,28 @@ def month_label(month: Any) -> str:
     return f"{MONTHS[month.month - 1]} de {month.year}"
 
 
+class CompetenceCombo(QComboBox):
+    """Competence month: "mês da data" (None) or a named month, never typed as AAAA-MM."""
+
+    def __init__(self, value: Any = None, around: date | None = None) -> None:
+        from opesvault.domain.model import YearMonth
+
+        super().__init__()
+        self.setAccessibleName("Competência")
+        center = YearMonth.of(around or date.today())
+        months = [center.add(offset) for offset in range(-24, 25)]
+        if value is not None and value not in months:
+            months.append(value)
+            months.sort(key=lambda m: (m.year, m.month))
+        self.addItem("Mês da data", None)
+        for month in months:
+            self.addItem(month_label(month).capitalize(), month)
+        select_combo(self, value)
+
+    def value(self) -> Any:
+        return self.currentData()
+
+
 def style_table(table: QAbstractItemView) -> None:
     """Shared table look and behavior: rows, no grid, zebra, keyboard-friendly."""
     table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)

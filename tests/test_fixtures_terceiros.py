@@ -50,3 +50,17 @@ def test_licenses_accompany_the_files() -> None:
     _path("correpy/b3_one_page.pdf")
     assert (ROOT / "correpy" / "LICENSE").is_file()
     assert (ROOT / "leitor-de-notas-de-corretagem" / "LICENSE").is_file()
+
+
+@pytest.mark.parametrize(("name", "password"), FIXTURES.items())
+def test_sinacor_parser_reconciles_public_notes(name: str, password: str | None) -> None:
+    from opesvault.importing.parsers.brokerage import SinacorNotePdf, note_computed_net
+    from opesvault.importing.source import load_source
+
+    path = _path(name)
+    source = load_source(path.name, path.read_bytes(), password)
+    parser = SinacorNotePdf()
+    assert parser.detect(source) >= 0.6
+    result = parser.parse(source)
+    assert result.header.net_amount is not None
+    assert note_computed_net(result.items) == result.header.net_amount

@@ -553,6 +553,7 @@ class Ledger:
         meta_rows = [payload for _, kind, payload in rows if kind == "ledger.meta"]
         if len(meta_rows) != 1:
             raise DomainError("Cofre sem dados financeiros reconhecíveis.")
+        import opesvault.registry  # noqa: F401 - registers every persisted kind
         from opesvault.domain.migrations import migrate
 
         meta_payload, rows = migrate(meta_rows[0], rows)

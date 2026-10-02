@@ -8,7 +8,7 @@ Este conjunto contém somente documentação. Não inclui implementação, scrip
 
 ## 1. Objetivo
 
-Aplicativo Windows com janela própria para organizar finanças de pessoas e famílias, importar PDFs bancários, conferir informações e acompanhar caixa, competência, patrimônio e investimentos. Todo processamento ocorre no computador. Cada família possui um cofre independente, protegido por senha compartilhada e transportável por backup.
+Aplicativo Windows com janela própria para organizar finanças de pessoas e famílias, importar PDFs e exportações estruturadas (CSV/OFX) dos bancos, conferir informações e acompanhar caixa, competência, patrimônio e investimentos. Todo processamento ocorre no computador. Cada família possui um cofre independente, protegido por senha compartilhada e transportável por backup.
 
 O usuário poderá informar o valor de um investimento em diversas datas, visualizar sua evolução, registrar aportes e resgates e acompanhar resultado bruto e líquido. O aplicativo distinguirá avaliação patrimonial, movimentação de dinheiro e estimativa de imposto.
 
@@ -19,13 +19,13 @@ O usuário poderá informar o valor de um investimento em diversas datas, visual
 | Plataforma | Windows; aplicativo com janela própria |
 | Processamento | Integralmente local; nenhuma API externa de dados ou IA |
 | Stack | Python, PySide6/Qt Widgets, SQLCipher, pdfplumber, pypdfium2, Pydantic, Decimal, Matplotlib, Ollama e pyside6-deploy/Nuitka |
-| Documentos | Seleção de múltiplos PDFs; prioridade para texto selecionável |
+| Documentos | Seleção de múltiplos PDFs, CSV e OFX; prioridade para texto selecionável e para exportações estruturadas quando o banco oferece |
 | Conferência | Aprovação humana antes de incorporar extrações ao registro financeiro |
 | Regimes | Caixa e competência, com visão patrimonial |
 | Investimentos | Posições por ativo, custo, avaliações históricas e rentabilidade |
 | Organização | Múltiplos cofres; uma pessoa ou família por cofre; múltiplos integrantes |
 | Senha | Compartilhada por cofre; solicitada ao abrir e a cada operação de salvar |
-| Conteúdo do cofre | Dados, PDFs originais, evidências de extração e histórico |
+| Conteúdo do cofre | Dados, arquivos originais importados (PDF, CSV, OFX), evidências de extração e histórico |
 | Entrega atual | Apenas documentos de referência |
 
 ## 3. Correção necessária sobre memória
@@ -51,7 +51,7 @@ A especificação adotada é: não guardar deliberadamente a senha ou a chave de
 
 Inclui cofres, integrantes, contas conjuntas, cartões adicionais, categorias, rateio, importação em lote, conciliação, lançamentos manuais, recorrências, parcelas, fechamento mensal, gráficos, carteira de investimentos, avaliações manuais, impostos efetivos e simulados, backup, restauração e exportação deliberada.
 
-Não inclui acesso a internet banking, Open Finance, sincronização cloud, edição simultânea do mesmo cofre, negociação de ativos, execução de pagamentos, declaração fiscal oficial, motor tributário completo, aconselhamento de investimentos ou processamento automático irrestrito de qualquer PDF.
+Não inclui acesso a internet banking, Open Finance, sincronização cloud, edição simultânea do mesmo cofre, negociação de ativos, execução de pagamentos, declaração fiscal oficial, motor tributário completo, aconselhamento de investimentos ou processamento automático irrestrito de qualquer PDF ou planilha.
 
 Arquivos escaneados serão identificados como não suportados na primeira versão. OCR local é expansão planejada. Derivativos, venda a descoberto e operações alavancadas exigem extensão específica do modelo e ficam fora da primeira entrega funcional.
 
@@ -69,6 +69,8 @@ Arquivos escaneados serão identificados como não suportados na primeira versã
 | [08_TESTES_ACEITACAO.md](08_TESTES_ACEITACAO.md) | Cenários, resultados esperados e gates de entrega |
 | [09_ROADMAP_DECISOES_RISCOS.md](09_ROADMAP_DECISOES_RISCOS.md) | Fases, decisões arquiteturais e pendências |
 | [10_REFERENCIAS_PESQUISA.md](10_REFERENCIAS_PESQUISA.md) | Fontes primárias, aproveitamento e limitações da pesquisa |
+| [11_FASE0_VIABILIDADE.md](11_FASE0_VIABILIDADE.md) | Implementação, medições e roteiro Windows da fase 0 |
+| [12_PESQUISA_DOCUMENTOS.md](12_PESQUISA_DOCUMENTOS.md) | Projetos de referência, amostras públicas e particularidades de layouts |
 
 Em caso de conflito, decisões aprovadas neste documento prevalecem. Segurança e regras de cálculo devem ser reconciliadas nos respectivos documentos antes de implementação; um conflito não autoriza escolher silenciosamente a interpretação mais simples.
 

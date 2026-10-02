@@ -25,6 +25,7 @@ No Linux, o Qt precisa de `libegl1`, `libgl1`, `libxkbcommon0` e `libfontconfig1
 
 - Idioma: código, identificadores, comentários e commits em **inglês**. Textos de interface, mensagens ao usuário e `docs/` em **português brasileiro**.
 - Tooling: **Python 3.12**, **uv** (com lockfile versionado), **ruff** (lint e formatação), **pyright** e **pytest**.
+- Importação aceita **PDF, CSV e OFX** (`docs/05` §1 e §3).
 - Repositório **privado** e **sem CI** por enquanto. Os gates específicos do Windows são executados manualmente pelo usuário numa máquina Windows.
 
 ## Onde procurar
@@ -42,6 +43,7 @@ No Linux, o Qt precisa de `libegl1`, `libgl1`, `libxkbcommon0` e `libfontconfig1
 | Testes de aceitação TA-01…TA-36 | `docs/08` |
 | ADRs, riscos, pendências | `docs/09` |
 | Resultados da fase 0 e roteiro Windows | `docs/11` |
+| Projetos de referência e particularidades de layouts | `docs/12` |
 
 Se dois documentos entrarem em conflito, vale o `docs/00` §2. Conflitos de segurança ou cálculo devem ser levados ao usuário, nunca resolvidos pela interpretação mais simples. Mudar de stack, adicionar cloud, reter chave para autosave ou permitir edição simultânea exige nova decisão do usuário.
 

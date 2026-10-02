@@ -16,7 +16,7 @@ Cofres são independentes, inclusive quando representam a mesma pessoa em cenár
 | RF-02 | Pedir senha em cada salvamento | Senha incorreta ou cancelamento não alteram o arquivo existente |
 | RF-03 | Cadastrar integrantes e contas individuais/conjuntas | Consulta distingue titularidade de autoria de lançamento |
 | RF-04 | Cadastrar cartões e adicionais | Compra mantém portador e vínculo com fatura |
-| RF-05 | Importar vários PDFs | Falha de um arquivo não apaga a revisão dos demais |
+| RF-05 | Importar vários PDFs, CSV e OFX | Falha de um arquivo não apaga a revisão dos demais |
 | RF-06 | Revisar extração com documento original | Cada item apresenta fonte e permite correção |
 | RF-07 | Aprovar importações explicitamente | Itens pendentes ficam fora dos resultados realizados |
 | RF-08 | Conciliar saldos e faturas | Divergências são mostradas, nunca ajustadas silenciosamente |

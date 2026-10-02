@@ -65,6 +65,13 @@ ADR-01 a ADR-03 refletem escolhas aprovadas; os mecanismos específicos e demais
 
 Cada alteração de escopo registra motivo, documentos afetados, migração de dados, impacto de segurança e testes necessários. Propostas que introduzam cloud, retenção de chave para autosave, edição simultânea ou mudança de stack exigem nova decisão do usuário. Ajustes rotineiros de implementação dentro da arquitetura não exigem reaprovação de cada biblioteca auxiliar.
 
+### Registro de mudanças
+
+| Data | Mudança | Motivo | Documentos | Dados | Segurança | Testes |
+|---|---|---|---|---|---|---|
+| 02/10/2026 | Fase 0 encerrada com gates Windows presumidos aprovados; Nuitka opcional | Decisão do usuário | 11, CLAUDE.md | Nenhum | Gates G0–G7 seguem pendentes de execução real | Roteiro G0–G7 no doc 11 |
+| 02/10/2026 | Importação de CSV e OFX, além de PDF | Formatos exportados pelos bancos são mais confiáveis que o texto de PDF (doc 12) | 00, 01, 05, 12 | Arquivo original guardado no cofre como os PDFs | Planilhas nunca executam fórmulas ou macros; CSV/OFX recebem a mesma higiene de log e disco dos PDFs | Fixtures sintéticos por layout CSV/OFX, codificações e separadores |
+
 ## 6. Definição de pronto documental
 
 O conjunto define jornadas, limites, entidades, regras de cálculo, segurança, testes e fontes. Não contém código de produto nem garante viabilidade já comprovada. A próxima etapa autorizável é implementar os gates técnicos da fase 0; este documento não inicia essa implementação.

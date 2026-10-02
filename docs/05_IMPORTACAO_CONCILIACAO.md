@@ -1,10 +1,12 @@
 # Importação, parsing, revisão e conciliação
 
-Versão 1.0 • 01/10/2026.
+Versão 1.1 • 02/10/2026. Inclui exportações estruturadas (CSV/OFX).
 
 ## 1. Contrato de cobertura
 
 Suporte é declarado por instituição + produto + tipo de documento + versão de layout, nunca apenas pelo nome do banco. Alvo inicial: faturas Itaú, Bradesco e Nubank; extrato Itaú; Caixa e investimentos entram conforme amostras validadas. Essa ordem é proposta, sem excluir bancos do escopo final.
+
+Exportações estruturadas seguem a mesma regra: um CSV do Nubank e um OFX do Itaú são layouts distintos, cada um com versão e catálogo próprios. Quando o banco oferece CSV ou OFX para o mesmo período, a interface sugere esse formato por ser mais confiável que o PDF; o PDF continua necessário para informações que só ele traz (total e ciclo da fatura, encargos, saldos). Os dois formatos podem fornecer evidências da mesma operação (§6).
 
 Nenhuma biblioteca encontrada comprova cobertura universal. O projeto mantém catálogo com layouts suportados, versões do parser, documentos de teste, campos extraídos e limitações conhecidas. Layout desconhecido produz pendência, não aceitação silenciosa.
 
@@ -32,6 +34,15 @@ Informações acessórias, como avisos e tabelas de encargos, devem ser preserva
 9. Incorporar itens aprovados ao registro da sessão. Solicitar senha somente quando o usuário salvar.
 
 PDF originalmente protegido permanece arquivado como recebido. Para visualizar novamente, pode exigir sua senha original; armazená-la cifrada dentro do cofre é opção explícita futura. A senha do cofre não substitui a senha do PDF.
+
+### Exportações estruturadas (CSV e OFX)
+
+Seguem o mesmo pipeline, sem as etapas de texto e coordenadas. Mesmo estruturadas, não são confiáveis por definição:
+
+- **CSV:** identificar codificação (UTF-8, Windows-1252), separador, separador decimal, cabeçalho e sinal. Planilhas exportadas podem trazer valores formatados (`R$ 1.234,56`), linhas de total ou de saldo misturadas às operações e datas sem ano.
+- **OFX:** é SGML (versão 1.x) ou XML (2.x), muitas vezes com cabeçalho e codificação inconsistentes. Usar `FITID` como identificador bancário quando presente, sem supor que seja único entre arquivos de períodos diferentes. `LEDGERBAL` e `AVAILBAL` são saldos informados, a conciliar como no extrato em PDF.
+- Fórmulas e macros de planilhas nunca são executadas; o conteúdo é lido como dado. Arquivos `.xlsx` ficam fora até decisão própria.
+- A evidência de um item estruturado é o arquivo, a linha ou o elemento OFX de origem, em vez de página e região.
 
 ## 4. Regras de interpretação
 
@@ -67,4 +78,4 @@ Permitir importação parcial somente por escolha explícita, identificando o do
 
 Cada layout precisa de casos normais e de borda: várias páginas, cartão adicional, compras repetidas, estorno, parcelas, virada de ano, juros, caracteres especiais e mudança de layout. Exemplos podem ser sintéticos, mas devem ser complementados por documentos autorizados representativos.
 
-Anonimização precisa alterar efetivamente conteúdo e metadados, não só desenhar retângulo sobre texto. Dados reais não entram em repositório público. Manter esperado de referência revisado por humano, com campos e totais. A pesquisa atual não confirmou corpus público suficiente para os bancos-alvo.
+Anonimização precisa alterar efetivamente conteúdo e metadados, não só desenhar retângulo sobre texto. Dados reais não entram em repositório público. Manter esperado de referência revisado por humano, com campos e totais. A pesquisa atual não confirmou corpus público suficiente para os bancos-alvo; o levantamento está no documento 12. Fixtures de terceiros só entram com licença compatível, crédito à origem e verificação de que não há dados pessoais no texto, nos metadados nem em imagens.

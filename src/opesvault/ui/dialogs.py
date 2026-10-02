@@ -317,6 +317,18 @@ class OperationDialog(FormDialog):
             fill_combo(self.target, category_items(ledger, AccountType.EXPENSE))
             self.form.addRow("Cartão:", self.source)
             self.form.addRow("Categoria:", self.target)
+            self.installments = QSpinBox()
+            self.installments.setRange(1, 72)
+            self.policy = QComboBox()
+            fill_combo(
+                self.policy,
+                [
+                    ("Despesa inteira no mês da compra", "purchase"),
+                    ("Despesa distribuída nas parcelas", "spread"),
+                ],
+            )
+            self.form.addRow("Parcelas:", self.installments)
+            self.form.addRow("Competência das parcelas:", self.policy)
         elif kind == "card_payment":
             fill_combo(self.source, [(c.name, c.id) for c in ledger.cards.values()])
             fill_combo(self.target, liquid_accounts(ledger))
@@ -358,7 +370,23 @@ class OperationDialog(FormDialog):
         elif self.kind == "transfer":
             self.ledger.record_transfer(source, target, value, on, description)
         elif self.kind == "card_purchase":
-            self.ledger.record_card_purchase(source, target, value, on, description, **extra)
+            if self.installments.value() > 1:
+                from opesvault.domain.cards import CompetencePolicy, record_installment_purchase
+
+                extra.pop("accrual_month", None)  # the policy decides the competence of each part
+                record_installment_purchase(
+                    self.ledger,
+                    source,
+                    target,
+                    value,
+                    on,
+                    description,
+                    self.installments.value(),
+                    CompetencePolicy(combo_value(self.policy)),
+                    **extra,
+                )
+            else:
+                self.ledger.record_card_purchase(source, target, value, on, description, **extra)
         elif self.kind == "card_payment":
             self.ledger.record_card_payment(source, target, value, on)
 

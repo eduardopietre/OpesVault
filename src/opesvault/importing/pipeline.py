@@ -387,7 +387,16 @@ def _find_duplicates(ledger: Ledger, batch: ImportBatch) -> None:
         if item.status in (ItemStatus.APPROVED, ItemStatus.REJECTED):
             continue
         duplicate: UUID | None = None
-        if item.bank_id and item.bank_id in bank_ids:
+        plan_match = None
+        if item.installment and batch.card_id and item.amount is not None:
+            from opesvault.domain.cards import find_plan_for_installment
+
+            plan_match = find_plan_for_installment(
+                ledger, batch.card_id, item.description, item.installment[0], item.installment[1], item.amount
+            )
+        if plan_match is not None:
+            duplicate = plan_match.operation_id  # installment of a purchase already registered
+        elif item.bank_id and item.bank_id in bank_ids:
             duplicate = bank_ids[item.bank_id]
         else:
             key = _fingerprint(item)

@@ -4,7 +4,6 @@ from collections.abc import Callable, Iterable
 from datetime import date
 from decimal import Decimal
 from typing import Any
-from uuid import UUID
 
 from PySide6.QtCore import QDate, Qt
 from PySide6.QtWidgets import (
@@ -97,7 +96,7 @@ def make_table(headers: list[str]) -> QTableWidget:
     return table
 
 
-def set_rows(table: QTableWidget, rows: list[tuple[list[Any], UUID | None]]) -> None:
+def set_rows(table: QTableWidget, rows: list[tuple[list[Any], Any]]) -> None:
     """Rows are (cells, id); the id is stored in column 0 for selection lookups."""
     table.setSortingEnabled(False)
     table.setRowCount(len(rows))
@@ -113,7 +112,7 @@ def set_rows(table: QTableWidget, rows: list[tuple[list[Any], UUID | None]]) -> 
     table.resizeColumnsToContents()
 
 
-def selected_id(table: QTableWidget) -> UUID | None:
+def selected_id(table: QTableWidget) -> Any:
     row = table.currentRow()
     if row < 0:
         return None

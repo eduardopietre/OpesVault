@@ -2,7 +2,7 @@
 
 from datetime import date
 
-from PySide6.QtWidgets import QComboBox, QFormLayout, QGroupBox, QHBoxLayout, QLabel, QVBoxLayout
+from PySide6.QtWidgets import QComboBox, QFormLayout, QGroupBox, QHBoxLayout, QLabel, QPushButton, QVBoxLayout
 
 from opesvault.domain import queries
 from opesvault.domain.model import YearMonth
@@ -26,6 +26,14 @@ class OverviewPage(Page):
         top = QHBoxLayout()
         top.addWidget(QLabel("Mês:"))
         top.addWidget(self.month)
+        self.period_state = QLabel()
+        close_button = QPushButton("Fechar mês")
+        close_button.clicked.connect(self.close_month)
+        reopen_button = QPushButton("Reabrir mês")
+        reopen_button.clicked.connect(self.reopen_month)
+        top.addWidget(self.period_state)
+        top.addWidget(close_button)
+        top.addWidget(reopen_button)
         top.addStretch()
         layout.addLayout(top)
         row = QHBoxLayout()
@@ -78,3 +86,38 @@ class OverviewPage(Page):
         }
         for key, value in values.items():
             self.labels[key].setText(fmt(value))
+        from opesvault.domain.periods import is_closed, pending_items
+
+        pending = pending_items(ledger, month)
+        state = "Mês fechado" if is_closed(ledger, month) else "Mês aberto"
+        self.period_state.setText(state + (f" · pendências: {'; '.join(pending)}" if pending else ""))
+
+    def close_month(self) -> None:
+        if self.session is None:
+            return
+        from opesvault.domain.periods import close_month, pending_items
+        from opesvault.ui.common import run_guarded
+        from opesvault.ui.dialogs import ask_reason
+
+        ledger = self.session.ledger
+        month: YearMonth = self.month.currentData()
+        note = None
+        if pending_items(ledger, month):
+            note = ask_reason(self, "Fechar com pendências (justificativa)")
+            if note is None:
+                return
+        if run_guarded(self, lambda: close_month(ledger, month, note)):
+            self.changed()
+
+    def reopen_month(self) -> None:
+        if self.session is None:
+            return
+        from opesvault.domain.periods import reopen_month
+        from opesvault.ui.common import run_guarded
+        from opesvault.ui.dialogs import ask_reason
+
+        ledger = self.session.ledger
+        month: YearMonth = self.month.currentData()
+        reason = ask_reason(self, "Reabrir mês")
+        if reason and run_guarded(self, lambda: reopen_month(ledger, month, reason)):
+            self.changed()

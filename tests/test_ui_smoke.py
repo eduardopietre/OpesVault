@@ -96,3 +96,27 @@ def test_import_page_review_flow(window: MainWindow) -> None:
     page.items.selectRow(0)
     page._select_item()
     assert page.viewer.data is not None
+
+
+def test_phase3_pages(window: MainWindow) -> None:
+    from opesvault.domain.cards import record_installment_purchase
+    from opesvault.ui.pages.accounts_page import AccountsPage
+    from opesvault.ui.pages.recurrences_page import RecurrencesPage, RuleDialog
+
+    assert window.session is not None
+    ledger = window.session.ledger
+    card = next(iter(ledger.cards.values()))
+    category = ledger.categories(__import__("opesvault.domain.model", fromlist=["AccountType"]).AccountType.EXPENSE)[0]
+    record_installment_purchase(ledger, card.id, category.id, "300.00", date.today(), "TV", 3)
+    accounts = next(p for p in window.pages if isinstance(p, AccountsPage))
+    accounts.refresh()
+    assert accounts.bills.rowCount() >= 1
+    recurrences = next(p for p in window.pages if isinstance(p, RecurrencesPage))
+    dialog = RuleDialog(recurrences, ledger)
+    dialog.description.setText("Aluguel")
+    dialog.amount.setText("2.000,00")
+    from opesvault.domain.recurrence import add_rule
+
+    add_rule(ledger, dialog.build())
+    recurrences.refresh()
+    assert recurrences.forecast_table.rowCount() > 0

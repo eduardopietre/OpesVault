@@ -81,6 +81,8 @@ class Ledger:
     }
 
     def __init__(self, meta: LedgerMeta | None = None) -> None:
+        import opesvault.registry  # noqa: F401 - kinds and guards must exist before any change
+
         self.meta = meta or LedgerMeta()
         self._store: dict[str, dict[UUID, Any]] = {kind: {} for kind in self.KINDS}
         self.history: list[HistoryEntry] = []
@@ -296,6 +298,8 @@ class Ledger:
             raise DomainError("Portador inexistente.")
         if op.reversal_of is not None and op.reversal_of not in self.operations:
             raise DomainError("Estorno de operação inexistente.")
+
+    def _guard_new(self, op: Operation) -> None:
         for hook in self._operation_guards:
             hook(self, op)
 
@@ -310,6 +314,7 @@ class Ledger:
         if op.id in self.operations:
             raise DomainError("Operação já existe.")
         self.validate_operation(op)
+        self._guard_new(op)
         return self.put("operation", op.model_copy(update={"version": 1}))
 
     def update_operation(self, op: Operation, reason: str) -> Operation:
@@ -366,6 +371,7 @@ class Ledger:
             notes=reason,
         )
         self.validate_operation(reversal)
+        self._guard_new(reversal)
         return self.put("operation", reversal)
 
     # ── convenience builders (docs/04 §4 table) ─────────

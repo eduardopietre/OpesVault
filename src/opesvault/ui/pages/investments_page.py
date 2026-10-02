@@ -144,6 +144,19 @@ class InvestmentsPage(Page):
             button.clicked.connect(slot)
             actions.addWidget(button)
         actions.addStretch()
+        trade_actions = QHBoxLayout()
+        for label, slot in (
+            ("Compra", self.buy),
+            ("Venda", self.sell),
+            ("Posição inicial", self.opening),
+            ("Desdobramento/grupamento", self.split),
+            ("Bonificação", self.bonus),
+            ("Importar índice…", self.import_benchmark),
+        ):
+            button = QPushButton(label)
+            button.clicked.connect(slot)
+            trade_actions.addWidget(button)
+        trade_actions.addStretch()
 
         self.valuations = make_table(["Data", "Valor", "Natureza", "Fonte", "Usada", "Quantidade", "Observação"])
         self.events = make_table(
@@ -168,6 +181,33 @@ class InvestmentsPage(Page):
         tabs.addTab(self.result_chart, "Resultado")
         tabs.addTab(valuation_box, "Avaliações")
         tabs.addTab(self.events, "Movimentos")
+        self.lots = make_table(["Aquisição", "Origem", "Quantidade", "Custo", "Qtd. restante", "Custo restante"])
+        tabs.addTab(self.lots, "Lotes")
+        self.returns_chart = ChartWidget()
+        self.returns_table = make_table(["Método", "Resultado", "Qualidade", "Observações"])
+        self.period_start = QComboBox()
+        self.period_end = QComboBox()
+        self.benchmark = QComboBox()
+        compute = QPushButton("Calcular")
+        compute.clicked.connect(self._show_returns)
+        returns_box = QWidget()
+        rb = QVBoxLayout(returns_box)
+        period = QHBoxLayout()
+        for widget in (
+            QLabel("De:"),
+            self.period_start,
+            QLabel("Até:"),
+            self.period_end,
+            QLabel("Índice:"),
+            self.benchmark,
+            compute,
+        ):
+            period.addWidget(widget)
+        period.addStretch()
+        rb.addLayout(period)
+        rb.addWidget(self.returns_table)
+        rb.addWidget(self.returns_chart)
+        tabs.addTab(returns_box, "Rentabilidade")
         self.summary = QLabel()
         self.summary.setWordWrap(True)
         detail = QWidget()
@@ -179,6 +219,7 @@ class InvestmentsPage(Page):
         splitter.addWidget(detail)
         layout = QVBoxLayout(self)
         layout.addLayout(actions)
+        layout.addLayout(trade_actions)
         layout.addWidget(splitter)
 
     # ── data ────────────────────────────────────────
@@ -273,6 +314,60 @@ class InvestmentsPage(Page):
         )
         self.evolution.show_chart(investment_evolution(ledger, pos_id))
         self.result_chart.show_chart(investment_result(ledger, pos_id))
+        from opesvault.investments.trades import lots_of
+
+        set_rows(
+            self.lots,
+            [
+                (
+                    [
+                        fmt_date(lot.acquired_on),
+                        lot.source,
+                        format_decimal_br(lot.quantity),
+                        fmt(lot.cost),
+                        format_decimal_br(lot.remaining_quantity),
+                        fmt(lot.remaining_cost),
+                    ],
+                    lot.id,
+                )
+                for lot in lots_of(ledger, pos_id)
+            ],
+        )
+        dates = sorted({v.on for v in inv.valuations_of(ledger, pos_id) if v.selected})
+        for combo, default in ((self.period_start, 0), (self.period_end, len(dates) - 1)):
+            combo.clear()
+            for d in dates:
+                combo.addItem(fmt_date(d), d)
+            combo.setCurrentIndex(max(default, 0))
+        from opesvault.investments.benchmarks import benchmarks
+
+        fill_combo(self.benchmark, [(b.name, b.id) for b in benchmarks(ledger).values()], empty="(nenhum)")
+        self._show_returns()
+
+    def _show_returns(self) -> None:
+        pos_id = self._position_id()
+        start, end = self.period_start.currentData(), self.period_end.currentData()
+        if self.session is None or pos_id is None or start is None or end is None or start >= end:
+            self.returns_table.setRowCount(0)
+            return
+        from opesvault.charts.data import returns_chart
+        from opesvault.investments.benchmarks import benchmark_return, benchmarks
+        from opesvault.investments.returns import all_methods
+
+        ledger = self.session.ledger
+        results = all_methods(ledger, pos_id, start, end)
+        bench_id = self.benchmark.currentData()
+        if bench_id is not None:
+            results.append(benchmark_return(benchmarks(ledger)[bench_id], start, end))
+
+        def pct(value: Decimal | None) -> str:
+            return "indisponível" if value is None else f"{format_decimal_br(value * 100, 2)}%"
+
+        set_rows(
+            self.returns_table,
+            [([r.method, pct(r.value), r.quality.value, "; ".join(r.notes)], None) for r in results],
+        )
+        self.returns_chart.show_chart(returns_chart(ledger, pos_id, start, end))
 
     # ── commands ────────────────────────────────────
 
@@ -603,3 +698,152 @@ class InvestmentsPage(Page):
             )
 
         self._run_form(Form(self, "Regra de imposto (simulação)", fields), apply)
+
+    # ── phase 5: quantities ─────────────────────────
+
+    def _quantity(self, form: Form, key: str) -> Decimal:
+        text = form.value(key)
+        try:
+            return Decimal(text.replace(".", "").replace(",", "."))
+        except Exception:
+            raise DomainError("Quantidade inválida.") from None
+
+    def buy(self) -> None:
+        pos_id = self._need_position()
+        if self.session is None or pos_id is None:
+            return
+        from opesvault.investments.trades import buy
+
+        ledger = self.session.ledger
+        fields: list[tuple[str, str, QWidget]] = [
+            ("on", "Data:", date_edit()),
+            ("qty", "Quantidade:", QLineEdit()),
+            ("price", "Preço unitário:", money_edit()),
+            ("fees", "Custos:", money_edit("0,00")),
+            ("from", "Pago pela conta:", _combo(cash_accounts(ledger))),
+        ]
+        self._run_form(
+            Form(self, "Compra", fields),
+            lambda form: buy(
+                ledger,
+                pos_id,
+                form.date("on"),
+                self._quantity(form, "qty"),
+                form.money("price"),
+                form.value("from"),
+                fees=form.money("fees", optional=True) or 0,
+            ),
+        )
+
+    def sell(self) -> None:
+        pos_id = self._need_position()
+        if self.session is None or pos_id is None:
+            return
+        from opesvault.investments.trades import CostMethod, sell
+
+        ledger = self.session.ledger
+        fields: list[tuple[str, str, QWidget]] = [
+            ("on", "Data:", date_edit()),
+            ("qty", "Quantidade:", QLineEdit()),
+            ("price", "Preço unitário:", money_edit()),
+            ("fees", "Custos:", money_edit("0,00")),
+            ("tax", "Imposto retido:", money_edit("0,00")),
+            (
+                "method",
+                "Custo:",
+                _combo(
+                    [
+                        ("Padrão da classe", None),
+                        ("Custo médio", CostMethod.AVERAGE),
+                        ("Por lote (mais antigo)", CostMethod.FIFO),
+                    ]
+                ),
+            ),
+            ("to", "Creditado na conta:", _combo(cash_accounts(ledger))),
+        ]
+        self._run_form(
+            Form(self, "Venda", fields),
+            lambda form: sell(
+                ledger,
+                pos_id,
+                form.date("on"),
+                self._quantity(form, "qty"),
+                form.money("price"),
+                form.value("to"),
+                fees=form.money("fees", optional=True) or 0,
+                tax_withheld=form.money("tax", optional=True) or 0,
+                method=form.value("method"),
+            ),
+        )
+
+    def opening(self) -> None:
+        pos_id = self._need_position()
+        if self.session is None or pos_id is None:
+            return
+        from opesvault.investments.trades import opening_lot
+
+        ledger = self.session.ledger
+        fields: list[tuple[str, str, QWidget]] = [
+            ("on", "Data:", date_edit()),
+            ("qty", "Quantidade:", QLineEdit()),
+            ("cost", "Custo total conhecido:", money_edit()),
+        ]
+        self._run_form(
+            Form(self, "Posição inicial", fields),
+            lambda form: opening_lot(ledger, pos_id, form.date("on"), self._quantity(form, "qty"), form.money("cost")),
+        )
+
+    def split(self) -> None:
+        pos_id = self._need_position()
+        if self.session is None or pos_id is None:
+            return
+        from opesvault.investments.trades import split
+
+        ledger = self.session.ledger
+        fields: list[tuple[str, str, QWidget]] = [
+            ("on", "Data:", date_edit()),
+            ("factor", "Fator (2 = cada ação vira 2):", QLineEdit()),
+        ]
+        self._run_form(
+            Form(self, "Desdobramento/grupamento", fields),
+            lambda form: split(ledger, pos_id, form.date("on"), self._quantity(form, "factor")),
+        )
+
+    def bonus(self) -> None:
+        pos_id = self._need_position()
+        if self.session is None or pos_id is None:
+            return
+        from opesvault.investments.trades import bonus
+
+        ledger = self.session.ledger
+        fields: list[tuple[str, str, QWidget]] = [
+            ("on", "Data:", date_edit()),
+            ("qty", "Quantidade recebida:", QLineEdit()),
+            ("cost", "Custo informado pela empresa:", money_edit("0,00")),
+        ]
+        self._run_form(
+            Form(self, "Bonificação", fields),
+            lambda form: bonus(
+                ledger, pos_id, form.date("on"), self._quantity(form, "qty"), form.money("cost", optional=True) or 0
+            ),
+        )
+
+    def import_benchmark(self) -> None:
+        if self.session is None:
+            return
+        from PySide6.QtWidgets import QFileDialog, QInputDialog
+
+        from opesvault.investments.benchmarks import import_benchmark_csv
+
+        path, _ = QFileDialog.getOpenFileName(self, "Série do índice (data;valor)", "", "CSV (*.csv *.txt)")
+        if not path:
+            return
+        name, ok = QInputDialog.getText(self, "Índice", "Nome do índice:")
+        if not ok or not name.strip():
+            return
+        from pathlib import Path
+
+        ledger = self.session.ledger
+        data = Path(path).read_bytes()
+        if run_guarded(self, lambda: import_benchmark_csv(ledger, name.strip(), data, f"arquivo {Path(path).name}")):
+            self.changed()

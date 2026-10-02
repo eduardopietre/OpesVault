@@ -153,3 +153,32 @@ def test_phase4_investments_and_reports(window: MainWindow) -> None:
         reports.refresh()
     in_out = charts.monthly_in_out(ledger, YearMonth(year=2026, month=1), YearMonth(year=2026, month=3))
     assert in_out.regime == "caixa"
+
+
+def test_phase5_returns_tab(window: MainWindow) -> None:
+    from opesvault.investments import service as inv
+    from opesvault.investments.model import AssetClass, TrackingMode, ValueNature
+    from opesvault.investments.trades import buy
+    from opesvault.ui.pages.investments_page import InvestmentsPage
+
+    assert window.session is not None
+    ledger = window.session.ledger
+    bank = next(a.id for a in ledger.accounts.values() if a.name == "Banco A")
+    pos = inv.create_position(
+        ledger, "ITSA4", AssetClass.STOCK, date(2026, 1, 2), mode=TrackingMode.QUANTITY, ticker="ITSA4"
+    )
+    buy(ledger, pos.id, date(2026, 1, 2), "10", "10.00", bank)
+    inv.add_valuation(ledger, pos.id, date(2026, 1, 2), "100", ValueNature.GROSS)
+    inv.add_valuation(ledger, pos.id, date(2026, 2, 2), "110", ValueNature.GROSS)
+    page = next(p for p in window.pages if isinstance(p, InvestmentsPage))
+    window.nav.setCurrentRow(window.pages.index(page))
+    page.positions.selectRow(0)
+    page._show_detail()
+    assert page.lots.rowCount() == 1
+    assert page.returns_table.rowCount() == 4
+    by_method = {
+        page.returns_table.item(r, 0).text().split(" ")[0]: page.returns_table.item(r, 1).text()
+        for r in range(page.returns_table.rowCount())
+    }
+    assert by_method["TWR"] == "10,00%"
+    assert by_method["XIRR"] != "indisponível"  # annualized, labeled as such

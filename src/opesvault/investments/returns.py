@@ -7,8 +7,8 @@
 """
 
 from datetime import date
-from itertools import pairwise
 from decimal import Decimal, localcontext
+from itertools import pairwise
 from uuid import UUID
 
 from opesvault.domain.ledger import Ledger

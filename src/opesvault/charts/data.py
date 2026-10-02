@@ -248,3 +248,26 @@ def commitments_projection(ledger: Ledger, start: YearMonth, months: int = 12) -
         ],
         ["Previsões: não alteram o realizado."],
     )
+
+
+def returns_chart(ledger: Ledger, position_id: UUID, start: date, end: date) -> Chart:
+    """Percentages by method; unavailable methods appear in notes with their reason, never as zero."""
+    from opesvault.investments.returns import all_methods
+
+    points, notes = [], []
+    for result in all_methods(ledger, position_id, start, end):
+        label = result.method.split(" (")[0]
+        if result.value is None:
+            notes.append(f"{label}: indisponível — {result.notes[0] if result.notes else ''}")
+        points.append(
+            Point(
+                label,
+                result.value,
+                {
+                    "método": result.method,
+                    "qualidade": result.quality.value,
+                    **({"notas": "; ".join(result.notes)} if result.notes else {}),
+                },
+            )
+        )
+    return Chart(f"Rentabilidade {start:%d/%m/%Y} a {end:%d/%m/%Y}", "%", [Series("Retorno", points)], notes)

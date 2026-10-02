@@ -159,3 +159,13 @@ def test_hardening_pragmas_are_applied(vault_path: Path) -> None:
         assert conn.execute("PRAGMA cipher_memory_security").fetchone()[0] == "1"
         assert conn.execute("PRAGMA temp_store").fetchone()[0] == 2
         assert conn.execute("PRAGMA cipher_log_level").fetchone()[0] == "NONE"
+
+
+@pytest.mark.parametrize("position", [0.3, 0.5, 0.8])
+def test_tampered_page_is_detected_by_fast_open(vault_path: Path, position: float) -> None:
+    store.save(vault_path, PASSWORD, make_snapshot(n_docs=3), None)
+    raw = bytearray(vault_path.read_bytes())
+    raw[int(len(raw) * position)] ^= 0xFF
+    vault_path.write_bytes(bytes(raw))
+    with pytest.raises(VaultError):
+        store.load_raw(vault_path, PASSWORD)

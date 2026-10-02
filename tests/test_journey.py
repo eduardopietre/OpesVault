@@ -92,8 +92,9 @@ def test_family_journey(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, offline
             start=date(2026, 1, 1),
         ),
     )
-    created = client.save(path, session.freeze().snapshot, None)
-    session.mark_saved(session.freeze(), created)
+    first = session.freeze()
+    created = client.save_frozen(first)
+    session.mark_saved(first, created)
 
     # 2. Monthly review: import the bank statement and the card bill, approve.
     statement = pipeline.import_document(session, ImportRequest("extrato.pdf", docs.itau_bank_pdf(), account_id=bank))
@@ -119,8 +120,10 @@ def test_family_journey(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, offline
     assert period_result(ledger, pos.id, date(2026, 1, 2), date(2026, 1, 31)).value == D("10")
 
     close_month(ledger, YearMonth(year=2025, month=12))
-    saved = client.save(path, session.freeze().snapshot, session.revision.revision_id)  # type: ignore[union-attr]
-    session.mark_saved(session.freeze(), saved)
+    frozen = session.freeze()
+    assert frozen.delta is not None  # second save is incremental
+    saved = client.save_frozen(frozen)
+    session.mark_saved(frozen, saved)
     assert not session.dirty
 
     # 4. Backup, restore on "another machine" (another folder), reopen with the password.

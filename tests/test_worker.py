@@ -39,8 +39,13 @@ def test_wrong_password_is_retried_then_succeeds(vault_path: Path) -> None:
     store.save(vault_path, PASSWORD, snap, None)
     provider = ScriptedProvider(["errada", PASSWORD])
     response, blobs = handle(OpenRequest(path=vault_path), (), provider)
-    assert response.error is None and response.manifest == snap.manifest
-    assert blobs == snap.blobs
+    assert response.error is None and response.documents == snap.manifest.documents
+    assert blobs[:-1] == snap.blobs  # documents, then one blob with the record lines
+    from opesvault.vault.model import OpenedVault
+
+    assert response.revision is not None
+    opened = OpenedVault(revision=response.revision, records_blob=blobs[-1], documents=snap.documents)
+    assert opened.to_snapshot().manifest.records == snap.manifest.records
     assert provider.calls == [("open", None), ("open", ErrorCode.WRONG_PASSWORD)]
 
 

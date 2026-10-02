@@ -7,7 +7,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 from opesvault.vault.errors import ErrorCode
-from opesvault.vault.model import RevisionInfo, SnapshotManifest
+from opesvault.vault.model import DocumentMeta, RevisionInfo, SnapshotDelta, SnapshotManifest
 
 
 class OpenRequest(BaseModel):
@@ -28,6 +28,17 @@ class SaveRequest(BaseModel):
     manifest: SnapshotManifest
 
 
+class SaveDeltaRequest(BaseModel):
+    """Incremental save; added documents travel as blobs in `delta.documents_added` order."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    op: Literal["save_delta"] = "save_delta"
+    path: Path
+    base_revision_id: UUID
+    delta: SnapshotDelta
+
+
 class ChangePasswordRequest(BaseModel):
     """Re-encrypts the saved revision with a new password; both are typed in the worker."""
 
@@ -41,7 +52,7 @@ class ChangePasswordRequest(BaseModel):
 class WorkerRequest(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    request: Annotated[OpenRequest | SaveRequest | ChangePasswordRequest, Field(discriminator="op")]
+    request: Annotated[OpenRequest | SaveRequest | SaveDeltaRequest | ChangePasswordRequest, Field(discriminator="op")]
 
 
 class WorkerResponse(BaseModel):
@@ -50,3 +61,5 @@ class WorkerResponse(BaseModel):
     error: ErrorCode | None = None
     revision: RevisionInfo | None = None
     manifest: SnapshotManifest | None = None
+    # Open responses: document metadata, then blobs = documents + one blob of record lines.
+    documents: tuple[DocumentMeta, ...] | None = None

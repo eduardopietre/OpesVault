@@ -6,12 +6,23 @@ Blocking calls: run them off the Qt UI thread.
 import subprocess
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from opesvault.vault.errors import ErrorCode, VaultError
 from opesvault.vault.framing import read_message, write_message
-from opesvault.vault.model import RevisionInfo, Snapshot
-from opesvault.vault.protocol import ChangePasswordRequest, OpenRequest, SaveRequest, WorkerRequest, WorkerResponse
+from opesvault.vault.model import Document, OpenedVault, RevisionInfo, Snapshot, SnapshotDelta
+from opesvault.vault.protocol import (
+    ChangePasswordRequest,
+    OpenRequest,
+    SaveDeltaRequest,
+    SaveRequest,
+    WorkerRequest,
+    WorkerResponse,
+)
+
+if TYPE_CHECKING:
+    from opesvault.session import FrozenSnapshot
 
 WORKER_FLAG = "--vault-worker"
 _EXIT_TIMEOUT_S = 30
@@ -44,7 +55,7 @@ class VaultClient:
         self._command = worker_command or default_worker_command()
 
     def _call(
-        self, request: OpenRequest | SaveRequest | ChangePasswordRequest, blobs: tuple[bytes, ...]
+        self, request: OpenRequest | SaveRequest | SaveDeltaRequest | ChangePasswordRequest, blobs: tuple[bytes, ...]
     ) -> tuple[WorkerResponse, tuple[bytes, ...]]:
         _allow_child_foreground()
         proc = subprocess.Popen(
@@ -76,16 +87,22 @@ class VaultClient:
                 proc.wait()
         return response, out_blobs
 
-    def open(self, path: Path) -> tuple[RevisionInfo, Snapshot]:
+    def open_raw(self, path: Path) -> OpenedVault:
         response, blobs = self._call(OpenRequest(path=path), ())
         if response.error is not None:
             raise VaultError(response.error)
-        if response.revision is None or response.manifest is None:
+        if response.revision is None or response.documents is None or len(blobs) != len(response.documents) + 1:
             raise VaultError(ErrorCode.PROTOCOL_ERROR)
-        snapshot = Snapshot(manifest=response.manifest, blobs=blobs)
-        if not snapshot.check_consistency():
+        documents = tuple(Document(meta=m, data=b) for m, b in zip(response.documents, blobs[:-1], strict=True))
+        # The worker verified each document's hash against the vault; here the framing is checked.
+        if any(len(d.data) != d.meta.size for d in documents):
             raise VaultError(ErrorCode.PROTOCOL_ERROR)
-        return response.revision, snapshot
+        return OpenedVault(revision=response.revision, records_blob=blobs[-1], documents=documents)
+
+    def open(self, path: Path) -> tuple[RevisionInfo, Snapshot]:
+        """Typed snapshot (slower); the UI uses `open_raw`."""
+        opened = self.open_raw(path)
+        return opened.revision, opened.to_snapshot()
 
     def save(self, path: Path, snapshot: Snapshot, base_revision_id: UUID | None) -> RevisionInfo:
         request = SaveRequest(path=path, base_revision_id=base_revision_id, manifest=snapshot.manifest)
@@ -103,3 +120,22 @@ class VaultClient:
         if response.revision is None:
             raise VaultError(ErrorCode.UNCERTAIN)
         return response.revision
+
+    def save_delta(
+        self, path: Path, delta: SnapshotDelta, blobs: tuple[bytes, ...], base_revision_id: UUID
+    ) -> RevisionInfo:
+        request = SaveDeltaRequest(path=path, base_revision_id=base_revision_id, delta=delta)
+        response, _ = self._call(request, blobs)
+        if response.error is not None:
+            raise VaultError(response.error)
+        if response.revision is None:
+            raise VaultError(ErrorCode.UNCERTAIN)
+        return response.revision
+
+    def save_frozen(self, frozen: "FrozenSnapshot") -> RevisionInfo:
+        """Saves what a session froze: a full snapshot or only its changes."""
+        if frozen.delta is not None:
+            assert frozen.base_revision_id is not None
+            return self.save_delta(frozen.path, frozen.delta, frozen.delta_blobs, frozen.base_revision_id)
+        assert frozen.snapshot is not None
+        return self.save(frozen.path, frozen.snapshot, frozen.base_revision_id)

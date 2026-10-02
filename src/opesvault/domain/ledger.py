@@ -97,13 +97,51 @@ class _TrackedDict(dict):  # type: ignore[type-arg]
 
 
 class _TrackedList(list):  # type: ignore[type-arg]
+    """History list. Entries loaded from a vault may stay as raw JSON until first read:
+    a session that never looks at old history never pays for parsing it."""
+
     def __init__(self, ledger: "Ledger") -> None:
         super().__init__()
         self._ledger = ledger
+        self._raw: list[str] = []
+
+    def load_raw(self, payloads: list[str]) -> None:
+        self._raw = payloads
+
+    def _ensure(self) -> None:
+        if self._raw:
+            raw, self._raw = self._raw, []
+            parsed = [HistoryEntry.model_validate_json(p) for p in raw]
+            current = list(list.__iter__(self))
+            list.clear(self)
+            list.extend(self, parsed + current)
 
     def append(self, entry: Any) -> None:
         super().append(entry)
         self._ledger._touch("history", entry.id)
+
+    def recent(self) -> Iterator[Any]:
+        """Entries appended in this session, newest first, without parsing old ones."""
+        return reversed(list(list.__iter__(self))) if self._raw else reversed(self)
+
+    def __len__(self) -> int:
+        return list.__len__(self) + len(self._raw)
+
+    def __iter__(self) -> Iterator[Any]:
+        self._ensure()
+        return list.__iter__(self)
+
+    def __reversed__(self) -> Iterator[Any]:
+        self._ensure()
+        return list.__reversed__(self)
+
+    def __getitem__(self, index: Any) -> Any:
+        self._ensure()
+        return list.__getitem__(self, index)
+
+    def sort(self, *args: Any, **kwargs: Any) -> None:
+        self._ensure()
+        list.sort(self, *args, **kwargs)
 
 
 class Ledger:
@@ -643,12 +681,54 @@ class Ledger:
         ledger.dirty = {}
         return ledger
 
+    @classmethod
+    def from_raw(cls, lines: Iterable[tuple[str, str, str]]) -> "Ledger":
+        """Fast open: each payload is validated once, straight from JSON; old history stays raw.
+
+        Vaults needing a migration take the general path through `from_records`.
+        """
+        import json
+
+        import opesvault.registry  # noqa: F401 - registers every persisted kind
+
+        lines = list(lines)
+        meta_lines = [payload for _, kind, payload in lines if kind == "ledger.meta"]
+        if len(meta_lines) != 1:
+            raise DomainError("Cofre sem dados financeiros reconhecíveis.")
+        meta = json.loads(meta_lines[0])
+        if int(meta.get("schema_version", 0)) != SCHEMA_VERSION:
+            return cls.from_records((UUID(rid), kind, json.loads(payload)) for rid, kind, payload in lines)
+        ledger = cls(LedgerMeta.model_validate(meta))
+        raw_history: list[str] = []
+        for _, kind, payload in lines:
+            if kind == "ledger.meta":
+                continue
+            if kind == "history":
+                raw_history.append(payload)
+                continue
+            model = cls.KINDS.get(kind)
+            if model is None:
+                raise DomainError("Cofre contém dados de uma versão mais nova do OpesVault.")
+            entity = model.model_validate_json(payload)
+            collection = ledger._collection(kind)
+            assert isinstance(collection, _TrackedDict)
+            collection.load(getattr(entity, "id"), entity)  # noqa: B009
+        assert isinstance(ledger.history, _TrackedList)
+        ledger.history.load_raw(raw_history)
+        ledger.change_count = 0
+        ledger.dirty = {}
+        return ledger
+
     def record_for(self, kind: str, key: UUID) -> dict[str, Any] | None:
         """Current JSON payload of one persisted row, or None if it no longer exists."""
         if kind == "ledger.meta":
             return self.meta.model_dump(mode="json")
         if kind == "history":
-            entry = next((h for h in reversed(self.history) if h.id == key), None)
+            history = self.history
+            recent = history.recent() if isinstance(history, _TrackedList) else reversed(history)
+            entry = next((h for h in recent if h.id == key), None)
+            if entry is None:
+                entry = next((h for h in reversed(history) if h.id == key), None)
             return entry.model_dump(mode="json") if entry else None
         entity = self._store.get(kind, {}).get(key)
         return entity.model_dump(mode="json") if entity is not None else None

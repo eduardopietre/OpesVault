@@ -290,10 +290,22 @@ class MainWindow(QMainWindow):
             return
         backup = Path(name)
 
+        def load() -> Session | DomainError:
+            opened = self.client.open_raw(backup)
+            try:
+                return Session.from_opened(backup, opened)
+            except DomainError as exc:
+                return exc
+
         def loaded(result: Any) -> None:
             from opesvault.vault.backup import copy_for_restore
 
-            revision, snapshot = result
+            if isinstance(result, DomainError):
+                QMessageBox.warning(self, "Restaurar", str(result))
+                return
+            restored: Session = result
+            assert restored.revision is not None
+            revision = restored.revision
             text = (
                 f"Backup válido: revisão {revision.revision}, salva em {revision.saved_at:%d/%m/%Y %H:%M} (UTC).\n"
                 "Escolha onde criar o cofre restaurado (um arquivo novo; nada é sobrescrito)."
@@ -311,10 +323,11 @@ class MainWindow(QMainWindow):
                 return
             self._drop_session()
             if self._take_lock(destination):
-                self.session = Session.from_snapshot(destination, revision, snapshot)
+                restored.path = destination
+                self.session = restored
                 self._after_open(destination)
 
-        self._run(lambda: self.client.open(backup), loaded)
+        self._run(load, loaded)
 
     def change_password(self) -> None:
         session = self.session
@@ -495,21 +508,27 @@ class MainWindow(QMainWindow):
         if not self._take_lock(path):
             return
 
-        def opened(result: Any) -> None:
-            revision, snapshot = result
+        def load() -> Session | DomainError:
+            # Decrypting (worker) and parsing (domain) both stay off the UI thread (RNF-05).
+            opened = self.client.open_raw(path)
             try:
-                self.session = Session.from_snapshot(path, revision, snapshot)
+                return Session.from_opened(path, opened)
             except DomainError as exc:
+                return exc
+
+        def opened(result: Any) -> None:
+            if isinstance(result, DomainError):
                 self._drop_session()
-                QMessageBox.warning(self, "OpesVault", str(exc))
+                QMessageBox.warning(self, "OpesVault", str(result))
                 return
+            self.session = result
             self._after_open(path)
 
         def failed(code: ErrorCode) -> None:
             self._drop_session()
             self._show_error(code)
 
-        self._run(lambda: self.client.open(path), opened, failed)
+        self._run(load, opened, failed)
 
     def save_vault(self) -> None:
         if self.busy or self.session is None:
@@ -521,7 +540,7 @@ class MainWindow(QMainWindow):
             session.mark_saved(frozen, revision)
             self._after_save()
 
-        self._run(lambda: self.client.save(session.path, frozen.snapshot, frozen.base_revision_id), saved)
+        self._run(lambda: self.client.save_frozen(frozen), saved)
 
     def close_vault(self) -> None:
         if self.busy or not self._confirm_discard():

@@ -100,16 +100,22 @@ def run(total_mib: int, workdir: Path) -> dict[str, Any]:
     }
 
     first = session.freeze()
-    created, stats = measure("create", partial(client.save, vault, first.snapshot, None))
+    created, stats = measure("create", partial(client.save_frozen, first))
     report |= stats
     session.mark_saved(first, created)
+    # A typical Ctrl+S after a review: 50 new operations and one new document.
+    bank_id = next(a.id for a in session.ledger.accounts.values() if a.name == "Banco")
+    category_id = session.ledger.categories(AccountType.EXPENSE)[0].id
+    for i in range(50):
+        session.ledger.record_expense(bank_id, category_id, "9.99", date(2026, 2, 1), f"Novo {i}")
+    session.add_document("novo.pdf", make_pdf(["Novo"], padding_bytes=DOC_MIB * 2**20))
     second = session.freeze()
-    _, stats = measure("save", partial(client.save, vault, second.snapshot, created.revision_id))
+    _, stats = measure("save", partial(client.save_frozen, second))
     report |= stats
     # Release the UI-side copies before measuring a fresh open.
     session.documents.clear()
     del first, second
-    _, stats = measure("open", partial(client.open, vault))
+    _, stats = measure("open", lambda: Session.from_opened(vault, client.open_raw(vault)))
     report |= stats
     report["vault_file_mib"] = round(vault.stat().st_size / 2**20, 1)
     report["overhead_vs_documents"] = round(vault.stat().st_size / (total_mib * 2**20), 3)

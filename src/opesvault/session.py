@@ -5,16 +5,26 @@ from pathlib import Path
 from uuid import UUID, uuid4
 
 from opesvault.domain.ledger import Ledger
-from opesvault.vault.model import Document, Record, RevisionInfo, Snapshot
+from opesvault.vault.model import Document, OpenedVault, Record, RevisionInfo, Snapshot, SnapshotDelta
 
 
 @dataclass(frozen=True)
 class FrozenSnapshot:
-    """A snapshot handed to a save, tagged with the edit it reflects."""
+    """What a save will write, tagged with the edit it reflects.
 
-    snapshot: Snapshot
+    Either a full snapshot (new or migrated vault) or only the changes since the saved
+    revision (`delta` + the bytes of added documents).
+    """
+
+    path: Path
     edit_seq: int
+    ledger_seq: int
     base_revision_id: UUID | None
+    snapshot: Snapshot | None = None
+    delta: SnapshotDelta | None = None
+    delta_blobs: tuple[bytes, ...] = ()
+    documents_added: frozenset[UUID] = frozenset()
+    documents_removed: frozenset[UUID] = frozenset()
 
 
 @dataclass
@@ -26,6 +36,9 @@ class Session:
     documents: list[Document] = field(default_factory=list)
     _doc_changes: int = 0
     _saved_seq: int = 0
+    _docs_added: set[UUID] = field(default_factory=set)
+    _docs_removed: set[UUID] = field(default_factory=set)
+    force_full_save: bool = False
 
     @classmethod
     def new(cls, path: Path, family_name: str = "Família") -> "Session":
@@ -43,6 +56,16 @@ class Session:
             documents=list(snapshot.documents),
         )
 
+    @classmethod
+    def from_opened(cls, path: Path, opened: OpenedVault) -> "Session":
+        return cls(
+            path=path,
+            vault_id=opened.revision.vault_id,
+            ledger=Ledger.from_raw(opened.record_lines()),
+            revision=opened.revision,
+            documents=list(opened.documents),
+        )
+
     @property
     def _edit_seq(self) -> int:
         return self.ledger.change_count + self._doc_changes
@@ -54,8 +77,17 @@ class Session:
     def add_document(self, original_name: str, data: bytes) -> Document:
         document = Document.from_bytes(original_name, data)
         self.documents.append(document)
+        self._docs_added.add(document.meta.id)
         self._doc_changes += 1
         return document
+
+    def remove_document(self, document_id: UUID) -> None:
+        self.documents = [d for d in self.documents if d.meta.id != document_id]
+        if document_id in self._docs_added:
+            self._docs_added.discard(document_id)
+        else:
+            self._docs_removed.add(document_id)
+        self._doc_changes += 1
 
     def document(self, document_id: UUID) -> Document:
         for doc in self.documents:
@@ -66,13 +98,49 @@ class Session:
     def find_document_by_hash(self, sha256: str) -> Document | None:
         return next((d for d in self.documents if d.meta.sha256 == sha256), None)
 
-    def freeze(self) -> FrozenSnapshot:
+    def full_snapshot(self) -> Snapshot:
         records = tuple(Record(id=rid, kind=kind, payload=payload) for rid, kind, payload in self.ledger.to_records())
-        snapshot = Snapshot.build(self.vault_id, records, tuple(self.documents))
+        return Snapshot.build(self.vault_id, records, tuple(self.documents))
+
+    def freeze(self) -> FrozenSnapshot:
         base = self.revision.revision_id if self.revision is not None else None
-        return FrozenSnapshot(snapshot=snapshot, edit_seq=self._edit_seq, base_revision_id=base)
+        common = {
+            "path": self.path,
+            "edit_seq": self._edit_seq,
+            "ledger_seq": self.ledger.change_count,
+            "base_revision_id": base,
+            "documents_added": frozenset(self._docs_added),
+            "documents_removed": frozenset(self._docs_removed),
+        }
+        if base is None or self.ledger.migrated_from is not None or self.force_full_save:
+            return FrozenSnapshot(snapshot=self.full_snapshot(), **common)
+        upserts: list[Record] = []
+        deletes: list[UUID] = []
+        for kind, key in self.ledger.dirty:
+            payload = self.ledger.record_for(kind, key)
+            if payload is None:
+                deletes.append(key)
+            else:
+                upserts.append(Record(id=key, kind=kind, payload=payload))
+        added = [d for d in self.documents if d.meta.id in self._docs_added]
+        delta = SnapshotDelta(
+            vault_id=self.vault_id,
+            upserts=tuple(upserts),
+            deletes=tuple(deletes),
+            documents_added=tuple(d.meta for d in added),
+            documents_removed=tuple(self._docs_removed),
+            record_count=sum(self.ledger.row_counts().values()),
+            document_count=len(self.documents),
+        )
+        return FrozenSnapshot(delta=delta, delta_blobs=tuple(d.data for d in added), **common)
 
     def mark_saved(self, frozen: FrozenSnapshot, revision: RevisionInfo) -> None:
         """Edits made after `freeze()` stay unsaved (docs/03 §5)."""
         self.revision = revision
         self._saved_seq = frozen.edit_seq
+        self.ledger.mark_clean(frozen.ledger_seq)
+        self._docs_added -= frozen.documents_added
+        self._docs_removed -= frozen.documents_removed
+        if frozen.snapshot is not None:
+            self.ledger.migrated_from = None
+            self.force_full_save = False

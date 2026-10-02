@@ -336,8 +336,7 @@ def test_import_state_survives_save(session: Session, tmp_path: Path) -> None:
 
     batch = import_document(session, ImportRequest("nu.pdf", docs.nubank_card_pdf()))
     pipeline.approve(session.ledger, batch.id)
-    frozen = session.freeze()
-    info = store.save(session.path, "pw", frozen.snapshot, None)
+    info = store.save(session.path, "pw", session.full_snapshot(), None)
     _, snapshot = store.load(session.path, "pw")
     reopened = Session.from_snapshot(session.path, info, snapshot)
     assert pipeline.batches(reopened.ledger)[batch.id].status is BatchStatus.APPROVED

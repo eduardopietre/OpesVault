@@ -5,6 +5,9 @@ mechanics can be validated before the accounting model of docs/04 exists.
 """
 
 import hashlib
+import json
+from collections.abc import Iterable, Iterator
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID, uuid4
@@ -102,3 +105,48 @@ class Snapshot(BaseModel):
         if len(ids) != len(set(ids)):
             return False
         return all(d.verify() for d in self.documents)
+
+
+class SnapshotDelta(BaseModel):
+    """Changes since the saved revision; applied to a byte copy of the encrypted vault.
+
+    Counts describe the full state after the change, so the result is verified as a
+    whole and not only where it changed.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    vault_id: UUID
+    upserts: tuple[Record, ...] = ()
+    deletes: tuple[UUID, ...] = ()
+    documents_added: tuple[DocumentMeta, ...] = ()
+    documents_removed: tuple[UUID, ...] = ()
+    record_count: int = Field(ge=1)
+    document_count: int = Field(ge=0)
+
+
+@dataclass(frozen=True)
+class OpenedVault:
+    """A vault as delivered to the UI: records stay as JSON lines until the domain parses
+    them once, so 100k rows are not validated three times on the way (docs/11 §5)."""
+
+    revision: RevisionInfo
+    records_blob: bytes  # "id\tkind\tpayload\n" lines; payload is compact JSON
+    documents: tuple[Document, ...]
+
+    def record_lines(self) -> Iterator[tuple[str, str, str]]:
+        for line in self.records_blob.decode("utf-8").split("\n"):
+            if line:
+                rid, kind, payload = line.split("\t", 2)
+                yield rid, kind, payload
+
+    def to_snapshot(self) -> Snapshot:
+        """Slow path for tools and tests that want typed records."""
+        records = tuple(
+            Record(id=UUID(rid), kind=kind, payload=json.loads(payload)) for rid, kind, payload in self.record_lines()
+        )
+        return Snapshot.build(self.revision.vault_id, records, self.documents)
+
+
+def encode_record_lines(rows: Iterable[tuple[str, str, str]]) -> bytes:
+    return "\n".join(f"{rid}\t{kind}\t{payload}" for rid, kind, payload in rows).encode("utf-8")

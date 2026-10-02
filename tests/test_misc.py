@@ -69,10 +69,9 @@ def test_second_editor_is_locked_out(vault_path: Path) -> None:
 
 def test_lock_survives_vault_replacement(vault_path: Path) -> None:
     snap_session = Session.new(vault_path)
-    frozen = snap_session.freeze()
     with VaultLock(vault_path):
-        info = store.save(vault_path, PASSWORD, frozen.snapshot, None)
-        store.save(vault_path, PASSWORD, frozen.snapshot, info.revision_id)
+        info = store.save(vault_path, PASSWORD, snap_session.full_snapshot(), None)
+        store.save(vault_path, PASSWORD, snap_session.full_snapshot(), info.revision_id)
         with pytest.raises(VaultError):
             VaultLock(vault_path).acquire()
 
@@ -100,6 +99,7 @@ def test_edits_during_save_stay_unsaved(vault_path: Path) -> None:
     """docs/03 §5: never mark as saved an edit that was not in the snapshot."""
     session = Session.new(vault_path)
     frozen = session.freeze()
+    assert frozen.snapshot is not None
     before = len(frozen.snapshot.manifest.records)
     session.ledger.add_member("Ana")
     session.mark_saved(frozen, _revision(session, 1))

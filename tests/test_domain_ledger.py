@@ -325,8 +325,7 @@ def test_session_vault_roundtrip(tmp_path) -> None:  # type: ignore[no-untyped-d
         LedgerAccount(name="Banco", type=AccountType.ASSET, subtype=AccountSubtype.CHECKING)
     )
     session.ledger.record_opening_balance(bank.id, "123.45", date(2026, 1, 1))
-    frozen = session.freeze()
-    info = store.save(session.path, "pw", frozen.snapshot, None)
+    info = store.save(session.path, "pw", session.full_snapshot(), None)
     _, snapshot = store.load(session.path, "pw")
     reopened = Session.from_snapshot(session.path, info, snapshot)
     assert reopened.ledger.meta.family_name == "Silva"

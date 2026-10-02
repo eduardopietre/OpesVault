@@ -3,7 +3,7 @@
 from datetime import date, datetime
 from decimal import Decimal
 from enum import StrEnum
-from typing import Annotated
+from typing import Annotated, Any
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, PlainSerializer, field_validator
@@ -183,9 +183,13 @@ class Posting(BaseModel):
     amount: Amount
     member_id: UUID | None = None  # rateio: which member this share belongs to
 
-    @field_validator("amount", mode="before")
+    @field_validator("amount", mode="wrap")
     @classmethod
-    def _exact(cls, value: object) -> Decimal:
+    def _exact(cls, value: object, handler: Any) -> Decimal:
+        # Fast path for the common, already-exact inputs (strings from the vault, Decimals in code).
+        kind = type(value)
+        if kind is str or kind is Decimal:
+            return handler(value)
         return to_decimal(value)
 
 

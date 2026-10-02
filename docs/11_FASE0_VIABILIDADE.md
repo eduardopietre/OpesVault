@@ -128,6 +128,24 @@ Devolva os arquivos `fase0-ram.json` e `fase0-selftest.json`, a saída do `pytes
 
 ## 5. Decisões pendentes
 
+> **Atualização de 02/10/2026 — custo do salvamento (P8) decidido.** Com o usuário ausente e a pedido dele ("resolva tudo que for possível"), foi adotada a opção (c), gravação incremental, que era a recomendação deste documento. Como funciona:
+>
+> - o candidato é uma cópia byte a byte do arquivo cifrado;
+> - só as mudanças rastreadas são aplicadas nele;
+> - a verificação cobre o HMAC de todas as páginas, a contagem total de registros e documentos, a releitura de cada linha alterada e o hash de cada documento novo;
+> - a troca continua atômica;
+> - cofres novos, migrados ou com troca de senha são regravados por completo.
+>
+> Medição com 50 mil lançamentos e 250 MiB de PDFs, Linux:
+>
+> | Métrica | Antes | Depois |
+> |---|---|---|
+> | Ctrl+S típico | ~21 s | ~3,7 s |
+> | Memória do worker ao salvar | 817 MiB | 50 MiB |
+> | Abrir | ~15 s | ~8,7 s |
+>
+> A abertura melhorou porque os registros trafegam como linhas JSON validadas uma única vez, o histórico antigo só é interpretado quando consultado e as páginas são autenticadas na própria leitura. A decisão pode ser revista; ela não altera o formato do arquivo.
+
 1. **Custo do salvamento (P8).** Opções, em ordem crescente de complexidade:
    - (a) aceitar o custo e medir no Windows antes de decidir;
    - (b) reduzir a verificação, sem tocar na reescrita completa: o HMAC de todas as páginas cobre corrupção, e o `integrity_check` estrutural passaria a rodar só em backups;

@@ -13,7 +13,14 @@ from opesvault.vault import sqlcipher_store
 from opesvault.vault.errors import ErrorCode, VaultError
 from opesvault.vault.framing import read_message, write_message
 from opesvault.vault.model import Snapshot
-from opesvault.vault.protocol import ChangePasswordRequest, OpenRequest, SaveRequest, WorkerRequest, WorkerResponse
+from opesvault.vault.protocol import (
+    ChangePasswordRequest,
+    OpenRequest,
+    SaveDeltaRequest,
+    SaveRequest,
+    WorkerRequest,
+    WorkerResponse,
+)
 
 Purpose = Literal["open", "save", "create", "change_current", "change_new"]
 MAX_PASSWORD_ATTEMPTS = 3
@@ -25,7 +32,7 @@ class PasswordProvider(Protocol):
         ...
 
 
-def _purpose(req: OpenRequest | SaveRequest) -> Purpose:  # change requests use their own prompts
+def _purpose(req: OpenRequest | SaveRequest | SaveDeltaRequest) -> Purpose:  # change requests use their own prompts
     if isinstance(req, OpenRequest):
         return "open"
     return "create" if req.base_revision_id is None else "save"
@@ -61,7 +68,7 @@ def _change_password(req: ChangePasswordRequest, provider: PasswordProvider) -> 
 
 
 def handle(
-    req: OpenRequest | SaveRequest | ChangePasswordRequest,
+    req: OpenRequest | SaveRequest | SaveDeltaRequest | ChangePasswordRequest,
     blobs: tuple[bytes, ...],
     provider: PasswordProvider,
     fault_hook: sqlcipher_store.FaultHook | None = None,
@@ -81,8 +88,16 @@ def handle(
             return WorkerResponse(error=ErrorCode.CANCELLED), ()
         try:
             if isinstance(req, OpenRequest):
-                info, loaded = sqlcipher_store.load(req.path, password)
-                return WorkerResponse(revision=info, manifest=loaded.manifest), loaded.blobs
+                opened = sqlcipher_store.load_raw(req.path, password)
+                return (
+                    WorkerResponse(revision=opened.revision, documents=tuple(d.meta for d in opened.documents)),
+                    (*(d.data for d in opened.documents), opened.records_blob),
+                )
+            if isinstance(req, SaveDeltaRequest):
+                info = sqlcipher_store.save_delta(
+                    req.path, password, req.delta, blobs, req.base_revision_id, fault_hook
+                )
+                return WorkerResponse(revision=info), ()
             assert snapshot is not None
             info = sqlcipher_store.save(req.path, password, snapshot, req.base_revision_id, fault_hook)
             return WorkerResponse(revision=info), ()

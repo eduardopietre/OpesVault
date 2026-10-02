@@ -16,14 +16,18 @@ from opesvault.vault.errors import ErrorCode
 from opesvault.vault.worker import Purpose, serve, take_protocol_streams
 
 PASSWORD_ENV = "OPV_DEV_PASSWORD"
+NEW_PASSWORD_ENV = "OPV_DEV_NEW_PASSWORD"
 FAULT_ENV = "OPV_DEV_FAULT_STAGE"
 
 
 class EnvPasswordProvider:
     def __init__(self) -> None:
         self._password = os.environ.pop(PASSWORD_ENV, None)
+        self._new_password = os.environ.pop(NEW_PASSWORD_ENV, None)
 
     def ask(self, purpose: Purpose, previous_error: ErrorCode | None) -> str | None:
+        if purpose == "change_new":
+            return self._new_password
         # Retries repeat the same password, so a wrong one ends as WRONG_PASSWORD.
         return self._password
 

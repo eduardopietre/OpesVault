@@ -13,9 +13,9 @@ from opesvault.vault import sqlcipher_store
 from opesvault.vault.errors import ErrorCode, VaultError
 from opesvault.vault.framing import read_message, write_message
 from opesvault.vault.model import Snapshot
-from opesvault.vault.protocol import OpenRequest, SaveRequest, WorkerRequest, WorkerResponse
+from opesvault.vault.protocol import ChangePasswordRequest, OpenRequest, SaveRequest, WorkerRequest, WorkerResponse
 
-Purpose = Literal["open", "save", "create"]
+Purpose = Literal["open", "save", "create", "change_current", "change_new"]
 MAX_PASSWORD_ATTEMPTS = 3
 
 
@@ -25,18 +25,49 @@ class PasswordProvider(Protocol):
         ...
 
 
-def _purpose(req: OpenRequest | SaveRequest) -> Purpose:
+def _purpose(req: OpenRequest | SaveRequest) -> Purpose:  # change requests use their own prompts
     if isinstance(req, OpenRequest):
         return "open"
     return "create" if req.base_revision_id is None else "save"
 
 
+def _change_password(req: ChangePasswordRequest, provider: PasswordProvider) -> WorkerResponse:
+    previous: ErrorCode | None = None
+    for _ in range(MAX_PASSWORD_ATTEMPTS):
+        current = provider.ask("change_current", previous)
+        if current is None:
+            return WorkerResponse(error=ErrorCode.CANCELLED)
+        try:
+            info, snapshot = sqlcipher_store.load(req.path, current)
+        except VaultError as exc:
+            del current
+            if exc.code is not ErrorCode.WRONG_PASSWORD:
+                return WorkerResponse(error=exc.code)
+            previous = exc.code
+            continue
+        if info.revision_id != req.base_revision_id:
+            return WorkerResponse(error=ErrorCode.REVISION_MISMATCH)
+        new = provider.ask("change_new", None)
+        if new is None:
+            return WorkerResponse(error=ErrorCode.CANCELLED)
+        try:
+            saved = sqlcipher_store.save(req.path, current, snapshot, info.revision_id, new_password=new)
+        except VaultError as exc:
+            return WorkerResponse(error=exc.code)
+        finally:
+            del current, new
+        return WorkerResponse(revision=saved)
+    return WorkerResponse(error=ErrorCode.WRONG_PASSWORD)
+
+
 def handle(
-    req: OpenRequest | SaveRequest,
+    req: OpenRequest | SaveRequest | ChangePasswordRequest,
     blobs: tuple[bytes, ...],
     provider: PasswordProvider,
     fault_hook: sqlcipher_store.FaultHook | None = None,
 ) -> tuple[WorkerResponse, tuple[bytes, ...]]:
+    if isinstance(req, ChangePasswordRequest):
+        return _change_password(req, provider), ()
     snapshot: Snapshot | None = None
     if isinstance(req, SaveRequest):
         snapshot = Snapshot(manifest=req.manifest, blobs=blobs)

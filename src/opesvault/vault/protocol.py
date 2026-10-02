@@ -28,10 +28,20 @@ class SaveRequest(BaseModel):
     manifest: SnapshotManifest
 
 
+class ChangePasswordRequest(BaseModel):
+    """Re-encrypts the saved revision with a new password; both are typed in the worker."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    op: Literal["change_password"] = "change_password"
+    path: Path
+    base_revision_id: UUID
+
+
 class WorkerRequest(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    request: Annotated[OpenRequest | SaveRequest, Field(discriminator="op")]
+    request: Annotated[OpenRequest | SaveRequest | ChangePasswordRequest, Field(discriminator="op")]
 
 
 class WorkerResponse(BaseModel):

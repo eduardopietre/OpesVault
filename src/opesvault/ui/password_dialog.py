@@ -18,6 +18,8 @@ _TITLES: dict[Purpose, str] = {
     "open": "Abrir cofre",
     "save": "Salvar cofre",
     "create": "Criar cofre",
+    "change_current": "Trocar senha — senha atual",
+    "change_new": "Trocar senha — nova senha",
 }
 
 _ERRORS: dict[ErrorCode, str] = {
@@ -40,7 +42,7 @@ class _PasswordDialog(QDialog):
         self.password = self._password_field()
         form.addRow("Senha:", self.password)
         self.confirm: QLineEdit | None = None
-        if purpose == "create":
+        if purpose in ("create", "change_new"):
             self.confirm = self._password_field()
             form.addRow("Confirmar senha:", self.confirm)
             layout.addWidget(QLabel("Sem a senha, o cofre não pode ser recuperado."))

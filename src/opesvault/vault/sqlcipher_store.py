@@ -217,8 +217,14 @@ def save(
     snapshot: Snapshot,
     base_revision_id: UUID | None,
     fault_hook: FaultHook | None = None,
+    *,
+    new_password: str | None = None,
 ) -> RevisionInfo:
-    """Write `snapshot` as a new revision. `base_revision_id=None` creates a new vault."""
+    """Write `snapshot` as a new revision. `base_revision_id=None` creates a new vault.
+
+    With `new_password`, the current password authenticates the saved version and the
+    new revision is encrypted with the new one (password change, docs/03 §7).
+    """
     hook = fault_hook or (lambda _stage: None)
     if not snapshot.check_consistency():
         raise VaultError(ErrorCode.VERIFY_FAILED)
@@ -247,9 +253,10 @@ def save(
     candidate = path.with_name(f"{path.name}{CANDIDATE_INFIX}{info.revision_id.hex}")
     replaced = False
     try:
-        _write_candidate(candidate, password, snapshot, info)
+        candidate_password = new_password or password
+        _write_candidate(candidate, candidate_password, snapshot, info)
         hook("candidate_written")
-        _verify_candidate(candidate, password, snapshot, info)
+        _verify_candidate(candidate, candidate_password, snapshot, info)
         hook("candidate_verified")
         # Detects the vault being swapped by someone else while we were writing.
         if before is not None and (not path.is_file() or _stat_token(path) != before):

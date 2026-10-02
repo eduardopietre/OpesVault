@@ -11,7 +11,7 @@ from uuid import UUID
 from opesvault.vault.errors import ErrorCode, VaultError
 from opesvault.vault.framing import read_message, write_message
 from opesvault.vault.model import RevisionInfo, Snapshot
-from opesvault.vault.protocol import OpenRequest, SaveRequest, WorkerRequest, WorkerResponse
+from opesvault.vault.protocol import ChangePasswordRequest, OpenRequest, SaveRequest, WorkerRequest, WorkerResponse
 
 WORKER_FLAG = "--vault-worker"
 _EXIT_TIMEOUT_S = 30
@@ -44,7 +44,7 @@ class VaultClient:
         self._command = worker_command or default_worker_command()
 
     def _call(
-        self, request: OpenRequest | SaveRequest, blobs: tuple[bytes, ...]
+        self, request: OpenRequest | SaveRequest | ChangePasswordRequest, blobs: tuple[bytes, ...]
     ) -> tuple[WorkerResponse, tuple[bytes, ...]]:
         _allow_child_foreground()
         proc = subprocess.Popen(
@@ -65,7 +65,7 @@ class VaultClient:
                 response, out_blobs = read_message(proc.stdout, WorkerResponse)
             except VaultError:
                 # No answer from a save: it may have stopped mid-replace.
-                code = ErrorCode.UNCERTAIN if isinstance(request, SaveRequest) else ErrorCode.INTERNAL
+                code = ErrorCode.INTERNAL if isinstance(request, OpenRequest) else ErrorCode.UNCERTAIN
                 response, out_blobs = WorkerResponse(error=code), ()
         finally:
             proc.stdout.close()
@@ -90,6 +90,14 @@ class VaultClient:
     def save(self, path: Path, snapshot: Snapshot, base_revision_id: UUID | None) -> RevisionInfo:
         request = SaveRequest(path=path, base_revision_id=base_revision_id, manifest=snapshot.manifest)
         response, _ = self._call(request, snapshot.blobs)
+        if response.error is not None:
+            raise VaultError(response.error)
+        if response.revision is None:
+            raise VaultError(ErrorCode.UNCERTAIN)
+        return response.revision
+
+    def change_password(self, path: Path, base_revision_id: UUID) -> RevisionInfo:
+        response, _ = self._call(ChangePasswordRequest(path=path, base_revision_id=base_revision_id), ())
         if response.error is not None:
             raise VaultError(response.error)
         if response.revision is None:

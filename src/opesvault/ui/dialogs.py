@@ -56,13 +56,35 @@ LIABILITY_SUBTYPES = (AccountSubtype.LOAN, AccountSubtype.OTHER_LIABILITY, Accou
 
 
 class FormDialog(QDialog):
-    def __init__(self, parent: QWidget | None, title: str) -> None:
+    """Shared form frame: fields, an inline error line and Cancel / <verb> buttons.
+
+    Errors are shown next to the form instead of in a second dialog, so the user fixes
+    them without losing context.
+    """
+
+    def __init__(self, parent: QWidget | None, title: str, confirm: str = "Salvar") -> None:
+        from opesvault.ui.components import text
+
         super().__init__(parent)
         self.setWindowTitle(title)
+        self.setMinimumWidth(420)
         self.form = QFormLayout()
+        self.form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+        self.form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
+        self.form.setVerticalSpacing(8)
+        self.error = text("", wrap=True)
+        self.error.setProperty("tone", "negative")
+        self.error.setAccessibleName("Erro no formulário")
+        self.error.hide()
         layout = QVBoxLayout(self)
+        layout.setSpacing(12)
         layout.addLayout(self.form)
+        layout.addWidget(self.error)
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        self.confirm_button = buttons.button(QDialogButtonBox.StandardButton.Ok)
+        self.confirm_button.setText(confirm)
+        self.confirm_button.setProperty("role", "primary")
+        buttons.button(QDialogButtonBox.StandardButton.Cancel).setText("Cancelar")
         buttons.accepted.connect(self._try_accept)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
@@ -71,9 +93,13 @@ class FormDialog(QDialog):
         try:
             self.validate()
         except DomainError as exc:
-            QMessageBox.warning(self, self.windowTitle(), str(exc))
+            self.show_error(str(exc))
             return
         self.accept()
+
+    def show_error(self, message: str | None) -> None:
+        self.error.setText(message or "")
+        self.error.setVisible(bool(message))
 
     def validate(self) -> None:
         pass
@@ -111,7 +137,7 @@ def category_items(ledger: Ledger, kind: AccountType) -> list[tuple[str, UUID]]:
 
 class AccountDialog(FormDialog):
     def __init__(self, parent: QWidget | None, ledger: Ledger, account: LedgerAccount | None = None) -> None:
-        super().__init__(parent, "Conta")
+        super().__init__(parent, "Conta", "Salvar conta")
         self.ledger = ledger
         self.original = account
         self.name = QLineEdit(account.name if account else "")
@@ -178,7 +204,7 @@ class AccountDialog(FormDialog):
 
 class CardDialog(FormDialog):
     def __init__(self, parent: QWidget | None, ledger: Ledger, card: Card | None = None) -> None:
-        super().__init__(parent, "Cartão de crédito")
+        super().__init__(parent, "Cartão de crédito", "Salvar cartão")
         self.ledger = ledger
         self.original = card
         self.name = QLineEdit(card.name if card else "")
@@ -241,7 +267,7 @@ class CardDialog(FormDialog):
 
 class CategoryDialog(FormDialog):
     def __init__(self, parent: QWidget | None, ledger: Ledger) -> None:
-        super().__init__(parent, "Categoria")
+        super().__init__(parent, "Categoria", "Criar categoria")
         self.ledger = ledger
         self.name = QLineEdit()
         self.kind = QComboBox()
@@ -281,7 +307,7 @@ class OperationDialog(FormDialog):
     }
 
     def __init__(self, parent: QWidget | None, ledger: Ledger, kind: str) -> None:
-        super().__init__(parent, self.KINDS[kind])
+        super().__init__(parent, self.KINDS[kind], "Registrar")
         self.ledger = ledger
         self.kind = kind
         self.description = QLineEdit()

@@ -72,7 +72,7 @@ class Form(FormDialog):
     """Small declarative form: fields are (key, label, widget)."""
 
     def __init__(self, parent: QWidget, title: str, fields: list[tuple[str, str, QWidget]], check: Any = None) -> None:
-        super().__init__(parent, title)
+        super().__init__(parent, title, "Registrar")
         self.fields = {key: widget for key, _, widget in fields}
         for _, label, widget in fields:
             self.form.addRow(label, widget)

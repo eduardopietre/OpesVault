@@ -4,7 +4,6 @@ import pytest
 from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication
 
-from opesvault.ui import password_dialog
 from opesvault.ui.password_dialog import DialogPasswordProvider, _PasswordDialog
 from opesvault.vault.errors import ErrorCode
 
@@ -60,5 +59,16 @@ def test_empty_password_is_asked_again(provider: DialogPasswordProvider) -> None
 
 def test_previous_error_is_shown() -> None:
     dialog = _PasswordDialog("open", ErrorCode.WRONG_PASSWORD)
-    texts = [w.text() for w in dialog.findChildren(password_dialog.QLabel)]
-    assert "Senha incorreta. Tente novamente." in texts
+    assert dialog.message.text() == "Senha incorreta. Tente novamente."
+    assert not dialog.message.isHidden()
+
+
+def test_create_cannot_be_confirmed_until_passwords_match() -> None:
+    dialog = _PasswordDialog("create", None)
+    assert not dialog.ok.isEnabled()  # empty
+    dialog.password.setText("abc")
+    assert dialog.confirm is not None
+    dialog.confirm.setText("abd")
+    assert not dialog.ok.isEnabled() and dialog.message.text() == "As senhas não coincidem."
+    dialog.confirm.setText("abc")
+    assert dialog.ok.isEnabled() and dialog.message.isHidden()

@@ -12,7 +12,7 @@ Light and dark follow the operating system unless forced (tests, screenshots).
 
 from dataclasses import dataclass
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QLibraryInfo, QLocale, Qt, QTranslator
 from PySide6.QtGui import QColor, QFont, QPalette
 from PySide6.QtWidgets import QApplication, QWidget
 
@@ -178,14 +178,14 @@ QPushButton[role="plain"]:hover, QToolButton#Plain:hover {{ background: {t.hover
 QToolButton#Action::menu-indicator {{ subcontrol-position: right center; right: {SPACE_XS}px; }}
 QToolButton#Action[popupMode="2"] {{ padding-right: {SPACE_XL}px; }}
 
-QLineEdit, QComboBox, QPlainTextEdit, QTextEdit {{
+QLineEdit, QPlainTextEdit, QTextEdit {{
     background: {t.raised}; color: {t.text}; border: 1px solid {t.separator};
     border-radius: {RADIUS}px; padding: 3px {SPACE_S}px; selection-background-color: {t.accent};
 }}
-QLineEdit:focus, QComboBox:focus, QPlainTextEdit:focus, QTextEdit:focus {{
+QLineEdit:focus, QPlainTextEdit:focus, QTextEdit:focus {{
     border: 2px solid {t.accent}; padding: 2px 7px;
 }}
-QLineEdit:disabled, QComboBox:disabled {{
+QLineEdit:disabled {{
     color: {t.tertiary}; background: {t.window};
 }}
 QLineEdit[invalid="true"] {{ border: 2px solid {t.negative}; }}
@@ -240,9 +240,24 @@ QLabel#SaveDot[state="clean"] {{ color: {t.positive}; }}
 """
 
 
+_translators: list[QTranslator] = []
+
+
+def install_translations(app: QApplication) -> None:
+    """Portuguese for Qt's own texts (standard buttons, file dialogs, context menus)."""
+    if _translators:
+        return
+    directory = QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath)
+    translator = QTranslator(app)
+    if translator.load(QLocale("pt_BR"), "qtbase", "_", directory):
+        app.installTranslator(translator)
+        _translators.append(translator)
+
+
 def apply_theme(app: QApplication, dark: bool | None = None) -> Tokens:
     """Applies the palette and stylesheet. `dark=None` follows the system appearance."""
     global _current
+    install_translations(app)
     use_dark = is_dark_system(app) if dark is None else dark
     _current = DARK if use_dark else LIGHT
     app.setStyle("Fusion")  # identical metrics on every platform; the palette carries the look

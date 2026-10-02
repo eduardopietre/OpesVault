@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from PySide6.QtCore import QObject, QRunnable, QSettings, Qt, QThreadPool, QTimer, Signal
-from PySide6.QtGui import QAction, QCloseEvent, QKeySequence
+from PySide6.QtGui import QAction, QCloseEvent, QColor, QKeySequence, QPainter
 from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
@@ -20,6 +20,9 @@ from PySide6.QtWidgets import (
     QSizePolicy,
     QSplitter,
     QStackedWidget,
+    QStyle,
+    QStyledItemDelegate,
+    QStyleOptionViewItem,
     QToolBar,
     QToolButton,
     QWidget,
@@ -60,6 +63,11 @@ ERROR_MESSAGES: dict[ErrorCode, str] = {
     ),
     ErrorCode.LOCKED: "Este cofre já está aberto em outra janela do OpesVault.",
     ErrorCode.IO_ERROR: "Erro de leitura ou gravação (disco cheio ou removido?).",
+    ErrorCode.INTERNAL: (
+        "A operação falhou por um erro interno. Os dados abertos continuam na memória; tente de novo. "
+        "Se repetir, o registro técnico guarda o código, sem dados financeiros."
+    ),
+    ErrorCode.PROTOCOL_ERROR: ("A comunicação com o processo do cofre falhou. Nada foi gravado; tente de novo."),
     ErrorCode.UNCERTAIN: (
         "Não foi possível confirmar o salvamento. Reabra o cofre para conferir antes de tentar de novo."
     ),
@@ -89,6 +97,35 @@ class _Job(QRunnable):
             self.signals.failed.emit(ErrorCode.INTERNAL)
         else:
             self.signals.done.emit(result)
+
+
+BADGE_ROLE = Qt.ItemDataRole.UserRole + 1
+
+
+class SidebarDelegate(QStyledItemDelegate):
+    """Draws an attention count at the right edge of a sidebar row."""
+
+    def paint(self, painter: QPainter, option: QStyleOptionViewItem, index: Any) -> None:
+        super().paint(painter, option, index)
+        count = index.data(BADGE_ROLE)
+        if not count:
+            return
+        from opesvault.ui.theme import tokens
+
+        t = tokens()
+        rect = option.rect.adjusted(0, 5, -10, -5)  # type: ignore[attr-defined]
+        label = str(count) if count < 1000 else "999+"
+        width = max(22, option.fontMetrics.horizontalAdvance(label) + 12)  # type: ignore[attr-defined]
+        badge = rect.adjusted(rect.width() - width, 0, 0, 0)
+        selected = bool(option.state & QStyle.StateFlag.State_Selected)  # type: ignore[attr-defined]
+        painter.save()
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QColor(t.accent_text if selected else t.selection_inactive))
+        painter.drawRoundedRect(badge, badge.height() / 2, badge.height() / 2)
+        painter.setPen(QColor(t.accent if selected else t.text))
+        painter.drawText(badge, Qt.AlignmentFlag.AlignCenter, label)
+        painter.restore()
 
 
 class MainWindow(QMainWindow):
@@ -128,6 +165,7 @@ class MainWindow(QMainWindow):
             self.stack.addWidget(page)
             go_menu_entries.append((page.title, index))
         self.nav.currentRowChanged.connect(self._nav_row_changed)
+        self.nav.setItemDelegate(SidebarDelegate(self.nav))
 
         self.splitter = QSplitter(Qt.Orientation.Horizontal)
         self.splitter.setChildrenCollapsible(False)
@@ -242,6 +280,27 @@ class MainWindow(QMainWindow):
         )
         state.setObjectName("Content")
         return state
+
+    def _update_badges(self) -> None:
+        """Counts that need attention, next to the section name (with an accessible description)."""
+        if self.session is None:
+            return
+        from opesvault.importing import pipeline
+        from opesvault.importing.model import ItemStatus
+
+        pending = sum(
+            1
+            for item in pipeline.items(self.session.ledger).values()
+            if item.status in (ItemStatus.READY, ItemStatus.NEEDS_REVIEW)
+        )
+        for index, page in enumerate(self.pages):
+            item = self.nav.item(self._nav_rows[index])
+            count = pending if isinstance(page, ImportPage) else 0
+            item.setData(BADGE_ROLE, count or None)
+            item.setData(
+                Qt.ItemDataRole.AccessibleTextRole,
+                f"{page.title}, {count} itens aguardando revisão" if count else page.title,
+            )
 
     def show_page(self, index: int) -> None:
         """Selects a section by page index (sidebar rows also contain group labels)."""
@@ -688,6 +747,7 @@ class MainWindow(QMainWindow):
                 self.operator.setCurrentText(current)
             self.operator.blockSignals(False)
             self._set_operator()
+        self._update_badges()
         dirty = self.session.dirty
         family = self.session.ledger.meta.family_name
         self.setWindowTitle(f"OpesVault — {family} ({self.session.path.name}){' *' if dirty else ''}")

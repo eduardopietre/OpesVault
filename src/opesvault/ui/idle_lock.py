@@ -8,7 +8,7 @@ for the password in the transient worker, so the UI still never receives it.
 import time
 
 from PySide6.QtCore import QEvent, QObject, QSettings, Qt, QTimer, Signal
-from PySide6.QtWidgets import QLabel, QPushButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
 DEFAULT_MINUTES = 10
 SETTINGS_KEY = "ui/lock_minutes"
@@ -74,17 +74,28 @@ class LockPanel(QWidget):
 
     def __init__(self) -> None:
         super().__init__()
+        self.setObjectName("Content")
         title = QLabel("Conteúdo oculto")
-        title.setStyleSheet("font-size: 20pt; font-weight: bold;")
+        title.setProperty("textStyle", "title")
         self.detail = QLabel()
         self.detail.setWordWrap(True)
-        self.button = QPushButton("Desbloquear")
+        self.detail.setProperty("textStyle", "secondary")
+        self.detail.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.detail.setMaximumWidth(460)
+        self.button = QPushButton("Desbloquear…")
+        self.button.setProperty("role", "primary")
         self.button.setDefault(True)
         self.button.clicked.connect(self.unlock_requested)
         layout = QVBoxLayout(self)
+        layout.setSpacing(12)
         layout.addStretch()
-        for widget in (title, self.detail, self.button):
-            layout.addWidget(widget, alignment=Qt.AlignmentFlag.AlignHCenter)
+        layout.addWidget(title, alignment=Qt.AlignmentFlag.AlignHCenter)
+        centered = QHBoxLayout()  # no alignment flag: keeps height-for-width wrapping
+        centered.addStretch(1)
+        centered.addWidget(self.detail, 100)
+        centered.addStretch(1)
+        layout.addLayout(centered)
+        layout.addWidget(self.button, alignment=Qt.AlignmentFlag.AlignHCenter)
         layout.addStretch()
 
     def describe(self, *, needs_password: bool, unsaved: bool) -> None:

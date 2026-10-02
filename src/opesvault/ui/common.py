@@ -148,14 +148,22 @@ def set_rows(table: QTableWidget, rows: list[tuple[list[Any], Any]]) -> None:
     sortable = table.isSortingEnabled()
     table.setSortingEnabled(False)
     table.setRowCount(len(rows))
+    money_columns = {
+        c
+        for cells, _ in rows
+        for c, value in enumerate(cells)
+        if isinstance(value, str) and value.startswith(("R$", "-R$", "+R$"))
+    }
+    right = Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+    for column in money_columns:
+        header = table.horizontalHeaderItem(column)
+        if header is not None:
+            header.setTextAlignment(right)
     for r, (cells, row_id) in enumerate(rows):
         for c, value in enumerate(cells):
             item = QTableWidgetItem(str(value))
-            if isinstance(value, str) and value.startswith(("R$", "-R$", "+R$")):
-                item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-                header = table.horizontalHeaderItem(c)
-                if header is not None:
-                    header.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            if c in money_columns:  # the whole column, so "—" lines up with the figures
+                item.setTextAlignment(right)
             if c == 0:
                 item.setData(Qt.ItemDataRole.UserRole, row_id)
             table.setItem(r, c, item)

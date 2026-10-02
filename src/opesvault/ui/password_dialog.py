@@ -6,11 +6,11 @@ from PySide6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
     QFormLayout,
-    QLabel,
     QLineEdit,
     QVBoxLayout,
 )
 
+from opesvault.ui.theme import restyle
 from opesvault.vault.errors import ErrorCode
 from opesvault.vault.worker import Purpose
 
@@ -29,29 +29,91 @@ _ERRORS: dict[ErrorCode, str] = {
 }
 
 
+_HEADLINES: dict[Purpose, str] = {
+    "open": "Digite a senha do cofre",
+    "save": "Digite a senha para salvar",
+    "create": "Crie a senha do cofre",
+    "change_current": "Digite a senha atual",
+    "change_new": "Escolha a nova senha",
+    "unlock": "Digite a senha para mostrar o conteúdo",
+}
+_CONFIRM_LABELS: dict[Purpose, str] = {
+    "open": "Abrir",
+    "save": "Salvar",
+    "create": "Criar cofre",
+    "change_current": "Continuar",
+    "change_new": "Trocar senha",
+    "unlock": "Desbloquear",
+}
+
+
 class _PasswordDialog(QDialog):
     def __init__(self, purpose: Purpose, error: ErrorCode | None) -> None:
+        from opesvault.ui.components import text
+
         super().__init__()
         self.setWindowTitle(f"OpesVault — {_TITLES[purpose]}")
         self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
+        self.setMinimumWidth(380)
         layout = QVBoxLayout(self)
-        if error is not None and error in _ERRORS:
-            message = QLabel(_ERRORS[error])
-            message.setStyleSheet("color: #b00020; font-weight: bold;")
-            layout.addWidget(message)
+        layout.setSpacing(10)
+        layout.addWidget(text(_HEADLINES[purpose], "headline"))
+        self.message = text("", wrap=True)
+        self.message.setProperty("tone", "negative")
+        self.message.setAccessibleName("Erro")
+        layout.addWidget(self.message)
         form = QFormLayout()
         self.password = self._password_field()
+        self.password.setAccessibleName("Senha")
         form.addRow("Senha:", self.password)
         self.confirm: QLineEdit | None = None
-        if purpose in ("create", "change_new"):
+        creating = purpose in ("create", "change_new")
+        if creating:
             self.confirm = self._password_field()
-            form.addRow("Confirmar senha:", self.confirm)
-            layout.addWidget(QLabel("Sem a senha, o cofre não pode ser recuperado."))
+            self.confirm.setAccessibleName("Confirmar senha")
+            form.addRow("Confirmar:", self.confirm)
         layout.addLayout(form)
+        if creating:
+            layout.addWidget(
+                text(
+                    "Sem a senha, o cofre não pode ser aberto por ninguém, nem recuperado. Guarde-a em lugar seguro.",
+                    "caption",
+                    wrap=True,
+                )
+            )
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        self.ok = buttons.button(QDialogButtonBox.StandardButton.Ok)
+        self.ok.setText(_CONFIRM_LABELS[purpose])
+        self.ok.setProperty("role", "primary")
+        buttons.button(QDialogButtonBox.StandardButton.Cancel).setText("Cancelar")
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
+        self.password.textChanged.connect(self._validate)
+        if self.confirm is not None:
+            self.confirm.textChanged.connect(self._validate)
+        self._show_error(_ERRORS.get(error) if error is not None else None)
+        self._validate()
+
+    def _show_error(self, message: str | None) -> None:
+        self.message.setText(message or "")
+        self.message.setVisible(bool(message))
+
+    def _validate(self) -> None:
+        """Live feedback instead of a failed submission: empty or mismatched never gets sent."""
+        password = self.password.text()
+        ready = bool(password)
+        if self.confirm is not None:
+            typed = self.confirm.text()
+            mismatch = bool(typed) and typed != password
+            self.confirm.setProperty("invalid", mismatch)
+            restyle(self.confirm)
+            if mismatch:
+                self._show_error("As senhas não coincidem.")
+            elif self.message.text() == "As senhas não coincidem.":
+                self._show_error(None)
+            ready = ready and typed == password
+        self.ok.setEnabled(ready)
 
     @staticmethod
     def _password_field() -> QLineEdit:
@@ -63,7 +125,12 @@ class _PasswordDialog(QDialog):
 
 class DialogPasswordProvider:
     def __init__(self) -> None:
-        self._app = QApplication.instance() or QApplication([])
+        existing = QApplication.instance()
+        self._app = existing if isinstance(existing, QApplication) else QApplication([])
+        if existing is None:  # the worker process: same look as the main window
+            from opesvault.ui.theme import apply_theme
+
+            apply_theme(self._app)
 
     def ask(self, purpose: Purpose, previous_error: ErrorCode | None) -> str | None:
         error = previous_error

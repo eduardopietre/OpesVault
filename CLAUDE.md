@@ -18,6 +18,7 @@ uv run --group build python scripts/build.py   # opcional, ~25 min (--installer:
 OPV_FUZZ_ITERATIONS=3000 uv run pytest tests/test_fuzz.py   # fuzzing longo (~45 s)
 uv run python scripts/inventario_licencas.py [--check]       # licenças + SBOM em build/licencas
 uv run python scripts/validar_layouts.py PASTA_DO_CORPUS     # documentos reais, fora do git (docs/15 §2)
+uv run python scripts/capturar_telas.py [--dark] [--size 900x640]  # capturas de todas as telas (build/telas)
 ```
 
 Desenvolva e teste direto em Python. O build Nuitka é **opcional**: só rode quando o usuário pedir ou quando a mudança afetar empacotamento (dependências nativas, plugins Qt, relançamento do worker).
@@ -50,6 +51,7 @@ No Linux, o Qt precisa de `libegl1`, `libgl1`, `libxkbcommon0` e `libfontconfig1
 | O que foi implementado por fase, cobertura e pendências | `docs/13` |
 | Fuzzing, registro técnico, licenças, SBOM, OpenSSL | `docs/14` |
 | Qual teste cobre cada TA; validação de layouts reais | `docs/15` |
+| Arquitetura da janela, tokens, componentes e regras de interface | `docs/16` |
 
 Se dois documentos entrarem em conflito, vale o `docs/00` §2. Conflitos de segurança ou cálculo devem ser levados ao usuário, nunca resolvidos pela interpretação mais simples. Mudar de stack, adicionar cloud, reter chave para autosave ou permitir edição simultânea exige nova decisão do usuário.
 
@@ -70,6 +72,7 @@ Se dois documentos entrarem em conflito, vale o `docs/00` §2. Conflitos de segu
 - **Thread da UI:** não extraia PDF, não chame modelo e não faça operação de cofre na thread visual. Trabalho em segundo plano que altera a sessão chama `Page.set_busy`, que bloqueia salvar e editar.
 - **Gravação incremental:** o salvamento só leva o que está em `Ledger.dirty`. Toda alteração passa por `Ledger.put`, pelas coleções rastreadas ou pelo setter de `meta`; mutar um objeto já guardado não é visto e não é gravado. Documentos entram e saem por `Session.add_document` e `remove_document`.
 - **Parsers como código não confiável:** chame-os por `pipeline.run_parser`, que isola falhas em `ParseFailed`. Valor ilegível ou data impossível vai para as linhas não mapeadas, nunca vira exceção. Rode o fuzzing depois de mexer num parser.
+- **Interface:** não fixe cores nem tamanhos de fonte em widgets. Use os tokens de `ui/theme.py` pelas propriedades `textStyle`, `role` e `tone`, e os componentes de `ui/components.py` (`PageHeader`, `EmptyState`, `menu_button`, `flow_row`). Toda página monta o layout com `page_layout()`. Confira o resultado com `scripts/capturar_telas.py` em claro, escuro e janela estreita.
 - **Exceções:** mensagens de `DomainError` são para o usuário e podem citar dados; por isso o registro técnico (`diagnostics.record`) guarda só código, tipo e local. Nunca registre `str(exc)`.
 
 ## Dados de teste

@@ -6,7 +6,11 @@ GENERAL = """
 <tr><td><b>Ctrl+N</b></td><td>Novo cofre</td></tr>
 <tr><td><b>Ctrl+O</b></td><td>Abrir cofre</td></tr>
 <tr><td><b>Ctrl+S</b></td><td>Salvar (a senha é pedida a cada salvamento)</td></tr>
-<tr><td><b>Ctrl+1 … Ctrl+9</b></td><td>Ir para a seção correspondente da barra lateral</td></tr>
+<tr><td><b>Ctrl+W</b></td><td>Fechar cofre</td></tr>
+<tr><td><b>Ctrl+1 … Ctrl+9</b></td><td>Ir para a seção correspondente (menu Ir)</td></tr>
+<tr><td><b>Ctrl+F</b></td><td>Buscar na tela atual</td></tr>
+<tr><td><b>Ctrl+Shift+B</b></td><td>Mostrar ou ocultar a barra lateral</td></tr>
+<tr><td><b>Alt+← / Alt+→</b></td><td>Mês anterior / próximo (Visão geral)</td></tr>
 <tr><td><b>Ctrl+L</b></td><td>Ocultar o conteúdo agora (bloqueio visual)</td></tr>
 <tr><td><b>F1</b></td><td>Ajuda da tela atual</td></tr>
 </table>
@@ -23,7 +27,10 @@ PAGES: dict[str, str] = {
 <p>Todos os lançamentos em partidas dobradas. Cada operação tem débitos e créditos que se equilibram.</p>
 <ul>
 <li><b>Filtros</b>: período, conta ou categoria, integrante, situação, origem e texto (descrição e observações).</li>
-<li><b>Editar</b> (duplo clique ou Enter): datas, competência, responsável, observações e partidas,
+<li><b>Busca</b> (Ctrl+F) e <b>Limpar filtros</b>, que aparece quando algum filtro está ativo.</li>
+<li><b>Detalhes</b>: o painel à direita mostra datas, partidas, rateio e histórico do lançamento selecionado.
+Clique com o botão direito no cabeçalho da tabela para escolher as colunas.</li>
+<li><b>Editar</b> (duplo clique, Enter ou botão direito): datas, competência, responsável, observações e partidas,
 incluindo o rateio por integrante. O indicador mostra se débitos e créditos fecham.</li>
 <li><b>Reclassificar selecionados</b>: troca a categoria de vários lançamentos de uma vez.
 Selecione com Shift ou Ctrl. Rateios com mais de uma categoria não são alterados.</li>

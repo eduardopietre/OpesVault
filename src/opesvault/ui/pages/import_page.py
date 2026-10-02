@@ -88,7 +88,7 @@ class _ImportJob(QRunnable):
 
 class ItemDialog(FormDialog):
     def __init__(self, parent: QWidget, item: ExtractedItem) -> None:
-        super().__init__(parent, "Corrigir item")
+        super().__init__(parent, "Corrigir item", "Corrigir")
         from opesvault.ui.common import date_edit
 
         self.description = QLineEdit(item.description)
@@ -196,7 +196,7 @@ class ImportPage(Page):
         splitter.addWidget(self.review_stack)
         splitter.addWidget(self.viewer)
         splitter.setStretchFactor(1, 1)
-        splitter.setSizes([260, 700, 420])
+        splitter.setSizes([230, 640, 380])
         # Narrow windows: the side panes can be dragged closed; the review never shrinks away.
         splitter.setCollapsible(0, True)
         splitter.setCollapsible(2, True)

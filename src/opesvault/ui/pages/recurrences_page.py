@@ -58,7 +58,7 @@ FREQUENCY_LABELS = {Frequency.MONTHLY: "Mensal", Frequency.YEARLY: "Anual", Freq
 
 class RuleDialog(FormDialog):
     def __init__(self, parent, ledger: Ledger) -> None:  # type: ignore[no-untyped-def]
-        super().__init__(parent, "Nova recorrência")
+        super().__init__(parent, "Nova recorrência", "Criar recorrência")
         self.description = QLineEdit()
         self.account = QComboBox()
         fill_combo(self.account, balance_accounts(ledger))

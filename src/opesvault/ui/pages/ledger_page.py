@@ -280,7 +280,7 @@ class OperationInspector(QScrollArea):
 
 class ReclassifyDialog(FormDialog):
     def __init__(self, parent: QWidget | None, ledger: Ledger, count: int) -> None:
-        super().__init__(parent, "Reclassificar lançamentos")
+        super().__init__(parent, "Reclassificar lançamentos", "Reclassificar")
         self.target = QComboBox()
         items = [(f"Despesa: {label}", i) for label, i in category_items(ledger, AccountType.EXPENSE)]
         items += [(f"Receita: {label}", i) for label, i in category_items(ledger, AccountType.INCOME)]

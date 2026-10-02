@@ -126,7 +126,7 @@ class OperationEditDialog(FormDialog):
     COLUMNS = ("Conta", "Débito", "Crédito", "Integrante")
 
     def __init__(self, parent: QWidget | None, ledger: Ledger, op: Operation) -> None:
-        super().__init__(parent, "Editar lançamento")
+        super().__init__(parent, "Editar lançamento", "Salvar correção")
         self.ledger = ledger
         self.original = op
         self._accounts = account_choices(ledger, {p.account_id for p in op.postings})

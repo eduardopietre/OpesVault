@@ -4,7 +4,7 @@ OpesVault: aplicativo desktop Windows, 100% offline, para finanças familiares, 
 
 ## Estado atual
 
-**Fase 0, de viabilidade**, implementada e validada no Linux. Falta executar os gates G0–G7 no Windows (`docs/11` §4). Não construa telas em escala nem módulos de domínio amplos antes de esses gates passarem e de a decisão sobre o custo de salvar (`docs/11` §5) ser tomada.
+**Fase 0 concluída**, validada no Linux. Por decisão do usuário, os gates do Windows (`docs/11` §4) são **presumidos aprovados** e ficam como validação pendente; não bloqueiam a fase 1. A decisão sobre o custo de salvar (`docs/11` §5) continua em aberto.
 
 ## Comandos
 
@@ -14,8 +14,10 @@ uv run pytest -q                         # testes; os marcados "windows" são pu
 uv run ruff format . && uv run ruff check . && uv run pyright
 uv run python -m opesvault               # janela de teste da fase 0
 uv run python scripts/fase0_medir_ram.py --mib 50 250
-uv run --group build python scripts/build.py
+uv run --group build python scripts/build.py   # opcional, ~25 min
 ```
+
+Desenvolva e teste direto em Python. O build Nuitka é **opcional**: só rode quando o usuário pedir ou quando a mudança afetar empacotamento (dependências nativas, plugins Qt, relançamento do worker).
 
 No Linux, o Qt precisa de `libegl1`, `libgl1`, `libxkbcommon0` e `libfontconfig1`; sem tela, use `QT_QPA_PLATFORM=offscreen`.
 

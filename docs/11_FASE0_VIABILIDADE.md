@@ -1,6 +1,8 @@
 # Fase 0 — Viabilidade: implementação, medições e roteiro Windows
 
-Versão 1.0 • 02/10/2026. Complementa `09` §1 e `02` §8. Registra o que foi construído, o que foi medido fora do Windows e o que ainda precisa ser executado na máquina Windows de referência.
+Versão 1.1 • 02/10/2026. Complementa `09` §1 e `02` §8. Registra o que foi construído, o que foi medido fora do Windows e o que ainda precisa ser executado na máquina Windows de referência.
+
+**Situação:** fase 0 encerrada por decisão do usuário. Os gates G0–G7 são presumidos aprovados e continuam como validação pendente, a executar quando houver acesso à máquina Windows. O desenvolvimento segue em Python, e o build Nuitka é opcional.
 
 ## 1. O que existe
 

@@ -130,3 +130,34 @@ def test_dead_worker_on_open_is_internal_error(vault_path: Path) -> None:
     with pytest.raises(VaultError) as exc:
         client.open(vault_path)
     assert exc.value.code is ErrorCode.INTERNAL
+
+
+def test_unlock_checks_password_and_revision(vault_path: Path, tmp_path: Path) -> None:
+    from opesvault.vault.protocol import UnlockRequest
+
+    info = store.save(vault_path, PASSWORD, make_snapshot(), None)
+    provider = ScriptedProvider(["errada", PASSWORD])
+    response, blobs = handle(UnlockRequest(path=vault_path, base_revision_id=info.revision_id), (), provider)
+    assert response.error is None and blobs == ()
+    assert provider.calls == [("unlock", None), ("unlock", ErrorCode.WRONG_PASSWORD)]
+
+    response, _ = handle(
+        UnlockRequest(path=vault_path, base_revision_id=info.revision_id), (), ScriptedProvider([None])
+    )
+    assert response.error is ErrorCode.CANCELLED
+
+    # Someone else's vault, with a password they know, copied over ours.
+    other = tmp_path / "other.opesvault"
+    store.save(other, "outra-senha", make_snapshot(info.vault_id), None)
+    os.replace(other, vault_path)
+    response, _ = handle(
+        UnlockRequest(path=vault_path, base_revision_id=info.revision_id), (), ScriptedProvider(["outra-senha"])
+    )
+    assert response.error is ErrorCode.REVISION_MISMATCH
+
+
+@pytest.mark.usefixtures("dev_worker_env")
+def test_client_unlock_through_real_subprocess(vault_path: Path) -> None:
+    info = store.save(vault_path, PASSWORD, make_snapshot(), None)
+    client = VaultClient(dev_worker_command())
+    client.unlock(vault_path, info.revision_id)

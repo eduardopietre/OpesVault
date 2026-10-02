@@ -13,10 +13,12 @@ from opesvault.vault.errors import ErrorCode, VaultError
 from opesvault.vault.framing import read_message, write_message
 from opesvault.vault.model import Document, OpenedVault, RevisionInfo, Snapshot, SnapshotDelta
 from opesvault.vault.protocol import (
+    AnyRequest,
     ChangePasswordRequest,
     OpenRequest,
     SaveDeltaRequest,
     SaveRequest,
+    UnlockRequest,
     WorkerRequest,
     WorkerResponse,
 )
@@ -54,9 +56,7 @@ class VaultClient:
     def __init__(self, worker_command: list[str] | None = None) -> None:
         self._command = worker_command or default_worker_command()
 
-    def _call(
-        self, request: OpenRequest | SaveRequest | SaveDeltaRequest | ChangePasswordRequest, blobs: tuple[bytes, ...]
-    ) -> tuple[WorkerResponse, tuple[bytes, ...]]:
+    def _call(self, request: AnyRequest, blobs: tuple[bytes, ...]) -> tuple[WorkerResponse, tuple[bytes, ...]]:
         _allow_child_foreground()
         proc = subprocess.Popen(
             self._command,
@@ -120,6 +120,14 @@ class VaultClient:
         if response.revision is None:
             raise VaultError(ErrorCode.UNCERTAIN)
         return response.revision
+
+    def unlock(self, path: Path, base_revision_id: UUID) -> None:
+        """Raises VaultError unless the password typed in the worker opens this revision."""
+        response, _ = self._call(UnlockRequest(path=path, base_revision_id=base_revision_id), ())
+        if response.error is not None:
+            raise VaultError(response.error)
+        if response.revision is None or response.revision.revision_id != base_revision_id:
+            raise VaultError(ErrorCode.PROTOCOL_ERROR)
 
     def save_delta(
         self, path: Path, delta: SnapshotDelta, blobs: tuple[bytes, ...], base_revision_id: UUID

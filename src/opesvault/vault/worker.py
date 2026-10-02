@@ -14,15 +14,17 @@ from opesvault.vault.errors import ErrorCode, VaultError
 from opesvault.vault.framing import read_message, write_message
 from opesvault.vault.model import Snapshot
 from opesvault.vault.protocol import (
+    AnyRequest,
     ChangePasswordRequest,
     OpenRequest,
     SaveDeltaRequest,
     SaveRequest,
+    UnlockRequest,
     WorkerRequest,
     WorkerResponse,
 )
 
-Purpose = Literal["open", "save", "create", "change_current", "change_new"]
+Purpose = Literal["open", "save", "create", "change_current", "change_new", "unlock"]
 MAX_PASSWORD_ATTEMPTS = 3
 
 
@@ -67,14 +69,38 @@ def _change_password(req: ChangePasswordRequest, provider: PasswordProvider) -> 
     return WorkerResponse(error=ErrorCode.WRONG_PASSWORD)
 
 
+def _unlock(req: UnlockRequest, provider: PasswordProvider) -> WorkerResponse:
+    previous: ErrorCode | None = None
+    for _ in range(MAX_PASSWORD_ATTEMPTS):
+        password = provider.ask("unlock", previous)
+        if password is None:
+            return WorkerResponse(error=ErrorCode.CANCELLED)
+        try:
+            info = sqlcipher_store.read_revision(req.path, password)
+        except VaultError as exc:
+            if exc.code is not ErrorCode.WRONG_PASSWORD:
+                return WorkerResponse(error=exc.code)
+            previous = exc.code
+            continue
+        finally:
+            del password
+        # Another vault with a known password copied over ours must not unlock the screen.
+        if info.revision_id != req.base_revision_id:
+            return WorkerResponse(error=ErrorCode.REVISION_MISMATCH)
+        return WorkerResponse(revision=info)
+    return WorkerResponse(error=ErrorCode.WRONG_PASSWORD)
+
+
 def handle(
-    req: OpenRequest | SaveRequest | SaveDeltaRequest | ChangePasswordRequest,
+    req: AnyRequest,
     blobs: tuple[bytes, ...],
     provider: PasswordProvider,
     fault_hook: sqlcipher_store.FaultHook | None = None,
 ) -> tuple[WorkerResponse, tuple[bytes, ...]]:
     if isinstance(req, ChangePasswordRequest):
         return _change_password(req, provider), ()
+    if isinstance(req, UnlockRequest):
+        return _unlock(req, provider), ()
     snapshot: Snapshot | None = None
     if isinstance(req, SaveRequest):
         snapshot = Snapshot(manifest=req.manifest, blobs=blobs)

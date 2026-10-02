@@ -4,9 +4,10 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import QObject, QRunnable, QSettings, QThreadPool, QTimer, Signal
+from PySide6.QtCore import QObject, QRunnable, QSettings, Qt, QThreadPool, QTimer, Signal
 from PySide6.QtGui import QAction, QCloseEvent, QKeySequence
 from PySide6.QtWidgets import (
+    QApplication,
     QComboBox,
     QFileDialog,
     QHBoxLayout,
@@ -21,6 +22,8 @@ from PySide6.QtWidgets import (
 
 from opesvault.domain.ledger import DomainError
 from opesvault.session import FrozenSnapshot, Session
+from opesvault.ui.common import run_guarded
+from opesvault.ui.idle_lock import IdleWatcher, LockPanel, lock_minutes, set_lock_minutes
 from opesvault.ui.pages.accounts_page import AccountsPage
 from opesvault.ui.pages.base import Page
 from opesvault.ui.pages.documents_page import DocumentsPage
@@ -104,11 +107,18 @@ class MainWindow(QMainWindow):
             shortcut.setShortcut(QKeySequence(f"Ctrl+{index + 1}"))
             shortcut.triggered.connect(lambda _=False, i=index: self.nav.setCurrentRow(i))
             self.addAction(shortcut)
-        central = QWidget()
-        layout = QHBoxLayout(central)
+        self.content = QWidget()
+        layout = QHBoxLayout(self.content)
         layout.addWidget(self.nav)
         layout.addWidget(self.stack, 1)
-        self.setCentralWidget(central)
+        self.lock_panel = LockPanel()
+        self.lock_panel.unlock_requested.connect(self.unlock_screen)
+        self.shell = QStackedWidget()
+        self.shell.addWidget(self.content)
+        self.shell.addWidget(self.lock_panel)
+        self.setCentralWidget(self.shell)
+        self.locked = False
+        self._disabled_actions: list[QAction] = []
 
         menu = self.menuBar().addMenu("&Cofre")
         self.vault_menu = menu
@@ -126,6 +136,11 @@ class MainWindow(QMainWindow):
         self.statusBar().addPermanentWidget(self.status)
         self.resize(1280, 800)
         self.nav.setCurrentRow(0)
+        self.idle = IdleWatcher(self, lock_minutes())
+        self.idle.idle.connect(self._on_idle)
+        app = QApplication.instance()
+        if app is not None:
+            app.installEventFilter(self.idle)
         self._refresh()
 
     @property
@@ -150,6 +165,7 @@ class MainWindow(QMainWindow):
     def extend_menus(self) -> None:
         menu = self.vault_menu
         menu.addSeparator()
+        self._action(menu, "Assistente de configuração…", None, self.run_setup_wizard)
         self._action(menu, "Trocar senha…", None, self.change_password)
         self._action(menu, "Fazer backup agora", None, self.backup_now)
         self._action(menu, "Restaurar backup…", None, self.restore_backup)
@@ -157,6 +173,12 @@ class MainWindow(QMainWindow):
         self._action(menu, "Exportar livro financeiro (CSV)…", None, lambda: self.export("csv"))
         self._action(menu, "Exportar dados para intercâmbio (JSON)…", None, lambda: self.export("json"))
         menu.addSeparator()
+        view = self.menuBar().addMenu("E&xibir")
+        self._action(view, "Ocultar conteúdo agora", QKeySequence("Ctrl+L"), self.lock_screen)
+        self._action(view, "Bloqueio por inatividade…", None, self.configure_lock)
+        help_menu = self.menuBar().addMenu("A&juda")
+        self._action(help_menu, "Ajuda desta tela", QKeySequence.StandardKey.HelpContents, self.show_help)
+        self._action(help_menu, "Sobre o OpesVault", None, self.show_about)
         self.recent_menu = menu.addMenu("Recentes")
         self.recent_menu.aboutToShow.connect(self._fill_recents)
         self.reminder = QTimer(self)
@@ -382,6 +404,90 @@ class MainWindow(QMainWindow):
         menu.addAction(action)
         return action
 
+    # ── help and visual lock ────────────────────────
+
+    def show_help(self) -> None:
+        from opesvault.ui.help import help_for
+
+        page = self.stack.currentWidget()
+        title = page.title if isinstance(page, Page) and not self.locked else ""
+        box = QMessageBox(self)
+        box.setWindowTitle("Ajuda")
+        box.setTextFormat(Qt.TextFormat.RichText)
+        box.setText(help_for(title))
+        box.exec()
+
+    def show_about(self) -> None:
+        from opesvault import __version__
+
+        QMessageBox.about(
+            self,
+            "Sobre o OpesVault",
+            f"OpesVault {__version__}\nFinanças familiares offline, com cofre cifrado.\n"
+            "Licenças de terceiros: arquivo THIRD_PARTY_LICENSES na pasta de instalação.",
+        )
+
+    def configure_lock(self) -> None:
+        minutes, ok = QInputDialog.getInt(
+            self,
+            "Bloqueio por inatividade",
+            "Ocultar o conteúdo após quantos minutos sem uso? (0 desliga)\nVale para este computador.",
+            self.idle.minutes,
+            0,
+            240,
+        )
+        if ok:
+            set_lock_minutes(minutes)
+            self.idle.minutes = minutes
+
+    def _on_idle(self) -> None:
+        if self.session is not None and not self.locked:
+            self.lock_screen()
+
+    def lock_screen(self) -> None:
+        """Visual lock only (docs/03 §4): the session stays in RAM."""
+        if self.locked:
+            return
+        self.locked = True
+        session = self.session
+        self.lock_panel.describe(
+            needs_password=session is not None and session.revision is not None,
+            unsaved=session is not None and session.dirty,
+        )
+        self.shell.setCurrentWidget(self.lock_panel)
+        self._disabled_actions = [a for a in self.findChildren(QAction) if a.isEnabled()]
+        for action in self._disabled_actions:
+            action.setEnabled(False)
+        self.statusBar().hide()
+        self.setWindowTitle("OpesVault — bloqueado")
+        self.lock_panel.button.setFocus()
+
+    def unlock_screen(self) -> None:
+        if not self.locked or self._vault_busy:
+            return
+        session = self.session
+        if session is None or session.revision is None:
+            self._show_content()
+            return
+        revision_id = session.revision.revision_id
+
+        def failed(code: ErrorCode) -> None:
+            if code is not ErrorCode.CANCELLED:
+                self._show_error(code)
+            self.lock_panel.button.setFocus()
+
+        self._run(lambda: self.client.unlock(session.path, revision_id), lambda _: self._show_content(), failed)
+
+    def _show_content(self) -> None:
+        self.locked = False
+        for action in self._disabled_actions:
+            action.setEnabled(True)
+        self._disabled_actions = []
+        self.statusBar().show()
+        self.shell.setCurrentWidget(self.content)
+        self.idle.last_input = self.idle._now()
+        self._refresh()
+
     def _show_page(self, row: int) -> None:
         if 0 <= row < len(self.pages):
             self.stack.setCurrentIndex(row)
@@ -400,6 +506,8 @@ class MainWindow(QMainWindow):
             self.session.ledger.operator = self.operator.currentText() or None
 
     def _refresh(self) -> None:
+        if self.locked:
+            return
         for page in self.pages:
             if page.session is not self.session:
                 page.set_session(self.session)
@@ -448,9 +556,7 @@ class MainWindow(QMainWindow):
     def _page_busy(self, busy: bool) -> None:
         """A page is mutating the session off the UI thread (import): no save, no edits."""
         self._page_busy_flag = busy
-        central = self.centralWidget()
-        if central is not None:
-            central.setEnabled(not busy)
+        self.content.setEnabled(not busy)
         if busy:
             self.status.setText("Processando documento…")
         else:
@@ -511,7 +617,20 @@ class MainWindow(QMainWindow):
         if self._take_lock(path):
             self.session = Session.new(path, family.strip())
             self._refresh()
+            self.run_setup_wizard()
             self.save_vault()
+
+    def run_setup_wizard(self) -> None:
+        """First-use wizard; also reachable later to add members, accounts and cards."""
+        from opesvault.domain.onboarding import apply_setup
+        from opesvault.ui.setup_wizard import SetupWizard
+
+        if self.session is None or self.busy:
+            return
+        ledger = self.session.ledger
+        wizard = SetupWizard(self, ledger)
+        if wizard.exec() and run_guarded(self, lambda: apply_setup(ledger, wizard.plan())):
+            self.on_changed()
 
     def open_vault(self) -> None:
         if self.busy or not self._confirm_discard():

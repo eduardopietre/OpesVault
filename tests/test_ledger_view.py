@@ -207,8 +207,8 @@ def test_import_blocks_saving_and_editing(window: MainWindow) -> None:
     page = ledger_page(window)
     page.set_busy(True)
     assert window.busy
-    central = window.centralWidget()
-    assert central is not None and not central.isEnabled()
+    central = window.content
+    assert not central.isEnabled()
     frozen_before = window.session.freeze() if window.session else None
     window.save_vault()  # ignored while busy: no job started
     assert not window._jobs

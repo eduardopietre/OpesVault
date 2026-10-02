@@ -20,6 +20,7 @@ _TITLES: dict[Purpose, str] = {
     "create": "Criar cofre",
     "change_current": "Trocar senha — senha atual",
     "change_new": "Trocar senha — nova senha",
+    "unlock": "Desbloquear",
 }
 
 _ERRORS: dict[ErrorCode, str] = {

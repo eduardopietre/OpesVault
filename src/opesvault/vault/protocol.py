@@ -49,10 +49,23 @@ class ChangePasswordRequest(BaseModel):
     base_revision_id: UUID
 
 
+class UnlockRequest(BaseModel):
+    """Proves the person at the screen knows the password of the open revision (visual lock)."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    op: Literal["unlock"] = "unlock"
+    path: Path
+    base_revision_id: UUID
+
+
+AnyRequest = OpenRequest | SaveRequest | SaveDeltaRequest | ChangePasswordRequest | UnlockRequest
+
+
 class WorkerRequest(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    request: Annotated[OpenRequest | SaveRequest | SaveDeltaRequest | ChangePasswordRequest, Field(discriminator="op")]
+    request: Annotated[AnyRequest, Field(discriminator="op")]
 
 
 class WorkerResponse(BaseModel):

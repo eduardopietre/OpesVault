@@ -8,6 +8,7 @@ from typing import Any
 from uuid import UUID
 
 from PySide6.QtCore import QAbstractTableModel, QModelIndex, QPersistentModelIndex, Qt, QTimer
+from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QComboBox,
@@ -185,6 +186,10 @@ class LedgerPage(Page):
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
         self.table.horizontalHeader().setStretchLastSection(True)
         self.table.doubleClicked.connect(lambda _: self.edit())
+        for key in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            enter = QShortcut(QKeySequence(key), self.table)
+            enter.setContext(Qt.ShortcutContext.WidgetShortcut)
+            enter.activated.connect(self.edit)
         for column, width in enumerate((90, 80, 280, 130, 300, 110, 90)):
             self.table.setColumnWidth(column, width)
 

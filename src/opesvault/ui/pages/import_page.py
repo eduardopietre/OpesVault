@@ -1,10 +1,12 @@
 """Importar e revisar: queue of documents and side-by-side review (docs/07 §2, RF-05..RF-09)."""
 
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 from uuid import UUID
 
 from PySide6.QtCore import QObject, QRunnable, Qt, QThreadPool, Signal
+from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QComboBox,
     QFileDialog,
@@ -137,17 +139,22 @@ class ImportPage(Page):
         )
         self.items.itemSelectionChanged.connect(self._select_item)
         buttons = QHBoxLayout()
-        for label, slot in (
-            ("Aprovar prontos", self.approve_all),
-            ("Aprovar selecionado", self.approve_selected),
-            ("Corrigir", self.correct),
-            ("Manter separado", self.keep_separate),
-            ("Rejeitar", self.reject),
-            ("Sugerir com IA", self.suggest_ai),
+        for label, slot, keys in (
+            ("Aprovar prontos", self.approve_all, ("Ctrl+Shift+Return", "Ctrl+Shift+Enter")),
+            ("Aprovar selecionado", self.approve_selected, ("Ctrl+Return", "Ctrl+Enter")),
+            ("Corrigir", self.correct, ("F2",)),
+            ("Manter separado", self.keep_separate, ("Ctrl+M",)),
+            ("Rejeitar", self.reject, ("Delete",)),
+            ("Sugerir com IA", self.suggest_ai, ()),
         ):
             button = QPushButton(label)
             button.clicked.connect(slot)
+            if keys:
+                button.setToolTip(f"Atalho: {keys[0]}")
             buttons.addWidget(button)
+            self._shortcut(keys, slot)
+        self._shortcut(("Ctrl+I",), self.import_files)
+        self._shortcut(("Ctrl+K",), self.focus_target)
         buttons.addStretch()
 
         review = QWidget()
@@ -346,6 +353,29 @@ class ImportPage(Page):
         else:
             self.viewer.image.setText(f"Linha {ev.line} do arquivo:\n{ev.text}")
 
+    # ── keyboard review ─────────────────────────────
+
+    def _shortcut(self, keys: tuple[str, ...], slot: Callable[[], None]) -> None:
+        for key in keys:
+            shortcut = QShortcut(QKeySequence(key), self)
+            shortcut.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
+            shortcut.activated.connect(slot)
+
+    def focus_target(self) -> None:
+        """Ctrl+K: open the category selector of the current item."""
+        row = self.items.currentRow()
+        combo = self.items.cellWidget(row, 5) if row >= 0 else None
+        if isinstance(combo, QComboBox):
+            combo.setFocus()
+            combo.showPopup()
+
+    def _after_item_action(self, row: int) -> None:
+        """Keep the keyboard flow: after acting on an item, select the next one."""
+        self.changed()
+        if self.items.rowCount():
+            self.items.selectRow(min(row + 1, self.items.rowCount() - 1))
+            self.items.setFocus()
+
     # ── actions ─────────────────────────────────────
 
     def import_files(self) -> None:
@@ -424,32 +454,35 @@ class ImportPage(Page):
             self.batch_id = result.id
             self.changed()
 
-    def _approve(self, item_ids: list[UUID] | None) -> None:
+    def _approve(self, item_ids: list[UUID] | None) -> bool:
         batch = self._batch()
         if batch is None or self.session is None:
-            return
+            return False
         ledger = self.session.ledger
         divergence = None
         if any(r.ok is False for r in batch.reconciliations):
             divergence = ask_reason(self, "Total divergente — aceitar como pendência documentada")
             if divergence is None:
-                return
+                return False
         partial = None
         if item_ids is not None:
             partial = ask_reason(self, "Aprovação parcial")
             if partial is None:
-                return
+                return False
         result = run_guarded(
             self,
             lambda: pipeline.approve(ledger, batch.id, item_ids, accept_divergence=divergence, partial_reason=partial),
         )
-        if result is not None:
+        if result is None:
+            return False
+        if item_ids is None:
             QMessageBox.information(
                 self,
                 "Aprovação",
                 f"{result.created} operação(ões) criada(s), {result.linked} evidência(s) vinculada(s).",
             )
             self.changed()
+        return True
 
     def approve_all(self) -> None:
         self._approve(None)
@@ -457,7 +490,9 @@ class ImportPage(Page):
     def approve_selected(self) -> None:
         item_id = selected_id(self.items)
         if item_id is not None:
-            self._approve([item_id])
+            row = self.items.currentRow()
+            if self._approve([item_id]):
+                self._after_item_action(row)
 
     def correct(self) -> None:
         item_id = selected_id(self.items)
@@ -492,19 +527,21 @@ class ImportPage(Page):
         item_id = selected_id(self.items)
         if self.session is None or item_id is None:
             return
+        row = self.items.currentRow()
         reason = ask_reason(self, "Manter como lançamento separado")
         ledger = self.session.ledger
         if reason and run_guarded(self, lambda: pipeline.keep_separate(ledger, item_id, reason) or True):
-            self.changed()
+            self._after_item_action(row)
 
     def reject(self) -> None:
         item_id = selected_id(self.items)
         if self.session is None or item_id is None:
             return
+        row = self.items.currentRow()
         reason = ask_reason(self, "Rejeitar item")
         ledger = self.session.ledger
         if reason and run_guarded(self, lambda: pipeline.reject_items(ledger, [item_id], reason) or True):
-            self.changed()
+            self._after_item_action(row)
 
     def suggest_ai(self) -> None:
         batch = self._batch()

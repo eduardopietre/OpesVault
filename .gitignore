@@ -53,6 +53,8 @@ deployment/
 # Documentos financeiros: só PDFs sintéticos explicitamente liberados
 *.pdf
 !tests/fixtures/sinteticos/**/*.pdf
+# Notas anonimizadas de terceiros, auditadas (docs/12 §4)
+!tests/fixtures/terceiros/**/*.pdf
 # Exportações claras e amostras privadas
 exports/
 amostras_privadas/

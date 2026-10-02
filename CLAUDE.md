@@ -62,7 +62,7 @@ Se dois documentos entrarem em conflito, vale o `docs/00` §2. Conflitos de segu
 
 ## Dados de teste
 
-Nunca versione PDF real, cofre ou exportação; o `.gitignore` bloqueia esses arquivos. PDFs sintéticos ficam em `tests/fixtures/sinteticos/`, a única pasta onde `*.pdf` é permitido, com o valor esperado revisado ao lado. Anonimizar significa alterar o conteúdo e os metadados, não só cobrir com tarja.
+Nunca versione PDF real, cofre ou exportação; o `.gitignore` bloqueia esses arquivos. PDFs sintéticos ficam em `tests/fixtures/sinteticos/`, com o valor esperado revisado ao lado. A outra exceção é `tests/fixtures/terceiros/`: notas anonimizadas de outros projetos, com licença e origem no README da pasta. Anonimizar significa alterar o conteúdo e os metadados, não só cobrir com tarja.
 
 ## Ambiente
 

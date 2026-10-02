@@ -4,7 +4,7 @@ OpesVault: aplicativo desktop Windows, 100% offline, para finanças familiares, 
 
 ## Estado atual
 
-**Fase 0 concluída**, validada no Linux. Por decisão do usuário, os gates do Windows (`docs/11` §4) são **presumidos aprovados** e ficam como validação pendente; não bloqueiam a fase 1. A decisão sobre o custo de salvar (`docs/11` §5) continua em aberto.
+As **fases 0 a 6** estão implementadas e testadas em Python no Linux (`docs/13`). Os gates do Windows (`docs/11` §4) são presumidos aprovados e continuam pendentes de execução real. Os layouts de faturas e extratos são sintéticos até haver documentos reais. A decisão sobre o custo de salvar (`docs/11` §5) continua em aberto.
 
 ## Comandos
 
@@ -14,7 +14,7 @@ uv run pytest -q                         # testes; os marcados "windows" são pu
 uv run ruff format . && uv run ruff check . && uv run pyright
 uv run python -m opesvault               # janela de teste da fase 0
 uv run python scripts/fase0_medir_ram.py --mib 50 250
-uv run --group build python scripts/build.py   # opcional, ~25 min
+uv run --group build python scripts/build.py   # opcional, ~25 min (--installer: Inno Setup, também opcional)
 ```
 
 Desenvolva e teste direto em Python. O build Nuitka é **opcional**: só rode quando o usuário pedir ou quando a mudança afetar empacotamento (dependências nativas, plugins Qt, relançamento do worker).
@@ -44,6 +44,7 @@ No Linux, o Qt precisa de `libegl1`, `libgl1`, `libxkbcommon0` e `libfontconfig1
 | ADRs, riscos, pendências | `docs/09` |
 | Resultados da fase 0 e roteiro Windows | `docs/11` |
 | Projetos de referência e particularidades de layouts | `docs/12` |
+| O que foi implementado por fase, cobertura e pendências | `docs/13` |
 
 Se dois documentos entrarem em conflito, vale o `docs/00` §2. Conflitos de segurança ou cálculo devem ser levados ao usuário, nunca resolvidos pela interpretação mais simples. Mudar de stack, adicionar cloud, reter chave para autosave ou permitir edição simultânea exige nova decisão do usuário.
 
@@ -58,6 +59,9 @@ Se dois documentos entrarem em conflito, vale o `docs/00` §2. Conflitos de segu
 - **Logs:** apenas códigos de erro e IDs opacos. Nada de nomes, valores, descrições, CPF ou conteúdo de PDF, nem em mensagens de exceção que possam acabar logadas.
 - **IA:** a saída do Ollama é sugestão sem escrita direta. Texto de PDF é dado, nunca instrução. O app precisa funcionar inteiro sem Ollama.
 - **Worker do cofre:** cada abrir/salvar inicia `--vault-worker`, que pede a senha e morre. A UI nunca recebe a senha. `scripts/dev_worker.py` aceita senha por variável de ambiente e **só** pode ser usado em testes; ele fica fora do pacote de propósito.
+- **Tipos persistidos:** todo módulo que registra um tipo com `Ledger.register_kind` ou uma guarda precisa constar em `registry.MODULES`. Imports só por efeito colateral não sobrevivem ao `ruff --fix`; por isso a lista é explícita e testada.
+- **Parsers:** um por instituição + produto + layout, com `version`, `limitations` e `validated_with_real_documents`. Nunca deduza o ano pelo relógio; use a data do próprio documento.
+- **Investimentos:** avaliação não é fluxo, aporte não é rendimento, e resultado indisponível é `None` com motivo. Métodos de retorno só calculam quando os dados permitem.
 - **Thread da UI:** não extraia PDF, não chame modelo e não faça operação de cofre na thread visual.
 
 ## Dados de teste

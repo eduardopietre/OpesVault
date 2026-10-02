@@ -71,6 +71,7 @@ Arquivos escaneados serão identificados como não suportados na primeira versã
 | [10_REFERENCIAS_PESQUISA.md](10_REFERENCIAS_PESQUISA.md) | Fontes primárias, aproveitamento e limitações da pesquisa |
 | [11_FASE0_VIABILIDADE.md](11_FASE0_VIABILIDADE.md) | Implementação, medições e roteiro Windows da fase 0 |
 | [12_PESQUISA_DOCUMENTOS.md](12_PESQUISA_DOCUMENTOS.md) | Projetos de referência, amostras públicas e particularidades de layouts |
+| [13_IMPLEMENTACAO.md](13_IMPLEMENTACAO.md) | Implementação das fases 1 a 6, cobertura, desempenho e pendências |
 
 Em caso de conflito, decisões aprovadas neste documento prevalecem. Segurança e regras de cálculo devem ser reconciliadas nos respectivos documentos antes de implementação; um conflito não autoriza escolher silenciosamente a interpretação mais simples.
 

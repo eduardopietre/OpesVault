@@ -47,7 +47,8 @@ O domínio financeiro ainda não existe. O snapshot guarda registros opacos (`ki
 | Pico de RAM do worker | ~400 MiB (era 646 MiB antes de a verificação deixar de carregar todos os documentos de novo) |
 | Tamanho do cofre | 263 MiB (5% acima dos PDFs) |
 | Autoteste: criar / salvar / abrir com dados mínimos | 0,34 s / 0,53 s / 0,19 s |
-| Reinício do worker | 0,23 s em Python puro |
+| Reinício do worker | 0,23 s em Python puro; 0,19 s no executável Nuitka |
+| Build Nuitka `--standalone` (Linux) | ~25 min sem ccache; 239 MiB em 50 arquivos; `--self-test` com `all_ok: true` e nenhum arquivo novo no diretório temporário |
 
 Decomposição de um salvamento de 250 MiB:
 
@@ -89,7 +90,9 @@ Testes automatizados: 45 passam e 5 são exclusivos do Windows. Cobrem:
 | P12 | O SQLCipher só valida a chave ao decifrar uma página, então abrir o handle não prova a senha. | Resolvido: há uma leitura real logo após a chave (`08` §3). |
 | P13 | Strings Python são imutáveis: não há como zerar a senha. | Limitação conhecida (`03` §2). O impacto fica restrito ao worker, que termina após cada operação. |
 | P14 | O `sqlcipher3` não traz tipos para o pyright. | Resolvido com stubs em `typings/sqlcipher3/`. |
-| P15 | O Nuitka detecta o Python do uv como "Python Build Standalone", um flavor com suporte limitado. | Ver G1. No Windows, preferir o Python oficial do python.org se o build falhar. |
+| P15 | O Nuitka detecta o Python do uv como "Python Build Standalone", um flavor com suporte limitado. | No Linux o build funcionou mesmo assim. No Windows, se o build falhar, usar o Python oficial do python.org. |
+| P16 | O executável tem 239 MiB, porque o plugin PySide6 inclui todos os plugins Qt (Wayland, impressão, TLS…). | Aberto: enxugar plugins e módulos Qt na fase 6. Não bloqueia a fase 0. |
+| P17 | O `pdfminer` importa `unittest`, o que deixa o build mais lento e maior. | Aceito por enquanto: ainda não há como excluir sem quebrar o `pdfplumber`. |
 
 ## 4. Roteiro no Windows (gates G1–G7)
 

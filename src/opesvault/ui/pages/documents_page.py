@@ -14,6 +14,8 @@ class PdfView(QWidget):
     def __init__(self) -> None:
         super().__init__()
         self.data: bytes | None = None
+        self.highlight: tuple[float, float, float, float] | None = None
+        self.highlight_page = 1
         self.page = QSpinBox()
         self.page.setMinimum(1)
         self.page.valueChanged.connect(self._render)
@@ -30,7 +32,10 @@ class PdfView(QWidget):
         layout.addLayout(bar)
         layout.addWidget(scroll)
 
-    def show_pdf(self, data: bytes | None, page: int = 1) -> None:
+    def show_pdf(
+        self, data: bytes | None, page: int = 1, highlight: tuple[float, float, float, float] | None = None
+    ) -> None:
+        self.highlight = highlight
         self.data = data
         if data is None:
             self.image.setText("Nenhum documento selecionado")
@@ -42,6 +47,7 @@ class PdfView(QWidget):
         except Exception:
             self.image.setText("Não foi possível abrir este PDF (protegido por senha ou inválido).")
             return
+        self.highlight_page = page
         self.page.setValue(page)
         self._render()
 
@@ -50,11 +56,23 @@ class PdfView(QWidget):
             return
         from opesvault.pdf_render import render_page
 
+        scale = 1.5
         try:
-            image = render_page(self.data, self.page.value() - 1)
+            image = render_page(self.data, self.page.value() - 1, scale)
         except Exception:
             self.image.setText("Não foi possível renderizar esta página.")
             return
+        if self.highlight is not None and self.page.value() == self.highlight_page:
+            from PySide6.QtGui import QColor, QPainter, QPen
+
+            x0, top, x1, bottom = (v * scale for v in self.highlight)
+            painter = QPainter(image)
+            painter.setPen(QPen(QColor(220, 0, 0), 2))
+            painter.fillRect(
+                int(x0) - 2, int(top) - 2, int(x1 - x0) + 4, int(bottom - top) + 4, QColor(255, 230, 0, 70)
+            )
+            painter.drawRect(int(x0) - 2, int(top) - 2, int(x1 - x0) + 4, int(bottom - top) + 4)
+            painter.end()
         self.image.setPixmap(QPixmap.fromImage(image))
 
 

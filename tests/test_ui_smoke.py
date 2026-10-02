@@ -77,3 +77,22 @@ def test_account_dialog_with_opening_balance(window: MainWindow) -> None:
     opening = dialog.opening_balance()
     assert opening is not None and opening[0] == Decimal("500.00")
     assert account.name == "Corretora"
+
+
+def test_import_page_review_flow(window: MainWindow) -> None:
+    from opesvault.importing import pipeline
+    from opesvault.importing.pipeline import ImportRequest
+    from opesvault.ui.pages.import_page import ImportPage
+
+    from . import synthetic_docs as docs
+
+    assert window.session is not None
+    batch = pipeline.import_document(window.session, ImportRequest("nu.pdf", docs.nubank_card_pdf()))
+    page = next(p for p in window.pages if isinstance(p, ImportPage))
+    window.nav.setCurrentRow(window.pages.index(page))
+    page.batch_id = batch.id
+    page.refresh()
+    assert page.items.rowCount() == len(pipeline.items_of(window.session.ledger, batch.id))
+    page.items.selectRow(0)
+    page._select_item()
+    assert page.viewer.data is not None

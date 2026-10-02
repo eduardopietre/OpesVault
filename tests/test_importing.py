@@ -257,7 +257,7 @@ def test_bill_payment_seen_in_bank_and_card_is_one_settlement(session: Session) 
     op = session.ledger.operations[pipeline.items(session.ledger)[payment.id].operation_id]  # type: ignore[index]
     assert op.kind is OperationKind.CARD_PAYMENT
     # The card CSV later shows a payment of the same value: linked, not duplicated.
-    csv = (b"date,title,amount\n2026-01-20,Pagamento recebido,-1680.00\n2026-01-22,Uber *Trip,10.00\n")
+    csv = b"date,title,amount\n2026-01-20,Pagamento recebido,-1680.00\n2026-01-22,Uber *Trip,10.00\n"
     card_batch = import_document(session, ImportRequest("card.csv", csv, card_id=card.id))
     card_items = {i.description: i for i in pipeline.items_of(session.ledger, card_batch.id)}
     assert card_items["Pagamento recebido"].status is ItemStatus.DUPLICATE

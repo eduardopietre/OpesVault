@@ -3,4 +3,5 @@
 Opening a vault must know all kinds; importing this module guarantees that.
 """
 
+import opesvault.domain.settings
 import opesvault.importing.model  # noqa: F401

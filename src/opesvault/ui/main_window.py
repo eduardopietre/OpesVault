@@ -96,6 +96,12 @@ class MainWindow(QMainWindow):
             self.nav.addItem(page.title)
             self.stack.addWidget(page)
         self.nav.currentRowChanged.connect(self._show_page)
+        # Ctrl+1..9 jump between sections (keyboard navigation, RNF-08).
+        for index in range(min(len(self.pages), 9)):
+            shortcut = QAction(self)
+            shortcut.setShortcut(QKeySequence(f"Ctrl+{index + 1}"))
+            shortcut.triggered.connect(lambda _=False, i=index: self.nav.setCurrentRow(i))
+            self.addAction(shortcut)
         central = QWidget()
         layout = QHBoxLayout(central)
         layout.addWidget(self.nav)

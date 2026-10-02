@@ -14,7 +14,7 @@ from pydantic import BaseModel, ValidationError
 from opesvault.vault.errors import ErrorCode, VaultError
 
 MAGIC = b"OPV1"
-MAX_HEADER_BYTES = 64 * 1024 * 1024
+MAX_HEADER_BYTES = 512 * 1024 * 1024  # 50k operations with history fit comfortably
 MAX_BLOB_COUNT = 100_000
 MAX_BLOB_BYTES = 1024 * 1024 * 1024
 

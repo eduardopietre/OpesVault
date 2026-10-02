@@ -1,7 +1,10 @@
-"""Build the standalone executable with Nuitka.
+"""OPTIONAL: build the standalone executable with Nuitka, and optionally an installer.
 
     uv sync --group build
-    uv run --group build python scripts/build.py
+    uv run --group build python scripts/build.py              # standalone folder only
+    uv run --group build python scripts/build.py --installer  # plus Inno Setup installer (Windows)
+
+Development and tests never need this: run `uv run python -m opesvault`.
 
 Uses `--standalone`, never `--onefile`: onefile unpacks the whole application
 into %TEMP% on every launch, including every vault worker launch (CLAUDE.md).
@@ -47,6 +50,25 @@ def nuitka_command() -> list[str]:
     return cmd
 
 
+def build_installer() -> int:
+    import shutil
+
+    iscc = shutil.which("ISCC") or shutil.which("ISCC.exe")
+    default = Path("C:/Program Files (x86)/Inno Setup 6/ISCC.exe")
+    if iscc is None and default.exists():
+        iscc = str(default)
+    if iscc is None:
+        print("Inno Setup (ISCC.exe) não encontrado; o instalador é opcional. A pasta standalone já pode ser usada.")
+        return 0
+    from opesvault import __version__
+
+    script = ROOT / "packaging" / "windows" / "opesvault.iss"
+    return subprocess.call([iscc, f"/DAppVersion={__version__}", str(script)], cwd=script.parent)
+
+
 if __name__ == "__main__":
     OUT.mkdir(parents=True, exist_ok=True)
-    sys.exit(subprocess.call(nuitka_command(), cwd=ROOT))
+    code = subprocess.call(nuitka_command(), cwd=ROOT)
+    if code == 0 and "--installer" in sys.argv[1:]:
+        code = build_installer()
+    sys.exit(code)

@@ -170,7 +170,8 @@ class Ledger:
                 action=action,
                 version=version,
                 before=before.model_dump(mode="json") if before is not None else None,
-                after=entity.model_dump(mode="json"),
+                # A creation's state is the entity itself; only changes need a stored copy.
+                after=entity.model_dump(mode="json") if before is not None else None,
                 operator=self.operator,
                 reason=reason,
                 at=_now(),

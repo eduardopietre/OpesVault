@@ -25,9 +25,11 @@ from opesvault.ui.pages.accounts_page import AccountsPage
 from opesvault.ui.pages.base import Page
 from opesvault.ui.pages.documents_page import DocumentsPage
 from opesvault.ui.pages.import_page import ImportPage
+from opesvault.ui.pages.investments_page import InvestmentsPage
 from opesvault.ui.pages.ledger_page import LedgerPage
 from opesvault.ui.pages.overview_page import OverviewPage
 from opesvault.ui.pages.recurrences_page import RecurrencesPage
+from opesvault.ui.pages.reports_page import ReportsPage
 from opesvault.ui.pages.settings_page import SettingsPage
 from opesvault.vault.client import VaultClient
 from opesvault.vault.errors import ErrorCode, VaultError
@@ -125,6 +127,8 @@ class MainWindow(QMainWindow):
             ImportPage(self.on_changed),
             AccountsPage(self.on_changed),
             RecurrencesPage(self.on_changed),
+            InvestmentsPage(self.on_changed),
+            ReportsPage(self.on_changed),
             DocumentsPage(self.on_changed),
             SettingsPage(self.on_changed),
         ]

@@ -120,3 +120,36 @@ def test_phase3_pages(window: MainWindow) -> None:
     add_rule(ledger, dialog.build())
     recurrences.refresh()
     assert recurrences.forecast_table.rowCount() > 0
+
+
+def test_phase4_investments_and_reports(window: MainWindow) -> None:
+    from opesvault.charts import data as charts
+    from opesvault.domain.model import YearMonth
+    from opesvault.investments import service as inv
+    from opesvault.investments.model import AssetClass, ValueNature
+    from opesvault.ui.pages.investments_page import InvestmentsPage
+    from opesvault.ui.pages.reports_page import CHARTS, ReportsPage
+
+    assert window.session is not None
+    ledger = window.session.ledger
+    bank = next(a.id for a in ledger.accounts.values() if a.name == "Banco A")
+    pos = inv.create_position(
+        ledger, "CDB", AssetClass.FIXED_INCOME, date(2026, 1, 1), initial_cost="500", from_account=bank
+    )
+    inv.add_valuation(ledger, pos.id, date(2026, 2, 1), "510", ValueNature.GROSS)
+    inv.add_valuation(ledger, pos.id, date(2026, 3, 1), "505", ValueNature.NET_INFORMED)
+    page = next(p for p in window.pages if isinstance(p, InvestmentsPage))
+    window.nav.setCurrentRow(window.pages.index(page))
+    page.positions.selectRow(0)
+    page._show_detail()
+    assert page.valuations.rowCount() == 3
+    evolution = charts.investment_evolution(ledger, pos.id)
+    assert {s.name for s in evolution.series} >= {"Valor bruto", "Valor líquido informado", "Aporte"}
+    tooltip = page.evolution.tooltip_text("Valor bruto", evolution.series[0].points[0])
+    assert "R$" in tooltip and "natureza" in tooltip
+    reports = next(p for p in window.pages if isinstance(p, ReportsPage))
+    for index in range(len(CHARTS)):
+        reports.kind.setCurrentIndex(index)
+        reports.refresh()
+    in_out = charts.monthly_in_out(ledger, YearMonth(year=2026, month=1), YearMonth(year=2026, month=3))
+    assert in_out.regime == "caixa"

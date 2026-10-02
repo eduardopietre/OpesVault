@@ -2,9 +2,9 @@
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
 from uuid import UUID, uuid4
 
+from opesvault.domain.ledger import Ledger
 from opesvault.vault.model import Document, Record, RevisionInfo, Snapshot
 
 
@@ -21,46 +21,54 @@ class FrozenSnapshot:
 class Session:
     path: Path
     vault_id: UUID
+    ledger: Ledger
     revision: RevisionInfo | None = None
-    records: list[Record] = field(default_factory=list)
     documents: list[Document] = field(default_factory=list)
-    _edit_seq: int = 0
+    _doc_changes: int = 0
     _saved_seq: int = 0
 
     @classmethod
-    def new(cls, path: Path) -> "Session":
-        session = cls(path=path, vault_id=uuid4())
-        session._edit_seq = 1  # A never-saved vault starts dirty.
-        return session
+    def new(cls, path: Path, family_name: str = "Família") -> "Session":
+        # A never-saved vault starts dirty: creating the chart of accounts counts as edits.
+        return cls(path=path, vault_id=uuid4(), ledger=Ledger.new(family_name))
 
     @classmethod
     def from_snapshot(cls, path: Path, revision: RevisionInfo, snapshot: Snapshot) -> "Session":
+        rows = [(r.id, r.kind, r.payload) for r in snapshot.manifest.records]
         return cls(
             path=path,
             vault_id=snapshot.manifest.vault_id,
+            ledger=Ledger.from_records(rows),
             revision=revision,
-            records=list(snapshot.manifest.records),
             documents=list(snapshot.documents),
         )
+
+    @property
+    def _edit_seq(self) -> int:
+        return self.ledger.change_count + self._doc_changes
 
     @property
     def dirty(self) -> bool:
         return self._edit_seq != self._saved_seq
 
-    def add_record(self, kind: str, payload: dict[str, Any]) -> Record:
-        record = Record(id=uuid4(), kind=kind, payload=payload)
-        self.records.append(record)
-        self._edit_seq += 1
-        return record
-
     def add_document(self, original_name: str, data: bytes) -> Document:
         document = Document.from_bytes(original_name, data)
         self.documents.append(document)
-        self._edit_seq += 1
+        self._doc_changes += 1
         return document
 
+    def document(self, document_id: UUID) -> Document:
+        for doc in self.documents:
+            if doc.meta.id == document_id:
+                return doc
+        raise KeyError(document_id)
+
+    def find_document_by_hash(self, sha256: str) -> Document | None:
+        return next((d for d in self.documents if d.meta.sha256 == sha256), None)
+
     def freeze(self) -> FrozenSnapshot:
-        snapshot = Snapshot.build(self.vault_id, tuple(self.records), tuple(self.documents))
+        records = tuple(Record(id=rid, kind=kind, payload=payload) for rid, kind, payload in self.ledger.to_records())
+        snapshot = Snapshot.build(self.vault_id, records, tuple(self.documents))
         base = self.revision.revision_id if self.revision is not None else None
         return FrozenSnapshot(snapshot=snapshot, edit_seq=self._edit_seq, base_revision_id=base)
 

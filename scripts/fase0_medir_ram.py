@@ -17,6 +17,7 @@ import tempfile
 import threading
 import time
 from collections.abc import Callable
+from datetime import date
 from functools import partial
 from pathlib import Path
 from typing import Any
@@ -27,6 +28,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from opesvault.devtools.synthetic_pdf import make_pdf  # noqa: E402
+from opesvault.domain.model import AccountSubtype, AccountType, LedgerAccount  # noqa: E402
 from opesvault.session import Session  # noqa: E402
 from opesvault.vault.client import VaultClient  # noqa: E402
 
@@ -83,12 +85,17 @@ def run(total_mib: int, workdir: Path) -> dict[str, Any]:
     session = Session.new(vault)
     for i in range(max(1, total_mib // DOC_MIB)):
         session.add_document(f"extrato-{i:04d}.pdf", make_pdf([f"Documento {i}"], padding_bytes=DOC_MIB * 2**20))
+    ledger = session.ledger
+    bank = ledger.add_account(LedgerAccount(name="Banco", type=AccountType.ASSET, subtype=AccountSubtype.CHECKING))
+    category = ledger.categories(AccountType.EXPENSE)[0]
     for i in range(50_000):
-        session.add_record("tx", {"amount": f"{i}.{i % 100:02d}", "description": f"Lancamento sintetico {i}"})
+        ledger.record_expense(
+            bank.id, category.id, f"{i % 500 + 1}.{i % 100:02d}", date(2026, 1, 1 + i % 28), f"Lancamento {i}"
+        )
     report: dict[str, Any] = {
         "documents_mib": total_mib,
         "documents": len(session.documents),
-        "records": len(session.records),
+        "operations": len(session.ledger.operations),
         "ui_rss_after_building_session_mib": round(psutil.Process().memory_info().rss / 2**20),
     }
 

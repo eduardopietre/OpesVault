@@ -100,10 +100,11 @@ def test_edits_during_save_stay_unsaved(vault_path: Path) -> None:
     """docs/03 §5: never mark as saved an edit that was not in the snapshot."""
     session = Session.new(vault_path)
     frozen = session.freeze()
-    session.add_record("tx", {"amount": "1.00"})
+    before = len(frozen.snapshot.manifest.records)
+    session.ledger.add_member("Ana")
     session.mark_saved(frozen, _revision(session, 1))
     assert session.dirty
-    assert len(frozen.snapshot.manifest.records) == 0
+    assert len(frozen.snapshot.manifest.records) == before
 
 
 def test_freeze_carries_base_revision(vault_path: Path) -> None:

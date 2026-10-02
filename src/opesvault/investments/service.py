@@ -123,7 +123,11 @@ def create_position(
     - `reference_value` without cost: only market value is known (docs/06 §8 F); gain since
       acquisition and tax base stay unknown.
     """
-    if initial_cost is None and reference_value is None:
+    if mode is TrackingMode.QUANTITY:
+        if initial_cost is not None and to_decimal(initial_cost) != 0:
+            raise DomainError("Posições por quantidade começam vazias: registre compras ou uma posição inicial.")
+        initial_cost = None
+    elif initial_cost is None and reference_value is None:
         raise DomainError("Informe o custo inicial ou um valor de referência.")
     asset = ledger.put("asset", Asset(name=name.strip(), asset_class=asset_class, ticker=ticker))
     account = ledger.add_account(
@@ -142,10 +146,10 @@ def create_position(
             holder_id=holder_id,
             mode=mode,
             opened_on=opened_on,
-            cost_known=initial_cost is not None,
+            cost_known=initial_cost is not None or mode is TrackingMode.QUANTITY,
         ),
     )
-    if initial_cost is not None:
+    if initial_cost is not None and to_decimal(initial_cost) > 0:
         cost = to_decimal(initial_cost)
         if from_account is not None:
             contribute(ledger, pos.id, cost, opened_on, from_account)
@@ -164,7 +168,7 @@ def create_position(
             )
         if reference_value is None and mode is TrackingMode.VALUE:
             add_valuation(ledger, pos.id, opened_on, cost, ValueNature.GROSS, source="custo inicial")
-    else:
+    elif reference_value is not None:
         value = to_decimal(reference_value)
         if value:
             ledger.record_opening_balance(account.id, value, opened_on)

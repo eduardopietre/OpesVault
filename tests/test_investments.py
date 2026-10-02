@@ -181,9 +181,7 @@ def test_net_only_redemption_is_incomplete_then_completed() -> None:
 def test_composition_partial_without_price_ta36() -> None:
     f = family()
     a = _cdb(f)
-    inv.create_position(
-        f.ledger, "Ação sem preço", AssetClass.STOCK, date(2026, 1, 1), initial_cost="500", mode=TrackingMode.QUANTITY
-    )
+    inv.create_position(f.ledger, "Ação sem preço", AssetClass.STOCK, date(2026, 1, 1), mode=TrackingMode.QUANTITY)
     inv.add_valuation(f.ledger, a.id, date(2026, 2, 1), "10100", ValueNature.GROSS)
     portfolio = composition(f.ledger, date(2026, 2, 10))
     assert portfolio.partial and portfolio.total == D("10100")

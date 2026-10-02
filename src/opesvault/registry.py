@@ -13,6 +13,8 @@ MODULES = (
     "opesvault.domain.settings",
     "opesvault.importing.model",
     "opesvault.investments.model",
+    "opesvault.investments.trades",
+    "opesvault.investments.benchmarks",
 )
 
 for _module in MODULES:

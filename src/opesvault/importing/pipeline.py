@@ -599,7 +599,9 @@ def approve(
     if blocked:
         raise DomainError(f"{len(blocked)} item(ns) precisam de revisão (valor ou data desconhecidos).")
     if batch.doc_type is DocType.BROKERAGE_NOTE:
-        raise DomainError("Notas de corretagem são incorporadas pela carteira de investimentos.")
+        from opesvault.investments.notes import approve_note
+
+        return approve_note(ledger, batch, selected)
     result = ApprovalResult()
     for item in selected:
         if item.status is ItemStatus.DUPLICATE and item.duplicate_of is not None:

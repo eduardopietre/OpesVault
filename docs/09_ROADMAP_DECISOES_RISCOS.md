@@ -1,10 +1,10 @@
 # Roadmap, decisões e riscos
 
-Versão 1.2 • 02/10/2026. As fases 0 a 6 estão implementadas (`13`). Das fases 7 a 10, tudo o que não depende do Windows nem de documentos reais também foi feito (§1.3).
+Versão 1.3 • 02/10/2026. As fases 0 a 6 e 9 estão implementadas, assim como a revisão da interface (`16`). As fases 7, 8 e 10 foram feitas no que não depende do Windows nem de documentos reais. Este documento passa a planejar o que falta para o uso real e as funcionalidades que ainda faltam para uma família usar o OpesVault como ferramenta principal.
 
 ## 1. Fases e critérios de saída
 
-### 1.1 Fases concluídas
+### 1.1 Situação
 
 | Fase | Entrega | Situação |
 |---|---|---|
@@ -15,29 +15,72 @@ Versão 1.2 • 02/10/2026. As fases 0 a 6 estão implementadas (`13`). Das fase
 | 4 — Investimentos essenciais | Avaliações, aportes, resgates, simulador e gráficos | Concluída; exemplos A–F automatizados |
 | 5 — Carteira detalhada | Lotes, eventos, TWR/XIRR/Dietz, notas de corretagem | Concluída |
 | 6 — Consolidação | Backup/restauração, senha, exportações, instalador opcional | Concluída, sem execução real no Windows |
+| 7 — Validação real | Ferramentas prontas (`scripts/validar_layouts.py`, rastreabilidade `15`) | **Aguarda** Windows e documentos reais |
+| 8 — Desempenho | Gravação incremental, consultas indexadas, livro virtual | Parcial: abrir ~8,7 s (meta ≤ 5 s) |
+| 9 — Uso diário | Assistente, edição completa, filtros, lote, teclado, F1, bloqueio | Concluída em código; falta o teste com uma pessoa |
+| — Revisão da interface | Tokens claro/escuro, moldura, componentes, telas reorganizadas (`16`) | Concluída; falta conferir no Windows (Segoe UI, 150/200%, leitor de tela) |
+| 10 — Robustez e distribuição | Fuzzing, logs só com códigos, licenças, SBOM | Parcial: versões fixadas, assinatura, ícone |
 
-O que falta para o produto ser confiável não é mais funcionalidade nova: é validação com o mundo real, desempenho e usabilidade do dia a dia. As próximas fases seguem essa ordem de risco.
+### 1.2 Próximas fases, por ordem de risco
 
-### 1.2 Próximas fases
+O primeiro risco é o mesmo da versão anterior: o produto ainda não foi exercitado com documentos reais nem no Windows. Funcionalidade nova não compensa isso. Por isso as fases 7, 8 e 10 vêm antes, e as novas (11 a 14) entram depois, uma a uma.
 
 | Fase | Entrega | Critério para avançar | Depende de |
 |---|---|---|---|
-| 7 — Validação real | Gates G0–G7 no Windows; corpus privado de documentos (fora do git) com esperado conferido; layouts sintéticos ajustados; notas de terceiros copiadas | G0–G7 aprovados; cada layout prioritário marcado `validated_with_real_documents` só após conferir campos, datas, sinais, parcelas e totais em ao menos 3 documentos por versão de layout; TA-01…TA-36 rastreados como automatizado, manual ou pendente | Máquina Windows; documentos reais do usuário |
-| 8 — Desempenho do salvamento e da interface | Decisão do `11` §5 implementada (proposta: gravação incremental); tabelas com modelo virtual; consultas indexadas | Com 50 mil lançamentos e 250 MiB: salvar ≤ 3 s, abrir ≤ 5 s, pico de RAM ≤ 600 MiB por processo e telas sem travar (≤ 200 ms para filtrar); medido no Windows de referência | Decisão do usuário sobre o método de gravação |
-| 9 — Uso diário | Assistente de primeiro uso; edição completa de lançamentos (valor, contas, datas, rateio por integrante); filtros por período, integrante e categoria; reclassificação em lote; revisão por teclado; ajuda contextual; bloqueio visual por inatividade | Jornadas "primeiro uso" e "revisão mensal" do `01` §3 feitas por uma pessoa sem ajuda, em escala 100/150/200%, só com teclado | Fase 8 (tabelas grandes) |
-| 10 — Robustez e distribuição | Fuzzing dos parsers com PDFs/CSV/OFX malformados; política de logs técnicos (só códigos); inventário de licenças e hashes; versões fixadas após G1; SBOM; acompanhamento do OpenSSL embutido no `sqlcipher3`; revisão de segurança do worker e das exportações | Nenhuma falha de parser derruba a aplicação; inventário completo; instalador opcional assinado ou documentado | Fase 7 (versões validadas) |
-| 11 — Expansões | OCR local; novos layouts (Caixa, Banco do Brasil, Santander, informe de rendimentos, extratos de investimento); `.xlsx`; moedas estrangeiras com câmbio informado; tabelas fiscais por classe parametrizadas e versionadas; benchmark de modelos Ollama | Cada expansão passa pelos mesmos critérios de validação da fase 7 | Amostras reais e decisões do usuário por item |
+| 7 — Validação real | Gates G0–G7; corpus privado com esperado conferido (`15` §2); layouts ajustados; notas de terceiros copiadas; leitor de tela e escalas 150/200% | G0–G7 aprovados; layouts prioritários com 3 documentos conferidos por versão; TA parciais (`15`) reavaliados | Máquina Windows; documentos reais |
+| 8 — Desempenho (restante) | Documentos carregados sob demanda (a abertura traz só metadados; o worker entrega o PDF quando a tela pede); renderização de PDF fora da thread visual; medição no Windows | Abrir ≤ 5 s e UI ≤ 600 MiB com 50 mil lançamentos e 250 MiB, no Windows de referência | Fase 7 (máquina de referência) |
+| 10 — Distribuição (restante) | Versões fixadas após G1; ícone; assinatura ou instrução para o SmartScreen; enxugar módulos Qt; roteiro de atualização com migração ensaiada | Instalador testado do zero numa máquina limpa; atualização preserva cofres e preferências | Fase 7; decisão sobre certificado |
+| 11 — Rotina da família | §1.3 A | Jornada "revisão mensal" do `01` §3 feita em menos passos, medida antes e depois | Fase 7 (categorias reais) |
+| 12 — Confiança e recuperação | §1.3 B | Erros de edição desfeitos sem estorno; backup comprovadamente restaurável | — |
+| 13 — Patrimônio e impostos | §1.3 C | Relatório anual confere com os informes reais da família | Decisão do usuário sobre o escopo fiscal |
+| 14 — Expansões | OCR local; novos layouts (Caixa, Banco do Brasil, Santander, informe de rendimentos, extratos de investimento); `.xlsx`; moedas estrangeiras com câmbio informado; benchmark de modelos Ollama | Cada expansão passa pelos critérios da fase 7 | Amostras reais e decisão por item |
 
-Fases 9 e 10 podem andar em paralelo depois da 8. Expansões da fase 11 entram uma a uma, por prioridade do usuário, nunca em bloco.
+As fases 11 e 12 podem andar em paralelo à 7, porque não dependem de documentos reais; só não devem atrasá-la.
 
-### 1.3 Andamento das fases 7 a 10
+### 1.3 Funcionalidades propostas
+
+Critério de escolha: o que uma família precisa todo mês e hoje exige trabalho manual repetido, ou o que reduz o risco de perder ou errar dados. Cada item indica o porquê e se exige decisão (§4).
+
+**A. Rotina da família (fase 11)**
+
+| Item | Por quê | Decisão? |
+|---|---|---|
+| **Orçamento por categoria e mês**: limite planejado, realizado por competência, saldo restante e alerta ao passar do limite; cópia do mês anterior | É a pergunta mensal mais comum ("quanto ainda posso gastar?") e hoje não existe. Usa só dados que o domínio já tem | Sim: entra no escopo do `00` §5 |
+| **Regras de categorização editáveis**: "descrição contém X → categoria Y", por conta ou cartão, criadas a partir de uma correção na revisão | Hoje as regras são fixas no código (`KEYWORD_RULES`) e o histórico só repete a última escolha. É o maior ganho de tempo na revisão de faturas | Não |
+| **Alertas de vencimento ao abrir o cofre**: faturas e recorrências que vencem nos próximos dias, previsões sem realização e importações pendentes | O app é offline e não notifica; ao abrir, deve dizer o que pede atenção | Não |
+| **Comprovantes em lançamentos manuais**: anexar PDF/imagem a qualquer operação, guardado cifrado como os documentos importados | Hoje só itens importados têm evidência; recibos de aluguel, médicos e escolas ficam fora | Não |
+| **Drill-down**: clicar num número da Visão geral, numa barra ou numa categoria abre o Livro já filtrado | Liga "quanto" a "o quê" sem refazer filtros | Não |
+| **Visão por integrante**: Visão geral e relatórios filtrados por integrante, com rateio, ao lado do consolidado (fecha o TA-18 e o TA-24) | Contas conjuntas e despesas divididas são o caso típico de família | Não |
+| **Filtros salvos** no Livro ("Cartão da Ana este mês") | Revisão mensal repete os mesmos filtros | Não |
+| **Arrastar arquivos** para "Importar e revisar" | Atalho óbvio no desktop | Não |
+| **Relatório mensal para impressão/PDF** (resumo, categorias, faturas, pendências), com o mesmo aviso de exportação sem cifra | Conversa da família sobre o mês; hoje só há CSV/JSON | Não |
+
+**B. Confiança e recuperação (fase 12)**
+
+| Item | Por quê | Decisão? |
+|---|---|---|
+| **Desfazer/refazer na sessão** (Ctrl+Z / Ctrl+Shift+Z) para as edições ainda não salvas; depois de salvo, a correção continua por histórico e estorno | Erros de clique hoje exigem estorno com motivo. O domínio já registra cada alteração, o que permite reverter as não salvas | Sim: semântica de desfazer em relação ao histórico |
+| **Verificação de backup**: abrir um backup no worker (senha digitada nele) e conferir integridade e contagens; lembrete de "último backup há N dias" | Backup que nunca foi restaurado não é garantia (`03`) | Não |
+| **Compactação opcional do histórico** antigo, com backup antes | O cofre cresce indefinidamente | Sim (já listada) |
+| **Detecção de lançamentos suspeitos**: valor muito acima da média da categoria, possível cobrança duplicada no cartão, assinatura que mudou de valor | Pega erro de digitação e cobrança indevida, sem IA | Não |
+
+**C. Patrimônio e impostos (fase 13)**
+
+| Item | Por quê | Decisão? |
+|---|---|---|
+| **Fechamento do ano**: patrimônio em 31/12 por conta e investimento, rendimentos isentos e tributáveis informados, imposto retido, ganhos realizados por classe | Material de apoio para a declaração anual, a partir de dados já registrados | Sim: o `00` §5 exclui "declaração fiscal oficial"; isto seria apoio, não declaração |
+| **Tabelas fiscais por classe**, parametrizadas e versionadas por data, usadas pelo simulador | Hoje as regras são informadas manualmente | Sim |
+| **Metas de patrimônio ou reserva** (valor-alvo e data, com progresso) | Pedido comum de família; usa o patrimônio já calculado | Sim: entra no escopo |
+
+### 1.4 Andamento e números
 
 | Fase | Feito | Falta |
 |---|---|---|
-| 7 | `scripts/validar_layouts.py` (corpus privado com esperado conferido, regra dos 3 documentos); rastreabilidade TA-01…TA-36 (`15`): 31 automatizados, 5 parciais, nenhum pendente | Gates G0–G7 no Windows; documentos reais; cópia das notas de terceiros |
-| 8 | Gravação incremental (`11` §5); abertura com registros em JSON e verificação de todas as páginas; consultas com índice e somas acumuladas; livro em tabela virtual | Abrir ainda leva ~8,7 s no Linux (meta ≤ 5 s); medir no Windows de referência |
-| 9 | Assistente de primeiro uso; edição completa de lançamentos com rateio; filtros; reclassificação em lote; revisão por teclado; ajuda F1; bloqueio visual por inatividade | Critério humano: jornadas feitas por uma pessoa sem ajuda, em 100/150/200%, só com teclado |
-| 10 | Fuzzing; registro técnico só com códigos; inventário de licenças e SBOM; revisão do worker e das exportações (`14`) | Versões fixadas após G1; assinatura do instalador; ícone; enxugar módulos Qt |
+| 7 | `scripts/validar_layouts.py`; rastreabilidade TA-01…TA-36 (`15`): 31 automatizados, 5 parciais, nenhum pendente | Gates G0–G7; documentos reais; notas de terceiros |
+| 8 | Gravação incremental; abertura em JSON com verificação de todas as páginas; consultas indexadas; livro virtual | Documentos sob demanda; PDF fora da thread visual; medir no Windows |
+| 9 | Assistente; edição completa com rateio; filtros; lote; teclado; F1; bloqueio por inatividade | Jornadas feitas por uma pessoa sem ajuda, em 100/150/200%, só com teclado |
+| Interface | Tokens claro/escuro; barra de ferramentas com estado de salvamento; barra lateral agrupada; inspetor; estados vazios; janela mínima de ~1456 para ~885 px | Conferência no Windows; leitor de tela |
+| 10 | Fuzzing; logs só com códigos; licenças e SBOM; revisão do worker e das exportações | Versões fixadas; assinatura; ícone; módulos Qt |
 
 Números do Linux de referência (50 mil lançamentos, 250 MiB de PDFs):
 
@@ -49,20 +92,20 @@ Números do Linux de referência (50 mil lançamentos, 250 MiB de PDFs):
 | Pico de RAM da UI | ~760 MiB | ~580–690 MiB | ≤ 600 MiB |
 | Filtrar o livro (50 mil linhas) | lento (tabela preenchida) | ≤ 0,2 s | ≤ 200 ms |
 
-O piso da abertura é decifrar ~263 MB e interpretar 50 mil operações (~3,7 s só para interpretar).
+O piso da abertura é decifrar ~263 MB e interpretar 50 mil operações (~3,7 s só para interpretar). Carregar documentos sob demanda tira a maior parte dos bytes do caminho.
 
-### 1.4 Dívida técnica conhecida
+### 1.5 Dívida técnica conhecida
 
 | Item | Efeito | Situação |
 |---|---|---|
-| Salvar reescrevia e reverificava o cofre inteiro | ~21 s e ~800 MiB com 50 mil lançamentos | **Resolvido**: gravação incremental, ~3,7 s e ~50 MiB |
-| Tabelas usavam `QTableWidget` preenchido por completo | Lento com dezenas de milhares de linhas | **Resolvido** no livro (tabela virtual). Telas de importação e contas continuam com `QTableWidget`, com dezenas a centenas de linhas |
-| Consultas percorriam todas as operações a cada chamada | Gráficos custavam meses × operações | **Resolvido**: índice por data com somas acumuladas, invalidado a cada alteração |
-| Livro corrigia só a descrição | Correções de valor exigiam estorno | **Resolvido**: edição completa com rateio e motivo |
-| Ctrl+S não era bloqueado durante a importação | Corrida rara entre salvar e importar | **Resolvido**: importações em fila, uma por vez, bloqueando salvar e editar |
-| Histórico cresce sem limite | Snapshot maior com o tempo | **Mitigado**: guarda só a versão anterior, é lido sob demanda e o salvamento incremental grava só o que mudou. Compactar histórico exige decisão do usuário (perda de rastreabilidade) |
-| Abertura acima da meta | ~8,7 s com 50 mil lançamentos | Aberto; próximo passo seria carregar documentos sob demanda, o que muda o formato de snapshot em RAM |
-| Layouts de faturas e extratos são sintéticos | Podem falhar com documentos reais | Aberto; depende da fase 7 |
+| Abertura acima da meta | ~8,7 s com 50 mil lançamentos | Aberto; fase 8 (documentos sob demanda) |
+| Renderização de página PDF na thread visual (`PdfView`) | PDFs grandes podem travar a tela por instantes | Aberto; fase 8 |
+| Regras de categorização fixas no código | Não se adaptam à família | Aberto; fase 11 |
+| Telas de importação, contas e investimentos usam `QTableWidget` com `resizeColumnsToContents` a cada atualização | Bom para centenas de linhas; lento se crescerem muito | Aceitável; revisar se o uso real mostrar volumes maiores |
+| Histórico cresce sem limite | Cofre maior com o tempo | Mitigado; compactação opcional na fase 12 |
+| Layouts de faturas e extratos são sintéticos | Podem falhar com documentos reais | Aberto; fase 7 |
+| Interface conferida só no Linux com fonte DejaVu | Métricas e quebras podem mudar com Segoe UI e escalas do Windows | Aberto; fase 7 |
+| Itens resolvidos nesta rodada: salvar inteiro, tabelas cheias, consultas lineares, livro só com descrição, corrida importar/salvar | — | Resolvidos (ver `13` §2.1) |
 
 ## 2. Decisões arquiteturais
 
@@ -103,12 +146,15 @@ ADR-01 a ADR-03 refletem escolhas aprovadas; os mecanismos específicos e demais
 | Decisão | Por que importa | Bloqueia |
 |---|---|---|
 | Desbloqueio após inatividade pede a senha do cofre (implementado assim; cofre nunca salvo desbloqueia sem senha) e o tempo padrão é 10 min | Equilíbrio entre proteção e incômodo | Revisável |
-| Compactar o histórico antigo de alterações | Reduz o cofre, mas perde versões anteriores | Fase 8 (opcional) |
+| Compactar o histórico antigo de alterações | Reduz o cofre, mas perde versões anteriores | Fase 12 (opcional) |
+| Incluir **orçamento** e **metas** no escopo (`00` §5) | São as funcionalidades novas de maior valor mensal | Fases 11 e 13 |
+| **Desfazer**: só edições não salvas, ou também salvas? | Desfazer o que já foi salvo conflita com o histórico como registro de correções | Fase 12 |
+| **Fechamento do ano** como material de apoio à declaração | O `00` §5 exclui declaração fiscal oficial; o apoio precisa de limite claro | Fase 13 |
 | Certificado de assinatura de código | Evita alertas do SmartScreen no instalador | Fase 10 |
 | Quando rodar os gates G0–G7 e qual é a máquina Windows de referência (RAM, disco, antivírus) | Sem isso, distribuição e metas de desempenho não têm base | Fases 7, 8 e 10 |
 | Bancos e produtos prioritários, com documentos reais (faturas, extratos, CSV/OFX) | Layouts sintéticos só viram suporte com amostras | Fase 7 |
-| Classes de investimento que a família usa e eventos necessários | Orienta regras por classe e layouts de extratos de investimento | Fase 11 |
-| Modelo Ollama local, se a IA for usada | Escolha por benchmark, não por suposição | Fase 11 |
+| Classes de investimento que a família usa e eventos necessários | Orienta regras por classe e layouts de extratos de investimento | Fases 13 e 14 |
+| Modelo Ollama local, se a IA for usada | Escolha por benchmark, não por suposição | Fase 14 |
 | Ícone do aplicativo | Distribuição | Fase 10 |
 
 ## 5. Controle de mudanças
@@ -125,6 +171,8 @@ Cada alteração de escopo registra motivo, documentos afetados, migração de d
 | 02/10/2026 | Roadmap ampliado com as fases 7 a 11 e dívida técnica | Pedido do usuário após concluir as fases 1 a 6 | 09, 13, CLAUDE.md | Nenhum | Nenhum | Critérios de saída mensuráveis por fase |
 | 02/10/2026 | Gravação incremental (opção c do `11` §5) e abertura rápida | Pedido do usuário para resolver as dívidas | 09, 11, 13 | Mesmo formato de arquivo; só muda como é gravado | Toda página é autenticada na abertura; candidato verificado antes de substituir | `test_incremental_save`, adulteração página a página |
 | 02/10/2026 | Fases 7 a 10 no que não depende do Windows nem de documentos reais | Pedido do usuário | 09, 13, 14, 15, CLAUDE.md | Nenhum tipo persistido novo; preferências de bloqueio fora do cofre | Desbloqueio confere senha e revisão no worker; registro técnico só com códigos; parsers isolados por `run_parser` | 276 testes; fuzzing longo com 3000 variações |
+| 02/10/2026 | Revisão da interface (princípios de desktop) | Pedido do usuário | 16, CLAUDE.md | Preferências de janela e colunas fora do cofre | Nenhum segredo novo na UI; senha segue só no worker | `test_ui_design`, capturas claro/escuro/estreito |
+| 02/10/2026 | Roadmap 1.3: fases 11 a 14 com funcionalidades propostas (orçamento, regras editáveis, alertas, comprovantes, desfazer, verificação de backup, fechamento do ano) | Pedido do usuário | 09, CLAUDE.md | A definir por item | A definir por item | Critérios de saída por fase |
 
 ## 6. Definição de pronto documental (versão 1.0, mantida como histórico)
 

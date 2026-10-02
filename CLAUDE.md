@@ -4,7 +4,7 @@ OpesVault: aplicativo desktop Windows, 100% offline, para finanças familiares, 
 
 ## Estado atual
 
-As **fases 0 a 6** estão implementadas e testadas em Python no Linux (`docs/13`). Das fases 7 a 10 foi feito tudo o que não depende do Windows nem de documentos reais (`docs/09` §1.3). Os gates do Windows (`docs/11` §4) são presumidos aprovados e continuam pendentes de execução real. Os layouts de faturas e extratos são sintéticos até haver documentos reais. O salvamento é incremental (`docs/11` §5); a abertura (~8,7 s com 50 mil lançamentos) segue acima da meta. A próxima etapa é a **fase 7 — validação real** (`docs/09` §1.2); a dívida técnica conhecida está em `docs/09` §1.3.
+As **fases 0 a 6** estão implementadas e testadas em Python no Linux (`docs/13`). Das fases 7 a 10 foi feito tudo o que não depende do Windows nem de documentos reais (`docs/09` §1.4); a interface foi revisada (`docs/16`). Os gates do Windows (`docs/11` §4) são presumidos aprovados e continuam pendentes de execução real. Os layouts de faturas e extratos são sintéticos até haver documentos reais. O salvamento é incremental (`docs/11` §5); a abertura (~8,7 s com 50 mil lançamentos) segue acima da meta. A próxima etapa é a **fase 7 — validação real** (`docs/09` §1.2). As funcionalidades propostas (fases 11 a 14) estão em `docs/09` §1.3 e dependem das decisões do §4; a dívida técnica está em `docs/09` §1.5.
 
 ## Comandos
 

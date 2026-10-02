@@ -1,28 +1,31 @@
-"""Phase 0 harness window: exercises create/open/save, documents in RAM and rendering.
-
-Deliberately minimal (docs/09 §1): it exists to validate the vault architecture,
-not as the product UI of docs/07.
-"""
+"""Application shell: sidebar navigation, vault lifecycle and save state (docs/07 §1, §7)."""
 
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import QObject, QRunnable, Qt, QThreadPool, Signal
-from PySide6.QtGui import QAction, QCloseEvent, QKeySequence, QPixmap
+from PySide6.QtCore import QObject, QRunnable, QThreadPool, Signal
+from PySide6.QtGui import QAction, QCloseEvent, QKeySequence
 from PySide6.QtWidgets import (
+    QComboBox,
     QFileDialog,
     QHBoxLayout,
+    QInputDialog,
     QLabel,
     QListWidget,
     QMainWindow,
     QMessageBox,
-    QScrollArea,
+    QStackedWidget,
     QWidget,
 )
 
-from opesvault.pdf_render import render_page
+from opesvault.domain.ledger import DomainError
 from opesvault.session import FrozenSnapshot, Session
+from opesvault.ui.pages.accounts_page import AccountsPage
+from opesvault.ui.pages.base import Page
+from opesvault.ui.pages.documents_page import DocumentsPage
+from opesvault.ui.pages.ledger_page import LedgerPage
+from opesvault.ui.pages.overview_page import OverviewPage
 from opesvault.vault.client import VaultClient
 from opesvault.vault.errors import ErrorCode, VaultError
 from opesvault.vault.lock import VaultLock
@@ -80,54 +83,98 @@ class MainWindow(QMainWindow):
         self.busy = False
         self._jobs: set[_Job] = set()
 
-        self.documents = QListWidget()
-        self.documents.currentRowChanged.connect(self._show_document)
-        self.preview = QLabel("Nenhum documento selecionado")
-        self.preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        scroll = QScrollArea()
-        scroll.setWidget(self.preview)
-        scroll.setWidgetResizable(True)
+        self.pages: list[Page] = self.build_pages()
+        self.nav = QListWidget()
+        self.nav.setMaximumWidth(220)
+        self.stack = QStackedWidget()
+        for page in self.pages:
+            self.nav.addItem(page.title)
+            self.stack.addWidget(page)
+        self.nav.currentRowChanged.connect(self._show_page)
         central = QWidget()
         layout = QHBoxLayout(central)
-        layout.addWidget(self.documents, 1)
-        layout.addWidget(scroll, 3)
+        layout.addWidget(self.nav)
+        layout.addWidget(self.stack, 1)
         self.setCentralWidget(central)
 
         menu = self.menuBar().addMenu("&Cofre")
         self._action(menu, "&Novo cofre…", QKeySequence.StandardKey.New, self.new_vault)
         self._action(menu, "&Abrir cofre…", QKeySequence.StandardKey.Open, self.open_vault)
         self._action(menu, "&Salvar", QKeySequence.StandardKey.Save, self.save_vault)
-        self._action(menu, "Adicionar &PDFs…", None, self.add_pdfs)
         self._action(menu, "&Fechar cofre", None, self.close_vault)
+        self.extend_menus()
+
+        self.operator = QComboBox()
+        self.operator.currentIndexChanged.connect(self._set_operator)
         self.status = QLabel()
+        self.statusBar().addWidget(QLabel("Operador:"))
+        self.statusBar().addWidget(self.operator)
         self.statusBar().addPermanentWidget(self.status)
-        self.resize(1100, 750)
+        self.resize(1280, 800)
+        self.nav.setCurrentRow(0)
         self._refresh()
 
-    def _action(self, menu: Any, text: str, shortcut: Any, slot: Callable[[], None]) -> None:
+    def build_pages(self) -> list[Page]:
+        """Pages in sidebar order; later phases extend this list."""
+        return [
+            OverviewPage(self.on_changed),
+            LedgerPage(self.on_changed),
+            AccountsPage(self.on_changed),
+            DocumentsPage(self.on_changed),
+        ]
+
+    def extend_menus(self) -> None:
+        """Hook for later phases to add commands."""
+
+    def _action(self, menu: Any, text: str, shortcut: Any, slot: Callable[[], None]) -> QAction:
         action = QAction(text, self)
         if shortcut is not None:
             action.setShortcut(shortcut)
         action.triggered.connect(slot)
         menu.addAction(action)
+        return action
+
+    def _show_page(self, row: int) -> None:
+        if 0 <= row < len(self.pages):
+            self.stack.setCurrentIndex(row)
+            self.pages[row].refresh()
 
     # ── state ───────────────────────────────────────────
 
+    def on_changed(self) -> None:
+        current = self.stack.currentWidget()
+        if isinstance(current, Page):
+            current.refresh()
+        self._refresh()
+
+    def _set_operator(self) -> None:
+        if self.session is not None:
+            self.session.ledger.operator = self.operator.currentText() or None
+
     def _refresh(self) -> None:
+        for page in self.pages:
+            if page.session is not self.session:
+                page.set_session(self.session)
         if self.session is None:
             self.setWindowTitle("OpesVault")
-            self.status.setText("Nenhum cofre aberto")
-            self.documents.clear()
-            self.preview.setText("Nenhum documento selecionado")
+            self.status.setText("Nenhum cofre aberto · use Cofre › Novo ou Abrir")
+            self.operator.clear()
             return
+        names = [m.name for m in self.session.ledger.members.values() if m.active]
+        if [self.operator.itemText(i) for i in range(self.operator.count())] != names:
+            current = self.session.ledger.operator
+            self.operator.blockSignals(True)
+            self.operator.clear()
+            self.operator.addItems(names)
+            if current in names:
+                self.operator.setCurrentText(current)
+            self.operator.blockSignals(False)
+            self._set_operator()
         state = "Não salvo" if self.session.dirty else "Salvo"
         rev = self.session.revision.revision if self.session.revision else "—"
-        self.setWindowTitle(f"OpesVault — {self.session.path.name}{' *' if self.session.dirty else ''}")
+        family = self.session.ledger.meta.family_name
+        self.setWindowTitle(f"OpesVault — {family} ({self.session.path.name}){' *' if self.session.dirty else ''}")
         self.status.setText(f"{state} · revisão {rev}")
-        if self.documents.count() != len(self.session.documents):
-            self.documents.clear()
-            for doc in self.session.documents:
-                self.documents.addItem(doc.meta.original_name)
 
     def _run(
         self,
@@ -194,13 +241,16 @@ class MainWindow(QMainWindow):
         name, _ = QFileDialog.getSaveFileName(self, "Novo cofre", "", VAULT_FILTER)
         if not name:
             return
+        family, ok = QInputDialog.getText(self, "Novo cofre", "Nome da família ou pessoa:")
+        if not ok or not family.strip():
+            return
         path = Path(name).with_suffix(".opesvault")
         if path.exists():
             self._show_error(ErrorCode.ALREADY_EXISTS)
             return
         self._drop_session()
         if self._take_lock(path):
-            self.session = Session.new(path)
+            self.session = Session.new(path, family.strip())
             self._refresh()
             self.save_vault()
 
@@ -208,9 +258,10 @@ class MainWindow(QMainWindow):
         if self.busy or not self._confirm_discard():
             return
         name, _ = QFileDialog.getOpenFileName(self, "Abrir cofre", "", VAULT_FILTER)
-        if not name:
-            return
-        path = Path(name)
+        if name:
+            self.open_path(Path(name))
+
+    def open_path(self, path: Path) -> None:
         self._drop_session()
         self._refresh()
         if not self._take_lock(path):
@@ -218,7 +269,11 @@ class MainWindow(QMainWindow):
 
         def opened(result: Any) -> None:
             revision, snapshot = result
-            self.session = Session.from_snapshot(path, revision, snapshot)
+            try:
+                self.session = Session.from_snapshot(path, revision, snapshot)
+            except DomainError as exc:
+                self._drop_session()
+                QMessageBox.warning(self, "OpesVault", str(exc))
 
         def failed(code: ErrorCode) -> None:
             self._drop_session()
@@ -236,30 +291,11 @@ class MainWindow(QMainWindow):
             lambda revision: session.mark_saved(frozen, revision),
         )
 
-    def add_pdfs(self) -> None:
-        if self.busy or self.session is None:
-            return
-        names, _ = QFileDialog.getOpenFileNames(self, "Adicionar PDFs", "", "PDF (*.pdf)")
-        for name in names:
-            path = Path(name)
-            self.session.add_document(path.name, path.read_bytes())
-        self._refresh()
-
     def close_vault(self) -> None:
         if self.busy or not self._confirm_discard():
             return
         self._drop_session()
         self._refresh()
-
-    def _show_document(self, row: int) -> None:
-        if self.session is None or not 0 <= row < len(self.session.documents):
-            return
-        try:
-            image = render_page(self.session.documents[row].data)
-        except Exception:
-            self.preview.setText("Não foi possível renderizar este PDF.")
-            return
-        self.preview.setPixmap(QPixmap.fromImage(image))
 
     def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802 - Qt override
         if self.busy or not self._confirm_discard():

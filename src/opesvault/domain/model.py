@@ -47,6 +47,9 @@ class YearMonth(BaseModel):
     def first_day(self) -> date:
         return date(self.year, self.month, 1)
 
+    def last_day(self) -> date:
+        return date.fromordinal(self.add(1).first_day().toordinal() - 1)
+
     def add(self, months: int) -> "YearMonth":
         index = self.year * 12 + (self.month - 1) + months
         return YearMonth(year=index // 12, month=index % 12 + 1)

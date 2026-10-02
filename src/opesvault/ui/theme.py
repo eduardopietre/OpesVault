@@ -205,6 +205,10 @@ QTableView::item:selected, QTableWidget::item:selected {{ background: {t.selecti
 QTableView::item:selected:active, QTableWidget::item:selected:active {{
     background: {t.selection}; color: {t.accent_text};
 }}
+QListWidget::item {{ min-height: {ROW_HEIGHT}px; padding: 0 {SPACE_S}px; }}
+QListWidget::item:hover {{ background: {t.hover}; }}
+QListWidget::item:selected {{ background: {t.selection_inactive}; color: {t.text}; }}
+QListWidget::item:selected:active {{ background: {t.selection}; color: {t.accent_text}; }}
 QHeaderView::section {{
     background: {t.raised}; color: {t.secondary}; border: none; border-bottom: 1px solid {t.separator};
     padding: {SPACE_XS}px {SPACE_S}px; font-weight: 600;

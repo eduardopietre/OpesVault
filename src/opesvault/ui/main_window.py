@@ -397,7 +397,10 @@ class MainWindow(QMainWindow):
         if not path:
             return
         data = ledger_csv(self.session.ledger) if kind == "csv" else interchange_json(self.session.ledger)
-        Path(path).write_bytes(data)
+        try:
+            Path(path).write_bytes(data)
+        except OSError:
+            self._show_error(ErrorCode.IO_ERROR)
 
     def _action(self, menu: Any, text: str, shortcut: Any, slot: Callable[[], None]) -> QAction:
         action = QAction(text, self)

@@ -55,10 +55,13 @@ deployment/
 !tests/fixtures/sinteticos/**/*.pdf
 # Notas anonimizadas de terceiros, auditadas (docs/12 §4)
 !tests/fixtures/terceiros/**/*.pdf
-# Exportações claras e amostras privadas
+# Exportações claras, amostras privadas e o corpus de validação (fase 7)
 exports/
 amostras_privadas/
 private/
+corpus/
+*.esperado.json
+!tests/fixtures/sinteticos/**/*.esperado.json
 # Segredos e logs
 .env
 .env.*
@@ -77,6 +80,8 @@ desktop.ini
 # ── Claude Code ────────────────────────────────────────
 .claude/settings.local.json
 
-# ── Saídas de medição da fase 0 ────────────────────────
+# ── Saídas de medição da fase 0 e inventário gerado ────
+sbom.cdx.json
+THIRD_PARTY_LICENSES.*
 fase0-*.json
 opesvault-selftest.json

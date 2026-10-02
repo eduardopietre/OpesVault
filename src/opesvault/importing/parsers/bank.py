@@ -4,7 +4,7 @@ import re
 from decimal import Decimal
 
 from opesvault.importing.model import DocFormat, DocType, ItemKind, StatementHeader
-from opesvault.importing.parsers.base import AMOUNT_RE, ParsedItem, Parser, ParseResult, amount, dmy
+from opesvault.importing.parsers.base import AMOUNT_RE, ParsedItem, Parser, ParseResult, dmy, try_amount
 from opesvault.importing.source import Source
 
 
@@ -56,11 +56,14 @@ class ItauBankPdf(Parser):
             if not match:
                 saldo = re.search(rf"saldo\s+anterior\D{{0,10}}({AMOUNT_RE})", line.text, re.IGNORECASE)
                 if saldo:
-                    opening = amount(saldo[1])
+                    opening = try_amount(saldo[1])
                 continue
             description = match[2].strip()
             upper = description.upper()
-            value = amount(match[3])
+            value = try_amount(match[3])
+            if value is None:
+                result.unmapped.append(line)
+                continue
             if "SALDO ANTERIOR" in upper:
                 opening = value
                 continue
@@ -78,7 +81,7 @@ class ItauBankPdf(Parser):
             if when is None:
                 item.warnings.append("Data impossível no documento.")
             if match[4]:
-                closing = amount(match[4])
+                closing = try_amount(match[4])
             result.items.append(item)
         result.header = result.header.model_copy(update={"opening_balance": opening, "closing_balance": closing})
         return result

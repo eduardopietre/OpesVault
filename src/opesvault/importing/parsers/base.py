@@ -99,6 +99,14 @@ def dmy(text: str) -> date | None:
         return None
 
 
+def safe_date(year: int, month: int, day: int) -> date | None:
+    """An impossible printed date is unknown, not an exception."""
+    try:
+        return date(year, month, day)
+    except ValueError:
+        return None
+
+
 def resolve_year(day: int, month: int, reference: date) -> date | None:
     """Dates printed without year: pick the year that puts them on or before the reference date.
 

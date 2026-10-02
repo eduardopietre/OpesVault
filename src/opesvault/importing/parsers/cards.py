@@ -16,10 +16,11 @@ from opesvault.importing.parsers.base import (
     ParsedItem,
     Parser,
     ParseResult,
-    amount,
     contains_all,
     dmy,
     resolve_year,
+    safe_date,
+    try_amount,
 )
 from opesvault.importing.source import Line, Source
 
@@ -92,7 +93,7 @@ class NubankCardPdf(Parser):
         header_match = self._HEADER.search(text)
         due = None
         if header_match and header_match[2].upper() in MONTHS_PT:
-            due = date(int(header_match[3]), MONTHS_PT[header_match[2].upper()], int(header_match[1]))
+            due = safe_date(int(header_match[3]), MONTHS_PT[header_match[2].upper()], int(header_match[1]))
         period = self._PERIOD.search(text)
         closing = None
         if period and due and period[4].upper() in MONTHS_PT:
@@ -111,10 +112,10 @@ class NubankCardPdf(Parser):
             t = line.text
             low = t.casefold()
             if low.startswith("total a pagar"):
-                total = amount(t.split()[-1] if "R$" not in t else t[t.index("R$") :])
+                total = try_amount(t.split()[-1] if "R$" not in t else t[t.index("R$") :])
                 continue
             if low.startswith("saldo anterior"):
-                previous = amount(t[t.index("R$") :] if "R$" in t else t.split()[-1])
+                previous = try_amount(t[t.index("R$") :] if "R$" in t else t.split()[-1])
                 continue
             if self._PERIOD.search(t):
                 in_transactions = True
@@ -122,7 +123,9 @@ class NubankCardPdf(Parser):
             if not in_transactions:
                 continue
             if pending_foreign is not None and re.fullmatch(r"R\$\s*[\d.,]+", t):
-                pending_foreign.amount = amount(t)
+                pending_foreign.amount = try_amount(t)
+                if pending_foreign.amount is None:
+                    pending_foreign.warnings.append("Valor em reais ilegível.")
                 pending_foreign.lines.append(line)
                 result.items.append(pending_foreign)
                 pending_foreign = None
@@ -140,7 +143,7 @@ class NubankCardPdf(Parser):
                     amount=None,
                     lines=[line],
                     foreign_currency=foreign[4].upper(),
-                    foreign_amount=amount(foreign[5]),
+                    foreign_amount=try_amount(foreign[5]),
                 )
                 continue
             match = self._LINE.match(t)
@@ -148,8 +151,10 @@ class NubankCardPdf(Parser):
                 if t.strip():
                     result.unmapped.append(line)
                 continue
-            raw_amount = match[4]
-            value = amount(raw_amount)
+            value = try_amount(match[4])
+            if value is None:
+                result.unmapped.append(line)
+                continue
             negative = value < 0
             description, installment = _split_installment(match[3])
             if value == 0:
@@ -201,10 +206,10 @@ class _SlashCardParser(Parser):
                     closing = dmy(match[1])
         match = re.search(rf"total\s+(?:desta|da)\s+fatura\D{{0,10}}({AMOUNT_RE})", text, re.IGNORECASE)
         if match:
-            total = amount(match[1])
+            total = try_amount(match[1])
         match = re.search(rf"(?:saldo|fatura)\s+anterior\D{{0,10}}({AMOUNT_RE})", text, re.IGNORECASE)
         if match:
-            previous = amount(match[1])
+            previous = try_amount(match[1])
         return due, closing, total, previous
 
     def parse(self, source: Source) -> ParseResult:
@@ -240,7 +245,9 @@ class _SlashCardParser(Parser):
             match = self._LINE.match(t)
             if not match:
                 continue
-            value = amount(match[4])
+            value = try_amount(match[4])
+            if value is None:
+                continue  # reported below as an unmapped line
             description, installment = _split_installment(match[3])
             occurred = resolve_year(int(match[1]), int(match[2]), reference) if reference else None
             result.items.append(
@@ -287,13 +294,14 @@ class ItauCardPdf(_SlashCardParser):
 
     def _extra_item(self, line: Line, reference: date | None) -> ParsedItem | None:
         match = self._IOF.search(line.text)
-        if not match:
+        value = try_amount(match[1]) if match else None
+        if value is None:
             return None
         return ParsedItem(
             kind=ItemKind.CARD_CHARGE,
             occurred_on=reference,
             description="Repasse de IOF",
-            amount=abs(amount(match[1])),
+            amount=abs(value),
             lines=[line],
             warnings=["IOF informado só no resumo; data assumida = fechamento da fatura."],
         )

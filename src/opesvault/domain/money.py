@@ -40,7 +40,7 @@ def to_decimal(value: object) -> Decimal:
         try:
             result = Decimal(value.strip())
         except InvalidOperation:
-            raise MoneyError(f"invalid decimal: {value!r}") from None
+            raise MoneyError("invalid decimal") from None
     else:
         raise MoneyError(f"unsupported type: {type(value).__name__}")
     if not result.is_finite():
@@ -64,13 +64,13 @@ def parse_brl(text: str) -> Decimal:
     """
     match = _BRL_PATTERN.match(text.replace("\xa0", " "))
     if not match:
-        raise MoneyError(f"not a BRL amount: {text!r}")
+        raise MoneyError("not a BRL amount")
     integer = match["int"].replace(".", "")
     frac = match["frac"] or ""
     value = Decimal(f"{integer}.{frac}" if frac else integer)
     signs = [s for s in (match["lead"], match["lead2"], match["trail"]) if s]
     if len(signs) > 1:
-        raise MoneyError(f"conflicting signs: {text!r}")
+        raise MoneyError("conflicting signs")
     if signs and signs[0] in ("-", "−", "D"):
         value = -value
     return value

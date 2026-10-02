@@ -8,6 +8,7 @@ import io
 import re
 from dataclasses import dataclass, field
 from enum import StrEnum
+from typing import Any
 
 from opesvault.importing.model import DocFormat
 
@@ -132,22 +133,33 @@ def _load_pdf(name: str, data: bytes, password: str | None) -> Source:
         raise SourceError(SourceProblem.INVALID) from None
     except Exception:
         raise SourceError(SourceProblem.INVALID) from None
-    with pdf:
-        if len(pdf.pages) > MAX_PAGES:
-            raise SourceError(SourceProblem.TOO_MANY_PAGES)
-        source = Source(name=name, format=DocFormat.PDF, pages=len(pdf.pages))
-        producer = pdf.metadata.get("Producer") if isinstance(pdf.metadata, dict) else None
-        source.producer = str(producer)[:80] if producer else None
-        for index, page in enumerate(pdf.pages, start=1):
-            # Some generators fake bold by printing each glyph twice (seen in NuInvest notes).
-            clean = page.dedupe_chars()
-            for entry in clean.extract_text_lines(layout=False, strip=True):
-                text = re.sub(r"\s+", " ", entry["text"]).strip()
-                if text:
-                    bbox = (float(entry["x0"]), float(entry["top"]), float(entry["x1"]), float(entry["bottom"]))
-                    source.lines.append(Line(page=index, text=text, bbox=bbox))
+    try:
+        with pdf:
+            source = _extract_pdf(name, pdf)
+    except SourceError:
+        raise
+    except Exception:
+        # Malformed structures surface lazily, page by page: still just an invalid file.
+        raise SourceError(SourceProblem.INVALID) from None
     if sum(len(line.text) for line in source.lines) < 20:
         raise SourceError(SourceProblem.NO_TEXT)
+    return source
+
+
+def _extract_pdf(name: str, pdf: Any) -> Source:
+    if len(pdf.pages) > MAX_PAGES:
+        raise SourceError(SourceProblem.TOO_MANY_PAGES)
+    source = Source(name=name, format=DocFormat.PDF, pages=len(pdf.pages))
+    producer = pdf.metadata.get("Producer") if isinstance(pdf.metadata, dict) else None
+    source.producer = str(producer)[:80] if producer else None
+    for index, page in enumerate(pdf.pages, start=1):
+        # Some generators fake bold by printing each glyph twice (seen in NuInvest notes).
+        clean = page.dedupe_chars()
+        for entry in clean.extract_text_lines(layout=False, strip=True):
+            text = re.sub(r"\s+", " ", entry["text"]).strip()
+            if text:
+                bbox = (float(entry["x0"]), float(entry["top"]), float(entry["x1"]), float(entry["bottom"]))
+                source.lines.append(Line(page=index, text=text, bbox=bbox))
     return source
 
 
@@ -155,13 +167,16 @@ def _load_csv(name: str, data: bytes) -> Source:
     text = decode_text(data)
     sample = text[:4096]
     delimiter = max((",", ";", "\t"), key=sample.count)
-    reader = csv.reader(io.StringIO(text), delimiter=delimiter)
+    reader = csv.reader(io.StringIO(text, newline=""), delimiter=delimiter)
     source = Source(name=name, format=DocFormat.CSV)
-    for number, row in enumerate(reader, start=1):
-        cells = [c.strip() for c in row]
-        if any(cells):
-            source.rows.append((number, cells))
-            source.lines.append(Line(page=0, text=delimiter.join(cells), number=number))
+    try:
+        for number, row in enumerate(reader, start=1):
+            cells = [c.strip() for c in row]
+            if any(cells):
+                source.rows.append((number, cells))
+                source.lines.append(Line(page=0, text=delimiter.join(cells), number=number))
+    except csv.Error:
+        raise SourceError(SourceProblem.INVALID) from None
     if not source.rows:
         raise SourceError(SourceProblem.INVALID)
     return source

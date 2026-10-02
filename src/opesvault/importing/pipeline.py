@@ -153,7 +153,45 @@ def import_document(session: Session, request: ImportRequest) -> ImportBatch:
                 candidates=tuple(candidates),
             ),
         )
-    return _parse_into_batch(session, document.meta.id, source, parser, request)
+    try:
+        result = run_parser(parser, source)
+    except ParseFailed as exc:
+        # The document is kept so the user can try another layout; no item is invented.
+        return _store_batch(
+            ledger,
+            ImportBatch(
+                document_id=document.meta.id,
+                parser_id=None,
+                parser_version=None,
+                doc_format=source.format,
+                status=BatchStatus.UNSUPPORTED,
+                created_at=_now(),
+                warnings=(str(exc),),
+                candidates=(parser.id,),
+            ),
+        )
+    return _parse_into_batch(session, document.meta.id, source, parser, request, result)
+
+
+class ParseFailed(DomainError):
+    """A parser could not read a document it accepted; the message has no document content."""
+
+
+def run_parser(parser: Parser, source: Source) -> ParseResult:
+    """Runs a parser as untrusted code over untrusted input (docs/05 §3, phase 10).
+
+    Any failure becomes a classified error with the parser id only: no traceback, no text
+    from the document, so nothing sensitive can reach a message or a log.
+    """
+    if parser.doc_format is not source.format:
+        raise ParseFailed(f"O layout {parser.id} não lê arquivos {source.format.value.upper()}.")
+    try:
+        return parser.parse(source)
+    except Exception:
+        raise ParseFailed(
+            f"O layout {parser.id} não conseguiu interpretar este documento (código PARSE_FAILED). "
+            "O arquivo foi guardado; tente outro layout ou registre manualmente."
+        ) from None
 
 
 def choose_parser(source: Source, forced: str | None = None) -> tuple[Parser | None, list[str]]:
@@ -178,9 +216,11 @@ def reparse_with(session: Session, batch_id: UUID, parser_id: str, password: str
         raise DomainError("Só lotes sem layout definido podem ser reprocessados.")
     document = session.document(batch.document_id)
     source = load_source(document.meta.original_name, document.data, password)
+    parser = parser_by_id(parser_id)
+    result = run_parser(parser, source)  # fails before the old batch is touched
     del batches(ledger)[batch_id]
     request = ImportRequest(name=document.meta.original_name, data=document.data, parser_id=parser_id)
-    return _parse_into_batch(session, document.meta.id, source, parser_by_id(parser_id), request)
+    return _parse_into_batch(session, document.meta.id, source, parser, request, result)
 
 
 def _store_batch(ledger: Ledger, batch: ImportBatch) -> ImportBatch:
@@ -216,10 +256,9 @@ def _guess_target(
 
 
 def _parse_into_batch(
-    session: Session, document_id: UUID, source: Source, parser: Parser, request: ImportRequest
+    session: Session, document_id: UUID, source: Source, parser: Parser, request: ImportRequest, result: ParseResult
 ) -> ImportBatch:
     ledger = session.ledger
-    result = parser.parse(source)
     doc_type = _doc_type(parser, source)
     account_id, card_id = request.account_id, request.card_id
     if card_id is not None:

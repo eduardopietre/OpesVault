@@ -332,3 +332,18 @@ def test_session_vault_roundtrip(tmp_path) -> None:  # type: ignore[no-untyped-d
     assert reopened.ledger.meta.family_name == "Silva"
     assert queries.balance(reopened.ledger, bank.id) == Decimal("123.45")
     assert not reopened.dirty
+
+
+def test_registry_loads_every_kind_in_a_fresh_process() -> None:
+    import subprocess
+    import sys
+
+    code = (
+        "from opesvault.domain.ledger import Ledger; Ledger();"
+        "kinds = set(Ledger.KINDS);"
+        "expected = {'installment_plan','recurrence_rule','forecast_link','period_close','settings',"
+        "'import_batch','evidence','extracted_item','asset','position','valuation','investment_event','tax_rule'};"
+        "missing = expected - kinds; assert not missing, missing;"
+        "assert Ledger._operation_guards and Ledger._update_guards"
+    )
+    subprocess.run([sys.executable, "-c", code], check=True)

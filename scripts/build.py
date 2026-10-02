@@ -66,9 +66,20 @@ def build_installer() -> int:
     return subprocess.call([iscc, f"/DAppVersion={__version__}", str(script)], cwd=script.parent)
 
 
+def ship_licenses() -> int:
+    """Inventory + SBOM next to the executable ("Sobre" points users to it)."""
+    dist = OUT / "opesvault_entry.dist"
+    code = subprocess.call([sys.executable, str(ROOT / "scripts" / "inventario_licencas.py"), "--out", str(dist)])
+    if code == 0:
+        (dist / "THIRD_PARTY_LICENSES.md").replace(dist / "THIRD_PARTY_LICENSES.txt")
+    return code
+
+
 if __name__ == "__main__":
     OUT.mkdir(parents=True, exist_ok=True)
     code = subprocess.call(nuitka_command(), cwd=ROOT)
+    if code == 0:
+        code = ship_licenses()
     if code == 0 and "--installer" in sys.argv[1:]:
         code = build_installer()
     sys.exit(code)

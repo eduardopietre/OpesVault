@@ -4,7 +4,7 @@ OpesVault: aplicativo desktop Windows, 100% offline, para finanças familiares, 
 
 ## Estado atual
 
-As **fases 0 a 6** estão implementadas e testadas em Python no Linux (`docs/13`). Os gates do Windows (`docs/11` §4) são presumidos aprovados e continuam pendentes de execução real. Os layouts de faturas e extratos são sintéticos até haver documentos reais. A decisão sobre o custo de salvar (`docs/11` §5) continua em aberto.
+As **fases 0 a 6** estão implementadas e testadas em Python no Linux (`docs/13`). Os gates do Windows (`docs/11` §4) são presumidos aprovados e continuam pendentes de execução real. Os layouts de faturas e extratos são sintéticos até haver documentos reais. A decisão sobre o custo de salvar (`docs/11` §5) continua em aberto. A próxima etapa é a **fase 7 — validação real** (`docs/09` §1.2); a dívida técnica conhecida está em `docs/09` §1.3.
 
 ## Comandos
 
@@ -41,7 +41,7 @@ No Linux, o Qt precisa de `libegl1`, `libgl1`, `libxkbcommon0` e `libfontconfig1
 | Fórmulas de retorno, resgate, imposto | `docs/06` (os exemplos A–F são casos de teste) |
 | Telas e gráficos | `docs/07` |
 | Testes de aceitação TA-01…TA-36 | `docs/08` |
-| ADRs, riscos, pendências | `docs/09` |
+| Roadmap (próximas fases), dívida técnica, ADRs, riscos, decisões pendentes | `docs/09` |
 | Resultados da fase 0 e roteiro Windows | `docs/11` |
 | Projetos de referência e particularidades de layouts | `docs/12` |
 | O que foi implementado por fase, cobertura e pendências | `docs/13` |

@@ -130,6 +130,9 @@ Com 10 MiB de PDFs, salvar ainda leva ~10 s: o custo agora vem principalmente da
 
 ## 6. Pendências
 
+O planejamento das próximas fases, com critérios de saída, está no `09` §1.2.
+
+
 1. **Gates do Windows** G0–G7 (`11` §4): presumidos, não executados.
 2. **Decisão sobre o custo de salvar** (`11` §5): agora com números do domínio real.
 3. **Documentos reais** de faturas, extratos, CSV e OFX para validar os layouts sintéticos. Notas de corretagem de terceiros aguardam a cópia manual (`tests/fixtures/terceiros/notas_corretagem/README.md`).

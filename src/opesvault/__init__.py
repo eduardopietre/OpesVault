@@ -14,12 +14,24 @@ def main() -> int:
 
         return selftest_main()
 
-    from PySide6.QtWidgets import QApplication
+    from PySide6.QtWidgets import QApplication, QMessageBox
 
+    from opesvault import diagnostics
     from opesvault.ui.main_window import MainWindow
 
     app = QApplication(sys.argv)
     app.setApplicationName("OpesVault")
+
+    def report(incident: str) -> None:
+        QMessageBox.critical(
+            None,
+            "OpesVault",
+            f"Ocorreu um erro inesperado (ocorrência {incident}).\n"
+            "Os dados abertos continuam na memória: salve assim que possível.\n"
+            "O registro técnico guarda só códigos, sem dados financeiros.",
+        )
+
+    diagnostics.install(report)
     window = MainWindow()
     window.show()
     # Double-clicking a .opesvault file (optional installer association) opens it.

@@ -76,7 +76,10 @@ class _Job(QRunnable):
             result = self.fn()
         except VaultError as exc:
             self.signals.failed.emit(exc.code)
-        except Exception:
+        except Exception as exc:
+            from opesvault.diagnostics import record
+
+            record("JOB_FAILED", exc)
             self.signals.failed.emit(ErrorCode.INTERNAL)
         else:
             self.signals.done.emit(result)

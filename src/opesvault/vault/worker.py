@@ -152,8 +152,11 @@ def serve(
         response, out_blobs = handle(envelope.request, blobs, provider, fault_hook)
     except OSError:
         response, out_blobs = WorkerResponse(error=ErrorCode.IO_ERROR), ()
-    except Exception:
-        # No traceback: it could carry paths or values into some console or log.
+    except Exception as exc:
+        # No traceback on stderr: it could carry paths or values into some console.
+        from opesvault.diagnostics import record
+
+        record("WORKER_INTERNAL", exc)
         response, out_blobs = WorkerResponse(error=ErrorCode.INTERNAL), ()
     write_message(stdout, response, out_blobs)
     return 0 if response.error is None else 1

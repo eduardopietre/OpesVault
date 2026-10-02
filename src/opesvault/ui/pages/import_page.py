@@ -77,7 +77,12 @@ class _ImportJob(QRunnable):
     def run(self) -> None:
         try:
             result: object = self.fn()
+        except (SourceError, DomainError) as exc:  # classified: shown to the user as such
+            result = exc
         except Exception as exc:  # reported per file; one failure never affects the others
+            from opesvault.diagnostics import record
+
+            record("IMPORT_FAILED", exc)
             result = exc
         self.signals.done.emit(result)
 

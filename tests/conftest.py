@@ -1,11 +1,14 @@
 import os
 import sys
+import tempfile
 from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+# Technical logs of the test run (workers included) never land in the real user profile.
+os.environ.setdefault("OPV_LOG_DIR", tempfile.mkdtemp(prefix="opv-test-logs-"))
 
 ROOT = Path(__file__).resolve().parents[1]
 DEV_WORKER = ROOT / "scripts" / "dev_worker.py"

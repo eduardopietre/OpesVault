@@ -6,6 +6,7 @@ requires-python = ">=3.12,<3.13"
 # Exact versions are pinned in uv.lock; they become the distribution contract
 # only after the phase 0 gates pass on Windows (docs/02 §3).
 dependencies = [
+    "matplotlib>=3.9",
     "pdfplumber>=0.11.10",
     "pydantic>=2.13.5",
     "pypdfium2>=5.13.0",

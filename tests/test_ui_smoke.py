@@ -176,9 +176,12 @@ def test_phase5_returns_tab(window: MainWindow) -> None:
     page._show_detail()
     assert page.lots.rowCount() == 1
     assert page.returns_table.rowCount() == 4
-    by_method = {
-        page.returns_table.item(r, 0).text().split(" ")[0]: page.returns_table.item(r, 1).text()
-        for r in range(page.returns_table.rowCount())
-    }
+
+    def cell(row: int, column: int) -> str:
+        item = page.returns_table.item(row, column)
+        assert item is not None
+        return item.text()
+
+    by_method = {cell(r, 0).split(" ")[0]: cell(r, 1) for r in range(page.returns_table.rowCount())}
     assert by_method["TWR"] == "10,00%"
     assert by_method["XIRR"] != "indisponível"  # annualized, labeled as such

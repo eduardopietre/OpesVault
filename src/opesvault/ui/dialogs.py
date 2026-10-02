@@ -495,10 +495,9 @@ class BillPaymentDialog(FormDialog):
         self._update_note()
 
     def _update_note(self) -> None:
-        # Bills count payments made up to their due date (domain.cards.bills); say so before it happens.
-        paid_on = from_qdate(self.when.date())
-        late = paid_on > self.due
-        self.late.setText("Pagamentos depois do vencimento entram na conta da fatura seguinte." if late else "")
+        # A late payment settles overdue bills first (domain.cards.bills): say so, it is not an error.
+        late = from_qdate(self.when.date()) > self.due
+        self.late.setText("Pagamento após o vencimento: quita primeiro esta fatura vencida." if late else "")
         self.late.setVisible(late)
 
     def validate(self) -> None:

@@ -74,6 +74,8 @@ Compra parcelada gera obrigação e calendário financeiro. A competência depen
 
 Estornos preservam ligação com a compra. Pagamento parcial da fatura reduz obrigação; juros, multa e IOF são componentes próprios. Não tratar limite do cartão como patrimônio.
 
+**Atribuição de pagamentos às faturas** (decisão de 02/10/2026): um pagamento feito no dia *d* quita primeiro as faturas já vencidas antes de *d* que ainda têm saldo, da mais antiga para a mais nova; só a sobra vai para a fatura cujo período contém *d* (o primeiro vencimento em *d* ou depois). Pagamento em dia ou antecipado fica na própria fatura; o que passar do devido fica como crédito nela. A regra vale para toda a vida do cartão, então uma fatura antiga em aberto é quitada antes de qualquer outra.
+
 ## 6. Contas conjuntas e consolidação
 
 Conta conjunta pertence a vários integrantes, mas entra uma vez no consolidado da família. Visão por integrante pode usar rateio configurado; somar visões individuais sem rateio não deve duplicar total. Transferência entre integrantes do mesmo cofre é interna no consolidado, embora apareça nos fluxos individuais.

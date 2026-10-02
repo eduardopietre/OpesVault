@@ -78,7 +78,9 @@ def test_bill_alert_opens_the_bill_and_pays_it(
         assert dialog.amount.text() == "300,00"  # the remaining amount comes filled in
         due = bill_alerts[0].due_on
         assert due is not None
-        dialog.when.setDate(QDate(due.year, due.month, due.day))  # paid on time: it settles this bill
+        late = due + timedelta(days=5)  # paid after the due date: it still settles this overdue bill
+        dialog.when.setDate(QDate(late.year, late.month, late.day))
+        assert not dialog.late.isHidden()
         return True
 
     monkeypatch.setattr(BillPaymentDialog, "exec", run)

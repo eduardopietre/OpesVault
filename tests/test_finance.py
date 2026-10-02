@@ -29,7 +29,7 @@ from opesvault.domain.recurrence import (
     skip,
 )
 
-from .domain_fixtures import family
+from .domain_fixtures import Family, family
 
 D = Decimal
 JAN, FEB, MAR, APR = (YearMonth(year=2026, month=m) for m in (1, 2, 3, 4))
@@ -67,6 +67,48 @@ def test_bill_totals_status_and_payment() -> None:
     [feb] = bills(f.ledger, f.card, [FEB])
     assert feb.payments == D("100.00") and feb.remaining == D("50.00")
     assert feb.status(date(2026, 2, 20)) is BillStatus.PARTIAL
+
+
+def _two_bills() -> Family:
+    """Feb bill R$ 150 (due 10/02) and Mar bill R$ 80 (due 10/03); card closes on day 3."""
+    f = family()
+    f.ledger.record_opening_balance(f.bank, "1000.00", date(2026, 1, 1))
+    f.ledger.record_card_purchase(f.card, f.groceries, "150.00", date(2026, 1, 20), "Mercado")
+    f.ledger.record_card_purchase(f.card, f.groceries, "80.00", date(2026, 2, 15), "Feira")
+    return f
+
+
+def test_late_payment_settles_the_overdue_bill() -> None:
+    f = _two_bills()
+    f.ledger.record_card_payment(f.card, f.bank, "150.00", date(2026, 2, 20))  # ten days late
+    feb, mar = bills(f.ledger, f.card, [FEB, MAR])
+    assert feb.payments == D("150.00") and feb.status(date(2026, 2, 21)) is BillStatus.PAID
+    assert mar.payments == 0 and mar.remaining == D("80.00")
+
+
+def test_late_payment_beyond_the_overdue_bill_goes_to_the_current_one() -> None:
+    f = _two_bills()
+    f.ledger.record_card_payment(f.card, f.bank, "200.00", date(2026, 2, 20))
+    feb, mar = bills(f.ledger, f.card, [FEB, MAR])
+    assert (feb.payments, mar.payments) == (D("150.00"), D("50.00"))
+    assert mar.remaining == D("30.00")
+
+
+def test_oldest_overdue_bill_is_paid_first_even_outside_the_requested_months() -> None:
+    f = _two_bills()
+    f.ledger.record_card_payment(f.card, f.bank, "100.00", date(2026, 3, 20))  # both bills overdue
+    [mar] = bills(f.ledger, f.card, [MAR])  # Feb is not requested, but it is older and still owed
+    assert mar.payments == 0
+    feb, mar = bills(f.ledger, f.card, [FEB, MAR])
+    assert (feb.payments, feb.remaining, mar.payments) == (D("100.00"), D("50.00"), 0)
+
+
+def test_payment_on_time_stays_in_its_own_bill() -> None:
+    f = _two_bills()
+    f.ledger.record_card_payment(f.card, f.bank, "150.00", date(2026, 2, 10))  # on the due date
+    f.ledger.record_card_payment(f.card, f.bank, "80.00", date(2026, 3, 1))  # early for March
+    feb, mar = bills(f.ledger, f.card, [FEB, MAR])
+    assert (feb.remaining, mar.remaining) == (0, 0)
 
 
 # ── installments ─────────────────────────────────────

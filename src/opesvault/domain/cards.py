@@ -223,12 +223,26 @@ class Bill:
         return BillStatus.PARTIAL if self.payments > 0 else BillStatus.CLOSED
 
 
+def _due_month(card: Card, paid_on: date) -> YearMonth:
+    """The bill whose period contains `paid_on`: the first due date on or after it."""
+    month = YearMonth.of(paid_on)
+    return month if paid_on <= cycle_by_due_month(card, month).due else month.add(1)
+
+
 def bills(ledger: Ledger, card_id: UUID, months: list[YearMonth]) -> list[Bill]:
     """Bills by due month. Installment purchases under the PURCHASE policy contribute their
-    scheduled installments, not the full value, so a bill matches the bank's document."""
+    scheduled installments, not the full value, so a bill matches the bank's document.
+
+    Payments settle overdue bills first: a payment made on day d pays, oldest first, every
+    bill already due before d that still has a balance; only what is left goes to the bill
+    whose period contains d (decision of 02/10/2026, docs/04 §5). Because an old overdue
+    bill can absorb a recent payment, the whole card history is computed, then `months`
+    are returned.
+    """
     card = ledger.cards[card_id]
-    by_month = {m: Bill(cycle_by_due_month(card, m)) for m in months}
     plan_ops = {oid for p in plans(ledger).values() if p.card_id == card_id for oid in p.operation_ids}
+    charges: list[tuple[YearMonth, Decimal, UUID]] = []  # (bill month, liability change, operation)
+    payments: list[tuple[date, Decimal, UUID]] = []
     for op in ledger.operations.values():
         if op.status is OperationStatus.CANCELLED or op.card_id != card_id:
             continue
@@ -236,35 +250,58 @@ def bills(ledger: Ledger, card_id: UUID, months: list[YearMonth]) -> list[Bill]:
         if liability == 0:
             continue
         if op.kind is OperationKind.CARD_PAYMENT:
-            when = op.cash_date
-            if when is None:
-                continue
-            for bill in by_month.values():
-                previous_due = cycle_by_due_month(card, bill.cycle.month.add(-1)).due
-                if previous_due < when <= bill.cycle.due:
-                    bill.payments += liability
-                    bill.operation_ids.append(op.id)
+            if op.cash_date is not None:
+                payments.append((op.cash_date, liability, op.id))
             continue
         if op.id in plan_ops:
             continue
         when = op.occurred_on or op.cash_date
-        if when is None:
-            continue
-        month = cycle_for(card, when).month
-        if month not in by_month:
-            continue
+        if when is not None:
+            charges.append((cycle_for(card, when).month, liability, op.id))
+    scheduled = [
+        (item.cycle.month, item.amount)
+        for plan in plans(ledger).values()
+        if plan.card_id == card_id
+        for item in schedule(ledger, plan)
+    ]
+    involved = [
+        *months,
+        *(m for m, _, _ in charges),
+        *(m for m, _ in scheduled),
+        *(_due_month(card, d) for d, _, _ in payments),
+    ]
+    if not involved:
+        return []
+    by_month: dict[YearMonth, Bill] = {}
+    cursor, last = min(involved), max(involved)
+    while cursor <= last:  # every month in between, so no overdue bill is skipped
+        by_month[cursor] = Bill(cycle_by_due_month(card, cursor))
+        cursor = cursor.add(1)
+    for month, liability, op_id in charges:
         bill = by_month[month]
         if liability < 0:
             bill.charges += -liability
         else:
             bill.credits += liability
-        bill.operation_ids.append(op.id)
-    for plan in plans(ledger).values():
-        if plan.card_id != card_id:
-            continue
-        for scheduled in schedule(ledger, plan):
-            if scheduled.cycle.month in by_month:
-                by_month[scheduled.cycle.month].installments += scheduled.amount
+        bill.operation_ids.append(op_id)
+    for month, amount in scheduled:
+        by_month[month].installments += amount
+    ordered = [by_month[m] for m in sorted(by_month)]
+    for paid_on, amount, op_id in sorted(payments, key=lambda p: (p[0], str(p[2]))):
+        left = amount
+        for bill in ordered:
+            if left <= 0 or bill.cycle.due >= paid_on:
+                break
+            open_balance = bill.remaining
+            if open_balance > 0:
+                share = min(left, open_balance)
+                bill.payments += share
+                bill.operation_ids.append(op_id)
+                left -= share
+        if left > 0:  # on time, or more than the overdue bills owed
+            own = by_month[_due_month(card, paid_on)]
+            own.payments += left
+            own.operation_ids.append(op_id)
     return [by_month[m] for m in months]
 
 

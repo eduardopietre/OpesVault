@@ -6,7 +6,9 @@ from pathlib import Path
 
 import pytest
 
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+# On Windows "offscreen" has no font database (generic "Sans Serif", wrong metrics);
+# "minimal:enable_fonts" stays headless and measures with the real Segoe UI.
+os.environ.setdefault("QT_QPA_PLATFORM", "minimal:enable_fonts" if sys.platform == "win32" else "offscreen")
 # Technical logs of the test run (workers included) never land in the real user profile.
 os.environ.setdefault("OPV_LOG_DIR", tempfile.mkdtemp(prefix="opv-test-logs-"))
 

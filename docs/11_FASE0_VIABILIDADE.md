@@ -74,6 +74,33 @@ Testes automatizados: 45 passam e 5 são exclusivos do Windows. Cobrem:
 - diálogo de senha;
 - renderização sem arquivo temporário.
 
+## 2.1 Resultados no Windows, em Python (02/10/2026)
+
+Windows 10 Pro 22H2 (19045), Python 3.12.4 oficial, 32 CPUs, 31,8 GiB. Sem build Nuitka: G1 foi feito com `python -m opesvault --self-test`.
+
+| Gate | Resultado |
+|---|---|
+| G0 | 311 passam, 19 pulados (fixtures de terceiros ainda ausentes); os 5 testes `windows` passam. ruff e pyright limpos. Fuzzing longo (3000 variações) passa |
+| G1 (parcial) | `all_ok: true`; SQLCipher 4.12.0 com `openssl` (OpenSSL 3.6.0); `worker_relaunch` em 0,23 s; `new_temp_entries` vazio. Falta repetir no executável |
+| G2 | Tabela abaixo |
+| G3–G7 | Pendentes: exigem desligamento forçado, Defender com 20 salvamentos, janela de senha interativa e outra máquina |
+
+Medição com 50 mil lançamentos (`fase0-ram.json`):
+
+| PDFs | Criar | Ctrl+S | Abrir | Pico da UI ao abrir | Pico do worker ao abrir | Cofre |
+|---|---|---|---|---|---|---|
+| 50 MiB | 4,35 s | 0,87 s | 1,67 s | 623 MiB | 187 MiB | 112 MiB |
+| 125 MiB | 5,35 s | 1,14 s | 2,06 s | 695 MiB | 235 MiB | 188 MiB |
+| 250 MiB | 7,20 s | 1,67 s | 2,65 s | 833 MiB | 380 MiB | 317 MiB |
+
+A abertura cumpre a meta da fase 8 (≤ 5 s), mas o pico da UI passa de 600 MiB a partir de 50 MiB de PDFs: os documentos sob demanda (`09` §1.2, fase 8) continuam necessários. A máquina é mais forte que a de referência, que ainda não foi definida.
+
+Problemas encontrados só no Windows e corrigidos:
+- a plataforma Qt `offscreen` não tem banco de fontes no Windows e mede com uma "Sans Serif" genérica (janela mínima de 1269 px). Testes e `capturar_telas.py` passam a usar `minimal:enable_fonts`, que mede com a Segoe UI (839–851 px);
+- um id de parâmetro do fuzzing passava de 32 767 caracteres, o limite de variável de ambiente do Windows, e o pytest falhava ao gravar `PYTEST_CURRENT_TEST`.
+
+Achados visuais com Segoe UI, em janela de 900 × 640: os filtros do Livro truncam o texto ("Todos os integra…", "Ativos e cancela…") e a coluna de valor fica atrás da rolagem horizontal; Importar e revisar fica apertada com três painéis. Claro e escuro em 1280 × 800 estão corretos. Escalas de 150/200% e leitor de tela não foram conferidos.
+
 ## 3. Problemas encontrados
 
 | # | Problema | Situação |

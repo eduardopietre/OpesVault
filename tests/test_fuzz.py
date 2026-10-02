@@ -208,6 +208,8 @@ def test_corrupt_pdf_bytes_are_classified(name: str, tmp_path: Path) -> None:
         "Data,Valor,Identificador,Descrição\n".encode() + b"x,y,z,w\n" * 100,
         b"\x00" * 4096,
     ],
+    # Short ids: pytest copies the id into an environment variable, capped at 32767 chars on Windows.
+    ids=lambda data: f"{len(data)}b-{data[:12]!r}",
 )
 def test_degenerate_inputs(data: bytes, tmp_path: Path) -> None:
     _import(Session.new(tmp_path / "f.opesvault"), "x", data)

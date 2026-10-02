@@ -15,7 +15,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "src"))
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+# "offscreen" has no font database on Windows; "minimal:enable_fonts" renders with Segoe UI.
+os.environ.setdefault("QT_QPA_PLATFORM", "minimal:enable_fonts" if sys.platform == "win32" else "offscreen")
 
 
 def demo_session(path: Path):  # type: ignore[no-untyped-def]

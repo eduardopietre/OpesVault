@@ -107,6 +107,7 @@ class ImportPage(Page):
         super().__init__(changed)
         self.batch_id: UUID | None = None
         self._jobs: set[_ImportJob] = set()
+        self._queue: list[Path] = []
 
         self.batches = make_table(["Arquivo", "Layout", "Situação", "Itens", "Conferência"])
         self.batches.itemSelectionChanged.connect(self._select_batch)
@@ -351,8 +352,14 @@ class ImportPage(Page):
         if self.session is None:
             return
         names, _ = QFileDialog.getOpenFileNames(self, "Importar documentos", "", "Documentos (*.pdf *.csv *.ofx *.txt)")
-        for name in names:
-            self._import_one(Path(name), None)
+        # One at a time: two imports must never mutate the same session concurrently.
+        self._queue.extend(Path(name) for name in names)
+        self._next_import()
+
+    def _next_import(self) -> None:
+        if self._jobs or not self._queue or self.session is None:
+            return
+        self._import_one(self._queue.pop(0), None)
 
     def _import_one(self, path: Path, password: str | None) -> None:
         assert self.session is not None
@@ -362,10 +369,12 @@ class ImportPage(Page):
         job = _ImportJob(lambda: pipeline.import_document(session, request))
         self._jobs.add(job)
         self.setEnabled(False)
+        self.set_busy(True)
 
         def done(result: object) -> None:
             self._jobs.discard(job)
             self.setEnabled(True)
+            self.set_busy(False)
             if isinstance(result, SourceError) and result.problem in (
                 SourceProblem.PASSWORD_REQUIRED,
                 SourceProblem.WRONG_PASSWORD,
@@ -374,6 +383,8 @@ class ImportPage(Page):
                 pdf_password, ok = QInputDialog.getText(self, "PDF protegido", label, QLineEdit.EchoMode.Password)
                 if ok and pdf_password:
                     self._import_one(path, pdf_password)
+                else:
+                    self._next_import()
                 return
             if isinstance(result, DomainError):
                 QMessageBox.information(self, "Importação", f"{path.name}: {result}")
@@ -382,6 +393,7 @@ class ImportPage(Page):
             elif isinstance(result, ImportBatch):
                 self.batch_id = result.id
             self.changed()
+            self._next_import()
 
         job.signals.done.connect(done)
         QThreadPool.globalInstance().start(job)

@@ -85,7 +85,8 @@ class MainWindow(QMainWindow):
         self.client = VaultClient()
         self.session: Session | None = None
         self.lock: VaultLock | None = None
-        self.busy = False
+        self._vault_busy = False
+        self._page_busy_flag = False
         self._jobs: set[_Job] = set()
 
         self.pages: list[Page] = self.build_pages()
@@ -93,6 +94,7 @@ class MainWindow(QMainWindow):
         self.nav.setMaximumWidth(220)
         self.stack = QStackedWidget()
         for page in self.pages:
+            page.set_busy_hook(self._page_busy)
             self.nav.addItem(page.title)
             self.stack.addWidget(page)
         self.nav.currentRowChanged.connect(self._show_page)
@@ -125,6 +127,11 @@ class MainWindow(QMainWindow):
         self.resize(1280, 800)
         self.nav.setCurrentRow(0)
         self._refresh()
+
+    @property
+    def busy(self) -> bool:
+        """A vault operation (open/save/backup) or a page job (import) is running."""
+        return self._vault_busy or self._page_busy_flag
 
     def build_pages(self) -> list[Page]:
         """Pages in sidebar order; later phases extend this list."""
@@ -423,20 +430,31 @@ class MainWindow(QMainWindow):
         on_done: Callable[[Any], None],
         on_failed: Callable[[ErrorCode], None] | None = None,
     ) -> None:
-        self.busy = True
+        self._vault_busy = True
         self.status.setText("Aguardando operação do cofre…")
         job = _Job(fn)
         self._jobs.add(job)
 
         def finish(handler: Callable[[Any], None], value: Any) -> None:
             self._jobs.discard(job)
-            self.busy = False
+            self._vault_busy = False
             handler(value)
             self._refresh()
 
         job.signals.done.connect(lambda v: finish(on_done, v))
         job.signals.failed.connect(lambda code: finish(on_failed or self._show_error, code))
         QThreadPool.globalInstance().start(job)
+
+    def _page_busy(self, busy: bool) -> None:
+        """A page is mutating the session off the UI thread (import): no save, no edits."""
+        self._page_busy_flag = busy
+        central = self.centralWidget()
+        if central is not None:
+            central.setEnabled(not busy)
+        if busy:
+            self.status.setText("Processando documento…")
+        else:
+            self._refresh()
 
     def _show_error(self, code: ErrorCode) -> None:
         if code is ErrorCode.CANCELLED:

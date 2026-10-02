@@ -4,7 +4,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import QObject, QRunnable, QThreadPool, Signal
+from PySide6.QtCore import QObject, QRunnable, QSettings, QThreadPool, QTimer, Signal
 from PySide6.QtGui import QAction, QCloseEvent, QKeySequence
 from PySide6.QtWidgets import (
     QComboBox,
@@ -103,6 +103,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(central)
 
         menu = self.menuBar().addMenu("&Cofre")
+        self.vault_menu = menu
         self._action(menu, "&Novo cofre…", QKeySequence.StandardKey.New, self.new_vault)
         self._action(menu, "&Abrir cofre…", QKeySequence.StandardKey.Open, self.open_vault)
         self._action(menu, "&Salvar", QKeySequence.StandardKey.Save, self.save_vault)
@@ -134,7 +135,218 @@ class MainWindow(QMainWindow):
         ]
 
     def extend_menus(self) -> None:
-        """Hook for later phases to add commands."""
+        menu = self.vault_menu
+        menu.addSeparator()
+        self._action(menu, "Trocar senha…", None, self.change_password)
+        self._action(menu, "Fazer backup agora", None, self.backup_now)
+        self._action(menu, "Restaurar backup…", None, self.restore_backup)
+        menu.addSeparator()
+        self._action(menu, "Exportar livro financeiro (CSV)…", None, lambda: self.export("csv"))
+        self._action(menu, "Exportar dados para intercâmbio (JSON)…", None, lambda: self.export("json"))
+        menu.addSeparator()
+        self.recent_menu = menu.addMenu("Recentes")
+        self.recent_menu.aboutToShow.connect(self._fill_recents)
+        self.reminder = QTimer(self)
+        self.reminder.timeout.connect(self._remind)
+        self.reminder.start(60_000)
+        self._dirty_since: float | None = None
+
+    # ── phase 6: lifecycle commands ─────────────────
+
+    @staticmethod
+    def app_settings() -> QSettings:
+        """Computer-level preferences, outside the vault: never financial data."""
+        return QSettings("OpesVault", "OpesVault")
+
+    def _fill_recents(self) -> None:
+        self.recent_menu.clear()
+        settings = self.app_settings()
+        if not settings.value("recentes/ativo", False, type=bool):
+            action = self.recent_menu.addAction("Desativado (Configurações)")
+            action.setEnabled(False)
+            return
+        for path in self._recent_paths()[:8]:
+            action = self.recent_menu.addAction(str(path))
+            action.triggered.connect(lambda _=False, p=str(path): self._open_recent(Path(p)))
+
+    def _recent_paths(self) -> list[str]:
+        value = self.app_settings().value("recentes/lista", [], type=list)
+        return [str(item) for item in value] if isinstance(value, list) else []
+
+    def _open_recent(self, path: Path) -> None:
+        if not self.busy and self._confirm_discard():
+            self.open_path(path)
+
+    def _remember(self, path: Path) -> None:
+        settings = self.app_settings()
+        if not settings.value("recentes/ativo", False, type=bool):
+            return
+        items = [p for p in self._recent_paths() if p != str(path)]
+        settings.setValue("recentes/lista", [str(path), *items][:8])
+
+    def _remind(self) -> None:
+        import time
+
+        from opesvault.domain.settings import get_settings
+
+        if self.session is None or not self.session.dirty:
+            self._dirty_since = None
+            return
+        now = time.monotonic()
+        if self._dirty_since is None:
+            self._dirty_since = now
+            return
+        minutes = get_settings(self.session.ledger).save_reminder_minutes
+        elapsed = int((now - self._dirty_since) // 60)
+        if minutes and elapsed >= minutes:
+            # Contextual, non-modal: unsaved work is lost if the computer crashes.
+            self.statusBar().showMessage(
+                f"Alterações não salvas há {elapsed} min. Use Ctrl+S; sem salvar, um travamento perde o trabalho.",
+                30_000,
+            )
+
+    def _after_open(self, path: Path) -> None:
+        from datetime import datetime
+
+        from opesvault.vault.backup import create_backup, remove_candidates, stale_candidates
+
+        assert self.session is not None
+        self._remember(path)
+        leftovers = stale_candidates(path)
+        if leftovers:
+            answer = QMessageBox.question(
+                self,
+                "Salvamento interrompido",
+                f"Há {len(leftovers)} arquivo(s) cifrado(s) de um salvamento interrompido ao lado do cofre. "
+                "O cofre aberto é a última versão válida. Remover esses arquivos temporários?",
+            )
+            if answer == QMessageBox.StandardButton.Yes:
+                remove_candidates(path, leftovers)
+        if self.session.ledger.migrated_from is not None and self.session.revision is not None:
+            # Format migration is protected by a backup of the untouched original (RNF-07).
+            backup = create_backup(
+                path, self.session.revision.revision, path.parent / "backups-migracao", datetime.now()
+            )
+            QMessageBox.information(
+                self,
+                "Cofre atualizado",
+                "Este cofre usava um formato anterior e foi convertido em memória. "
+                f"Uma cópia do original foi guardada em {backup}. A conversão só é gravada quando você salvar.",
+            )
+
+    def _after_save(self) -> None:
+        from opesvault.domain.settings import get_settings
+        from opesvault.vault.backup import create_backup, prune_backups
+
+        session = self.session
+        if session is None or session.revision is None:
+            return
+        self._remember(session.path)
+        settings = get_settings(session.ledger)
+        if settings.auto_backup and settings.backup_dir:
+            try:
+                target = Path(settings.backup_dir)
+                create_backup(session.path, session.revision.revision, target)
+                prune_backups(target, session.path.stem, settings.backup_keep, set(settings.pinned_backups))
+            except (OSError, VaultError):
+                self.statusBar().showMessage(
+                    "Salvo, mas o backup automático falhou. Verifique a pasta de backups.", 30_000
+                )
+
+    def backup_now(self) -> None:
+        from opesvault.domain.settings import get_settings
+        from opesvault.vault.backup import create_backup, prune_backups
+
+        session = self.session
+        if session is None or session.revision is None or self.busy:
+            return
+        if session.dirty:
+            QMessageBox.information(
+                self, "Backup", "O backup copia a última revisão salva. Salve antes para incluir as alterações."
+            )
+        settings = get_settings(session.ledger)
+        folder = settings.backup_dir or QFileDialog.getExistingDirectory(self, "Pasta de backups")
+        if not folder:
+            return
+        try:
+            target = create_backup(session.path, session.revision.revision, Path(folder))
+            prune_backups(Path(folder), session.path.stem, settings.backup_keep, set(settings.pinned_backups))
+        except (OSError, VaultError):
+            QMessageBox.warning(self, "Backup", "Não foi possível criar o backup.")
+            return
+        QMessageBox.information(self, "Backup", f"Backup da revisão {session.revision.revision} criado:\n{target}")
+
+    def restore_backup(self) -> None:
+        if self.busy or not self._confirm_discard():
+            return
+        name, _ = QFileDialog.getOpenFileName(self, "Backup a restaurar", "", VAULT_FILTER)
+        if not name:
+            return
+        backup = Path(name)
+
+        def loaded(result: Any) -> None:
+            from opesvault.vault.backup import copy_for_restore
+
+            revision, snapshot = result
+            text = (
+                f"Backup válido: revisão {revision.revision}, salva em {revision.saved_at:%d/%m/%Y %H:%M} (UTC).\n"
+                "Escolha onde criar o cofre restaurado (um arquivo novo; nada é sobrescrito)."
+            )
+            QMessageBox.information(self, "Restaurar", text)
+            suggested = str(backup.with_name(backup.stem.split(".rev")[0] + "-restaurado.opesvault"))
+            dest, _ = QFileDialog.getSaveFileName(self, "Cofre restaurado", suggested, VAULT_FILTER)
+            if not dest:
+                return
+            destination = Path(dest).with_suffix(".opesvault")
+            try:
+                copy_for_restore(backup, destination)
+            except VaultError as exc:
+                self._show_error(exc.code)
+                return
+            self._drop_session()
+            if self._take_lock(destination):
+                self.session = Session.from_snapshot(destination, revision, snapshot)
+                self._after_open(destination)
+
+        self._run(lambda: self.client.open(backup), loaded)
+
+    def change_password(self) -> None:
+        session = self.session
+        if session is None or self.busy:
+            return
+        if session.dirty or session.revision is None:
+            QMessageBox.information(self, "Trocar senha", "Salve as alterações antes de trocar a senha.")
+            return
+        base = session.revision.revision_id
+
+        def done(revision: Any) -> None:
+            session.revision = revision
+            QMessageBox.information(
+                self,
+                "Trocar senha",
+                "Senha trocada. Backups anteriores continuam com a senha antiga. Não há recuperação de senha.",
+            )
+
+        self._run(lambda: self.client.change_password(session.path, base), done)
+
+    def export(self, kind: str) -> None:
+        if self.session is None:
+            return
+        from opesvault.exports import interchange_json, ledger_csv
+
+        warning = QMessageBox.question(
+            self,
+            "Exportar",
+            "O arquivo exportado fica fora do cofre, SEM criptografia, e contém dados financeiros. Continuar?",
+        )
+        if warning != QMessageBox.StandardButton.Yes:
+            return
+        suffix, label = ("csv", "CSV (*.csv)") if kind == "csv" else ("json", "JSON (*.json)")
+        path, _ = QFileDialog.getSaveFileName(self, "Exportar", f"opesvault-exportacao.{suffix}", label)
+        if not path:
+            return
+        data = ledger_csv(self.session.ledger) if kind == "csv" else interchange_json(self.session.ledger)
+        Path(path).write_bytes(data)
 
     def _action(self, menu: Any, text: str, shortcut: Any, slot: Callable[[], None]) -> QAction:
         action = QAction(text, self)
@@ -284,6 +496,8 @@ class MainWindow(QMainWindow):
             except DomainError as exc:
                 self._drop_session()
                 QMessageBox.warning(self, "OpesVault", str(exc))
+                return
+            self._after_open(path)
 
         def failed(code: ErrorCode) -> None:
             self._drop_session()
@@ -296,10 +510,12 @@ class MainWindow(QMainWindow):
             return
         session = self.session
         frozen: FrozenSnapshot = session.freeze()
-        self._run(
-            lambda: self.client.save(session.path, frozen.snapshot, frozen.base_revision_id),
-            lambda revision: session.mark_saved(frozen, revision),
-        )
+
+        def saved(revision: Any) -> None:
+            session.mark_saved(frozen, revision)
+            self._after_save()
+
+        self._run(lambda: self.client.save(session.path, frozen.snapshot, frozen.base_revision_id), saved)
 
     def close_vault(self) -> None:
         if self.busy or not self._confirm_discard():

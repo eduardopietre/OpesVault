@@ -185,3 +185,21 @@ def test_phase5_returns_tab(window: MainWindow) -> None:
     by_method = {cell(r, 0).split(" ")[0]: cell(r, 1) for r in range(page.returns_table.rowCount())}
     assert by_method["TWR"] == "10,00%"
     assert by_method["XIRR"] != "indisponível"  # annualized, labeled as such
+
+
+def test_phase6_commands(window: MainWindow, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from opesvault.ui.pages.settings_page import SettingsPage
+
+    page = next(p for p in window.pages if isinstance(p, SettingsPage))
+    window.nav.setCurrentRow(window.pages.index(page))
+    assert page.coverage.rowCount() >= 8
+    labels = [a.text() for a in window.vault_menu.actions()]
+    assert "Trocar senha…" in labels and "Restaurar backup…" in labels
+    assert window.session is not None
+    window.session.ledger.record_opening_balance(
+        next(a.id for a in window.session.ledger.accounts.values() if a.name == "Poupança"),
+        "1,00".replace(",", "."),
+        date(2026, 1, 1),
+    )
+    window._remind()
+    window._remind()  # first call starts the clock; reminder threshold not reached

@@ -88,6 +88,7 @@ class Ledger:
         self.history: list[HistoryEntry] = []
         self.operator: str | None = None
         self.change_count = 0
+        self.migrated_from: int | None = None  # schema version before an in-memory migration
 
     # ── construction ────────────────────────────────────
 
@@ -562,8 +563,11 @@ class Ledger:
         import opesvault.registry  # noqa: F401 - registers every persisted kind
         from opesvault.domain.migrations import migrate
 
+        original_version = int(meta_rows[0].get("schema_version", 0))
         meta_payload, rows = migrate(meta_rows[0], rows)
         ledger = cls(LedgerMeta.model_validate(meta_payload))
+        if original_version != SCHEMA_VERSION:
+            ledger.migrated_from = original_version
         for _, kind, payload in rows:
             if kind == "ledger.meta":
                 continue

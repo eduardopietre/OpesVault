@@ -18,6 +18,8 @@ class VaultSettings(BaseModel):
     backup_keep: int = Field(default=10, ge=1, le=500)
     backup_dir: str | None = None
     save_reminder_minutes: int = Field(default=30, ge=0, le=600)
+    auto_backup: bool = False  # copy each saved revision to backup_dir
+    pinned_backups: tuple[str, ...] = ()
 
 
 Ledger.register_kind("settings", VaultSettings)

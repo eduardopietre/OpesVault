@@ -1,9 +1,10 @@
 """Importar e revisar: queue of documents and side-by-side review (docs/07 §2, RF-05..RF-09)."""
 
+import threading
 from collections.abc import Callable
 from html import escape
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 from PySide6.QtCore import QMimeData, QObject, QRunnable, Qt, QThreadPool, Signal
@@ -14,6 +15,7 @@ from PySide6.QtWidgets import (
     QInputDialog,
     QLineEdit,
     QMessageBox,
+    QProgressBar,
     QSplitter,
     QStackedWidget,
     QVBoxLayout,
@@ -27,12 +29,16 @@ from opesvault.importing.model import BatchStatus, ExtractedItem, ImportBatch, I
 from opesvault.importing.parsers import PARSERS
 from opesvault.importing.pipeline import ImportRequest
 from opesvault.importing.source import PROBLEM_MESSAGES, SourceError, SourceProblem
+from opesvault.ui.background import BackgroundJob
 from opesvault.ui.common import fill_combo, fmt, fmt_date, make_table, read_money, run_guarded, selected_id, set_rows
 from opesvault.ui.components import EmptyState, button, flow_row, hbox, hbox_widget, menu_button, text
 from opesvault.ui.dialogs import FormDialog, ask_reason
 from opesvault.ui.pages.base import Page
 from opesvault.ui.pages.documents_page import PdfView
 from opesvault.ui.theme import SPACE_L, SPACE_S, SPACE_XS, restyle, tokens
+
+if TYPE_CHECKING:
+    from opesvault.ai.ollama import OllamaClient
 
 STATUS_LABELS = {
     BatchStatus.UNSUPPORTED: "Não suportado",
@@ -65,6 +71,10 @@ SOURCE_LABELS = {"history": "sugestão (histórico)", "rule": "sugestão (regra 
 def source_label(source: str) -> str:
     if source.startswith("user_rule:"):
         return "sugestão (sua regra)"
+    if source.startswith("ollama:"):
+        # "ollama:<model>:<prompt>[@digest]": the model name is what a person recognizes.
+        model = source.removeprefix("ollama:").split("@")[0].rsplit(":", 1)[0]
+        return f"sugestão (IA local, {model})"
     return SOURCE_LABELS.get(source, f"sugestão ({source})")
 
 
@@ -123,6 +133,9 @@ class ImportPage(Page):
         self._jobs: set[_ImportJob] = set()
         self._queue: list[Path] = []
         self._viewer_document: UUID | None = None
+        self._ai_job: BackgroundJob | None = None
+        self._ai_cancel = threading.Event()
+        self._ai_waiting: list[UUID] = []  # imported batches the local AI looks at once the queue is done
 
         # ── documents (left)
         self.batches = make_table(["Documento", "Situação", "Itens"])
@@ -168,7 +181,6 @@ class ImportPage(Page):
             [
                 ("Manter separado…", self.keep_separate, "Ctrl+M"),
                 ("Criar regra a partir do item…", self.create_rule, "Ctrl+R"),
-                ("Sugerir categorias com IA local", self.suggest_ai),
                 None,
                 ("Rejeitar item…", self.reject, "Del"),
             ],
@@ -184,9 +196,31 @@ class ImportPage(Page):
             (("Ctrl+R",), self.create_rule),
         ):
             self._shortcut(keys, slot)
+        # Shown only when the local AI is turned on (Configurações › IA local).
+        self.ai_button = button(
+            "Sugerir com IA",
+            self.suggest_ai,
+            tip="Ollama local: sugere categorias para os itens sem categoria; nada é aprovado sozinho",
+        )
+        self.ai_button.hide()
         self.review_actions = (approve_all, approve_one, correct, more)
         self.approve_all_button = approve_all
-        actions = flow_row(approve_all, approve_one, correct, more)
+        actions = flow_row(approve_all, approve_one, correct, self.ai_button, more)
+
+        # While the model answers, the review stays usable; this row says how far it got.
+        self.ai_label = text("", "caption")
+        self.ai_progress = QProgressBar()
+        self.ai_progress.setTextVisible(False)
+        self.ai_progress.setAccessibleName("Progresso da IA local")
+        self.ai_row = QWidget()
+        self.ai_row.setLayout(
+            hbox(
+                self.ai_label,
+                self.ai_progress,
+                button("Cancelar", self.cancel_ai, role="plain", tip="Para ao fim do lote atual"),
+            )
+        )
+        self.ai_row.hide()
 
         review = QWidget()
         review_layout = QVBoxLayout(review)
@@ -197,6 +231,7 @@ class ImportPage(Page):
         review_layout.addSpacing(SPACE_S)
         review_layout.addWidget(target_row)
         review_layout.addWidget(actions)
+        review_layout.addWidget(self.ai_row)
         review_layout.addSpacing(SPACE_XS)
         # Offered right after a category is picked by hand: the moment a rule saves time.
         self.rule_offer_text = text("", wrap=True)
@@ -250,6 +285,8 @@ class ImportPage(Page):
 
     def refresh(self) -> None:
         if self.session is None:
+            self._ai_cancel.set()  # the vault closed: what is still being asked is no longer wanted
+            self._ai_waiting.clear()
             self.batches.setRowCount(0)
             self.items.setRowCount(0)
             self.viewer.show_pdf(None)
@@ -409,6 +446,7 @@ class ImportPage(Page):
             lines.append(f"{batch.unmapped_lines} linha(s) não mapeada(s) preservadas no original.")
         lines.extend(f'<span style="color:{t.warning}">Atenção: {escape(w)}</span>' for w in batch.warnings)
         self.batch_info.setText("<br>".join(lines))
+        self._update_ai_button(batch)
 
         self.target.blockSignals(True)
         if batch.doc_type is not None and batch.doc_type.value == "card_statement":
@@ -496,6 +534,8 @@ class ImportPage(Page):
             combo.setCurrentIndex(max(index, 0))
             combo.currentIndexChanged.connect(lambda _=0, c=combo, i=item.id: self._set_target(i, c.currentData()))
             self.items.setCellWidget(row, 5, combo)
+        # Cell widgets set after the columns were sized sit at the corner until the view lays them out.
+        self.items.updateGeometries()
 
     def _set_target(self, item_id: UUID, target: UUID | None) -> None:
         if self.session is None:
@@ -610,9 +650,13 @@ class ImportPage(Page):
         self._next_import()
 
     def _next_import(self) -> None:
-        if self._jobs or not self._queue or self.session is None:
+        if self._jobs or self._ai_job is not None or self.session is None:
             return
-        self._import_one(self._queue.pop(0), None)
+        if self._queue:
+            self._import_one(self._queue.pop(0), None)
+        elif self._ai_waiting:
+            waiting, self._ai_waiting = self._ai_waiting, []
+            self._start_ai(waiting, quiet=True)
 
     def _import_one(self, path: Path, password: str | None) -> None:
         assert self.session is not None
@@ -623,6 +667,7 @@ class ImportPage(Page):
         self._jobs.add(job)
         self.setEnabled(False)
         self.set_busy(True)
+        self._warm_up_ai()  # the model loads while the document is read
 
         def done(result: object) -> None:
             self._jobs.discard(job)
@@ -645,6 +690,7 @@ class ImportPage(Page):
                 QMessageBox.warning(self, "Importação", f"{path.name}: falha ao processar o arquivo.")
             elif isinstance(result, ImportBatch):
                 self.batch_id = result.id
+                self._ai_waiting.append(result.id)
             self.changed()
             self._next_import()
 
@@ -779,51 +825,129 @@ class ImportPage(Page):
         if reason and run_guarded(self, lambda: pipeline.reject_items(ledger, [item_id], reason) or True):
             self._after_item_action(row)
 
-    def suggest_ai(self) -> None:
-        """Asks the local model in the background; the page stays busy and the window responsive."""
-        batch = self._batch()
-        if batch is None or self.session is None or self._jobs:
-            return
-        from opesvault.ai.ollama import AiUnavailable
-        from opesvault.importing.ai_suggestions import apply_suggestions, ask_ai, client_from_settings
+    # ── local AI ────────────────────────────────────
 
-        ledger = self.session.ledger
+    def _ai_client(self) -> "OllamaClient | None":
+        from opesvault.ai.ollama import AiUnavailable
+        from opesvault.importing.ai_suggestions import client_from_settings
+
+        if self.session is None:
+            return None
         try:
-            client = client_from_settings(ledger)
-        except AiUnavailable as exc:
-            QMessageBox.information(self, "IA local", str(exc))
+            return client_from_settings(self.session.ledger)
+        except AiUnavailable:
+            return None
+
+    def _update_ai_button(self, batch: ImportBatch | None) -> None:
+        from opesvault.importing.ai_suggestions import pending_count
+
+        client = self._ai_client()
+        self.ai_button.setVisible(client is not None)
+        if client is None or batch is None or self.session is None:
             return
-        if client is None:
+        count = pending_count(self.session.ledger, batch.id)
+        running = self._ai_job is not None
+        self.ai_button.setEnabled(bool(count) and not running and not self._jobs)
+        self.ai_button.setText(f"Sugerir com IA ({count})" if count else "Sugerir com IA")
+        self.ai_button.setToolTip(
+            f"{client.model} no Ollama local: sugere categorias para os itens sem categoria; nada é aprovado sozinho"
+            if count
+            else "Todos os itens deste documento já têm categoria"
+        )
+
+    def _warm_up_ai(self) -> None:
+        client = self._ai_client()
+        if client is not None:
+            threading.Thread(target=client.warm_up, name="ollama-warm-up", daemon=True).start()
+
+    def suggest_ai(self) -> None:
+        """The button: asks about the open document and says plainly when the AI cannot help."""
+        batch = self._batch()
+        if batch is None or self.session is None or self._jobs or self._ai_job is not None:
+            return
+        if self._ai_client() is None:
             QMessageBox.information(
                 self, "IA local", "A assistência por IA está desligada ou sem modelo escolhido (Configurações)."
             )
             return
+        self._start_ai([batch.id], quiet=False)
 
-        def work() -> object:
+    def cancel_ai(self) -> None:
+        if self._ai_job is not None:
+            self._ai_cancel.set()
+            self.ai_label.setText("Cancelando ao fim do lote atual…")
+
+    def _start_ai(self, batch_ids: list[UUID], *, quiet: bool) -> None:
+        """Asks the model in the background. The page stays usable: only items still without a
+        category when the answer arrives are filled, so a choice made meanwhile always wins.
+
+        `quiet` (after an import): problems go to the status bar instead of a dialog.
+        """
+        from opesvault.ai.ollama import AiUnavailable
+        from opesvault.importing.ai_suggestions import AiOutcome, apply_suggestions, ask, plan_requests, remember_used
+
+        client = self._ai_client()
+        session = self.session
+        if client is None or session is None:
+            return
+        ledger = session.ledger
+        known = pipeline.batches(ledger)
+        requests = [r for b in batch_ids if b in known for r in plan_requests(ledger, b)]
+        if not requests:
+            if not quiet:
+                self.notify("IA local: nenhum item sem categoria neste documento.")
+            return
+        cancel = self._ai_cancel = threading.Event()
+        remember_used(client)
+
+        def work(report: Callable[[int, int], None]) -> object:
             try:
-                return ask_ai(ledger, batch.id, client)
-            except AiUnavailable as exc:  # expected: Ollama off, model missing, odd answer
+                client.check_model()  # fails fast, saying what to install, before any batch
+                return ask(client, requests, on_progress=report, cancel=cancel)
+            except AiUnavailable as exc:  # expected: Ollama off, model missing, odd answers
                 return exc
 
-        job = _ImportJob(work)
-        self._jobs.add(job)
-        self.set_busy(True)
-        self.notify(f"Consultando {client.model} no Ollama local…")
+        total = sum(len(r.descriptions) for r in requests)
+        job = BackgroundJob(work)
+        self._ai_job = job
+        self.ai_progress.setRange(0, total)
+        self.ai_progress.setValue(0)
+        self.ai_label.setText(f"IA local ({client.model}): 0 de {total} descrição(ões)")
+        self.ai_row.show()
+        self._update_ai_button(self._batch())
+
+        def progress(done: int, of: int) -> None:
+            self.ai_progress.setValue(done)
+            if not cancel.is_set():
+                self.ai_label.setText(f"IA local ({client.model}): {done} de {of} descrição(ões)")
 
         def done(result: object) -> None:
-            self._jobs.discard(job)
-            self.set_busy(False)
-            if isinstance(result, AiUnavailable):
-                QMessageBox.information(self, "IA local", f"{result} A revisão manual continua disponível.")
+            self._ai_job = None
+            self.ai_row.hide()
+            if self.session is not session:  # the vault was closed meanwhile
                 return
-            if not isinstance(result, list):
-                QMessageBox.information(self, "IA local", "A consulta falhou. A revisão manual continua disponível.")
-                return
-            count = apply_suggestions(ledger, result)
-            self.notify(f"IA local: {count} sugestão(ões) preenchida(s). Revise antes de aprovar.")
-            if count:
-                self.changed()
-            self.refresh()
+            if isinstance(result, AiOutcome):
+                count = apply_suggestions(ledger, result.planned)
+                message = f"IA local: {count} categoria(s) sugerida(s)"
+                if result.cancelled:
+                    message += ", consulta cancelada"
+                elif result.failed:
+                    message += f"; {result.failed} item(ns) sem resposta válida"
+                self.notify(message + (". Revise antes de aprovar." if count else "."))
+                if count:
+                    self.changed()  # one undo step for the whole answer
+                else:
+                    self.refresh()
+            else:
+                reason = str(result) if isinstance(result, AiUnavailable) else "A consulta falhou."
+                if quiet:
+                    self.notify(f"IA local: {reason}")
+                else:
+                    QMessageBox.information(self, "IA local", f"{reason} A revisão manual continua disponível.")
+                self.refresh()
+            self._update_ai_button(self._batch())
+            self._next_import()
 
+        job.signals.progress.connect(progress)
         job.signals.done.connect(done)
-        QThreadPool.globalInstance().start(job)
+        job.start()

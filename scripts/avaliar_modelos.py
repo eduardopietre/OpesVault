@@ -1,6 +1,6 @@
 """Compares local Ollama models on the app's real task: categorizing statement descriptions.
 
-    uv run python scripts/avaliar_modelos.py [MODELO ...] [--repeticoes 2] [--out build/ia/avaliacao.json]
+    uv run python scripts/avaliar_modelos.py [MODELO ...] [--repeticoes 2] [--exemplos] [--out build/ia/avaliacao.json]
 
 Uses the same client, prompt and batches as the app (opesvault.ai.ollama), against the
 local Ollama only. The descriptions below are synthetic, written in the style of Brazilian
@@ -110,18 +110,47 @@ EARNINGS: list[tuple[str, str]] = [
 ]
 
 
-def evaluate(model: str, repeats: int) -> dict[str, Any]:
+# What a family's history would add (--exemplos): approved items alike to, but never the same as,
+# the ones evaluated, as the app sends them (importing/ai_suggestions.py).
+HISTORY_SPENDING: list[tuple[str, str]] = [
+    ("PETZ COMERCIO DE PRODUTOS", "Outras despesas"),
+    ("C&A MODAS LOJA 210", "Outras despesas"),
+    ("RIACHUELO SHOPPING", "Outras despesas"),
+    ("ACADEMIA BLUEFIT", "Lazer"),
+    ("CINEMA PLAYARTE", "Lazer"),
+    ("FARMACIA PAGUE MENOS", "Saúde"),
+    ("ESTACIONAMENTO SHOPPING CENTER", "Transporte"),
+    ("TARIFA MANUTENCAO DE CONTA", "Impostos e taxas"),
+    ("PAG*PIZZARIA BELLA", "Alimentação"),
+    ("DISNEY PLUS", "Serviços e assinaturas"),
+    ("PIX ENVIADO - CONDOMINIO RESIDENCIAL", "Moradia"),
+    ("CURSO DE INGLES WIZARD", "Educação"),
+]
+HISTORY_EARNINGS: list[tuple[str, str]] = [
+    ("PIX RECEBIDO - JOAO REEMBOLSO", "Outras receitas"),
+    ("RENDIMENTO TESOURO SELIC", "Rendimentos de investimentos"),
+    ("SALARIO MENSAL EMPRESA ABC", "Salário"),
+]
+
+
+def evaluate(model: str, repeats: int, with_examples: bool = False) -> dict[str, Any]:
     client = OllamaClient(model)
-    report: dict[str, Any] = {"model": model}
+    report: dict[str, Any] = {"model": model, "examples": with_examples}
     runs: list[dict[int, str]] = []
     timings: list[float] = []
     invalid = 0
+    groups = (
+        (0, SPENDING, EXPENSE, HISTORY_SPENDING if with_examples else []),
+        (len(SPENDING), EARNINGS, INCOME, HISTORY_EARNINGS if with_examples else []),
+    )
     for attempt in range(repeats + 1):  # the first call also loads the model: timed apart
         answers: dict[int, str] = {}
         started = time.perf_counter()
         try:
-            for offset, (rows, categories) in ((0, (SPENDING, EXPENSE)), (len(SPENDING), (EARNINGS, INCOME))):
-                for s in client.suggest_categories([d for d, _ in rows], categories):
+            for offset, rows, categories, examples in groups:
+                run = client.suggest_categories([d for d, _ in rows], categories, examples)
+                invalid += 1 if run.failed else 0
+                for s in run.suggestions:
                     answers[offset + s.index] = s.category
         except AiUnavailable as exc:
             invalid += 1
@@ -179,14 +208,17 @@ def main() -> None:
         "models", nargs="*", help="modelos a comparar (padrão: os recomendados que estiverem instalados)"
     )
     parser.add_argument("--repeticoes", type=int, default=2)
+    parser.add_argument(
+        "--exemplos", action="store_true", help="também avalia com exemplos de histórico, como o app envia"
+    )
     parser.add_argument("--out", type=Path, default=ROOT / "build" / "ia" / "avaliacao.json")
     args = parser.parse_args()
     try:
         info = OllamaClient(RECOMMENDED_MODELS[0]).server_info()
     except AiUnavailable as exc:
         sys.exit(f"{exc} Abra o Ollama (ollama serve) e tente de novo.")
-    models = args.models or [m for m in RECOMMENDED_MODELS if m in info.models]
-    missing = [m for m in models if m not in info.models]
+    models = args.models or [m for m in RECOMMENDED_MODELS if info.installed(m)]
+    missing = [m for m in models if not info.installed(m)]
     if missing:
         sys.exit(f"Não instalados: {', '.join(missing)}. Instale com: ollama pull <modelo>")
     if not models:
@@ -195,6 +227,9 @@ def main() -> None:
     for model in models:
         print(f"avaliando {model}…", flush=True)
         results["models"].append(evaluate(model, args.repeticoes))
+        if args.exemplos:
+            print(f"avaliando {model} com exemplos…", flush=True)
+            results["models"].append(evaluate(model, args.repeticoes, with_examples=True))
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(results, indent=2, ensure_ascii=False), encoding="utf-8")
     print(f"\nOllama {info.version} · {results['items']} lançamentos sintéticos\n")
@@ -204,8 +239,9 @@ def main() -> None:
     )
     for r in results["models"]:
         gpu = r.get("memory", {}).get("gpu_share")
+        name = r["model"] + (" +ex" if r.get("examples") else "")
         print(
-            f"{r['model']:<20} {r.get('accuracy', 0):>7.0%} {r.get('wrong', '-'):>8} {r.get('abstained', '-'):>7} "
+            f"{name:<20} {r.get('accuracy', 0):>7.0%} {r.get('wrong', '-'):>8} {r.get('abstained', '-'):>7} "
             f"{len(r.get('answered_injection_lines', [])):>8} {('sim' if r.get('stable_between_runs') else 'não'):>8} "
             f"{r.get('seconds_per_run', '-'):>9} {(f'{gpu:.0%}' if gpu is not None else '-'):>5}"
         )

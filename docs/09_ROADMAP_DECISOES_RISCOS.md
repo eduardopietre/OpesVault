@@ -72,6 +72,20 @@ Critério de escolha: o que uma família precisa todo mês e hoje exige trabalho
 | **Tabelas fiscais por classe**, parametrizadas e versionadas por data, usadas pelo simulador | Hoje as regras são informadas manualmente | Sim |
 | **Metas de patrimônio ou reserva** (valor-alvo e data, com progresso) | Pedido comum de família; usa o patrimônio já calculado | Sim: entra no escopo |
 
+**D. IA local (próximos passos)**
+
+Feito em 03/10/2026 (`05` §5): exemplos da família no prompt, perguntas sem repetição, nova tentativa por lote sem perder os demais, consulta sem bloquear a revisão e automática depois de importar, progresso e cancelamento, verificação em Configurações fora da thread visual, digest do modelo em cada sugestão, carga antecipada e descarga ao fechar o cofre.
+
+| Item | Por quê | Decisão? |
+|---|---|---|
+| **Avaliar com descrições reais**: `avaliar_modelos.py --arquivo` lendo uma lista rotulada fora do repositório (exportada dos itens aprovados) | O benchmark atual é sintético; a escolha do modelo precisa ser confirmada na fase 7 | Não |
+| **Estabelecimento normalizado**: "IFD*IFOOD.COM AGENCIA" → "iFood", sugerido pela IA e aprovado na revisão | Busca, relatórios e regras por estabelecimento ficam legíveis | Sim: campo novo (esquema do domínio 3) |
+| **Regra a partir de sugestões aceitas**: ao aprovar a mesma categoria da IA para um estabelecimento algumas vezes, oferecer criar a regra | Tira o modelo do caminho para o que já é certo | Não |
+| **Sugestão só com concordância**: perguntar duas vezes (ou a dois modelos) e sugerir só quando concordam | Sugestão errada é pior que abstenção; custa o dobro do tempo | Sim: tempo × acerto |
+| **Aviso de modelo na CPU**: em Configurações, dizer quando o modelo não coube na GPU (`/api/ps`) | Na CPU cada lote leva muitas vezes mais | Não |
+| **Porta do Ollama configurável**, sempre em loopback | Quem muda `OLLAMA_HOST` para outra porta hoje não consegue usar | Não |
+| **Extração alternativa** para PDF sem layout conhecido: a IA propõe itens a partir do texto, todos marcados para revisão e conciliados com o total | Cobre bancos sem parser, com o risco de valores inventados | Sim: o `05` §5 permite, mas exige conferência rigorosa |
+
 ### 1.4 Andamento e números
 
 | Fase | Feito | Falta |
@@ -175,6 +189,7 @@ Cada alteração de escopo registra motivo, documentos afetados, migração de d
 | 02/10/2026 | Pagamento atrasado quita a fatura vencida: cada pagamento cobre primeiro as faturas vencidas com saldo, da mais antiga para a mais nova, e só a sobra vai para a fatura do período | Decisão do usuário | 04, 09, 16 | Nenhum tipo persistido novo; saldos de faturas e avisos de cofres existentes passam a refletir a regra ao abrir | Nenhum | `test_finance` (pagamento atrasado, excedente, fatura antiga fora da janela, pagamento em dia) |
 | 02/10/2026 | Pendências de fluxo: assistente com contas em formulário, orçamento do mês em grade, Relatórios com filtro por conta, integrante ou categoria e "Ver lançamentos", papel do integrante | Pedido do usuário | 04, 09, 16 | **Esquema do domínio 2**: integrante ganha `role`; cofres do esquema 1 são migrados ao abrir (cópia do original em `backups-migracao`) e versões anteriores do app recusam o cofre salvo com a mensagem de versão mais nova | Nada novo sai da memória | `test_flows`, `test_member_role` |
 | 02/10/2026 | Fluxos de interface: avisos levam ao objeto e à ação, pagar fatura na aba Faturas, Configurações sem Aplicar, salvar e seguir, mês compartilhado, início com recentes consentidos e Restaurar, correção pelo formulário do dia a dia | Pedido do usuário (revisão de fluxos) | 09, 16 | Nenhum tipo persistido novo; preferências do computador seguem fora do cofre | Recentes só com consentimento; nada novo sai da memória | `test_flows` |
+| 03/10/2026 | IA local revista: exemplos da família no prompt (`p3`), descrições repetidas perguntadas uma vez, nova tentativa por lote, consulta sem bloquear a revisão e automática após importar, progresso e cancelamento, digest do modelo na origem da sugestão, descarga do modelo ao fechar o cofre | Pedido do usuário | 05, 09, 16, CLAUDE.md | Nenhum tipo persistido novo; `suggestion_source` ganha `@<digest>` | Descrições de itens já aprovados também vão ao Ollama local, como exemplo; o prompt em cache no Ollama é descartado ao fechar o cofre | `test_ai`, `test_flows` |
 | 02/10/2026 | Roadmap 1.3: fases 11 a 14 com funcionalidades propostas (orçamento, regras editáveis, alertas, comprovantes, desfazer, verificação de backup, fechamento do ano) | Pedido do usuário | 09, CLAUDE.md | A definir por item | A definir por item | Critérios de saída por fase |
 
 ## 6. Definição de pronto documental (versão 1.0, mantida como histórico)

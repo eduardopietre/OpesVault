@@ -106,12 +106,15 @@ class SettingsPage(Page):
         if model_edit is not None:
             model_edit.setPlaceholderText(f"ex.: {RECOMMENDED_MODELS[0]}")
         self.ai_status = text("", "caption", wrap=True)
-        self.ai_model_row = hbox_widget(self.ai_model, button("Verificar Ollama", self.test_ai), None)
+        self.ai_check = button("Verificar Ollama", self.test_ai)
+        self._ai_job: object = None  # the check in progress (kept alive until it answers)
+        self.ai_model_row = hbox_widget(self.ai_model, self.ai_check, None)
         ai, ai_form, _ = _tab(
             VAULT_NOTE,
             "Sem IA, o aplicativo já sugere categorias pelas suas regras e pelo histórico. A IA local é opcional: "
-            "só o Ollama em 127.0.0.1 é usado, apenas descrições e nomes de categorias são enviados, e "
-            "sugestões nunca aprovam lançamentos.",
+            "só o Ollama em 127.0.0.1 é usado; são enviados apenas descrições (as novas e, como exemplo, algumas que "
+            "você já classificou) e nomes de categorias; sugestões nunca aprovam lançamentos. Ao importar, a IA "
+            "sugere sozinha as categorias que faltarem, sem impedir a revisão.",
         )
         ai_form.addRow("", self.ai_enabled)
         self.ai_model_label = QLabel("Modelo instalado:")
@@ -246,24 +249,54 @@ class SettingsPage(Page):
             command()
 
     def test_ai(self) -> None:
-        """Lists the installed models and says whether the chosen one is among them."""
+        """Lists the installed models (off the UI thread) and says whether the chosen one is among them."""
         from opesvault.ai.ollama import AiUnavailable, OllamaClient
+        from opesvault.ui.background import BackgroundJob
 
+        if self._ai_job is not None:
+            return
         chosen = self.ai_model.currentText().strip()
         try:
-            info = OllamaClient(chosen or "verificacao").server_info()
+            client = OllamaClient(chosen or RECOMMENDED_MODELS[0])
         except AiUnavailable as exc:
-            self.ai_status.setText(f"{exc} Abra o Ollama e tente de novo.")
+            self.ai_status.setText(str(exc))
+            return
+
+        def work(_report: object) -> object:
+            try:
+                return client.server_info()
+            except AiUnavailable as exc:
+                return exc
+
+        job = BackgroundJob(work)
+        self._ai_job = job
+        self.ai_check.setEnabled(False)
+        self.ai_status.setText("Verificando o Ollama local…")
+        job.signals.done.connect(lambda result: self._ai_checked(chosen, result))
+        job.start()
+
+    def _ai_checked(self, chosen: str, info: object) -> None:
+        from opesvault.ai.ollama import ServerInfo
+
+        self._ai_job = None
+        self.ai_check.setEnabled(True)
+        if not isinstance(info, ServerInfo):
+            self.ai_status.setText(f"{info} Abra o Ollama e tente de novo.")
             return
         self.ai_model.blockSignals(True)
         self.ai_model.clear()
         self.ai_model.addItems(list(info.models))
         self.ai_model.setCurrentText(chosen or (info.models[0] if info.models else ""))
         self.ai_model.blockSignals(False)
+        recommended = [m for m in RECOMMENDED_MODELS if info.installed(m)]
         if not info.models:
-            state = "nenhum modelo instalado ainda."
-        elif chosen and chosen not in info.models:
-            state = f"o modelo {chosen} não está instalado."
+            state = f"nenhum modelo instalado ainda. Instale o indicado com “ollama pull {RECOMMENDED_MODELS[0]}”."
+        elif chosen and not info.installed(chosen):
+            state = f"o modelo {chosen} não está instalado. Instale com “ollama pull {chosen}”."
+        elif not recommended:
+            state = (
+                f"{len(info.models)} modelo(s) instalado(s); o indicado ({RECOMMENDED_MODELS[0]}) não está entre eles."
+            )
         else:
             state = f"{len(info.models)} modelo(s) instalado(s)."
         self.ai_status.setText(f"Ollama {info.version} respondeu: {state}")

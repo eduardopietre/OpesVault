@@ -22,6 +22,8 @@ from opesvault.ui.pages.overview_page import OverviewPage
 from opesvault.ui.pages.settings_page import SettingsPage
 
 from .domain_fixtures import Family, family
+from .fake_ollama import FakeOllama
+from .test_ai import _statement
 
 
 @pytest.fixture(scope="module")
@@ -263,3 +265,84 @@ def test_member_role_in_the_dialog(setup: tuple[MainWindow, Family]) -> None:
     assert edit.apply().role is MemberRole.HOLDER
     for widget in (dialog, edit):
         widget.deleteLater()
+
+
+def _local_ai(window: MainWindow, f: Family, url: str, monkeypatch: pytest.MonkeyPatch):  # type: ignore[no-untyped-def]
+    import json
+
+    from opesvault.ai.ollama import OllamaClient
+    from opesvault.domain.settings import update_settings
+    from opesvault.ui.pages.import_page import ImportPage
+
+    update_settings(f.ledger, ai_enabled=True, ai_model="gemma4:12b")
+    monkeypatch.setattr(
+        "opesvault.importing.ai_suggestions.client_from_settings", lambda _ledger: OllamaClient("gemma4:12b", url)
+    )
+    FakeOllama.answer = json.dumps({"suggestions": [{"index": 0, "category": "Lazer"}]})
+    return page_of(window, ImportPage)
+
+
+def _wait(window: MainWindow) -> None:
+    from PySide6.QtCore import QThreadPool
+
+    for _ in range(3):  # an import, then the AI it starts
+        QThreadPool.globalInstance().waitForDone(5000)
+        for _ in range(20):
+            QApplication.processEvents()
+
+
+def test_local_ai_suggests_while_the_review_stays_open(
+    setup: tuple[MainWindow, Family], ollama: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from opesvault.importing import pipeline
+    from opesvault.importing.pipeline import ImportRequest, import_document
+    from opesvault.ui.pages.import_page import source_label
+
+    window, f = setup
+    page = _local_ai(window, f, ollama, monkeypatch)
+    assert window.session is not None
+    batch = import_document(window.session, ImportRequest("x.csv", _statement("XPTO 1", "XPTO 2"), account_id=f.bank))
+    page.batch_id = batch.id
+    page.refresh()
+    assert not page.ai_button.isHidden() and page.ai_button.text() == "Sugerir com IA (2)"
+    page.suggest_ai()
+    assert not page.ai_row.isHidden() and page.isEnabled()  # the review is not blocked meanwhile
+    _wait(window)
+    assert page.ai_row.isHidden()
+    sources = {i.suggestion_source for i in pipeline.items_of(f.ledger, batch.id)}
+    assert len(sources) == 1 and source_label(sources.pop() or "") == "sugestão (IA local, gemma4:12b)"
+    assert page.ai_button.text() == "Sugerir com IA" and not page.ai_button.isEnabled()
+
+
+def test_local_ai_runs_by_itself_after_an_import(
+    setup: tuple[MainWindow, Family], ollama: str, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    from opesvault.importing import pipeline
+
+    window, f = setup
+    page = _local_ai(window, f, ollama, monkeypatch)
+    path = tmp_path / "extrato.csv"
+    path.write_bytes(_statement("QWERTY LOJA"))
+    monkeypatch.setattr("opesvault.ui.pages.import_page.QMessageBox.information", lambda *a, **k: None)
+    page._queue.append(path)
+    page._next_import()
+    _wait(window)
+    assert page.batch_id is not None
+    (item,) = pipeline.items_of(f.ledger, page.batch_id)
+    assert (item.suggestion_source or "").startswith("ollama:gemma4:12b")
+
+
+def test_settings_check_runs_off_the_ui_thread(
+    setup: tuple[MainWindow, Family], ollama: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from opesvault.ai import ollama as module
+
+    window, _ = setup
+    monkeypatch.setattr(module, "DEFAULT_URL", ollama)
+    monkeypatch.setattr(module.OllamaClient.__init__, "__defaults__", (ollama,))
+    page = page_of(window, SettingsPage)
+    page.ai_model.setCurrentText("llama9")
+    page.test_ai()
+    assert page.ai_status.text() == "Verificando o Ollama local…" and not page.ai_check.isEnabled()
+    _wait(window)
+    assert "llama9 não está instalado" in page.ai_status.text() and page.ai_check.isEnabled()

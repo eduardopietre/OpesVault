@@ -147,6 +147,9 @@ QStatusBar {{ background: {t.window}; border-top: 1px solid {t.separator}; color
 QSplitter::handle {{ background: {t.separator}; }}
 QSplitter::handle:horizontal {{ width: 1px; }}
 QSplitter::handle:vertical {{ height: 1px; }}
+/* A thin track: background work that does not block the page (local AI). */
+QProgressBar {{ background: {t.separator}; border: none; border-radius: 3px; max-height: 6px; min-width: 120px; }}
+QProgressBar::chunk {{ background: {t.accent}; border-radius: 3px; }}
 
 QListWidget#Sidebar {{ padding: {SPACE_S}px {SPACE_S}px 0 {SPACE_S}px; outline: 0; border-radius: 0; }}
 QListWidget#SidebarFooter {{

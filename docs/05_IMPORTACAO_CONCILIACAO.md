@@ -60,13 +60,19 @@ Ollama pode propor categoria, estabelecimento normalizado e extração alternati
 
 Resposta estruturada é validada em tipos e significado. JSON válido não prova exatidão. Registrar modelo, identificação da versão quando disponível, configuração e versão do prompt, além do resultado aprovado. Não exigir regeneração do resultado para abrir o cofre.
 
-Implementação (`ai/ollama.py`, `importing/ai_suggestions.py`, 02/10/2026):
+Implementação (`ai/ollama.py`, `importing/ai_suggestions.py`; revista em 03/10/2026, prompt `p3`):
 
 - só `127.0.0.1`, sem proxy, sem modelos de nuvem; a lista de modelos em Configurações vem do Ollama local e omite os de nuvem;
-- envia apenas descrições e nomes de categorias, em lotes de 40, com temperatura 0, saída por esquema JSON e raciocínio ("think") desligado; servidores ou modelos que não aceitam a opção seguem sem ela;
+- envia apenas descrições e nomes de categorias, em lotes de 40, com temperatura 0, saída por esquema JSON e raciocínio ("think") desligado; servidores ou modelos que não aceitam a opção seguem sem ela; cada descrição vai numa linha só, para que o texto de um documento não forje outra linha da lista;
+- **exemplos da família:** até 24 itens já aprovados (descrição → categoria), os mais parecidos com os que estão sendo perguntados, vão junto como referência. Repetições exatas não são perguntadas nem viram exemplo: a sugestão pelo histórico já as cobre;
+- **descrições repetidas** (assinatura, parcelas, mesma loja com outro número) são perguntadas uma vez e a resposta vale para todos os itens;
 - despesas e receitas são perguntadas separadamente, cada uma só com as suas categorias; categorias fora da lista e índices inválidos são descartados;
-- a consulta roda fora da thread visual e só preenche itens ainda sem categoria; cada sugestão guarda `ollama:<modelo>:<versão do prompt>`;
-- `scripts/avaliar_modelos.py` compara modelos instalados na tarefa real (acerto, erros, abstenções, linhas com instrução embutida, estabilidade, tempo e parte do modelo na GPU).
+- **três passos:** `plan_requests` copia o que será enviado (thread visual), `ask` consulta o modelo sem acesso ao livro (segundo plano) e `apply_suggestions` preenche só itens ainda pendentes e sem categoria (thread visual). Por isso a revisão continua liberada durante a consulta, e a escolha feita à mão nesse meio-tempo prevalece;
+- uma resposta malformada é pedida de novo uma vez; se falhar outra vez, só aquele lote fica sem sugestão e os demais são mantidos. Ollama desligado ou modelo ausente encerram a consulta na hora, com a instrução de instalação (`ollama pull <modelo>`);
+- cada sugestão guarda `ollama:<modelo>:<versão do prompt>@<digest>`, o digest do modelo instalado (sua versão exata); a revisão mostra "sugestão (IA local, <modelo>)";
+- com a IA ligada, o modelo é carregado enquanto o arquivo é lido, e depois de importar a consulta começa sozinha para os itens sem categoria; falhas vão para a barra de status, sem diálogo. O botão **Sugerir com IA (N)** repete a consulta para o documento aberto, com progresso e **Cancelar** (ao fim do lote atual);
+- o Ollama mantém em memória o último prompt enquanto o modelo está carregado; ao fechar o cofre ou o app, os modelos usados na sessão são descarregados (`keep_alive: 0`);
+- `scripts/avaliar_modelos.py` compara modelos instalados na tarefa real (acerto, erros, abstenções, linhas com instrução embutida, estabilidade, tempo e parte do modelo na GPU); `--exemplos` mede também com exemplos de histórico.
 
 Campos sem evidência precisam de revisão; não inventar CPF, conta, taxa, data ou valor. Classificações não autorizam lançamento de dinheiro. A interface distingue sugestão automática de informação documental.
 

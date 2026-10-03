@@ -1030,8 +1030,11 @@ class MainWindow(QMainWindow):
         self.lock = lock
         return True
 
-    def _drop_session(self) -> None:
+    def _drop_session(self, *, exiting: bool = False) -> None:
+        from opesvault.importing.ai_suggestions import release_models
+
         self.session = None
+        release_models(wait=exiting)  # Ollama also drops the descriptions it still caches
         if self.lock is not None:
             self.lock.release()
             self.lock = None
@@ -1166,5 +1169,5 @@ class MainWindow(QMainWindow):
             event.ignore()
             return
         self._save_geometry()
-        self._drop_session()
+        self._drop_session(exiting=True)
         event.accept()

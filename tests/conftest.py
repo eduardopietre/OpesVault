@@ -31,6 +31,15 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
 
 
 @pytest.fixture
+def ollama() -> Iterator[str]:
+    """URL of a fake local Ollama (tests/fake_ollama.py)."""
+    from .fake_ollama import serve
+
+    with serve() as url:
+        yield url
+
+
+@pytest.fixture
 def vault_path(tmp_path: Path) -> Path:
     return tmp_path / "familia.opesvault"
 

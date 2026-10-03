@@ -79,7 +79,9 @@ Divergência de total bloqueia a aprovação, salvo com motivo.</p>
 <p><b>Regras de categoria:</b> ao escolher a categoria de um item, o OpesVault oferece criar uma regra
 (“a descrição contém… → categoria”). Regras ficam em Contas e cartões › Regras e só sugerem; a escolha feita à
 mão sempre prevalece.</p>
-<p>A IA local (Ollama) é opcional e só sugere categorias; nada é gravado sem a sua aprovação.</p>
+<p>A IA local (Ollama) é opcional e só sugere categorias; nada é aprovado sem você. Ligada em Configurações ›
+IA local, ela consulta sozinha os itens sem categoria depois de cada importação, usando como exemplo o que você já
+classificou. Enquanto isso você pode seguir revisando; a sua escolha sempre prevalece.</p>
 """,
     "Contas e cartões": """
 <p>Cadastro de contas, cartões, adicionais e categorias. Faturas são calculadas pelos dias de fechamento e vencimento

@@ -6,7 +6,7 @@ and behave the same everywhere.
 
 from collections.abc import Callable, Iterable, Sequence
 
-from PySide6.QtCore import QPoint, QRect, QSize, Qt, Signal
+from PySide6.QtCore import QEvent, QPoint, QRect, QSize, Qt, Signal
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (
     QDialog,
@@ -430,15 +430,27 @@ class FlowLayout(QLayout):
 
 
 class _FlowHost(QWidget):
-    """Reserves the height its wrapped rows need at the current width."""
+    """Reserves the height its wrapped rows need at the current width.
 
-    def resizeEvent(self, event: object) -> None:  # noqa: N802 - Qt override
+    Recomputed on resize and whenever a child is shown or hidden (a layout request): otherwise
+    a control hidden after the first layout leaves its wrapped line behind as an empty gap.
+    """
+
+    def _fit(self) -> None:
         layout = self.layout()
         if layout is not None:
             needed = layout.heightForWidth(self.width())
             if needed != self.minimumHeight():
                 self.setMinimumHeight(needed)
+
+    def resizeEvent(self, event: object) -> None:  # noqa: N802 - Qt override
+        self._fit()
         super().resizeEvent(event)  # type: ignore[arg-type]
+
+    def event(self, event: QEvent) -> bool:
+        if event.type() == QEvent.Type.LayoutRequest:
+            self._fit()
+        return super().event(event)
 
 
 def flow_row(*widgets: QWidget, spacing: int = SPACE_S, line_spacing: int | None = None) -> QWidget:

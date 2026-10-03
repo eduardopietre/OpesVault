@@ -162,10 +162,10 @@ class PdfView(QWidget):
 
             x0, top, x1, bottom = (v * scale for v in self.highlight)
             painter = QPainter(image)
-            painter.setPen(QPen(QColor(220, 0, 0), 2))
-            painter.fillRect(
-                int(x0) - 2, int(top) - 2, int(x1 - x0) + 4, int(bottom - top) + 4, QColor(255, 230, 0, 70)
-            )
+            # Drawn on the rendered page itself, always white paper: no theme token applies.
+            mark, fill = QColor(220, 0, 0), QColor(255, 230, 0, 70)  # token-ok
+            painter.setPen(QPen(mark, 2))
+            painter.fillRect(int(x0) - 2, int(top) - 2, int(x1 - x0) + 4, int(bottom - top) + 4, fill)
             painter.drawRect(int(x0) - 2, int(top) - 2, int(x1 - x0) + 4, int(bottom - top) + 4)
             painter.end()
         image.setDevicePixelRatio(ratio)

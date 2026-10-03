@@ -711,6 +711,10 @@ class LedgerPage(Page):
             self.count.setText("")
             self.header.set_subtitle("")
             self.inspector.show_operation(None, None, 0)
+            # Account, member and tag names are the vault's data too (TA-31).
+            self._refill(self.filter_account, [], "Todas as contas")
+            self._refill(self.filter_member, [], "Todos os integrantes")
+            self._refill(self.filter_tag, [], "Todos os marcadores")
             return
         ledger = self.session.ledger
         accounts = sorted(ledger.accounts.values(), key=lambda a: (a.type.value, a.name.casefold()))

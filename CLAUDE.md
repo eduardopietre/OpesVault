@@ -12,7 +12,8 @@ As **fases 0 a 6** estão implementadas e testadas (`docs/13`). Das fases 7 a 10
 - **Esquema do domínio 2:** integrantes têm papel. Cofres do esquema 1 são migrados ao abrir (`domain/migrations.py`).
 - **Faturas:** pagamento atrasado quita primeiro a fatura vencida (`docs/04` §5).
 - **Revisão de 03/10/2026** (`docs/09` §1.3 E, `docs/13` §2.3): gráfico e tabela de valores juntos e recolhíveis (sem abas para o mesmo dado), saldo projetado, comparações, financiamentos, marcadores, reembolsos e acertos, assinaturas, calendário, indicadores, conferência de saldo e despesas dedutíveis; e as pendências do §1.3 A–D sem decisão: comprovantes, visão por integrante, filtros salvos, relatórios em PDF, verificação de backup, suspeitos, estabelecimentos, metas e fechamento do ano (apoio). Falta a compactação do histórico (aguarda decisão).
-- **Ainda sintético:** os layouts de faturas e extratos, até haver documentos reais.
+- **Imposto de renda** (`docs/09` §1.3 F, `docs/13` §2.4): página, pacote `opesvault/tax/` e apoio às fichas, informes, pendências, renda variável e simulação. Nenhuma tabela, alíquota ou limite fiscal embutido: tudo é informado pelo usuário (`docs/00` §5).
+- **Ainda sintético:** os layouts de faturas, extratos e informes de rendimentos, até haver documentos reais.
 - **Fase 7 em andamento** (`docs/17`): G4 e G5 aprovados em modo Python, escalas 150/200% verificadas, todos os controles com nome acessível. Faltam o build (G1), G3, G6, G7, o teste com leitor de tela, as notas de terceiros e o corpus de documentos reais. As funcionalidades das fases 11 a 14 estão em `docs/09` §1.3 e dependem das decisões do §4. A dívida técnica está no §1.5.
 
 ## Comandos
@@ -102,6 +103,7 @@ Se dois documentos entrarem em conflito, vale o `docs/00` §2. Conflitos de segu
 - **Gráfico e tabela:** valores ao longo do tempo aparecem com `ChartPanel` (gráfico e tabela do mesmo `Chart`, em `Collapsible`), nunca em abas separadas; abas só separam objetos diferentes. Toda tabela ou gráfico novo precisa ser limpo no ramo sem sessão do `refresh` (`clear()`/`setRowCount(0)`), ou o TA-31 falha.
 - **Cache por estado do livro:** consultas pesadas (índice, histórico de faturas, suspeitas) guardam o resultado com `ledger.change_count`; toda alteração passa por `Ledger.put`/coleções rastreadas e invalida. Não guarde resultados de outra forma.
 - **Classificação não é fato financeiro:** marcadores, reembolsos, acertos, conferências e dedutíveis ficam em tipos próprios ao lado da operação; não mude `Operation` para eles (mudaria o esquema e esbarraria no mês fechado).
+- **Imposto de renda:** nunca embuta tabela, alíquota, limite ou regra de isenção com valor; o usuário informa (`TaxParameters`, `VariableIncomeRules`) e, sem o valor, o resultado é `None`. Natureza dos rendimentos, grupo e código dos bens são escolhas do usuário; a interface pode sugerir, marcado como "sugerido", nunca gravar sozinha. CPF/CNPJ são dados pessoais: só no cofre, nunca em log ou mensagem que possa ser registrada.
 - **Exceções:** mensagens de `DomainError` são para o usuário e podem citar dados; por isso o registro técnico (`diagnostics.record`) guarda só código, tipo e local. Nunca registre `str(exc)`.
 
 ## Dados de teste

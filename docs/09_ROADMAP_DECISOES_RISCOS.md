@@ -69,8 +69,29 @@ Critério de escolha: o que uma família precisa todo mês e hoje exige trabalho
 | Item | Por quê | Decisão? |
 |---|---|---|
 | **Fechamento do ano**: patrimônio em 31/12 por conta e investimento, rendimentos isentos e tributáveis informados, imposto retido, ganhos realizados por classe | Material de apoio para a declaração anual, a partir de dados já registrados | **Feito como apoio** (pedido do usuário em 03/10/2026): Relatórios › Fechamento do ano e PDF anual; não classifica rendimentos como isentos ou tributáveis nem aplica regras fiscais |
-| **Tabelas fiscais por classe**, parametrizadas e versionadas por data, usadas pelo simulador | Hoje as regras são informadas manualmente | Sim |
+| **Tabelas fiscais por classe**, parametrizadas e versionadas por data, usadas pelo simulador | Hoje as regras são informadas manualmente | **Em parte** (§1.3 F): tabela anual e regras de renda variável por vigência, sempre informadas pelo usuário; o simulador de resgate segue com as regras dele |
 | **Metas de patrimônio ou reserva** (valor-alvo e data, com progresso) | Pedido comum de família; usa o patrimônio já calculado | **Feito** (pedido do usuário em 03/10/2026): página Metas, por patrimônio ou contas escolhidas, com gráfico e tabela |
+
+**F. Imposto de renda (pesquisa de 03/10/2026)**
+
+Funções de programas e apps de IRPF (programa e app da Receita, Carnê-Leão Web, calculadora de renda variável, apps de investidores e organizadores) que faltavam. O usuário pediu os itens de relevância alta e média; todos **feitos** (`13` §2.4), como material de apoio e com parâmetros informados por ele (`00` §5).
+
+| Item | Situação |
+|---|---|
+| Relatório no formato das fichas (tributáveis de PJ, isentos, exclusivos, Carnê-Leão, pagamentos efetuados, bens e direitos, dívidas e ônus) | Feito: página Imposto de renda e PDF |
+| CPF/CNPJ de quem recebe e de quem paga | Feito, com dígitos verificadores; só dentro do cofre |
+| Parcela não dedutível (reembolso) separada do valor pago | Feito |
+| Bens e direitos pelo custo, com 31/12 do ano e do anterior; imóveis e veículos | Feito |
+| Dívidas e ônus em 31/12 | Feito |
+| Informe de rendimentos importado e comparado com o registrado | Feito; leitura genérica, ainda não validada com informes reais |
+| Pendências fiscais (CPF/CNPJ, comprovante, informe divergente, natureza, DARF) | Feito; aviso sazonal em Atenção (fevereiro a maio) |
+| Documentos do ano | Feito |
+| Declarante e dependentes (CPF, nascimento, quem declara quem) | Feito |
+| Rendimentos do trabalho por fonte: bruto, 13º, IR retido, INSS | Feito (contracheque por depósito) |
+| Renda variável mês a mês, prejuízo a compensar, DARF | Feito com alíquotas e limite informados pelo usuário |
+| Simplificada × completa | Feito com a tabela e os limites informados pelo usuário |
+| Carnê-Leão: receitas mês a mês e lembrete do DARF | Feito; o imposto é calculado no Carnê-Leão Web |
+| Pré-preenchida, emissão de DARF, envio da declaração, GCAP, criptoativos e exterior | Fora do escopo ou baixa relevância (`00` §5) |
 
 **D. IA local (próximos passos)**
 
@@ -212,6 +233,7 @@ Cada alteração de escopo registra motivo, documentos afetados, migração de d
 | 03/10/2026 | Revisão de funcionalidades (§1.3 E): gráfico e tabela juntos e recolhíveis em vez de abas; saldo projetado; comparações; financiamentos; marcadores; reembolsos e acertos; assinaturas; calendário; indicadores; conferência de saldo; dedutíveis | Pedido do usuário | 00, 04, 07, 09, 13, 16, CLAUDE.md | Novos tipos persistidos `loan_plan`, `loan_payment`, `loan_prepayment`, `operation_tags`, `reimbursement`, `member_settlement`, `balance_check`, `deductible_category`; esquema do domínio segue 2 (versões anteriores recusam o cofre com a mensagem de versão mais nova) | Seções recolhidas ficam em `QSettings`, sem dados financeiros; "Exportar valores…" avisa que o CSV sai sem cifra; tabelas novas são limpas ao fechar o cofre (TA-31) | `test_planning`, `test_planning_ui` |
 | 03/10/2026 | Telas largas: 1920×1080 é o alvo; partes relacionadas lado a lado (`Adaptive`), gráfico ao lado dos valores, coluna de Atenção na Visão geral, colunas do Livro e PDF ajustados à largura, ações do cabeçalho que descem quando falta espaço (largura mínima sem cofre de 1061 para ~880 px) | Pedido do usuário | 16, CLAUDE.md | Nenhum; preferências seguem em `QSettings` | Nenhum: o PDF continua desenhado só em memória | `test_ui_design`, capturas em 1920x1080, 1280x800 e 900x640, claro e escuro |
 | 03/10/2026 | A interface chama o dono do cofre de "Projeto" em vez de "Família" ("Projeto inteiro", "(projeto)", "Nome do projeto"); os documentos e o código mantêm o termo família | Pedido do usuário | 16, CLAUDE.md | Nenhum: `family_name` guarda o nome do projeto; cofres novos sem nome recebem "Projeto" | Nenhum | Suíte completa |
+| 03/10/2026 | Apoio ao imposto de renda (§1.3 F): página Imposto de renda, CPF/CNPJ, natureza dos rendimentos, contracheques, bens pelo custo, dívidas, informes importados e conferidos, documentos do ano, pendências, renda variável mensal, Carnê-Leão e simulação simplificada × completa | Pedido do usuário (itens de relevância alta e média da pesquisa de apps de IRPF); escopo do `00` §5 revisto: nenhum parâmetro fiscal embutido | 00, 04, 07, 09, 13, 16, CLAUDE.md | Novos tipos `tax_identity`, `member_tax_info`, `income_classification`, `income_detail`, `asset_filing`, `declared_asset`, `income_report`, `tax_parameters`, `variable_income_rules`, `tax_payment`, `tax_checklist_mark`; esquema segue 2 | CPF/CNPJ ficam só no cofre e nunca em logs; informe lido fora da thread visual, original guardado cifrado; PDF do relatório sai com o aviso de arquivo sem cifra | `test_tax`, `test_tax_ui`, fuzzing do leitor de informes |
 | 02/10/2026 | Roadmap 1.3: fases 11 a 14 com funcionalidades propostas (orçamento, regras editáveis, alertas, comprovantes, desfazer, verificação de backup, fechamento do ano) | Pedido do usuário | 09, CLAUDE.md | A definir por item | A definir por item | Critérios de saída por fase |
 
 ## 6. Definição de pronto documental (versão 1.0, mantida como histórico)

@@ -178,6 +178,21 @@ Pendências do `09` §1.3 A–D feitas no mesmo dia:
 - **Não feito**: compactação do histórico (apaga versões; aguarda decisão) e os itens de IA do §1.3 D além do estabelecimento.
 - Testes: `test_planning_more` (domínio) e os novos casos de `test_planning_ui`.
 
+### 2.4 Imposto de renda (`09` §1.3 F)
+
+Pedido do usuário: implementar os itens de relevância alta e média da pesquisa de funções de apps de IRPF. Pacote `opesvault/tax/`, página **Imposto de renda** (Acompanhamento). Material de apoio: nenhuma tabela, alíquota ou limite vem embutido.
+
+- **CPF/CNPJ** (`tax/ids.py`, `records.set_identity`): dígitos verificadores; de estabelecimentos (quem recebeu), contas (instituição, credor) e categorias de receita (fonte pagadora). Só no cofre.
+- **Declarantes e dependentes** (`member_tax_info`): CPF, nascimento, quem declara quem; o seletor "Projeto inteiro"/declarante filtra todas as fichas.
+- **Fichas** (`tax/declaration.py`): tributáveis de PJ por fonte (bruto do contracheque ou líquido, com aviso; 13º e IR do 13º à parte; INSS), isentos, exclusivos e Carnê-Leão pela natureza escolhida (categoria ou investimento), pagamentos efetuados (pago, parcela não dedutível, dedutível, comprovantes), bens pelo custo e dívidas em 31/12.
+- **Informes** (`tax/statements.py`): leitura genérica do PDF (ano, CNPJ, linhas por rótulo e por seção), fora da thread visual, revisão linha a linha, original guardado cifrado; comparação campo a campo com o registrado (saldos, rendimentos, IR retido, INSS, 13º).
+- **Documentos do ano** (`tax/checklist.py`) e **pendências** (`tax/issues.py`, com "Resolver…" que abre a correção); lembretes de DARF (renda variável e Carnê-Leão) e da temporada da declaração em Atenção, com cache por estado do livro.
+- **Renda variável** (`tax/variable_income.py`): vendas de ações, ETF e FII por mês e tipo (comuns, day trade, FII), isenção pelo limite informado, prejuízo compensado nos meses seguintes, imposto, IR na fonte, DARF e vencimento; DARF pago registrado como despesa.
+- **Simplificada × completa** (`tax/simulation.py`): tabela anual, desconto simplificado e limites informados; INSS, saúde, instrução até o limite por pessoa, previdência privada até o percentual, pensão e dependentes.
+- **Contracheque**: bruto, IR retido e INSS por depósito (página e Livro › Ações › Detalhar rendimento).
+- **Relatório em PDF** (`exports.tax_report_html`) com fichas, simulação e pendências.
+- Testes: `test_tax` (domínio, 15), `test_tax_ui` (interface, 5) e fuzzing do leitor de informes.
+
 ## 3. Cobertura de importação
 
 O catálogo fica em Configurações e em `importing/parsers/__init__.py`.

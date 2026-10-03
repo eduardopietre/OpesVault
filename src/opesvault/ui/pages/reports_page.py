@@ -20,7 +20,7 @@ from PySide6.QtWidgets import (
 from opesvault.charts import data as charts
 from opesvault.charts.data import Point
 from opesvault.domain.model import YearMonth
-from opesvault.ui.common import month_label
+from opesvault.ui.common import month_label, select_id
 from opesvault.ui.components import button, confirm, scroll_body, text
 from opesvault.ui.pages.base import Page
 from opesvault.ui.theme import SPACE_L, SPACE_S
@@ -191,11 +191,7 @@ class ReportsPage(Page):
 
     def reveal(self, ref: object, *, act: bool = False) -> None:
         """Opens a chart by key ("composition", "projection", "projected_balance"…)."""
-        for row in range(self.kind.count()):
-            item = self.kind.item(row)
-            if item is not None and item.data(Qt.ItemDataRole.UserRole) == ref:
-                self.kind.setCurrentRow(row)
-                return
+        select_id(self.kind, ref)
 
     def _chosen(self) -> Any:
         return self.scope.currentData() if self.scope.isVisibleTo(self) else None

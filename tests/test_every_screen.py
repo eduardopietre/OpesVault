@@ -332,3 +332,15 @@ def test_preferences_of_this_computer_have_one_entry_point() -> None:
         if "QSettings(" in line
     ]
     assert found == []
+
+
+def test_no_combo_is_searched_by_identity() -> None:
+    """`QComboBox.findData` compares Python objects by identity; ids read from the vault are copies."""
+    root = Path(__file__).resolve().parents[1] / "src" / "opesvault"
+    found = [
+        f"{path.relative_to(root)}:{number}"
+        for path in sorted(root.rglob("*.py"))
+        for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1)
+        if ".findData(" in line.split("#", 1)[0]
+    ]
+    assert found == []

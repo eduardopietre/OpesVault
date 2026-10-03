@@ -38,6 +38,7 @@ from opesvault.ui.common import (
     make_table,
     read_money,
     run_guarded,
+    select_combo,
     select_id,
     selected_id,
     set_rows,
@@ -466,7 +467,7 @@ class ImportPage(Page):
         self.target.blockSignals(True)
         if batch.doc_type is not None and batch.doc_type.value == "card_statement":
             fill_combo(self.target, [(c.name, ("card", c.id)) for c in ledger.cards.values()], empty="(escolha)")
-            index = self.target.findData(("card", batch.card_id))
+            chosen: tuple[str, UUID | None] = ("card", batch.card_id)
         else:
             fill_combo(
                 self.target,
@@ -477,8 +478,9 @@ class ImportPage(Page):
                 ],
                 empty="(escolha)",
             )
-            index = self.target.findData(("account", batch.account_id))
-        self.target.setCurrentIndex(max(index, 0))
+            chosen = ("account", batch.account_id)
+        self.target.setCurrentIndex(0)
+        select_combo(self.target, chosen)
         self.target.blockSignals(False)
         fill_combo(self.layout_choice, [(f"{p.institution} — {p.product} ({p.id})", p.id) for p in PARSERS])
         needs_layout = batch.status in (BatchStatus.AMBIGUOUS, BatchStatus.UNSUPPORTED)
@@ -545,8 +547,8 @@ class ImportPage(Page):
             combo = QComboBox()
             combo.setAccessibleName(f"Categoria ou conta de {item.description}")
             fill_combo(combo, options, empty="(padrão)")
-            index = combo.findData(item.target_account_id)
-            combo.setCurrentIndex(max(index, 0))
+            combo.setCurrentIndex(0)
+            select_combo(combo, item.target_account_id)
             combo.currentIndexChanged.connect(lambda _=0, c=combo, i=item.id: self._set_target(i, c.currentData()))
             self.items.setCellWidget(row, 5, combo)
         # Cell widgets set after the columns were sized sit at the corner until the view lays them out.

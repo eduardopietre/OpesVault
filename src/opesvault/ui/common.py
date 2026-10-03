@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
     QDateEdit,
     QHeaderView,
     QLineEdit,
+    QListWidget,
     QMessageBox,
     QSizePolicy,
     QTableView,
@@ -91,12 +92,17 @@ def combo_value(combo: QComboBox) -> Any:
     return combo.currentData()
 
 
-def select_combo(combo: QComboBox, value: Any) -> None:
-    # Compare values: findData compares wrapped Python objects by identity.
+def select_combo(combo: QComboBox, value: Any) -> bool:
+    """Selects the option whose data equals `value`; False (selection unchanged) when none does.
+
+    Never `QComboBox.findData`: it compares wrapped Python objects by identity, so an equal
+    UUID or tuple read back from the vault is not found.
+    """
     for index in range(combo.count()):
         if combo.itemData(index) == value:
             combo.setCurrentIndex(index)
-            return
+            return True
+    return False
 
 
 MONTHS = (
@@ -313,18 +319,27 @@ def set_rows(table: QTableWidget, rows: list[tuple[list[Any], Any]]) -> None:
         header.setStretchLastSection(True)
 
 
-def select_id(table: QTableWidget, value: object) -> bool:
-    """Selects and shows the row whose id (stored by `set_rows` in column 0) is `value`.
+def select_id(view: QTableWidget | QListWidget, value: object) -> bool:
+    """Selects and shows the row whose id is `value`: a table row (id stored by `set_rows` in
+    column 0) or a list item (id in its UserRole). Compared by value, never by identity.
 
     False when there is no such row, so a caller can fall back to the first one.
     """
     if value is None:
         return False
-    for row in range(table.rowCount()):
-        item = table.item(row, 0)
+    if isinstance(view, QListWidget):
+        for row in range(view.count()):
+            entry = view.item(row)
+            if entry is not None and entry.data(Qt.ItemDataRole.UserRole) == value:
+                view.setCurrentRow(row)
+                view.scrollToItem(entry)
+                return True
+        return False
+    for row in range(view.rowCount()):
+        item = view.item(row, 0)
         if item is not None and item.data(Qt.ItemDataRole.UserRole) == value:
-            table.selectRow(row)
-            table.scrollToItem(item)
+            view.selectRow(row)
+            view.scrollToItem(item)
             return True
     return False
 

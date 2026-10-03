@@ -21,7 +21,16 @@ from opesvault.domain import queries
 from opesvault.domain.model import AccountType, YearMonth
 from opesvault.domain.money import ZERO
 from opesvault.ui.alerts_panel import AlertsPanel
-from opesvault.ui.common import fit_to_rows, fmt, fmt_date, month_label, set_rows, stretch_column, summary_table
+from opesvault.ui.common import (
+    fit_to_rows,
+    fmt,
+    fmt_date,
+    month_label,
+    select_combo,
+    set_rows,
+    stretch_column,
+    summary_table,
+)
 from opesvault.ui.components import (
     Adaptive,
     Collapsible,
@@ -420,8 +429,8 @@ class OverviewPage(Page):
         self.member.addItem("Projeto inteiro", None)
         for name, member_id in members:
             self.member.addItem(name, member_id)
-        index = next((i for i in range(self.member.count()) if self.member.itemData(i) == current), 0)
-        self.member.setCurrentIndex(index)
+        self.member.setCurrentIndex(0)
+        select_combo(self.member, current)
         self.member.blockSignals(False)
         self.member.setVisible(len(members) > 1)
 

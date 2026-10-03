@@ -19,6 +19,7 @@ from opesvault.ui.common import (
     frameless,
     make_table,
     run_guarded,
+    select_combo,
     select_id,
     selected_id,
     set_rows,
@@ -356,8 +357,8 @@ class AccountsPage(Page):
         self.bill_card.clear()
         for card in ledger.cards.values():
             self.bill_card.addItem(card.name, card.id)
-        index = self.bill_card.findData(current)
-        self.bill_card.setCurrentIndex(max(index, 0))
+        self.bill_card.setCurrentIndex(0)
+        select_combo(self.bill_card, current)
         self.bill_card.blockSignals(False)
         self._refresh_bills()
         self._refresh_loans()

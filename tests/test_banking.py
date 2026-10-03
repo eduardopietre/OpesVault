@@ -117,20 +117,22 @@ def test_values_at_a_date_check_adjust_and_value_investments() -> None:
         ledger, prof.InvestmentProfile(position_id=pos.id, bank_account_id=item.id, irpf_group="04", irpf_code="02")
     )
     assert banking.positions_of(ledger, item.id) == [pos.id]
+    checking, savings = item.checking_id, item.savings_id
+    assert checking is not None and savings is not None
     on = date(2025, 6, 30)
     before = {v.ref: v.value for v in banking.values_at(ledger, item.id, on)}
-    assert before[item.checking_id] == Decimal("-4000.00") and before[item.savings_id] == 0
+    assert before[checking] == Decimal("-4000.00") and before[savings] == 0
     done = banking.record_values(
         ledger,
         item.id,
         on,
-        {item.checking_id: "2500.00", item.savings_id: "300.00", pos.id: "5210.00"},  # type: ignore[dict-item]
-        adjust={item.savings_id},  # type: ignore[arg-type]
+        {checking: "2500.00", savings: "300.00", pos.id: "5210.00"},
+        adjust={savings},
     )
     assert (done.checks, done.adjustments, done.valuations) == (2, 1, 1)
     after = {v.ref: v.value for v in banking.values_at(ledger, item.id, on)}
-    assert after[item.savings_id] == Decimal("300.00")  # adjusted: reports and net worth follow
-    assert after[item.checking_id] == Decimal("-4000.00")  # only checked: the difference stays visible
+    assert after[savings] == Decimal("300.00")  # adjusted: reports and net worth follow
+    assert after[checking] == Decimal("-4000.00")  # only checked: the difference stays visible
     assert after[pos.id] == Decimal("5210.00")
     [check] = [c for c in balance_checks.results(ledger, item.checking_id)]
     assert check.difference == Decimal("6500.00")

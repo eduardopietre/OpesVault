@@ -83,6 +83,7 @@ def demo_session(path: Path):  # type: ignore[no-untyped-def]
     rules.add_rule(ledger, "padaria", category(ledger, "Alimentação"))
     _demo_planning(f, ledger)
     _demo_tax(f, ledger)
+    _demo_banking(f, ledger)
     _ = AccountType
     return session
 
@@ -183,6 +184,58 @@ def _demo_tax(f, ledger) -> None:  # type: ignore[no-untyped-def]
         payer_tax_id="11.222.333/0001-81",
     )
     _ = (category, AccountType)
+
+
+def _demo_banking(f, ledger) -> None:  # type: ignore[no-untyped-def]
+    """The demo's bank and savings as one bank account, the CDB held there, and an LCA."""
+    from opesvault.domain import banking
+    from opesvault.investments import profile as prof
+    from opesvault.investments import service as inv
+
+    item = banking.build(
+        name="Itaú da Ana",
+        bank_code="341",
+        bank_name=None,
+        branch="0123",
+        number="45678-9",
+        holder_id=f.ana,
+        co_holder_id=f.bruno,
+    )
+    item = banking.create(ledger, item, checking=f.bank, savings=f.savings)
+    cdb = next(p for p in inv.positions(ledger).values())
+    prof.save_profile(
+        ledger,
+        prof.InvestmentProfile(
+            position_id=cdb.id,
+            bank_account_id=item.id,
+            irpf_group="04",
+            irpf_code="02",
+            issuer="Banco X S.A.",
+            indexer=prof.Indexer.CDI,
+            rate=Decimal("110"),
+            applied_on=date(2026, 1, 2),
+            maturity=date(2028, 1, 3),
+            liquidity=prof.Liquidity.AT_MATURITY,
+            tax=prof.TaxTreatment.WITHHELD,
+            income_code="exclusivo:06",
+            fgc=True,
+        ),
+    )
+    nubank = banking.create(
+        ledger,
+        banking.build(
+            name="Nubank do Bruno",
+            bank_code="260",
+            bank_name=None,
+            branch="0001",
+            number="9876543-2",
+            holder_id=f.bruno,
+        ),
+        checking=True,
+        opening={banking.Part.CHECKING: (Decimal("640.00"), date(2026, 1, 1))},
+    )
+    assert nubank.checking_id is not None
+    banking.record_values(ledger, nubank.id, date(2026, 3, 31), {nubank.checking_id: "712.40"}, adjust=set())
 
 
 def main() -> int:

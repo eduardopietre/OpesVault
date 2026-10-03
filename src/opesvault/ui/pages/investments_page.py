@@ -172,6 +172,8 @@ class InvestmentsPage(Page):
         more = menu_button(
             "Mais",
             [
+                ("Características (tipo, emissor, taxa, vencimento, tributação)…", self.edit_profile),
+                None,
                 ("Composição da carteira (Relatórios)", lambda: self.navigate("reports", "composition")),
                 None,
                 ("Regra de imposto…", self.new_rule),
@@ -349,6 +351,18 @@ class InvestmentsPage(Page):
     def _position_id(self) -> UUID | None:
         return selected_id(self.positions)
 
+    def edit_profile(self) -> None:
+        from opesvault.ui.bank_dialogs import InvestmentDialog
+
+        pos_id = self._position_id()
+        if self.session is None or pos_id is None:
+            self.notify("Escolha um investimento.")
+            return
+        dialog = InvestmentDialog(self, self.session.ledger, position_id=pos_id)
+        if dialog.exec() and run_guarded(self, lambda: dialog.apply() or True):
+            self.notify("Características salvas.")
+            self.changed()
+
     def _show_detail(self) -> None:
         pos_id = self._position_id()
         for action in self.position_actions:
@@ -371,7 +385,12 @@ class InvestmentsPage(Page):
         gain = unrealized(ledger, pos_id, today)
         self.summary.setText(
             " · ".join(
-                [f"Não realizado: {fmt(gain.value) if gain.available else 'indisponível'}", gain.method, *gain.notes]
+                [
+                    *_profile_summary(ledger, pos_id),
+                    f"Não realizado: {fmt(gain.value) if gain.available else 'indisponível'}",
+                    gain.method,
+                    *gain.notes,
+                ]
             )
         )
         set_rows(
@@ -950,3 +969,25 @@ class InvestmentsPage(Page):
         data = Path(path).read_bytes()
         if run_guarded(self, lambda: import_benchmark_csv(ledger, name.strip(), data, f"arquivo {Path(path).name}")):
             self.changed()
+
+
+def _profile_summary(ledger: Ledger, position_id: UUID) -> list[str]:
+    """Type, where it is held, yield and maturity, from the investment's characteristics."""
+    from opesvault.catalogs.irpf import asset_label
+    from opesvault.domain.banking import bank_accounts
+    from opesvault.investments import profile as prof
+
+    found = prof.profile_of(ledger, position_id)
+    if found is None:
+        return ["Sem características (Mais › Características…)"]
+    out = [asset_label(found.irpf_group, found.irpf_code)]
+    bank = bank_accounts(ledger).get(found.bank_account_id) if found.bank_account_id else None
+    if bank is not None:
+        out.append(bank.where)
+    if found.indexer is not None:
+        out.append(prof.yield_text(found))
+    if found.maturity is not None:
+        out.append(f"vence em {fmt_date(found.maturity)}")
+    if found.tax is not None:
+        out.append(prof.TAX_LABELS[found.tax])
+    return out

@@ -12,8 +12,6 @@ from PySide6.QtWidgets import (
     QDialogButtonBox,
     QFormLayout,
     QLineEdit,
-    QListWidget,
-    QListWidgetItem,
     QMessageBox,
     QSpinBox,
     QVBoxLayout,
@@ -147,21 +145,25 @@ class AccountDialog(FormDialog):
         self.institution = QLineEdit(account.institution or "" if account else "")
         self.masked = QLineEdit(account.masked_number or "" if account else "")
         self.masked.setPlaceholderText("ex.: final 1234")
-        self.holders = QListWidget()
-        for member in ledger.members.values():
-            item = QListWidgetItem(member.name)
-            item.setData(Qt.ItemDataRole.UserRole, member.id)
-            item.setCheckState(
-                Qt.CheckState.Checked if account and member.id in account.holders else Qt.CheckState.Unchecked
-            )
-            self.holders.addItem(item)
+        # One holder, or a joint account with a first and a second holder (the order is kept).
+        current = account.holders if account else ()
+        members = [(m.name, m.id) for m in ledger.members.values() if m.active or m.id in current]
+        self.holder = QComboBox()
+        self.holder.setAccessibleName("Titular")
+        fill_combo(self.holder, members, empty="(sem titular)")
+        select_combo(self.holder, current[0] if current else None)
+        self.co_holder = QComboBox()
+        self.co_holder.setAccessibleName("Segundo titular")
+        fill_combo(self.co_holder, members, empty="(conta individual)")
+        select_combo(self.co_holder, current[1] if len(current) > 1 else None)
         self.opening = money_edit("saldo de abertura (opcional)")
         self.opening_date = date_edit()
         self.form.addRow("Nome:", self.name)
         self.form.addRow("Tipo:", self.subtype)
         self.form.addRow("Instituição:", self.institution)
         self.form.addRow("Identificação:", self.masked)
-        self.form.addRow("Titulares:", self.holders)
+        self.form.addRow("Titular:", self.holder)
+        self.form.addRow("Segundo titular:", self.co_holder)
         if account is None:
             self.form.addRow("Saldo de abertura:", self.opening)
             self.form.addRow("Data do saldo:", self.opening_date)
@@ -170,12 +172,12 @@ class AccountDialog(FormDialog):
             self.subtype.setEnabled(False)
 
     def selected_holders(self) -> tuple[UUID, ...]:
-        out = []
-        for i in range(self.holders.count()):
-            item = self.holders.item(i)
-            if item.checkState() == Qt.CheckState.Checked:
-                out.append(item.data(Qt.ItemDataRole.UserRole))
-        return tuple(out)
+        first, second = combo_value(self.holder), combo_value(self.co_holder)
+        if second is not None and first is None:
+            raise DomainError("Escolha o titular antes do segundo titular.")
+        if second is not None and second == first:
+            raise DomainError("O segundo titular precisa ser outra pessoa.")
+        return tuple(m for m in (first, second) if m is not None)
 
     def build(self) -> LedgerAccount:
         subtype: AccountSubtype = combo_value(self.subtype)

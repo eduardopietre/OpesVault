@@ -193,6 +193,17 @@ Pedido do usuário: implementar os itens de relevância alta e média da pesquis
 - **Relatório em PDF** (`exports.tax_report_html`) com fichas, simulação e pendências.
 - Testes: `test_tax` (domínio, 15), `test_tax_ui` (interface, 5) e fuzzing do leitor de informes.
 
+### 2.5 Contas bancárias e características de investimento
+
+Pedido do usuário: contas bancárias com banco, código, agência e conta; titular único ou conjunta (principal e secundário); corrente, poupança, investimentos ou qualquer mistura; valores numa data integrados ao app; investimentos com características próprias; códigos de listas pré-definidas, como no IRPF.
+
+- **Listas embutidas** (`opesvault/catalogs/`): 513 bancos e instituições de pagamento com código COMPE, ISPB e CNPJ (`banks.py`, gerado por `scripts/atualizar_bancos.py` a partir de lista pública compilada do Banco Central); grupos e códigos de Bens e Direitos do IRPF e códigos de rendimentos isentos e de tributação exclusiva usados por investimentos (`irpf.py`). Escolhidos em listas com busca por código ou nome (`ui/catalog_widgets.py`); o grupo e código de Bens e Direitos deixaram de ser digitados também no Imposto de renda.
+- **Conta bancária** (`domain/banking.py`, aba Contas e cartões › Contas bancárias): cria ou reaproveita a conta corrente e a poupança no livro, mantém titulares (o primeiro é o principal), instituição e número nelas e grava o CNPJ do banco para as fichas. A janela de conta comum também passou a ter titular e segundo titular.
+- **Valores em uma data**: conferência por conta, ajuste opcional ao saldo do banco e avaliação dos investimentos; tudo aparece em saldos, patrimônio, relatórios, conferências e no Imposto de renda.
+- **Características do investimento** (`investments/profile.py`): tipo IRPF (sugere a classe e a tributação), conta bancária onde está, emissor e CNPJ, indexador e taxa ("110% do CDI", "IPCA + 6,5% a.a."), aplicação, vencimento, liquidez, tributação, código do rendimento e FGC. Novo investimento pela conta bancária (o dinheiro pode sair da corrente dela) ou Investimentos › Mais › Características.
+- **Imposto de renda**: corrente 06.01 e poupança 04.01 com a discriminação "agência e conta"; investimentos com o tipo e a discriminação montados das características, CNPJ do banco da lista; a natureza e o código do rendimento vêm do código escolhido.
+- Testes: `test_banking` (domínio, 7) e `test_banking_ui` (interface, 4).
+
 ## 3. Cobertura de importação
 
 O catálogo fica em Configurações e em `importing/parsers/__init__.py`.

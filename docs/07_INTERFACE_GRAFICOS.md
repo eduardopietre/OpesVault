@@ -24,6 +24,7 @@ Tela inicial apresenta criar/abrir/restaurar. Lista de recentes é opcional e gu
 | Reembolsos e acertos | Reembolsos a receber; quem deve a quem na família e as despesas que formam o saldo | Registrar recebimento, negativa e acerto |
 | Metas | Metas, progresso, quanto falta por mês, ritmo recente; gráfico e tabela da meta | Criar, editar, arquivar |
 | Financiamentos (Contas e cartões) | Contrato, cronograma, saldo devedor, juros a pagar | Pagar parcela, simular e registrar amortização antecipada |
+| Contas bancárias (Contas e cartões) | Banco, agência, conta, titulares, corrente, poupança, investimentos e total; composição com tipo no IRPF, rentabilidade, vencimento, tributação, valor hoje e último valor informado | Nova conta bancária, editar, valores em uma data, novo investimento, características, encerrar |
 | Imposto de renda | Ano e declarante; pendências, documentos do ano, rendimentos, pagamentos efetuados, bens e dívidas, renda variável, simplificada × completa e informes | Resolver pendência, CPF/CNPJ, natureza, contracheques, comprovantes, classificar bem, importar informe, registrar DARF, relatório em PDF |
 
 ## 3. Adicionar avaliação

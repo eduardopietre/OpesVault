@@ -480,7 +480,7 @@ class TaxPage(Page):
             [
                 (
                     [
-                        NATURE_SHORT[r.nature] if r.nature else "A definir",
+                        (NATURE_SHORT[r.nature] + (f" ({r.code})" if r.code else "")) if r.nature else "A definir",
                         r.source,
                         _tid(r.tax_id) if r.subject is NatureSubject.CATEGORY or r.tax_id else "—",
                         self._name(r.member_id),

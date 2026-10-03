@@ -76,6 +76,10 @@ class AccountsPage(Page):
         for table in (self.accounts, self.cards, self.categories, self.members):
             stretch_column(table)
         # Most used first: where the money is, then cards and their bills, then the setup lists.
+        from opesvault.ui.bank_accounts import BankAccountsTab
+
+        self.bank_tab = BankAccountsTab(self.changed, self.notify)
+        tabs.addTab(self.bank_tab, "Contas bancárias")
         tabs.addTab(self._accounts_tab(), "Contas")
         tabs.addTab(
             self._with_buttons(self.cards, [("Novo cartão…", self.add_card), ("Editar…", self.edit_card)]), "Cartões"
@@ -250,6 +254,8 @@ class AccountsPage(Page):
         return box
 
     def refresh(self) -> None:
+        self.bank_tab.session = self.session
+        self.bank_tab.refresh()
         if self.session is None:
             tables = (self.members, self.accounts, self.cards, self.categories, self.rules, self.bills, self.checks)
             for table in (*tables, self.loans, self.schedule):

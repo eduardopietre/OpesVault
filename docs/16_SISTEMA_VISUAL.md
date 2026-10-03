@@ -70,6 +70,8 @@ Configurações (rodapé)
 | `button(role=…)` | Hierarquia: `primary`, padrão, `plain`, `destructive` |
 | `flow_row` / `FlowLayout` | Filtros e ações quebram linha em janelas estreitas |
 | `Adaptive` / `adaptive` | Partes relacionadas lado a lado quando há largura e uma abaixo da outra quando não há. A largura mínima é sempre a da forma empilhada, para que o arranjo largo nunca obrigue a janela a ficar larga. Usa folga de 32 px para não alternar com a barra de rolagem. `first_right` põe a primeira parte em cima quando empilhado e à direita quando largo (coluna lateral) |
+| `ui/catalog_widgets.py` | Listas com busca (digitar código ou parte do nome): bancos pelo COMPE, grupos e códigos de Bens e Direitos, tipos de investimento |
+| `ui/bank_accounts.py`, `ui/bank_dialogs.py` | Aba Contas bancárias e diálogos de conta bancária, valores em uma data (tabela por item, com "Ajustar o saldo") e investimento (novo ou características) |
 | `ui/tax_dialogs.py` | Diálogos do Imposto de renda: CPF/CNPJ, declarantes, natureza dos rendimentos (grade), contracheque, comprovantes, bem, informe (revisão linha a linha), tabela do ano, regras de renda variável, DARF |
 | `share_width` (`ui/common.py`) | Tabelas de trabalho (Livro): larguras base para todas as colunas; numa janela larga a sobra vai para as colunas de texto, em vez de virar uma faixa vazia. Uma coluna arrastada pelo usuário encerra a divisão automática |
 | `MonthPicker` | Mês por extenso, com botões ‹ › do mesmo tamanho e moldura do seletor, e Alt+← / Alt+→ |

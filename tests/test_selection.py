@@ -52,7 +52,7 @@ def test_review_shows_the_batch_card_and_each_items_category_after_reopening(app
     """Ids parsed from the vault are equal to, not the same object as, the accounts' ids."""
     from opesvault.importing import pipeline
     from opesvault.ui.main_window import MainWindow
-    from opesvault.ui.pages.import_page import ImportPage
+    from opesvault.ui.pages.imports import ImportPage
 
     window = MainWindow()
     session = demo_session(tmp_path / "demo.opesvault")

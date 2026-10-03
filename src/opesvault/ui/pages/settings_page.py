@@ -248,7 +248,7 @@ class SettingsPage(Page):
     def test_ai(self) -> None:
         """Lists the installed models (off the UI thread) and says whether the chosen one is among them."""
         from opesvault.ai.ollama import AiUnavailable, OllamaClient
-        from opesvault.ui.background import BackgroundJob
+        from opesvault.ui.background import BackgroundJob, while_alive
 
         if self._ai_job is not None:
             return
@@ -269,7 +269,7 @@ class SettingsPage(Page):
         self._ai_job = job
         self.ai_check.setEnabled(False)
         self.ai_status.setText("Verificando o Ollama local…")
-        job.signals.done.connect(lambda result: self._ai_checked(chosen, result))
+        while_alive(job.signals.done, self, lambda result: self._ai_checked(chosen, result))
         job.start()
 
     def _ai_checked(self, chosen: str, info: object) -> None:

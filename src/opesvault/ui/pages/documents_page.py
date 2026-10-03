@@ -216,7 +216,7 @@ class DocumentsPage(Page):
         from opesvault.domain import attachments
         from opesvault.importing import pipeline
         from opesvault.ui.common import fmt_date
-        from opesvault.ui.pages.import_page import STATUS_LABELS
+        from opesvault.ui.pages.imports.labels import STATUS_LABELS
 
         ledger = self.session.ledger
         self._batches = {b.document_id: b for b in pipeline.batches(ledger).values()}

@@ -34,7 +34,7 @@ from opesvault.ui.pages.base import Page
 from opesvault.ui.pages.budget_page import BudgetPage
 from opesvault.ui.pages.documents_page import DocumentsPage
 from opesvault.ui.pages.goals_page import GoalsPage
-from opesvault.ui.pages.import_page import ImportPage
+from opesvault.ui.pages.imports import ImportPage
 from opesvault.ui.pages.investments import InvestmentsPage
 from opesvault.ui.pages.ledger import LedgerPage
 from opesvault.ui.pages.overview_page import OverviewPage

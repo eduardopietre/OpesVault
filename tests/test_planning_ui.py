@@ -258,7 +258,7 @@ def test_member_view_on_the_overview(setup: tuple[MainWindow, Family]) -> None:
 def test_files_dropped_anywhere_go_to_import(setup: tuple[MainWindow, Family], tmp_path: Path) -> None:
     from PySide6.QtCore import QMimeData, QUrl
 
-    from opesvault.ui.pages.import_page import ImportPage
+    from opesvault.ui.pages.imports import ImportPage
 
     window, _f = setup
     pdf = tmp_path / "fatura.pdf"

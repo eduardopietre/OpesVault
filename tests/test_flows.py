@@ -262,7 +262,7 @@ def _local_ai(window: MainWindow, f: Family, url: str, monkeypatch: pytest.Monke
 
     from opesvault.ai.ollama import OllamaClient
     from opesvault.domain.settings import update_settings
-    from opesvault.ui.pages.import_page import ImportPage
+    from opesvault.ui.pages.imports import ImportPage
 
     update_settings(f.ledger, ai_enabled=True, ai_model="gemma4:12b")
     monkeypatch.setattr(
@@ -286,7 +286,7 @@ def test_local_ai_suggests_while_the_review_stays_open(
 ) -> None:
     from opesvault.importing import pipeline
     from opesvault.importing.pipeline import ImportRequest, import_document
-    from opesvault.ui.pages.import_page import source_label
+    from opesvault.ui.pages.imports.labels import source_label
 
     window, f = setup
     page = _local_ai(window, f, ollama, monkeypatch)
@@ -313,7 +313,7 @@ def test_local_ai_runs_by_itself_after_an_import(
     page = _local_ai(window, f, ollama, monkeypatch)
     path = tmp_path / "extrato.csv"
     path.write_bytes(_statement("QWERTY LOJA"))
-    monkeypatch.setattr("opesvault.ui.pages.import_page.QMessageBox.information", lambda *a, **k: None)
+    monkeypatch.setattr("opesvault.ui.pages.imports.review.QMessageBox.information", lambda *a, **k: None)
     page._queue.append(path)
     page._next_import()
     _wait(window)

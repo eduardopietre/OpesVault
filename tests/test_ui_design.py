@@ -54,7 +54,7 @@ def test_save_state_is_visible_in_the_toolbar(window: MainWindow) -> None:
 def test_sidebar_groups_and_badge(window: MainWindow) -> None:
     from opesvault.importing import pipeline
     from opesvault.importing.pipeline import ImportRequest
-    from opesvault.ui.pages.import_page import ImportPage
+    from opesvault.ui.pages.imports import ImportPage
 
     from . import synthetic_docs as docs
 

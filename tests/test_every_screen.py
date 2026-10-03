@@ -105,7 +105,14 @@ def modals(monkeypatch: pytest.MonkeyPatch) -> Modals:
 def errors(monkeypatch: pytest.MonkeyPatch) -> Iterator[list[str]]:
     """Exceptions raised inside Qt slots only reach sys.excepthook; collect them."""
     found: list[str] = []
-    monkeypatch.setattr(sys, "excepthook", lambda kind, value, _tb: found.append(f"{kind.__name__}: {value}"))
+    import traceback
+
+    def hook(kind: type[BaseException], value: BaseException, tb: Any) -> None:
+        found.append(f"{kind.__name__}: {value}")
+        if TRACE:
+            traceback.print_exception(kind, value, tb, file=sys.__stderr__)
+
+    monkeypatch.setattr(sys, "excepthook", hook)
     yield found
 
 

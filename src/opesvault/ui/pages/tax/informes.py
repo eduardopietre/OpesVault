@@ -48,11 +48,11 @@ class ReportCommands(_Parts):
     def _read_report(
         self, name: str, data: bytes, source: tuple[ReportSource, UUID] | None, password: str | None
     ) -> None:
-        from opesvault.ui.background import BackgroundJob
+        from opesvault.ui.background import BackgroundJob, while_alive
 
         self.import_button.setEnabled(False)
         job = BackgroundJob(lambda _report: statements.read(data, password))  # PDF text off the UI thread
-        job.signals.done.connect(lambda result: self._report_read(name, data, source, result))
+        while_alive(job.signals.done, self, lambda result: self._report_read(name, data, source, result))
         self._job = job
         job.start()
 

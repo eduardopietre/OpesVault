@@ -178,8 +178,7 @@ def test_every_page_has_help(window: MainWindow) -> None:
 def test_review_keyboard_flow(window: MainWindow, monkeypatch: pytest.MonkeyPatch) -> None:
     from opesvault.importing import pipeline
     from opesvault.importing.pipeline import ImportRequest
-    from opesvault.ui.pages import import_page
-    from opesvault.ui.pages.import_page import ImportPage
+    from opesvault.ui.pages.imports import ImportPage, review
 
     from . import synthetic_docs as docs
     from .domain_fixtures import family
@@ -193,8 +192,8 @@ def test_review_keyboard_flow(window: MainWindow, monkeypatch: pytest.MonkeyPatc
     page.batch_id = batch.id
     page.refresh()
     assert page.items.rowCount() >= 3
-    monkeypatch.setattr(import_page, "ask_reason", lambda *a, **k: "conferido")
-    monkeypatch.setattr(import_page.QMessageBox, "information", lambda *a, **k: None)
+    monkeypatch.setattr(review, "ask_reason", lambda *a, **k: "conferido")
+    monkeypatch.setattr(review.QMessageBox, "information", lambda *a, **k: None)
     page.items.selectRow(0)
     page.reject()
     assert page.items.currentRow() == 1  # moved on to the next item
@@ -213,3 +212,13 @@ def test_unknown_opening_balance_is_not_zero() -> None:
     result = apply_setup(ledger, SetupPlan(accounts=(AccountPlan("Caixa", AccountSubtype.CASH),)))
     assert result.opening_balances == 0
     assert not ledger.operations  # nothing invented for a balance that was not informed
+
+
+def test_a_dropped_file_that_disappeared_is_reported_not_raised(window: MainWindow, tmp_path: Path) -> None:
+    from opesvault.ui.pages.imports import ImportPage
+
+    page = next(p for p in window.pages if isinstance(p, ImportPage))
+    gone = tmp_path / "fatura.pdf"  # chosen or dropped, then moved before it was read
+    page.import_paths([gone])
+    assert window.statusBar().currentMessage() == "fatura.pdf: não foi possível ler o arquivo."
+    assert page.isEnabled() and not window.busy and not page._queue

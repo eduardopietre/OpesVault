@@ -83,7 +83,7 @@ def test_account_dialog_with_opening_balance(window: MainWindow) -> None:
 def test_import_page_review_flow(window: MainWindow) -> None:
     from opesvault.importing import pipeline
     from opesvault.importing.pipeline import ImportRequest
-    from opesvault.ui.pages.import_page import ImportPage
+    from opesvault.ui.pages.imports import ImportPage
 
     from . import synthetic_docs as docs
 

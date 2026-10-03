@@ -27,6 +27,7 @@ MODULES = (
     "opesvault.investments.model",
     "opesvault.investments.trades",
     "opesvault.investments.benchmarks",
+    "opesvault.tax.model",
 )
 
 for _module in MODULES:

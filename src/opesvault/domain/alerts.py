@@ -33,6 +33,7 @@ class Target(StrEnum):
     REPORTS = "reports"
     LEDGER = "ledger"
     SETTINGS = "settings"
+    TAX = "tax"
 
 
 @dataclass(frozen=True)
@@ -278,6 +279,16 @@ def suspicion_alerts(ledger: Ledger, today: date) -> list[Alert]:
     ]
 
 
+def tax_alerts(ledger: Ledger, today: date, horizon: int = HORIZON_DAYS) -> list[Alert]:
+    """DARFs of the month (renda variável, Carnê-Leão) and, in the return's season, what is pending."""
+    from opesvault.tax.issues import reminders
+
+    return [
+        Alert(severity, title, detail, Target.TAX, None if isinstance(ref, tuple) and ref[0] == "year" else due, ref)
+        for severity, title, detail, due, ref in reminders(ledger, today, horizon)
+    ]
+
+
 DUPLICATE_SPAN = 3
 BACKUP_AGE_DAYS = 30
 
@@ -320,5 +331,6 @@ def alerts(ledger: Ledger, today: date | None = None, horizon: int = HORIZON_DAY
         *price_alerts(ledger),
         *suspicion_alerts(ledger, today),
         *import_alerts(ledger),
+        *tax_alerts(ledger, today, horizon),
     ]
     return sorted(found, key=lambda a: (ORDER[a.severity], a.due_on or date.max, a.title))

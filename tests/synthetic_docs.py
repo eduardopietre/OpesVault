@@ -173,3 +173,24 @@ def sinacor_note_pdf() -> bytes:
             "Líquido para 04/03/2026 106,95 D",
         ]
     )
+
+
+def bank_income_report_pdf(year: int = 2025) -> bytes:
+    """Informe de rendimentos of a bank (generic layout; fictitious values)."""
+    return make_pdf(
+        [
+            "Banco Exemplo S.A. - CNPJ 11.222.333/0001-81",
+            "INFORME DE RENDIMENTOS FINANCEIROS",
+            f"Ano-calendário: {year}",
+            "Cliente: Ana Teste - CPF 529.982.247-25",
+            "1. Saldos",
+            f"Conta corrente - saldo em 31/12/{year - 1} R$ 1.000,00",
+            f"Conta corrente - saldo em 31/12/{year} R$ 2.500,00",
+            "2. Rendimentos isentos e não tributáveis",
+            "Rendimento de poupança 12,34",
+            "3. Rendimentos sujeitos à tributação exclusiva",
+            "Aplicações de renda fixa 45,60",
+            "Imposto de renda retido na fonte 10,26",
+            "Atendimento 0800 000 0000",
+        ]
+    )

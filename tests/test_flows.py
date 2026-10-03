@@ -14,7 +14,7 @@ from opesvault.domain.model import YearMonth
 from opesvault.session import Session
 from opesvault.ui import preferences, theme
 from opesvault.ui.main_window import MainWindow
-from opesvault.ui.pages.accounts_page import AccountsPage
+from opesvault.ui.pages.accounts import AccountsPage
 from opesvault.ui.pages.base import Page
 from opesvault.ui.pages.budget_page import BudgetPage
 from opesvault.ui.pages.ledger import LedgerPage
@@ -80,7 +80,7 @@ def test_bill_alert_opens_the_bill_and_pays_it(
     window.navigate("accounts", bill_alerts[0].ref, act=True)
     page = page_of(window, AccountsPage)
     assert window.stack.currentWidget() is page
-    assert page.tabs.currentIndex() == page.bills_tab
+    assert page.tabs.currentWidget() is page.bills_tab
     assert opened, "the alert's action opens the payment directly"
     assert not [a for a in alerts(ledger) if a.target is Target.ACCOUNTS and a.ref == bill_alerts[0].ref]
 

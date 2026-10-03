@@ -154,10 +154,10 @@ def test_accounts_loan_tab_pays_an_installment(
     monkeypatch.setattr(PayInstallmentDialog, "exec", lambda self: 1)
     window.navigate("accounts", ("loan", plan.id, 1), act=True)
     page = _page(window, "AccountsPage")
-    assert page.tabs.currentIndex() == page.loans_tab
+    assert page.tabs.currentWidget() is page.loans_tab
     assert loans.status(f.ledger, plan.id).paid == 1
-    assert page.schedule.item(0, 7).text() == "Paga"
-    assert page.loans.item(0, 3).text() == "1 de 12"
+    assert page.loans_tab.schedule.item(0, 7).text() == "Paga"
+    assert page.loans_tab.table.item(0, 3).text() == "1 de 12"
 
 
 def test_bank_check_alert_opens_the_account(setup: tuple[MainWindow, Family]) -> None:
@@ -166,9 +166,11 @@ def test_bank_check_alert_opens_the_account(setup: tuple[MainWindow, Family]) ->
     window._refresh()
     window.navigate("accounts", ("check", f.bank))
     page = _page(window, "AccountsPage")
-    assert page.tabs.currentIndex() == 0 and page.checks.rowCount() == 1
-    assert "diferença" in page.accounts.item(page.accounts.currentRow(), 5).text()
-    assert page.history.data is not None and page.history.data.title == "Saldo: Banco A"
+    assert page.tabs.currentWidget() is page.accounts_tab and page.accounts_tab.checks.rowCount() == 1
+    table = page.accounts_tab.table
+    assert "diferença" in table.item(table.currentRow(), 5).text()
+    history = page.accounts_tab.history
+    assert history.data is not None and history.data.title == "Saldo: Banco A"
 
 
 def test_calendar_and_sharing_pages(setup: tuple[MainWindow, Family]) -> None:

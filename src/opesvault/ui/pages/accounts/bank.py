@@ -1,11 +1,8 @@
 """The "Contas bancárias" tab: each bank account with its parts and investments, values and actions."""
 
-from collections.abc import Callable
 from datetime import date
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import UUID
-
-from PySide6.QtWidgets import QVBoxLayout, QWidget
 
 from opesvault.catalogs.irpf import CHECKING, SAVINGS, asset_label
 from opesvault.domain import balance_checks, banking
@@ -25,14 +22,16 @@ from opesvault.ui.common import (
     summary_table,
 )
 from opesvault.ui.components import Collapsible, button, confirm, flow_row, menu_button, scroll_body, text
-from opesvault.ui.theme import SPACE_L, SPACE_M
+from opesvault.ui.pages.accounts.tab import PageTab
+from opesvault.ui.theme import SPACE_L
+
+if TYPE_CHECKING:
+    from opesvault.ui.pages.base import Page
 
 
-class BankAccountsTab(QWidget):
-    def __init__(self, changed: Callable[[], None], notify: Callable[[str], None]) -> None:
-        super().__init__()
-        self.session: Any = None
-        self._changed, self._notify = changed, notify
+class BankAccountsTab(PageTab):
+    def __init__(self, page: "Page") -> None:
+        super().__init__(page)
         self.table = make_table(
             ["Conta", "Banco", "Agência", "Conta nº", "Titulares", "Corrente", "Poupança", "Investimentos", "Total"]
         )
@@ -72,9 +71,7 @@ class BankAccountsTab(QWidget):
             "secondary",
             wrap=True,
         )
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, SPACE_L, 0, 0)
-        layout.setSpacing(SPACE_M)
+        layout = self.column()
         layout.addWidget(
             flow_row(
                 button("Nova conta bancária…", self.add, role="primary"),
@@ -96,7 +93,9 @@ class BankAccountsTab(QWidget):
     # ── data ──────────
 
     def _name(self, member_id: UUID | None) -> str:
-        member = self.session.ledger.members.get(member_id) if member_id else None
+        if self.session is None or member_id is None:
+            return "?"
+        member = self.session.ledger.members.get(member_id)
         return member.name if member else "?"
 
     def refresh(self) -> None:
@@ -209,8 +208,8 @@ class BankAccountsTab(QWidget):
 
     def _run(self, dialog: Any, message: str) -> bool:
         if dialog.exec() and run_guarded(self, lambda: dialog.apply() or True):
-            self._notify(message)
-            self._changed()
+            self.notify(message)
+            self.changed()
             return True
         return False
 
@@ -220,7 +219,7 @@ class BankAccountsTab(QWidget):
         if self.session is None:
             return
         if not self.session.ledger.members:
-            self._notify("Cadastre o titular na aba Integrantes antes.")
+            self.notify("Cadastre o titular na aba Integrantes antes.")
             return
         self._run(BankAccountDialog(self, self.session.ledger), "Conta bancária cadastrada.")
 
@@ -228,18 +227,18 @@ class BankAccountsTab(QWidget):
         from opesvault.ui.bank_dialogs import BankAccountDialog
 
         item = self._selected()
-        if item is not None:
+        if item is not None and self.session is not None:
             self._run(BankAccountDialog(self, self.session.ledger, item), "Conta bancária salva.")
 
     def record_values(self) -> None:
         from opesvault.ui.bank_dialogs import ValuesDialog
 
         item = self._selected()
-        if item is None:
-            self._notify("Escolha a conta bancária.")
+        if item is None or self.session is None:
+            self.notify("Escolha a conta bancária.")
             return
         if not banking.values_at(self.session.ledger, item.id, date.today()):
-            self._notify("Esta conta não tem corrente, poupança nem investimentos ainda.")
+            self.notify("Esta conta não tem corrente, poupança nem investimentos ainda.")
             return
         self._run(ValuesDialog(self, self.session.ledger, item.id), "Valores registrados.")
 
@@ -259,13 +258,13 @@ class BankAccountsTab(QWidget):
         ref = selected_id(self.parts)
         kind = next((k for k, r in self._parts if r == ref), None)
         if kind != "investment" or self.session is None:
-            self._notify("Escolha um investimento na composição.")
+            self.notify("Escolha um investimento na composição.")
             return
         self._run(InvestmentDialog(self, self.session.ledger, position_id=ref), "Características salvas.")
 
     def archive(self) -> None:
         item = self._selected()
-        if item is None:
+        if item is None or self.session is None:
             return
         if confirm(
             self,
@@ -274,7 +273,7 @@ class BankAccountsTab(QWidget):
             "Encerrar",
         ):
             banking.archive(self.session.ledger, item.id)
-            self._changed()
+            self.changed()
 
 
 def _bank_label(item: banking.BankAccount) -> str:

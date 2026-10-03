@@ -28,7 +28,7 @@ from opesvault.session import Session
 from opesvault.ui import preferences
 from opesvault.ui.components import ElidedLabel
 from opesvault.ui.idle_lock import IdleWatcher, LockPanel, lock_minutes
-from opesvault.ui.pages.accounts_page import AccountsPage
+from opesvault.ui.pages.accounts import AccountsPage
 from opesvault.ui.pages.agenda_page import AgendaPage
 from opesvault.ui.pages.base import Page
 from opesvault.ui.pages.budget_page import BudgetPage

@@ -101,7 +101,7 @@ def test_import_page_review_flow(window: MainWindow) -> None:
 
 def test_phase3_pages(window: MainWindow) -> None:
     from opesvault.domain.cards import record_installment_purchase
-    from opesvault.ui.pages.accounts_page import AccountsPage
+    from opesvault.ui.pages.accounts import AccountsPage
     from opesvault.ui.pages.recurrences_page import RecurrencesPage, RuleDialog
 
     assert window.session is not None
@@ -111,7 +111,7 @@ def test_phase3_pages(window: MainWindow) -> None:
     record_installment_purchase(ledger, card.id, category.id, "300.00", date.today(), "TV", 3)
     accounts = next(p for p in window.pages if isinstance(p, AccountsPage))
     accounts.refresh()
-    assert accounts.bills.rowCount() >= 1
+    assert accounts.bills_tab.table.rowCount() >= 1
     recurrences = next(p for p in window.pages if isinstance(p, RecurrencesPage))
     dialog = RuleDialog(recurrences, ledger)
     dialog.description.setText("Aluguel")

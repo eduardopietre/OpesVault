@@ -11,7 +11,7 @@ from opesvault.session import Session
 from opesvault.ui.common import combo_value, select_combo
 from opesvault.ui.dialogs import OperationDialog
 from opesvault.ui.main_window import MainWindow
-from opesvault.ui.pages.accounts_page import AccountsPage
+from opesvault.ui.pages.accounts import AccountsPage
 
 from .domain_fixtures import Family, category, family
 

@@ -7,10 +7,8 @@ offers as rules the descriptions categorized the same way several times (docs/05
 """
 
 from collections.abc import Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import UUID
-
-from PySide6.QtWidgets import QVBoxLayout, QWidget
 
 from opesvault.importing import learning, pipeline, rules
 from opesvault.ui.common import (
@@ -24,16 +22,18 @@ from opesvault.ui.common import (
     summary_table,
 )
 from opesvault.ui.components import Collapsible, button, flow_row, text
-from opesvault.ui.theme import SPACE_L, SPACE_M
+from opesvault.ui.pages.accounts.tab import PageTab
 
 SHOWN_PROPOSALS = 12
 
 
-class RulesTab(QWidget):
-    def __init__(self, changed: Callable[[], None], notify: Callable[[str], None]) -> None:
-        super().__init__()
-        self.session: Any = None
-        self._changed, self._notify = changed, notify
+if TYPE_CHECKING:
+    from opesvault.ui.pages.base import Page
+
+
+class RulesTab(PageTab):
+    def __init__(self, page: "Page") -> None:
+        super().__init__(page)
         self.table = make_table(["A descrição contém", "Categoria", "Vale para", "Usos", "Situação"])
         self.table.setAccessibleName("Regras de categoria")
         stretch_column(self.table)
@@ -52,9 +52,7 @@ class RulesTab(QWidget):
         self.learned.add_actions(button("Criar regra…", self.create_from_proposal))
         self.learned.add(self.proposals)
 
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, SPACE_L, 0, 0)
-        layout.setSpacing(SPACE_M)
+        layout = self.column()
         layout.addWidget(
             text(
                 "Regras sugerem a categoria de itens importados; nada é aprovado sozinho. A escolha feita à mão "
@@ -135,8 +133,8 @@ class RulesTab(QWidget):
         if dialog.exec():
             result = run_guarded(self, dialog.apply)
             if result:
-                self._notify(message(result))
-                self._changed()
+                self.notify(message(result))
+                self.changed()
 
     def add(self) -> None:
         if self.session is None:
@@ -152,7 +150,7 @@ class RulesTab(QWidget):
         """The learned description and category, ready to become a rule the user can still edit."""
         chosen = selected_id(self.proposals)
         if self.session is None or not isinstance(chosen, tuple):
-            self._notify("Escolha uma das regras sugeridas.")
+            self.notify("Escolha uma das regras sugeridas.")
             return
         from opesvault.ui.rule_dialog import RuleDialog
 
@@ -165,7 +163,7 @@ class RulesTab(QWidget):
     def edit(self) -> None:
         rule = self._selected()
         if rule is None or self.session is None:
-            self._notify("Escolha uma regra.")
+            self.notify("Escolha uma regra.")
             return
         from opesvault.ui.rule_dialog import RuleDialog
 
@@ -174,7 +172,7 @@ class RulesTab(QWidget):
     def toggle(self) -> None:
         rule = self._selected()
         if rule is None or self.session is None:
-            self._notify("Escolha uma regra.")
+            self.notify("Escolha uma regra.")
             return
         from opesvault.ui.dialogs import ask_reason
 
@@ -185,5 +183,5 @@ class RulesTab(QWidget):
         if reason and run_guarded(self, lambda: rules.set_active(ledger, rule_id, not rule.active, reason)):
             changed = pipeline.apply_rules(ledger)
             done = "desativada" if rule.active else "ativada"
-            self._notify(f"Regra {done}. {changed} item(ns) pendente(s) revisto(s).")
-            self._changed()
+            self.notify(f"Regra {done}. {changed} item(ns) pendente(s) revisto(s).")
+            self.changed()

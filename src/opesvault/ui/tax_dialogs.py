@@ -22,7 +22,6 @@ from opesvault.domain.model import AccountType, YearMonth
 from opesvault.domain.money import MoneyError, format_brl, format_decimal_br, parse_brl
 from opesvault.tax import ids, records
 from opesvault.tax.model import (
-    ASSET_GROUPS,
     BUCKET_LABELS,
     FIELD_LABELS,
     INCOME_KIND_LABELS,
@@ -42,6 +41,7 @@ from opesvault.tax.model import (
     TaxParameters,
     TaxSubject,
 )
+from opesvault.ui.catalog_widgets import asset_code_combo
 from opesvault.ui.common import (
     combo_value,
     date_edit,
@@ -411,22 +411,6 @@ class OperationsDialog(FormDialog):
 # ── Bens e Direitos ──────────
 
 
-def _group_combo(value: str | None) -> QComboBox:
-    combo = QComboBox()
-    combo.setAccessibleName("Grupo")
-    fill_combo(combo, [(f"{code} — {label}", code) for code, label in ASSET_GROUPS.items()])
-    select_combo(combo, value)
-    return combo
-
-
-def _code_edit(value: str | None) -> QLineEdit:
-    edit = QLineEdit(value or "")
-    edit.setInputMask("99")
-    edit.setMaximumWidth(60)
-    edit.setAccessibleName("Código")
-    return edit
-
-
 class FilingDialog(FormDialog):
     """Group, code and description of an account or investment in Bens e Direitos."""
 
@@ -442,29 +426,27 @@ class FilingDialog(FormDialog):
         super().__init__(parent, "Bens e Direitos", "Salvar")
         self.ledger, self.subject, self.ref = ledger, subject, ref
         current = records.filing_of(ledger, subject, ref)
-        self.group = _group_combo(current.group if current else suggested)
-        self.code = _code_edit(current.code if current else None)
+        start = (current.group, current.code) if current else None
+        self.kind = asset_code_combo(start)
         self.description = QLineEdit(current.description if current and current.description else name)
         self.description.setMaxLength(512)
         self.description.setAccessibleName("Discriminação")
         _caption(
             self,
-            f"{name}. O código vem da tabela do programa da Receita para o grupo escolhido "
-            "(ex.: conta corrente, poupança, CDB). O valor declarado é o custo, calculado pelo aplicativo.",
+            f"{name}. Grupo e código da tabela de Bens e Direitos do programa IRPF (digite para procurar)"
+            + (f"; sugestão: grupo {suggested}. " if suggested and current is None else ". ")
+            + "O valor declarado é o custo, calculado pelo aplicativo.",
         )
-        self.form.addRow("Grupo:", self.group)
-        self.form.addRow("Código:", self.code)
+        self.form.addRow("Tipo:", self.kind)
         self.form.addRow("Discriminação:", self.description)
 
+    def validate(self) -> None:
+        if combo_value(self.kind) is None:
+            raise DomainError("Escolha o grupo e o código na tabela do IRPF.")
+
     def apply(self) -> None:
-        records.set_filing(
-            self.ledger,
-            self.subject,
-            self.ref,
-            combo_value(self.group),
-            self.code.text().strip(),
-            self.description.text(),
-        )
+        group, code = combo_value(self.kind)
+        records.set_filing(self.ledger, self.subject, self.ref, group, code, self.description.text())
 
 
 class DeclaredAssetDialog(FormDialog):
@@ -477,8 +459,7 @@ class DeclaredAssetDialog(FormDialog):
         self.ledger, self.asset = ledger, asset
         self.name = QLineEdit(asset.name if asset else "")
         self.name.setAccessibleName("Nome do bem")
-        self.group = _group_combo(asset.group if asset else "01")
-        self.code = _code_edit(asset.code if asset else None)
+        self.kind = asset_code_combo((asset.group, asset.code) if asset else None, ("01", "02", "03", "05", "99"))
         self.description = QLineEdit(asset.description if asset else "")
         self.description.setPlaceholderText("endereço, matrícula, placa, de quem foi comprado…")
         self.description.setAccessibleName("Discriminação")
@@ -499,8 +480,7 @@ class DeclaredAssetDialog(FormDialog):
         self.sale.setPlaceholderText("não vendido")
         for label, widget in (
             ("Nome:", self.name),
-            ("Grupo:", self.group),
-            ("Código:", self.code),
+            ("Tipo:", self.kind),
             ("Discriminação:", self.description),
             ("Dono:", self.owner),
             ("Aquisição:", self.acquired),
@@ -516,10 +496,13 @@ class DeclaredAssetDialog(FormDialog):
     def build(self) -> DeclaredAsset:
         cost = read_money(self.cost)
         assert cost is not None
+        kind = combo_value(self.kind)
+        if kind is None:
+            raise DomainError("Escolha o grupo e o código na tabela do IRPF.")
         fields = {
             "name": self.name.text().strip(),
-            "group": combo_value(self.group),
-            "code": self.code.text().strip(),
+            "group": kind[0],
+            "code": kind[1],
             "description": " ".join(self.description.text().split()),
             "owner_id": combo_value(self.owner),
             "acquired_on": from_qdate(self.acquired.date()),
@@ -529,8 +512,6 @@ class DeclaredAssetDialog(FormDialog):
         }
         if not fields["name"]:
             raise DomainError("Informe o nome do bem.")
-        if len(fields["code"]) != 2:
-            raise DomainError("O código tem dois dígitos.")
         if self.asset is None:
             return DeclaredAsset(**fields)
         return self.asset.model_copy(update=fields)

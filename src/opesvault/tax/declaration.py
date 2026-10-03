@@ -11,12 +11,13 @@ from datetime import date
 from decimal import Decimal
 from uuid import UUID
 
-from opesvault.domain import merchants, queries
+from opesvault.domain import banking, merchants, queries
 from opesvault.domain.deductibles import DeductibleKind
 from opesvault.domain.ledger import Ledger
 from opesvault.domain.model import AccountSubtype, AccountType, Operation, Posting, YearMonth
 from opesvault.domain.money import ZERO
 from opesvault.investments.model import AssetClass, EventKind, InvestmentEvent
+from opesvault.investments.profile import description, profile_of
 from opesvault.tax import records
 from opesvault.tax.model import (
     ASSET_GROUPS,
@@ -101,6 +102,7 @@ class OtherIncomeRow:
     amount: Decimal = ZERO
     withheld: Decimal = ZERO
     operations: list[UUID] = field(default_factory=list)
+    code: str | None = None  # the IRPF line ("12"), when the investment's characteristics say it
 
 
 @dataclass
@@ -263,6 +265,7 @@ def _investment_income(
             source=asset.name,
             tax_id=institution.tax_id if institution else None,
         ).add(None, value, event.tax_withheld)
+        rows[(NatureSubject.POSITION, pos.id, pos.holder_id)].code = records.income_code_of(ledger, pos.id)
 
 
 # ── payments (Pagamentos efetuados) ──────────
@@ -340,7 +343,9 @@ class AssetRow:
 
     @property
     def group_label(self) -> str:
-        return ASSET_GROUPS.get(self.group or "", "a definir")
+        from opesvault.catalogs.irpf import asset_label
+
+        return asset_label(self.group, self.code) if self.code else ASSET_GROUPS.get(self.group or "", "a definir")
 
 
 def _position_accounts(ledger: Ledger) -> dict[UUID, UUID]:
@@ -369,14 +374,19 @@ def assets(ledger: Ledger, year: int, people: set[UUID] | None = None) -> list[A
         filing = records.filing_of(ledger, FilingSubject.ACCOUNT, account.id)
         bank = records.identity(ledger, TaxSubject.ACCOUNT, account.id)
         default = " ".join(x for x in (account.name, account.institution, account.masked_number) if x)
+        group, code, suggested = _account_code(ledger, account.id, account.subtype)
+        part_of = banking.of_account(ledger, account.id)
+        if part_of is not None:
+            kind = "Conta corrente" if account.id == part_of.checking_id else "Conta poupança"
+            default = f"{kind} — {part_of.where}"
         out.append(
             AssetRow(
                 "account",
                 account.id,
                 account.name,
-                filing.group if filing else records.suggested_group(subtype=account.subtype),
-                filing.code if filing else None,
-                filing is None,
+                filing.group if filing else group,
+                filing.code if filing else code,
+                filing is None and suggested,
                 (filing.description if filing and filing.description else default),
                 bank.tax_id if bank else None,
                 account.holders,
@@ -395,16 +405,26 @@ def assets(ledger: Ledger, year: int, people: set[UUID] | None = None) -> list[A
         asset = asset_entities(ledger)[pos.asset_id]
         filing = records.filing_of(ledger, FilingSubject.POSITION, pos.id)
         broker = records.identity(ledger, TaxSubject.ACCOUNT, pos.account_id)
+        profile = profile_of(ledger, pos.id)
+        typed = profile is not None and profile.irpf_group is not None
+        held_at = (
+            banking.bank_accounts(ledger).get(profile.bank_account_id) if profile and profile.bank_account_id else None
+        )
+        bank_tax_id = _bank_cnpj(ledger, held_at)
         out.append(
             AssetRow(
                 "position",
                 pos.id,
                 asset.name,
-                filing.group if filing else records.suggested_group(asset_class=asset.asset_class),
-                filing.code if filing else None,
-                filing is None,
-                (filing.description if filing and filing.description else asset.name),
-                broker.tax_id if broker else None,
+                filing.group
+                if filing
+                else (
+                    profile.irpf_group if typed and profile else records.suggested_group(asset_class=asset.asset_class)
+                ),
+                filing.code if filing else (profile.irpf_code if typed and profile else None),
+                filing is None and not typed,
+                (filing.description if filing and filing.description else description(ledger, pos.id) or asset.name),
+                broker.tax_id if broker else bank_tax_id,
                 owners,
                 cost_then,
                 cost_now,
@@ -435,6 +455,30 @@ def assets(ledger: Ledger, year: int, people: set[UUID] | None = None) -> list[A
             )
         )
     return sorted(out, key=lambda r: (r.group or "zz", r.code or "zz", r.name.casefold()))
+
+
+def _account_code(ledger: Ledger, account_id: UUID, subtype: AccountSubtype) -> tuple[str | None, str | None, bool]:
+    """A bank account's checking and savings have a known code; other accounts get a suggested group."""
+    from opesvault.catalogs.irpf import CHECKING, SAVINGS
+
+    part_of = banking.of_account(ledger, account_id)
+    if part_of is not None:
+        group, code = CHECKING if account_id == part_of.checking_id else SAVINGS
+        return group, code, False
+    return records.suggested_group(subtype=subtype), None, True
+
+
+def _bank_cnpj(ledger: Ledger, item: object) -> str | None:
+    from opesvault.catalogs import bank
+
+    if not isinstance(item, banking.BankAccount):
+        return None
+    for _part, account_id in item.components():
+        found = records.identity(ledger, TaxSubject.ACCOUNT, account_id)
+        if found is not None:
+            return found.tax_id
+    listed = bank(item.bank_code)
+    return listed.cnpj if listed and listed.cnpj else None
 
 
 def _held_cost(item: object, day: date) -> Decimal:

@@ -9,6 +9,7 @@ import importlib
 MODULES = (
     "opesvault.domain.anomalies",
     "opesvault.domain.attachments",
+    "opesvault.domain.banking",
     "opesvault.domain.balance_checks",
     "opesvault.domain.budget",
     "opesvault.domain.cards",
@@ -27,6 +28,7 @@ MODULES = (
     "opesvault.investments.model",
     "opesvault.investments.trades",
     "opesvault.investments.benchmarks",
+    "opesvault.investments.profile",
     "opesvault.tax.model",
 )
 

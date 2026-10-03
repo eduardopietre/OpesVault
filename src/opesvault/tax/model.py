@@ -13,6 +13,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from opesvault.catalogs.irpf import GROUPS
 from opesvault.domain.ledger import DomainError, Ledger
 from opesvault.domain.model import Amount, YearMonth, _Entity
 
@@ -112,17 +113,7 @@ class FilingSubject(StrEnum):
     POSITION = "position"
 
 
-ASSET_GROUPS = {
-    "01": "Bens imóveis",
-    "02": "Bens móveis",
-    "03": "Participações societárias",
-    "04": "Aplicações e investimentos",
-    "05": "Créditos",
-    "06": "Depósitos à vista e numerário",
-    "07": "Fundos",
-    "08": "Criptoativos",
-    "99": "Outros bens e direitos",
-}
+ASSET_GROUPS = GROUPS  # the IRPF table (catalogs.irpf)
 
 CODE = Field(pattern=r"^\d{2}$")
 

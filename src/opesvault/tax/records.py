@@ -188,7 +188,36 @@ def nature_of(ledger: Ledger, subject: NatureSubject, ref: UUID) -> IncomeNature
         account = ledger.accounts.get(ref)
         if account is not None and account.parent_id is not None:  # a subcategory follows its parent
             return nature_of(ledger, subject, account.parent_id)
-    return None
+        return None
+    return _profile_nature(ledger, ref)
+
+
+def _profile_nature(ledger: Ledger, position_id: UUID) -> IncomeNature | None:
+    """An investment's characteristics (income code, tax treatment) say how its income is declared."""
+    from opesvault.investments.profile import TaxTreatment, profile_of
+
+    profile = profile_of(ledger, position_id)
+    if profile is None:
+        return None
+    if profile.income_code is not None:
+        return IncomeNature.EXEMPT if profile.income_code.startswith("isento") else IncomeNature.EXCLUSIVE
+    return (
+        {
+            TaxTreatment.EXEMPT: IncomeNature.EXEMPT,
+            TaxTreatment.WITHHELD: IncomeNature.EXCLUSIVE,
+            TaxTreatment.COME_COTAS: IncomeNature.EXCLUSIVE,
+        }.get(profile.tax)
+        if profile.tax
+        else None
+    )
+
+
+def income_code_of(ledger: Ledger, position_id: UUID) -> str | None:
+    """The IRPF line code of an investment's income ('12'), from its characteristics."""
+    from opesvault.investments.profile import profile_of
+
+    profile = profile_of(ledger, position_id)
+    return profile.income_code.split(":")[1] if profile is not None and profile.income_code else None
 
 
 def classify(ledger: Ledger, subject: NatureSubject, ref: UUID, nature: IncomeNature | None) -> None:
@@ -283,10 +312,12 @@ def filing_of(ledger: Ledger, subject: FilingSubject, ref: UUID) -> AssetFiling 
 
 
 def _check_code(group: str, code: str) -> None:
+    from opesvault.catalogs.irpf import is_asset_code
+
     if group not in ASSET_GROUPS:
         raise DomainError("Escolha o grupo do bem.")
-    if len(code) != 2 or not code.isdigit():
-        raise DomainError("O código tem dois dígitos (veja a tabela do programa da Receita).")
+    if not is_asset_code(group, code):
+        raise DomainError("Escolha o código na tabela de Bens e Direitos do IRPF.")
 
 
 def set_filing(

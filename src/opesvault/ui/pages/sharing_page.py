@@ -31,7 +31,7 @@ class SharingPage(Page):
 
     def __init__(self, changed) -> None:  # type: ignore[no-untyped-def]
         super().__init__(changed)
-        self.figures = Figures(["A receber de reembolsos", "Acertos pendentes na família"])
+        self.figures = Figures(["A receber de reembolsos", "Acertos pendentes no projeto"])
         self.reimbursements = summary_table(
             ["Data", "Lançamento", "Quem reembolsa", "Esperado", "Recebido", "Situação"], max_rows=10
         )
@@ -173,7 +173,7 @@ class SharingPage(Page):
         self.history_section.setVisible(bool(records))
         owed = sum((b.amount for b in self._balances), ZERO)
         self.figures.set("A receber de reembolsos", fmt(waiting))
-        self.figures.set("Acertos pendentes na família", fmt(owed))
+        self.figures.set("Acertos pendentes no projeto", fmt(owed))
         has_shares = bool(self._balances) or bool(sharing.shares(ledger))
         self.balances_section.setVisible(has_shares or bool(records))
         self.views.setCurrentIndex(0 if rows or has_shares or records else 1)

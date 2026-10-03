@@ -499,7 +499,7 @@ class InvestmentsPage(Page):
                 ),
             ),
             ("ticker", "Código (opcional):", QLineEdit()),
-            ("holder", "Titular:", _combo([(m.name, m.id) for m in ledger.members.values()], empty="(família)")),
+            ("holder", "Titular:", _combo([(m.name, m.id) for m in ledger.members.values()], empty="(projeto)")),
             ("on", "Data inicial:", date_edit()),
             ("cost", "Capital/custo inicial:", money_edit("vazio se desconhecido")),
             ("from", "Dinheiro saiu de:", _combo(cash_accounts(ledger), empty="(investimento já existente)")),

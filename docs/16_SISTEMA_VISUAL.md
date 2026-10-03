@@ -29,6 +29,8 @@ Configurações (rodapé)
 - **Atenção:** ao abrir o cofre, a Visão geral mostra o que vence, atrasou, estourou ou aguarda revisão. Cada aviso tem um botão para a tela onde se resolve, e o painel some até a próxima abertura se o usuário ocultá-lo.
 - **Sem cofre aberto:** a janela mostra um estado vazio com Novo cofre e Abrir cofre.
 
+- **Termo na interface:** o cofre pertence a um **Projeto**. A interface diz "Projeto inteiro", "(projeto)" e "Nome do projeto", nunca "Família". Estes documentos continuam usando "família" para o mesmo conceito.
+
 ## 2. Fundamentos (`src/opesvault/ui/theme.py`)
 
 - **Cores semânticas** (`Tokens`), em versões clara e escura:

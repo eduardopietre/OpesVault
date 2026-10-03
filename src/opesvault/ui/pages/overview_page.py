@@ -102,7 +102,7 @@ class OverviewPage(Page):
                 ("Relatório do mês em PDF…", self.export_report),
                 ("Comparação completa (Relatórios)", lambda: self.navigate("reports", "comparison")),
             ],
-            tip="Relatório do mês para conversar em família (arquivo sem cifra)",
+            tip="Relatório do mês para conversar sobre o projeto (arquivo sem cifra)",
         )
         # Who and when, then the month's actions: separate groups.
         self.header.add(self.member, self.month, SPACE_XL, self.more, self.close_button, self.reopen_button)
@@ -417,7 +417,7 @@ class OverviewPage(Page):
         members = [(m.name, m.id) for m in self.session.ledger.members.values() if m.active]
         self.member.blockSignals(True)
         self.member.clear()
-        self.member.addItem("Família inteira", None)
+        self.member.addItem("Projeto inteiro", None)
         for name, member_id in members:
             self.member.addItem(name, member_id)
         index = next((i for i in range(self.member.count()) if self.member.itemData(i) == current), 0)

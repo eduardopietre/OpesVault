@@ -36,11 +36,11 @@ parcelas e quantos meses de despesa a reserva cobre. Cada um diz como é calcula
 <p><b>Comparado aos meses anteriores</b>: o mês contra a média dos 3 meses anteriores e contra o mesmo mês do ano
 anterior, com as categorias que mais subiram. <b>Mês a mês</b> mostra o gráfico e, abaixo, a tabela com os mesmos
 valores. Cada seção pode ser recolhida clicando no título; a escolha fica neste computador.</p>
-<p><b>Visão de</b>: a família inteira ou um integrante. Na visão de um integrante, a competência mostra as partes
+<p><b>Visão de</b>: o projeto inteiro ou um integrante. Na visão de um integrante, a competência mostra as partes
 atribuídas a ele (rateio) e o caixa e o patrimônio mostram as contas de que é titular; contas conjuntas aparecem
-inteiras, por isso as visões dos integrantes não somam a da família.</p>
+inteiras, por isso as visões dos integrantes não somam a do projeto.</p>
 <p><b>Relatório em PDF</b>: resumo, comparação, categorias com o orçamento, vencimentos, indicadores e pendências do
-mês, para conversar em família. O arquivo sai sem cifra; o aplicativo avisa antes.</p>
+mês, para conversar sobre o projeto. O arquivo sai sem cifra; o aplicativo avisa antes.</p>
 <p>Valores desconhecidos aparecem como “—”, nunca como zero.</p>
 """,
     "Calendário": """

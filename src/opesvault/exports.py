@@ -115,7 +115,7 @@ _STYLE = (
     "<style>body{font-family:sans-serif;font-size:10pt} h1{font-size:16pt} h2{font-size:12pt;margin-top:14pt}"
     " th{border-bottom:1px solid #888} td{border-bottom:1px solid #ddd} .note{color:#555;font-size:8pt}</style>"
 )
-WARNING = "Arquivo exportado sem criptografia: contém dados financeiros da família."
+WARNING = "Arquivo exportado sem criptografia: contém dados financeiros do projeto."
 
 
 def monthly_report_html(ledger: Ledger, month: Any, member_id: Any = None) -> str:
@@ -147,7 +147,7 @@ def monthly_report_html(ledger: Ledger, month: Any, member_id: Any = None) -> st
     member = ledger.members.get(member_id) if member_id else None
     parts = [
         f"<html><head><meta charset='utf-8'>{_STYLE}</head><body>",
-        f"<h1>{_h(ledger.meta.family_name or 'Família')} — {_h(title)}</h1>",
+        f"<h1>{_h(ledger.meta.family_name or 'Projeto')} — {_h(title)}</h1>",
         f'<p class="note">{_h(WARNING)}</p>',
     ]
     if member is not None:
@@ -222,7 +222,7 @@ def annual_report_html(ledger: Ledger, year: int) -> str:
     summary = annual(ledger, year)
     parts = [
         f"<html><head><meta charset='utf-8'>{_STYLE}</head><body>",
-        f"<h1>{_h(ledger.meta.family_name or 'Família')} — fechamento de {year}</h1>",
+        f"<h1>{_h(ledger.meta.family_name or 'Projeto')} — fechamento de {year}</h1>",
         f'<p class="note">{_h(WARNING)} {_h(NOTICE)}</p>',
         f"<h2>Bens e dívidas em 31/12/{year}</h2>",
         _table(

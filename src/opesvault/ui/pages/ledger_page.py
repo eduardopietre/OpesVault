@@ -257,7 +257,7 @@ class OperationInspector(QScrollArea):
             ("Liquidação", fmt_date(op.settled_on)),
             ("Vencimento", fmt_date(op.due_on)),
             ("Competência", str(op.competence) if op.competence else "—"),
-            ("Responsável", member.name if member else "Família"),
+            ("Responsável", member.name if member else "Projeto"),
         ):
             add(_pair(label, value))
         add(separator())

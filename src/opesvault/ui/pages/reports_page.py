@@ -170,7 +170,7 @@ class ReportsPage(Page):
             else:
                 label, items = {
                     "account": ("Todas as contas", balance_accounts(ledger)),
-                    "member": ("Família inteira", [(m.name, m.id) for m in ledger.members.values() if m.active]),
+                    "member": ("Projeto inteiro", [(m.name, m.id) for m in ledger.members.values() if m.active]),
                     "category": ("Todas as categorias", category_items(ledger, AccountType.EXPENSE)),
                     "tag": ("Todos os marcadores", [(t, t) for t in all_tags(ledger)]),
                 }[kind]

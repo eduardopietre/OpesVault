@@ -75,7 +75,7 @@ class GoalDialog(FormDialog):
         self.form.addRow(
             "",
             text(
-                "Patrimônio líquido: tudo o que a família tem menos o que deve. Contas escolhidas: o saldo somado "
+                "Patrimônio líquido: tudo o que o projeto tem menos o que deve. Contas escolhidas: o saldo somado "
                 "de contas como a poupança da reserva. A meta só acompanha; não movimenta dinheiro.",
                 "caption",
                 wrap=True,
@@ -155,7 +155,7 @@ class GoalsPage(Page):
         self.empty = EmptyState(
             "Nenhuma meta",
             "Crie uma meta de patrimônio ou de saldo (reserva de emergência, entrada de um imóvel, viagem) para "
-            "acompanhar quanto falta e em que ritmo a família chega lá.",
+            "acompanhar quanto falta e em que ritmo o projeto chega lá.",
             [button("Nova meta…", self.add_goal)],
         )
         scroll, content = scroll_body()

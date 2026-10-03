@@ -43,6 +43,7 @@ No Windows, se o `uv sync` falhar com "arquivo em uso" (os error 32, antivírus)
 ## Decisões tomadas depois dos docs (prevalecem sobre eles)
 
 - Idioma: código, identificadores, comentários e commits em **inglês**. Textos de interface, mensagens ao usuário e `docs/` em **português brasileiro**.
+- Na interface, o cofre é de um **Projeto**, não de uma "Família": "Projeto inteiro", "(projeto)", "Nome do projeto", "dados financeiros do projeto". Os `docs/` e os identificadores (`family_name`, `domain/family`) continuam falando em família; ao escrever texto novo de interface, use "projeto" (masculino: "o projeto inteiro", "do projeto").
 - Tooling: **Python 3.12**, **uv** (com lockfile versionado), **ruff** (lint e formatação), **pyright** e **pytest**.
 - Importação aceita **PDF, CSV e OFX** (`docs/05` §1 e §3).
 - Repositório **privado** e **sem CI** por enquanto. A branch principal é a `main`. Os gates do Windows que exigem build ou intervenção física (G3–G7) são executados manualmente pelo usuário.

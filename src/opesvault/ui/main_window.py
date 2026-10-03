@@ -316,7 +316,7 @@ class MainWindow(QMainWindow):
         self.welcome_restore = button("Restaurar backup…", self.restore_backup)
         state = EmptyState(
             "Nenhum cofre aberto",
-            "Cada família tem um cofre: um arquivo .opesvault cifrado com a sua senha, com lançamentos e "
+            "Cada projeto tem um cofre: um arquivo .opesvault cifrado com a sua senha, com lançamentos e "
             "documentos. Nada sai deste computador.",
             [self.welcome_new, self.welcome_open, self.welcome_restore],
         )
@@ -870,7 +870,7 @@ class MainWindow(QMainWindow):
         QMessageBox.about(
             self,
             "Sobre o OpesVault",
-            f"OpesVault {__version__}\nFinanças familiares offline, com cofre cifrado.\n"
+            f"OpesVault {__version__}\nFinanças de projetos offline, com cofre cifrado.\n"
             "Licenças de terceiros: arquivo THIRD_PARTY_LICENSES na pasta de instalação.",
         )
 
@@ -1192,7 +1192,7 @@ class MainWindow(QMainWindow):
         name, _ = QFileDialog.getSaveFileName(self, "Novo cofre", "", VAULT_FILTER)
         if not name:
             return
-        family, ok = QInputDialog.getText(self, "Novo cofre", "Nome da família ou pessoa:")
+        family, ok = QInputDialog.getText(self, "Novo cofre", "Nome do projeto:")
         if not ok or not family.strip():
             return
         path = Path(name).with_suffix(".opesvault")
@@ -1311,7 +1311,7 @@ def backup_report(restored: Session, current: Session | None) -> str:
         elif behind == 0:
             lines.append("É deste cofre, na mesma revisão da aberta.")
     elif current is not None:
-        lines.append("É de outro cofre (outro arquivo ou outra família).")
+        lines.append("É de outro cofre (outro arquivo ou outro projeto).")
     lines.append("")
     lines.append("Nada foi alterado: para usar o backup, Cofre › Restaurar backup.")
     return "\n".join(lines)

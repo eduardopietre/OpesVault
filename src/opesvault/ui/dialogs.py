@@ -318,7 +318,7 @@ class OperationDialog(FormDialog):
         self.source = QComboBox()
         self.target = QComboBox()
         self.member = QComboBox()
-        fill_combo(self.member, [(m.name, m.id) for m in ledger.members.values() if m.active], empty="(família)")
+        fill_combo(self.member, [(m.name, m.id) for m in ledger.members.values() if m.active], empty="(projeto)")
 
         self.form.addRow("Descrição:", self.description)
         self.form.addRow("Valor:", self.amount)
@@ -438,7 +438,7 @@ class MemberDialog(FormDialog):
         self.form.addRow(
             "",
             text(
-                "Titular responde pelas finanças da família; dependente (filhos, por exemplo) participa de "
+                "Titular responde pelas finanças do projeto; dependente (filhos, por exemplo) participa de "
                 "rateios e pode ser portador de cartão adicional. O papel identifica; não dá nem tira acesso.",
                 "caption",
                 wrap=True,

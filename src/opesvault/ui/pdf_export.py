@@ -25,7 +25,7 @@ def save_pdf(parent: QWidget, suggested: str, build: Callable[[], str]) -> bool:
     if not confirm(
         parent,
         "Gerar PDF sem criptografia?",
-        "O PDF fica fora do cofre, sem criptografia, e contém dados financeiros da família.",
+        "O PDF fica fora do cofre, sem criptografia, e contém dados financeiros do projeto.",
         "Gerar PDF…",
     ):
         return False

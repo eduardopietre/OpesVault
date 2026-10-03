@@ -46,7 +46,17 @@ from opesvault.ui.common import (
     stretch_column,
     summary_table,
 )
-from opesvault.ui.components import Collapsible, EmptyState, Section, button, confirm, menu_button, scroll_body, text
+from opesvault.ui.components import (
+    Collapsible,
+    EmptyState,
+    Section,
+    adaptive,
+    button,
+    confirm,
+    menu_button,
+    scroll_body,
+    text,
+)
 from opesvault.ui.dialogs import FormDialog, balance_accounts, category_items
 from opesvault.ui.pages.base import Page
 from opesvault.ui.theme import tokens
@@ -194,8 +204,8 @@ class RecurrencesPage(Page):
         scroll, body = scroll_body()
         body.addWidget(rules_section)
         body.addWidget(forecasts_section)
-        body.addWidget(self.commitments_section)
-        body.addWidget(self.candidates_section)
+        # wide: what is already recurring beside what looks recurring but is not registered
+        body.addWidget(adaptive(1400, (self.commitments_section, 3), (self.candidates_section, 2)))
         body.addStretch(1)
         self.empty = EmptyState(
             "Nenhuma recorrência",

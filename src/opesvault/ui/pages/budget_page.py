@@ -36,7 +36,7 @@ from opesvault.ui.common import (
     style_table,
     summary_table,
 )
-from opesvault.ui.components import EmptyState, Figures, MonthPicker, button, menu_button, scroll_body
+from opesvault.ui.components import EmptyState, Figures, MonthPicker, adaptive, button, menu_button, scroll_body
 from opesvault.ui.dialogs import FormDialog, category_items
 from opesvault.ui.pages.base import Page
 from opesvault.ui.theme import SPACE_L, SPACE_S, SPACE_XL, tokens
@@ -252,8 +252,8 @@ class BudgetPage(Page):
         scroll, content = scroll_body()
         content.setSpacing(SPACE_L)
         content.addWidget(self.figures)
-        content.addWidget(self.views)
-        content.addWidget(self.history)
+        # wide: the categories beside the history of the selected one; narrow: one below the other
+        content.addWidget(adaptive(1200, self.views, self.history))
         content.addStretch(1)
         layout = self.page_layout()
         layout.addWidget(scroll, 1)

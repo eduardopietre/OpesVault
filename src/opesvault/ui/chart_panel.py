@@ -16,8 +16,11 @@ from PySide6.QtWidgets import QFileDialog, QHeaderView, QTableWidgetItem, QVBoxL
 
 from opesvault.charts.data import Chart, Point, TableRow, table_rows
 from opesvault.ui.common import fit_to_rows, fmt, summary_table
-from opesvault.ui.components import Collapsible, button, confirm
-from opesvault.ui.theme import SPACE_L, tokens
+from opesvault.ui.components import Adaptive, Collapsible, button, confirm
+from opesvault.ui.theme import SPACE_L, SPACE_XL, tokens
+
+WIDE_AT = 1000  # panel width from which the values sit beside the chart
+WIDE_CHART_SCALE = 1.4
 
 MONTHS = ("jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez")
 
@@ -84,12 +87,18 @@ class ChartPanel(QWidget):
         self.export_button.setAccessibleName(f"Exportar valores: {table_title}")
         self.table_section.add_actions(self.export_button)
         self.table_section.add(self.table)
+        # wide (1920x1080, the target): chart and values side by side; narrow: stacked, and a
+        # folded section gives its room back so what follows moves up
+        self.arrangement = Adaptive(WIDE_AT, spacing=SPACE_XL, stacked_spacing=SPACE_L)
+        self.arrangement.add(self.chart_section, 3)
+        self.arrangement.add(self.table_section, 2)
+        # beside the values there is height to spare: the chart grows instead of leaving it empty
+        self.arrangement.arranged.connect(
+            lambda wide: self.chart.setFixedHeight(round(chart_height * WIDE_CHART_SCALE) if wide else chart_height)
+        )
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(SPACE_L)
-        layout.addWidget(self.chart_section)
-        layout.addWidget(self.table_section)
-        layout.addStretch(1)  # a folded section gives its room back: what follows moves up
+        layout.addWidget(self.arrangement)
 
     def show_chart(self, chart: Chart) -> None:
         self.data = chart

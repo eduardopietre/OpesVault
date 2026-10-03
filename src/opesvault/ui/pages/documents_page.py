@@ -3,7 +3,7 @@
 from typing import Any
 from uuid import UUID
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import QLabel, QScrollArea, QSpinBox, QVBoxLayout, QWidget
 
@@ -11,6 +11,8 @@ from opesvault.importing.model import ImportBatch
 from opesvault.ui.common import file_size, frameless, make_table, selected_id, set_rows
 from opesvault.ui.components import button
 from opesvault.ui.pages.base import Page
+
+FIT_MIN, FIT_MAX = 0.75, 2.5  # page scale range when fitting the page to the viewer's width
 
 
 class PdfView(QWidget):
@@ -34,6 +36,14 @@ class PdfView(QWidget):
         scroll = QScrollArea()
         scroll.setWidget(self.image)
         scroll.setWidgetResizable(True)
+        self.pane = scroll
+        # The page fits the viewer's width: wider viewer (1920x1080), larger page; a resize
+        # renders again once the user stops dragging.
+        self._refit = QTimer(self)
+        self._refit.setSingleShot(True)
+        self._refit.setInterval(120)
+        self._refit.timeout.connect(self._render)
+        self._fitted_width = 0
         from opesvault.ui.components import hbox, text
 
         self.image.setProperty("textStyle", "secondary")
@@ -46,6 +56,24 @@ class PdfView(QWidget):
         layout.addLayout(hbox(text("Documento original", "headline"), None, text("Página", "secondary"), self.page))
         layout.addWidget(scroll)
         layout.addWidget(self.unlock_button, 0, Qt.AlignmentFlag.AlignHCenter)
+
+    def resizeEvent(self, event: object) -> None:  # noqa: N802 - Qt override
+        super().resizeEvent(event)  # type: ignore[arg-type]
+        if self._pdf is not None and abs(self.pane.viewport().width() - self._fitted_width) > 8:
+            self._refit.start()
+
+    def _fit_scale(self) -> float:
+        from opesvault.pdf_render import page_width
+
+        try:
+            points = page_width(self._pdf, self.page.value() - 1)
+        except Exception:
+            return 1.5
+        self._fitted_width = self.pane.viewport().width()
+        available = self._fitted_width - 2 * 8  # a little paper margin
+        if points <= 0 or available <= 0:
+            return 1.5
+        return min(max(available / points, FIT_MIN), FIT_MAX)
 
     def _close(self) -> None:
         if self._pdf is not None:
@@ -122,7 +150,7 @@ class PdfView(QWidget):
         # Rendered at the screen's real density (150%, 200%…) so text stays sharp, then shown at
         # the same logical size; the highlight box is drawn in the same pixel space.
         ratio = self.devicePixelRatioF()
-        scale = 1.5 * ratio
+        scale = self._fit_scale() * ratio
         try:
             image = render_document(self._pdf, self.page.value() - 1, scale)
         except Exception:

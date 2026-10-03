@@ -43,6 +43,7 @@ from opesvault.ui.common import (
     month_label,
     run_guarded,
     select_combo,
+    share_width,
     style_table,
 )
 from opesvault.ui.components import EmptyState, button, fill_menu, flow_row, hbox, menu_button, separator, text
@@ -453,8 +454,9 @@ class LedgerPage(Page):
             enter = QShortcut(QKeySequence(key), self.table)
             enter.setContext(Qt.ShortcutContext.WidgetShortcut)
             enter.activated.connect(self.edit)
-        for column, width in enumerate((104, 240, 240, 110, 96, 130, 90)):
-            self.table.setColumnWidth(column, width)
+        # Data, Descrição, De → Para, Valor, Competência, Tipo, Origem, Situação: on a wide window
+        # the room goes to the description and the accounts, which are the ones cut short
+        share_width(self.table, (104, 240, 240, 110, 104, 130, 90, 110), {1: 3, 2: 3, 5: 1})
         install_column_chooser(
             self.table, "livro", required={OperationsModel.DATE, OperationsModel.DESCRIPTION, OperationsModel.AMOUNT}
         )
@@ -475,7 +477,9 @@ class LedgerPage(Page):
         self.split.setChildrenCollapsible(False)
         self.split.addWidget(self.views)
         self.split.addWidget(self.inspector)
-        self.split.setStretchFactor(0, 1)
+        # the inspector also grows on a wide window (a quarter of the extra room), the table more
+        self.split.setStretchFactor(0, 3)
+        self.split.setStretchFactor(1, 1)
         self.split.setSizes([900, 300])
 
         self.count = QLabel()  # kept for scripts and tests; the visible count is the header subtitle

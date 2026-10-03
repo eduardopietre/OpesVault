@@ -47,6 +47,7 @@ from opesvault.ui.common import (
 from opesvault.ui.components import (
     Collapsible,
     EmptyState,
+    adaptive,
     button,
     flow_row,
     menu_button,
@@ -267,8 +268,11 @@ class InvestmentsPage(Page):
         heading.addWidget(self.detail_title)
         heading.addWidget(self.summary)
         dl.addLayout(heading)
-        for section in (evolution, valuations, result, events, self.lots_section, returns):
-            dl.addWidget(section)
+        # wide: each chart beside the table it comes from (evolution and its observations, the
+        # result and the movements behind it); narrow: one below the other
+        dl.addWidget(adaptive(1200, (evolution, 3), (valuations, 2)))
+        dl.addWidget(adaptive(1200, (result, 3), (events, 2)))
+        dl.addWidget(adaptive(1200, (returns, 3), (self.lots_section, 2)))
         self.empty = EmptyState(
             "Nenhum investimento",
             "Cadastre um investimento para acompanhar avaliações, aportes, resgates e rentabilidade.",

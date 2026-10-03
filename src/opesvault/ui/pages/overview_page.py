@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
     QStyleOptionViewItem,
     QTableWidget,
     QVBoxLayout,
+    QWidget,
 )
 
 from opesvault.domain import queries
@@ -22,6 +23,7 @@ from opesvault.domain.money import ZERO
 from opesvault.ui.alerts_panel import AlertsPanel
 from opesvault.ui.common import fit_to_rows, fmt, fmt_date, month_label, set_rows, stretch_column, summary_table
 from opesvault.ui.components import (
+    Adaptive,
     Collapsible,
     Figures,
     MonthPicker,
@@ -46,6 +48,7 @@ INDICATOR_KEYS = {
     "reserve": "Reserva",
 }
 INDICATOR_LABELS = list(INDICATOR_KEYS.values())
+RAIL_FROM = 1300  # content width from which Atenção sits beside the month
 SHARE_BARS_FROM = 3  # categories needed before a bar adds anything to the percentage
 
 
@@ -87,6 +90,7 @@ class OverviewPage(Page):
         self.month.changed.connect(self._month_changed)
         self.close_button = button("Fechar mês…", self.close_month, tip="Bloqueia alterações no mês")
         self.reopen_button = button("Reabrir mês…", self.reopen_month, tip="Libera alterações; exige motivo")
+        self.reopen_button.hide()  # only for a closed month
         # Whose view: the whole family (consolidated) or one member's share (docs/04 §6, TA-18).
         self.member = QComboBox()
         self.member.setAccessibleName("Visão de")
@@ -200,18 +204,37 @@ class OverviewPage(Page):
         )
 
         # Short windows scroll the content instead of forcing a taller window.
+        # What to act on (Atenção, what blocks closing the month) leads: on top when the window is
+        # narrow, a rail on the right of the month when it is wide (1920x1080, the target).
+        self.rail = QWidget()
+        rail = QVBoxLayout(self.rail)
+        rail.setContentsMargins(0, 0, 0, 0)
+        rail.setSpacing(SPACE_XXL)
+        rail.addWidget(self.alerts)
+        rail.addWidget(self.pending_section)
+        self.alerts.hide_button.clicked.connect(self._fit_rail)
+        main = QWidget()
+        column = QVBoxLayout(main)
+        column.setContentsMargins(0, 0, 0, 0)
+        column.setSpacing(SPACE_XXL)
+        column.addLayout(month_grid)
+        column.addLayout(worth)
+        column.addLayout(tables)
+        column.addWidget(self.indicators_section)
+        column.addWidget(self.comparison_section)
+        column.addWidget(self.months_panel)
+        self.columns = Adaptive(RAIL_FROM, SPACE_XXL, first_right=True)
+        self.columns.add(self.rail, 2)
+        self.columns.add(main, 5)
         scroll, content = scroll_body()
-        content.addWidget(self.alerts)
-        content.addLayout(month_grid)
-        content.addLayout(worth)
-        content.addWidget(self.pending_section)
-        content.addLayout(tables)
-        content.addWidget(self.indicators_section)
-        content.addWidget(self.comparison_section)
-        content.addWidget(self.months_panel)
+        content.addWidget(self.columns)
         content.addStretch(1)
         layout = self.page_layout()
         layout.addWidget(scroll, 1)
+
+    def _fit_rail(self) -> None:
+        """An empty rail gives its column back to the month."""
+        self.rail.setVisible(not (self.alerts.isHidden() and self.pending_section.isHidden()))
 
     def _default_month(self) -> None:
         """Opens on the latest month with activity, not on an empty current month."""
@@ -298,6 +321,7 @@ class OverviewPage(Page):
         self.reopen_button.setVisible(closed)
         self.pending.setText("\n".join(f"• {p}" for p in pending))
         self.pending_section.setVisible(bool(pending))
+        self._fit_rail()
 
         at = month.last_day()
         all_balances = queries.balances(ledger, at)

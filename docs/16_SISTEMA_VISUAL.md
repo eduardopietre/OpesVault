@@ -1,6 +1,6 @@
 # Sistema visual e de interação
 
-Versão 1.2 • 02/10/2026. Complementa o `07` (telas e gráficos) com as regras de interface adotadas na revisão orientada pelos princípios de interação de desktop da Apple (HIG): hierarquia clara, conteúdo acima de cromo, teclado como recurso de primeira classe e consistência entre telas. A meta não é imitar a aparência do macOS: o alvo continua sendo Windows, com Qt Widgets.
+Versão 1.3 • 03/10/2026. Complementa o `07` (telas e gráficos) com as regras de interface adotadas na revisão orientada pelos princípios de interação de desktop da Apple (HIG): hierarquia clara, conteúdo acima de cromo, teclado como recurso de primeira classe e consistência entre telas. A meta não é imitar a aparência do macOS: o alvo continua sendo Windows, com Qt Widgets.
 
 ## 1. Arquitetura da janela
 
@@ -56,7 +56,7 @@ Configurações (rodapé)
 
 | Componente | Uso |
 |---|---|
-| `PageHeader` | Título, contexto e ações de cada página |
+| `PageHeader` | Título, contexto e ações de cada página. Sem largura para os dois, as ações descem para baixo do título |
 | `EmptyState` | O que é a área, por que está vazia e o que fazer |
 | `Figures` / `Section` | Números-chave e grupos titulados, sem caixas. Grupos lado a lado usam uma grade de colunas iguais, com título, descrição e números nas mesmas linhas |
 | `summary_table` / `fit_to_rows` | Tabelas curtas de resumo (Visão geral, Orçamento, Recorrências, carteira de Investimentos): sem moldura nem zebra, divisórias entre linhas, altura igual ao conteúdo até um limite (depois rola). A coluna do nome ocupa a sobra; colunas numéricas à direita, cabeçalho incluído |
@@ -67,6 +67,8 @@ Configurações (rodapé)
 | `menu_button` | Agrupa comandos secundários sem escondê-los |
 | `button(role=…)` | Hierarquia: `primary`, padrão, `plain`, `destructive` |
 | `flow_row` / `FlowLayout` | Filtros e ações quebram linha em janelas estreitas |
+| `Adaptive` / `adaptive` | Partes relacionadas lado a lado quando há largura e uma abaixo da outra quando não há. A largura mínima é sempre a da forma empilhada, para que o arranjo largo nunca obrigue a janela a ficar larga. Usa folga de 32 px para não alternar com a barra de rolagem. `first_right` põe a primeira parte em cima quando empilhado e à direita quando largo (coluna lateral) |
+| `share_width` (`ui/common.py`) | Tabelas de trabalho (Livro): larguras base para todas as colunas; numa janela larga a sobra vai para as colunas de texto, em vez de virar uma faixa vazia. Uma coluna arrastada pelo usuário encerra a divisão automática |
 | `MonthPicker` | Mês por extenso, com botões ‹ › do mesmo tamanho e moldura do seletor, e Alt+← / Alt+→ |
 | `style_table`, `install_column_chooser` | Tabelas sem grade, zebradas, colunas escolhidas pelo botão direito e lembradas |
 | `Collapsible` | Seção que se recolhe: o título é o botão (seta ▸/▾), as ações ficam na linha do título e somem quando recolhida. Com uma chave, a escolha do usuário (só o clique, não a mudança feita pelo código) fica neste computador |
@@ -80,7 +82,19 @@ Formulários (`FormDialog`) usam rótulos alinhados e um botão com verbo ("Regi
 2. Cada ação mostra o que fez, de forma breve na barra de status ("Lançamento corrigido. A versão anterior ficou no histórico."). Diálogo só quando há decisão.
 3. Estados vazios explicam a área e oferecem o próximo passo; filtros ativos sempre mostram "Limpar filtros".
 4. Cor nunca é o único sinal: o cancelado tem texto "Cancelado", o saldo negativo tem sinal e o estado de salvamento tem texto.
-5. A janela funciona a partir de ~900 × 640: filtros e grupos quebram linha, painéis laterais podem ser recolhidos e o inspetor se oculta sozinho.
+5. A janela funciona a partir de ~900 × 640: filtros, grupos e as ações do cabeçalho quebram linha, painéis laterais podem ser recolhidos e o inspetor se oculta sozinho. O alvo do produto, porém, é **1920 × 1080**, e ali uma coluna única deixa metade da tela vazia. Por isso, a partir de certa largura do conteúdo, as partes relacionadas ficam lado a lado (`Adaptive`):
+
+   | Tela | Lado a lado quando largo | A partir de |
+   |---|---|---|
+   | Todas com `ChartPanel` (Orçamento, Contas, Relatórios, Metas, Visão geral) | gráfico (3/5) e tabela de valores (2/5); o gráfico fica 40% mais alto | 1000 px do painel |
+   | Visão geral | o mês à esquerda; Atenção e "Antes de fechar o mês" numa coluna à direita (2/7), que some quando está vazia. Estreita: em cima, como antes | 1300 px |
+   | Orçamento | categorias do mês e, ao lado, o histórico da categoria selecionada | 1200 px |
+   | Calendário | o calendário e a lista de vencimentos | 1200 px |
+   | Investimentos | Evolução e Avaliações; Resultado acumulado e Movimentos; Rentabilidade e Lotes | 1200 px |
+   | Recorrências | Assinaturas e contas fixas e "Parecem recorrentes" | 1400 px |
+   | Reembolsos e acertos | Acertos entre integrantes e Acertos registrados | 1300 px |
+
+   Nas áreas de trabalho com divisória, a sobra se reparte: no Livro, 3:1 entre a tabela e o inspetor, e as colunas Descrição, De → Para e Tipo crescem (`share_width`); em Importar, 1:4:3 entre documentos, revisão e original. O PDF original se ajusta à largura do visualizador (escala de 0,75 a 2,5) e é desenhado de novo quando a largura muda. Os gráficos refazem as margens ao mudar de tamanho, para os rótulos do eixo não serem cortados. Uma tabela de muitas colunas não vira coluna estreita: a lista de contas continua com a largura toda, e o gráfico de saldo abaixo dela é que fica ao lado dos valores.
 6. Teclado:
    - Ctrl+S, Ctrl+W, Ctrl+F, Ctrl+1…9, F1, Ctrl+L;
    - Ctrl+Z e Ctrl+Shift+Z (ou Ctrl+Y) desfazem e refazem o que ainda não foi salvo; o menu Editar diz o que será desfeito ("Desfazer lançamento");
@@ -138,12 +152,13 @@ Regra: quem vê um problema chega ao objeto e ao comando que o resolve, sem proc
 
 ## 6. Verificação
 
-- `uv run python scripts/capturar_telas.py [--dark] [--size 900x640]` renderiza cada tela com dados sintéticos em `build/telas/`. Use antes e depois de mudar a interface.
+- `uv run python scripts/capturar_telas.py [--dark] [--size 900x640]` renderiza cada tela com dados sintéticos em `build/telas/`. Use antes e depois de mudar a interface, em 1920x1080 (o alvo), 1280x800 e 900x640.
 - `tests/test_ui_design.py` cobre:
   - estado sem cofre;
   - estado de salvamento;
   - grupos e contador da barra lateral;
-  - largura mínima com dados (≤ 1000 px);
+  - largura mínima com e sem cofre (≤ 1000 px; ~880 px no Linux);
+  - arranjo largo e estreito: `Adaptive`, gráfico ao lado dos valores, coluna de Atenção, colunas do Livro, ações do cabeçalho e PDF ajustado à largura;
   - limpar filtros;
   - erro inline;
   - temas claro e escuro.

@@ -9,6 +9,7 @@ from collections.abc import Callable, Iterable, Sequence
 from PySide6.QtCore import QEvent, QPoint, QRect, QSize, Qt, Signal
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (
+    QBoxLayout,
     QDialog,
     QDialogButtonBox,
     QFrame,
@@ -20,6 +21,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QScrollArea,
     QSizePolicy,
+    QSpacerItem,
     QToolButton,
     QVBoxLayout,
     QWidget,
@@ -139,11 +141,46 @@ class PageHeader(QWidget):
         titles.setSpacing(2)
         titles.addWidget(self.title)
         titles.addWidget(self.subtitle)
-        row = QHBoxLayout(self)
-        row.setContentsMargins(0, 0, 0, SPACE_XS)
-        row.setSpacing(SPACE_L)
-        row.addLayout(titles, 1)
-        row.addLayout(self.trailing)
+        # The actions sit on the title's line; when the window is too narrow for both, they move
+        # below the title instead of setting the window's minimum width.
+        self.row = QBoxLayout(QBoxLayout.Direction.LeftToRight, self)
+        self.row.setContentsMargins(0, 0, 0, SPACE_XS)
+        self.row.setSpacing(SPACE_L)
+        self.row.setSizeConstraint(QLayout.SizeConstraint.SetNoConstraint)
+        self.row.addLayout(titles, 1)
+        self.row.addLayout(self.trailing)
+        self._titles = titles
+
+    def _side_by_side_width(self) -> int:
+        return self.title.sizeHint().width() + self.row.spacing() + self.trailing.sizeHint().width()
+
+    def _fit(self) -> None:
+        wide = self.width() >= self._side_by_side_width()
+        direction = QBoxLayout.Direction.LeftToRight if wide else QBoxLayout.Direction.TopToBottom
+        if self.row.direction() != direction:
+            self.row.setDirection(direction)
+            self.row.setStretchFactor(self._titles, 1 if wide else 0)
+            self.row.setSpacing(SPACE_L if wide else SPACE_S)
+            self.trailing.setAlignment(Qt.AlignmentFlag.AlignRight if wide else Qt.AlignmentFlag.AlignLeft)
+            self.updateGeometry()
+
+    def resizeEvent(self, event: object) -> None:  # noqa: N802 - Qt override
+        self._fit()
+        super().resizeEvent(event)  # type: ignore[arg-type]
+
+    def minimumSizeHint(self) -> QSize:  # noqa: N802 - Qt override
+        margins = self.row.contentsMargins()
+        width = max(self._titles.minimumSize().width(), self.trailing.minimumSize().width())
+        return QSize(width + margins.left() + margins.right(), self.row.minimumSize().height())
+
+    def sizeHint(self) -> QSize:  # noqa: N802 - Qt override
+        return self.row.sizeHint().expandedTo(self.minimumSizeHint())
+
+    def hasHeightForWidth(self) -> bool:  # noqa: N802 - Qt override
+        return True
+
+    def heightForWidth(self, width: int) -> int:  # noqa: N802 - Qt override
+        return self.row.heightForWidth(width) if self.row.hasHeightForWidth() else self.row.sizeHint().height()
 
     def set_subtitle(self, value: str) -> None:
         self.subtitle.setText(value)
@@ -565,6 +602,104 @@ def flow_row(*widgets: QWidget, spacing: int = SPACE_S, line_spacing: int | None
 def hbox_widget(*items: QWidget | int | None, spacing: int = SPACE_S) -> QWidget:
     host = QWidget()
     host.setLayout(hbox(*items, spacing=spacing))
+    return host
+
+
+class Adaptive(QWidget):
+    """Side by side when there is room, stacked when the window narrows (docs/16 §2).
+
+    The product targets 1920x1080, where a single column leaves half the screen empty, but a
+    small window must keep working. Below `breakpoint` (this widget's own width) the children
+    stack; above it they sit in a row, each with its `stretch` share, aligned at the top. The
+    minimum width is always the stacked one, so a wide arrangement never forces the window
+    to stay wide: it only appears when the room is already there.
+    """
+
+    HYSTERESIS = 32  # a scroll bar coming and going must not make the layout flip back and forth
+    arranged = Signal(bool)  # True when the children now sit side by side
+
+    def __init__(
+        self, breakpoint: int, spacing: int = SPACE_XL, stacked_spacing: int | None = None, *, first_right: bool = False
+    ) -> None:
+        super().__init__()
+        self.breakpoint = breakpoint
+        # first_right: the first child leads when stacked (on top) but sits on the right when wide,
+        # like a side rail of things to act on
+        self._row = QBoxLayout.Direction.RightToLeft if first_right else QBoxLayout.Direction.LeftToRight
+        self._spacing = spacing
+        self._stacked_spacing = spacing if stacked_spacing is None else stacked_spacing
+        self._stretch: list[int] = []
+        self._widgets: list[QWidget] = []
+        self.box = QBoxLayout(QBoxLayout.Direction.TopToBottom, self)
+        self.box.setContentsMargins(0, 0, 0, 0)
+        self.box.setSpacing(self._stacked_spacing)
+        self.box.setSizeConstraint(QLayout.SizeConstraint.SetNoConstraint)
+        self._tail = QSpacerItem(0, 0, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+        self.box.addItem(self._tail)
+
+    def add(self, widget: QWidget, stretch: int = 1) -> QWidget:
+        self.box.insertWidget(len(self._widgets), widget)
+        self._widgets.append(widget)
+        self._stretch.append(stretch)
+        self._arrange()
+        return widget
+
+    @property
+    def wide(self) -> bool:
+        return self.box.direction() != QBoxLayout.Direction.TopToBottom
+
+    def _arrange(self) -> None:
+        wide = self.wide
+        self.box.setSpacing(self._spacing if wide else self._stacked_spacing)
+        for index, widget in enumerate(self._widgets):
+            self.box.setStretch(index, self._stretch[index] if wide else 0)
+            self.box.setAlignment(widget, Qt.AlignmentFlag.AlignTop if wide else Qt.AlignmentFlag(0))
+        # stacked, a folded child gives its room back to what follows; side by side, nothing to give
+        if wide:
+            self._tail.changeSize(0, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        else:
+            self._tail.changeSize(0, 0, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+        self.box.invalidate()
+        self.updateGeometry()
+
+    def set_wide(self, wide: bool) -> None:
+        if wide == self.wide:
+            return
+        self.box.setDirection(self._row if wide else QBoxLayout.Direction.TopToBottom)
+        self._arrange()
+        self.arranged.emit(wide)
+
+    def resizeEvent(self, event: object) -> None:  # noqa: N802 - Qt override
+        width = self.width()
+        if not self.wide and width >= self.breakpoint:
+            self.set_wide(True)
+        elif self.wide and width < self.breakpoint - self.HYSTERESIS:
+            self.set_wide(False)
+        super().resizeEvent(event)  # type: ignore[arg-type]
+
+    def minimumSizeHint(self) -> QSize:  # noqa: N802 - Qt override
+        width = max((w.minimumSizeHint().expandedTo(w.minimumSize()).width() for w in self._shown()), default=0)
+        return QSize(width, self.box.minimumSize().height())
+
+    def sizeHint(self) -> QSize:  # noqa: N802 - Qt override
+        return QSize(self.box.sizeHint().width(), self.box.sizeHint().height()).expandedTo(self.minimumSizeHint())
+
+    def hasHeightForWidth(self) -> bool:  # noqa: N802 - Qt override
+        return self.box.hasHeightForWidth()
+
+    def heightForWidth(self, width: int) -> int:  # noqa: N802 - Qt override
+        return self.box.heightForWidth(width) if self.box.hasHeightForWidth() else -1
+
+    def _shown(self) -> list[QWidget]:
+        return [w for w in self._widgets if not w.isHidden()]
+
+
+def adaptive(breakpoint: int, *widgets: QWidget | tuple[QWidget, int], spacing: int = SPACE_XL) -> Adaptive:
+    """`Adaptive` with its children: a widget (stretch 1) or (widget, stretch)."""
+    host = Adaptive(breakpoint, spacing)
+    for entry in widgets:
+        widget, stretch = entry if isinstance(entry, tuple) else (entry, 1)
+        host.add(widget, stretch)
     return host
 
 

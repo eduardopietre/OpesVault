@@ -2,6 +2,7 @@
 
 from datetime import date
 from pathlib import Path
+from typing import Any
 
 import pytest
 from PySide6.QtWidgets import QApplication
@@ -123,3 +124,118 @@ def test_every_control_has_an_accessible_name(window: MainWindow) -> None:
     problems = [f"{page.title} › {p}" for page in window.pages for p in unnamed(page)]
     problems += unnamed(window.toolbar)
     assert problems == []
+
+
+def test_window_without_a_vault_fits_a_small_desktop(app: QApplication) -> None:
+    window = MainWindow()
+    window.resize(900, 640)
+    window.show()
+    QApplication.processEvents()
+    assert window.minimumSizeHint().width() <= 1000
+
+
+def test_adaptive_sits_side_by_side_only_when_there_is_room(app: QApplication) -> None:
+    from PySide6.QtWidgets import QWidget
+
+    from opesvault.ui.components import Adaptive
+
+    host = Adaptive(1000)
+    left, right = QWidget(), QWidget()
+    for child in (left, right):
+        child.setMinimumWidth(300)
+        child.setMinimumHeight(50)
+        host.add(child)
+    # the minimum is the stacked one: a wide arrangement never keeps the window wide
+    assert host.minimumSizeHint().width() == 300
+    host.resize(1200, 400)
+    host.show()
+    QApplication.processEvents()
+    assert host.wide and right.x() > left.x()
+    host.resize(990, 400)  # inside the hysteresis band: no flip back and forth
+    QApplication.processEvents()
+    assert host.wide
+    host.resize(700, 400)
+    QApplication.processEvents()
+    assert not host.wide and right.y() > left.y() and right.x() == left.x()
+
+
+def _at(window: MainWindow, page_type: type, width: int, height: int) -> Any:
+    window.resize(width, height)
+    window.show()
+    page = next(p for p in window.pages if isinstance(p, page_type))
+    window.show_page(window.pages.index(page))
+    for _ in range(4):
+        QApplication.processEvents()
+    return page
+
+
+def test_wide_window_puts_chart_beside_its_values(window: MainWindow) -> None:
+    from opesvault.ui.pages.reports_page import ReportsPage
+
+    page = _at(window, ReportsPage, 1920, 1080)
+    panel = page.panel
+    assert panel.arrangement.wide
+    assert panel.table_section.x() > panel.chart_section.x()
+    assert panel.chart.height() > 320  # beside the values the chart takes the height it has
+    page = _at(window, ReportsPage, 900, 640)
+    assert not page.panel.arrangement.wide
+    assert page.panel.table_section.y() > page.panel.chart_section.y()
+    assert page.panel.chart.height() == 320
+
+
+def test_overview_attention_is_a_rail_on_wide_windows(window: MainWindow) -> None:
+    from opesvault.ui.pages.overview_page import OverviewPage
+
+    page = _at(window, OverviewPage, 1920, 1080)
+    page.pending.setText("• algo a resolver")
+    page.pending_section.show()
+    page._fit_rail()
+    QApplication.processEvents()
+    assert not page.rail.isHidden()
+    assert page.columns.wide and page.rail.x() > page.cash.mapTo(page.columns, page.cash.rect().topLeft()).x()
+    window.resize(900, 640)
+    for _ in range(4):
+        QApplication.processEvents()
+    assert not page.columns.wide and page.rail.y() == 0  # stacked: what to act on comes first
+
+
+def test_ledger_gives_wide_windows_to_the_text_columns(window: MainWindow) -> None:
+    from opesvault.ui.pages.ledger_page import LedgerPage, OperationsModel
+
+    page = _at(window, LedgerPage, 1920, 1080)
+    header = page.table.horizontalHeader()
+    assert header.sectionSize(OperationsModel.DESCRIPTION) > 240
+    assert header.sectionSize(OperationsModel.DATE) == 104
+    page = _at(window, LedgerPage, 900, 640)
+    assert header.sectionSize(OperationsModel.DESCRIPTION) == 240
+    header.resizeSection(OperationsModel.DESCRIPTION, 180)  # a column dragged by hand stays as dragged
+    window.resize(1920, 1080)
+    QApplication.processEvents()
+    assert header.sectionSize(OperationsModel.DESCRIPTION) == 180
+
+
+def test_page_header_actions_move_below_the_title_when_narrow(window: MainWindow) -> None:
+    from opesvault.ui.pages.overview_page import OverviewPage
+
+    page = _at(window, OverviewPage, 1920, 1080)
+    header = page.header
+    assert page.month.y() < header.title.y() + header.title.height()
+    page = _at(window, OverviewPage, 900, 640)
+    assert page.month.mapTo(header, page.month.rect().topLeft()).y() >= header.title.height()
+
+
+def test_pdf_viewer_fits_the_page_to_its_width(app: QApplication) -> None:
+    from opesvault.ui.pages.documents_page import FIT_MAX, FIT_MIN, PdfView
+
+    from . import synthetic_docs as docs
+
+    view = PdfView()
+    view.resize(400, 600)
+    view.show()
+    view.show_pdf(docs.nubank_card_pdf())
+    QApplication.processEvents()
+    narrow = view._fit_scale()
+    view.resize(900, 600)
+    QApplication.processEvents()
+    wide = view._fit_scale()
+    assert FIT_MIN <= narrow < wide <= FIT_MAX

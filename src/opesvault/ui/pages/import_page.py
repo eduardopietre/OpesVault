@@ -30,7 +30,17 @@ from opesvault.importing.parsers import PARSERS
 from opesvault.importing.pipeline import ImportRequest
 from opesvault.importing.source import PROBLEM_MESSAGES, SourceError, SourceProblem
 from opesvault.ui.background import BackgroundJob
-from opesvault.ui.common import fill_combo, fmt, fmt_date, make_table, read_money, run_guarded, selected_id, set_rows
+from opesvault.ui.common import (
+    fill_combo,
+    fmt,
+    fmt_date,
+    make_table,
+    read_money,
+    run_guarded,
+    selected_id,
+    set_rows,
+    stretch_column,
+)
 from opesvault.ui.components import EmptyState, button, flow_row, hbox, hbox_widget, menu_button, text
 from opesvault.ui.dialogs import FormDialog, ask_reason
 from opesvault.ui.pages.base import Page
@@ -142,6 +152,7 @@ class ImportPage(Page):
         self.batches.setAccessibleName("Documentos importados")
         self.batches.itemSelectionChanged.connect(self._select_batch)
         self.batches.setMinimumWidth(160)
+        stretch_column(self.batches)  # a long file name is cut, the item count stays in view
         self.import_button = button(
             "Importar arquivos…", self.import_files, role="primary", tip="PDF, CSV ou OFX (Ctrl+I); ou arraste para cá"
         )
@@ -263,7 +274,9 @@ class ImportPage(Page):
         splitter.addWidget(self.batches)
         splitter.addWidget(self.review_stack)
         splitter.addWidget(self.viewer)
-        splitter.setStretchFactor(1, 1)
+        # extra room on a wide window goes mostly to the review and to the original document
+        for index, stretch in enumerate((1, 4, 3)):
+            splitter.setStretchFactor(index, stretch)
         splitter.setSizes([230, 640, 380])
         # Narrow windows: the side panes can be dragged closed; the review never shrinks away.
         splitter.setCollapsible(0, True)

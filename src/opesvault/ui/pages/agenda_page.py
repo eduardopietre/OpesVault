@@ -7,13 +7,13 @@ from typing import Any
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor
-from PySide6.QtWidgets import QAbstractItemView, QHeaderView, QTableWidget, QTableWidgetItem
+from PySide6.QtWidgets import QAbstractItemView, QHeaderView, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget
 
 from opesvault.domain.agenda import STATE_LABELS, AgendaEvent, EventState, by_day, month_events
 from opesvault.domain.model import YearMonth
 from opesvault.domain.money import ZERO
 from opesvault.ui.common import fit_to_rows, fmt, fmt_date, month_label, set_rows, stretch_column, summary_table
-from opesvault.ui.components import Collapsible, Figures, MonthPicker, button, scroll_body, text
+from opesvault.ui.components import Collapsible, Figures, MonthPicker, adaptive, button, scroll_body, text
 from opesvault.ui.pages.base import Page
 from opesvault.ui.theme import SPACE_L, tokens
 
@@ -67,9 +67,14 @@ class AgendaPage(Page):
         scroll, content = scroll_body()
         content.setSpacing(SPACE_L)
         content.addWidget(self.figures)
-        content.addWidget(self.grid)
-        content.addWidget(self.caption)
-        content.addWidget(self.events_section)
+        month_view = QWidget()
+        days = QVBoxLayout(month_view)
+        days.setContentsMargins(0, 0, 0, 0)
+        days.setSpacing(SPACE_L)
+        days.addWidget(self.grid)
+        days.addWidget(self.caption)
+        # wide: the list of the month (or of the chosen day) beside the calendar, not below it
+        content.addWidget(adaptive(1200, (month_view, 3), (self.events_section, 2)))
         content.addStretch(1)
         layout = self.page_layout()
         layout.addWidget(scroll, 1)

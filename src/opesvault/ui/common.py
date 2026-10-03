@@ -1,11 +1,11 @@
 """Small shared UI helpers. No financial logic lives here."""
 
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Sequence
 from datetime import date
 from decimal import Decimal
 from typing import Any
 
-from PySide6.QtCore import QDate, Qt
+from PySide6.QtCore import QDate, QEvent, QObject, Qt
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QComboBox,
@@ -160,6 +160,61 @@ def style_table(table: QAbstractItemView) -> None:
         header.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
         header.setStretchLastSection(True)
         header.setHighlightSections(False)
+
+
+class _WidthShare(QObject):
+    """Keeps a work table's columns at their base widths and gives the rest to the text columns."""
+
+    def __init__(self, view: QTableView, base: Sequence[int], grow: dict[int, int]) -> None:
+        super().__init__(view)
+        self._view = view
+        self._base = list(base)
+        self._grow = grow
+        self._applying = False
+        self.manual = False  # once the user drags a column, the widths are theirs
+        view.viewport().installEventFilter(self)
+        view.horizontalHeader().sectionResized.connect(self._resized)
+        view.horizontalHeader().geometriesChanged.connect(self.apply)  # a column shown or hidden
+        self.apply()
+
+    def _resized(self, column: int, old: int, new: int) -> None:
+        header = self._view.horizontalHeader()
+        last = header.logicalIndex(header.count() - 1)
+        hiding = old == 0 or new == 0
+        if not (self._applying or hiding) and column != last and self._view.isVisible():
+            self.manual = True
+
+    def eventFilter(self, watched: QObject, event: QEvent) -> bool:  # noqa: N802 - Qt override
+        if event.type() == QEvent.Type.Resize:
+            self.apply()
+        return False
+
+    def apply(self) -> None:
+        if self.manual or self._applying:
+            return
+        header = self._view.horizontalHeader()
+        shown = [c for c in range(len(self._base)) if not header.isSectionHidden(c)]
+        growing = [c for c in self._grow if c in shown]
+        extra = self._view.viewport().width() - sum(self._base[c] for c in shown)
+        total = sum(self._grow[c] for c in growing)
+        self._applying = True
+        try:
+            for column in shown:
+                width = self._base[column]
+                if extra > 0 and total and column in growing:
+                    width += extra * self._grow[column] // total
+                if header.sectionSize(column) != width:
+                    header.resizeSection(column, width)
+        finally:
+            self._applying = False
+
+
+def share_width(view: QTableView, base: Sequence[int], grow: dict[int, int]) -> None:
+    """Work tables (Livro, Importar): base widths for every column; on a wide window the slack
+    goes to the text columns in `grow` ({column: share}) instead of leaving a blank band or
+    stretching the last column away from the rest. A column dragged by hand stops the sharing."""
+    view.horizontalHeader().setStretchLastSection(True)
+    _WidthShare(view, base, grow)
 
 
 def stretch_column(table: QTableView, column: int = 0) -> None:

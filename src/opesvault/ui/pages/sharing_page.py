@@ -19,7 +19,7 @@ from opesvault.ui.common import (
     stretch_column,
     summary_table,
 )
-from opesvault.ui.components import Collapsible, EmptyState, Figures, button, scroll_body, text
+from opesvault.ui.components import Collapsible, EmptyState, Figures, adaptive, button, scroll_body, text
 from opesvault.ui.dialogs import ask_reason
 from opesvault.ui.pages.base import Page
 from opesvault.ui.theme import SPACE_L
@@ -85,8 +85,8 @@ class SharingPage(Page):
         content.setSpacing(SPACE_L)
         content.addWidget(self.figures)
         content.addWidget(self.reimbursements_section)
-        content.addWidget(self.balances_section)
-        content.addWidget(self.history_section)
+        # wide: who owes whom beside the settlements already recorded
+        content.addWidget(adaptive(1300, self.balances_section, self.history_section))
         content.addStretch(1)
         self.views = QStackedWidget()
         self.views.addWidget(scroll)

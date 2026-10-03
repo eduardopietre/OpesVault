@@ -4,6 +4,7 @@ No CDN, fonts or network: Matplotlib draws locally. Exporting an image is an
 explicit user action elsewhere.
 """
 
+import warnings
 from collections.abc import Callable
 from datetime import date
 from decimal import Decimal
@@ -24,6 +25,7 @@ from opesvault.charts.data import Chart, Point
 from opesvault.domain.money import format_brl
 
 # Muted, distinguishable hues: charts inform, they do not compete with the figures around them.
+TIGHT_RECT = (0, 0.04, 1, 1)  # room for the footer notes
 PALETTE = ["#3b6ea8", "#c0605a", "#4f8a5b", "#c49a3e", "#7d6b9e", "#3f8f99"]
 
 
@@ -132,7 +134,7 @@ def draw(figure: Figure, chart: Chart) -> list[tuple[Any, list[Point], str]]:
     footer = " · ".join(chart.notes)
     if footer:
         figure.text(0.01, 0.01, footer, fontsize=8, color=t.secondary)
-    figure.tight_layout(rect=(0, 0.04, 1, 1))
+    figure.tight_layout(rect=TIGHT_RECT)
     return hover
 
 
@@ -162,6 +164,15 @@ class ChartWidget(QWidget):
         layout.addWidget(self.canvas)
         self.canvas.mpl_connect("motion_notify_event", self._on_move)
         self.canvas.mpl_connect("button_press_event", self._on_click)
+        self.canvas.mpl_connect("resize_event", self._on_resize)
+
+    def _on_resize(self, _event) -> None:  # type: ignore[no-untyped-def]
+        """Margins follow the new size: axis labels drawn for another size would be cut off."""
+        if self.chart is None:
+            return
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")  # a size too small for the labels: keep the last layout
+            self.figure.tight_layout(rect=TIGHT_RECT)
 
     def show_chart(self, chart: Chart) -> None:
         self.chart = chart

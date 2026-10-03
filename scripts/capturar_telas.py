@@ -82,6 +82,7 @@ def demo_session(path: Path):  # type: ignore[no-untyped-def]
     ledger.record_expense(f.bank, category(ledger, "Alimentação"), "560.00", date.today(), "Mercado do mês")
     rules.add_rule(ledger, "padaria", category(ledger, "Alimentação"))
     _demo_planning(f, ledger)
+    _demo_tax(f, ledger)
     _ = AccountType
     return session
 
@@ -149,6 +150,41 @@ def _demo_planning(f, ledger) -> None:  # type: ignore[no-untyped-def]
     merchants.name_merchant(ledger, "NETFLIX.COM", "Netflix")
 
 
+def _demo_tax(f, ledger) -> None:  # type: ignore[no-untyped-def]
+    """CPF/CNPJ, natures, a payslip and an informe, so the Imposto de renda page has content."""
+    from opesvault.domain.model import AccountType
+    from opesvault.tax import records
+    from opesvault.tax.model import (
+        IncomeKind,
+        IncomeNature,
+        NatureSubject,
+        ReportField,
+        ReportLine,
+        ReportSource,
+        TaxSubject,
+    )
+    from tests.domain_fixtures import category
+
+    records.set_member_info(ledger, f.ana, cpf="529.982.247-25", birth_date=date(1985, 4, 2), declared_by=None)
+    records.set_member_info(
+        ledger, f.bruno, cpf="111.444.777-35", birth_date=date(2016, 8, 9), declared_by=f.ana, relation="Filho(a)"
+    )
+    records.classify(ledger, NatureSubject.CATEGORY, f.salary, IncomeNature.TAXABLE_PJ)
+    records.set_identity(ledger, TaxSubject.CATEGORY, f.salary, "11.222.333/0001-81", "Empresa Exemplo Ltda")
+    first = next(op for op in ledger.active_operations() if op.description == "Salário")
+    records.set_income_detail(ledger, first.id, IncomeKind.SALARY, "9600.00", "1210.00", "908.86")
+    records.set_identity(ledger, TaxSubject.ACCOUNT, f.bank, "11.222.333/0001-81", "Banco A S.A.")
+    records.save_report(
+        ledger,
+        2026,
+        ReportSource.ACCOUNT,
+        f.bank,
+        [ReportLine(field=ReportField.BALANCE_END, amount=Decimal("16052.00"), label="Saldo em 31/12/2026")],
+        payer_tax_id="11.222.333/0001-81",
+    )
+    _ = (category, AccountType)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--out", type=Path, default=ROOT / "build" / "telas")
@@ -173,6 +209,11 @@ def main() -> int:
     window.grab().save(str(args.out / "00-sem-cofre.png"))
     window.session = demo_session(args.out / "demo.opesvault")
     window._refresh()
+    from opesvault.ui.common import select_combo
+
+    for page in window.pages:
+        if type(page).__name__ == "TaxPage":
+            select_combo(page.year, 2026)  # the demo data is from 2026  # type: ignore[attr-defined]
     for index, page in enumerate(window.pages):
         window.show_page(index)
         for _ in range(5):

@@ -74,7 +74,7 @@ def _issues(ledger: Ledger, year: int, declarant_id: UUID | None, today: date) -
             Issue(
                 Severity.URGENT,
                 f"Natureza do rendimento: {row.source}",
-                f"{format_brl(row.amount)} sem saber se é tributável, isento ou exclusivo",
+                f"recebido {format_brl(row.amount)} sem saber se é tributável, isento ou exclusivo",
                 "nature",
                 (row.subject, row.ref),
             )
@@ -111,7 +111,7 @@ def _issues(ledger: Ledger, year: int, declarant_id: UUID | None, today: date) -
                 Issue(
                     Severity.URGENT,
                     f"CPF/CNPJ de quem recebeu: {item.payee}",
-                    f"{format_brl(item.paid)} em pagamentos dedutíveis",
+                    f"pagamentos dedutíveis de {format_brl(item.paid)}",
                     "identity",
                     (TaxSubject.MERCHANT, item.payee_key),
                 )
@@ -232,7 +232,7 @@ def _monthly_issues(ledger: Ledger, year: int, people: set[UUID] | None, today: 
                 Issue(
                     Severity.URGENT if late else Severity.SOON,
                     f"DARF de renda variável {month.month:02d}/{month.year}",
-                    f"{format_brl(due - paid)} {'venceu' if late else 'vence'} em {when:%d/%m/%Y}",
+                    f"valor de {format_brl(due - paid)}; {'venceu' if late else 'vence'} em {when:%d/%m/%Y}",
                     "payment",
                     ("variable_income", month),
                 )
@@ -246,7 +246,7 @@ def _monthly_issues(ledger: Ledger, year: int, people: set[UUID] | None, today: 
             Issue(
                 Severity.URGENT if late else Severity.SOON,
                 f"Carnê-Leão {item.month.month:02d}/{item.month.year}: {_person(ledger, item.member_id)}",
-                f"{format_brl(item.amount)} recebido(s); o DARF {'venceu' if late else 'vence'} em {when:%d/%m/%Y}. "
+                f"recebido {format_brl(item.amount)}; o DARF {'venceu' if late else 'vence'} em {when:%d/%m/%Y}. "
                 "Calcule no Carnê-Leão Web e registre o pagamento",
                 "payment",
                 ("carne_leao", item.month, item.member_id),

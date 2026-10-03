@@ -95,7 +95,7 @@ def _itemize(
     by_kind: dict[DeductibleKind, Decimal] = {}
     education: dict[UUID | None, Decimal] = {}
     for row in rows:
-        kind = DeductibleKind(str(row.kind))
+        kind = row.kind
         by_kind[kind] = by_kind.get(kind, ZERO) + row.net
         if kind is DeductibleKind.EDUCATION:
             education[row.beneficiary_id] = education.get(row.beneficiary_id, ZERO) + row.net

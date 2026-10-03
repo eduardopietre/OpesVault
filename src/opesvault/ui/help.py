@@ -65,6 +65,28 @@ recebimento, e a despesa líquida fica certa.</p>
 único titular da conta de onde saiu o dinheiro, ou o titular do cartão; conta conjunta não gera dívida. Registrar o
 acerto só anota que a dívida foi paga; a transferência, se houver, é um lançamento normal.</p>
 """,
+    "Imposto de renda": """
+<p>O ano organizado como as fichas da declaração: rendimentos por fonte pagadora, isentos e exclusivos,
+pagamentos dedutíveis, bens pelo custo de aquisição e dívidas em 31/12. É <b>material de apoio</b>: a natureza de
+cada receita, o grupo e o código dos bens e todas as alíquotas e tabelas são informados por você; nada vem
+embutido nem é classificado sozinho.</p>
+<ul>
+<li><b>Declarante</b>: cada declaração é de um CPF. Em Cadastros › Declarantes e dependentes, diga quem declara
+quem; a página mostra o declarante com os dependentes dele.</li>
+<li><b>Pendências</b>: CPF ou CNPJ faltando, comprovante não anexado, informe diferente do registrado, receita sem
+natureza, DARF não registrado. <b>Resolver…</b> abre o lugar da correção.</li>
+<li><b>Informes</b>: importe o PDF do banco, da corretora ou do empregador. A leitura acontece fora da tela, você
+confere cada linha e o original fica cifrado no cofre; depois, cada valor é comparado com o registrado.</li>
+<li><b>Contracheques</b>: bruto, imposto retido e INSS de cada depósito de salário (também no Livro, Ações ›
+Detalhar rendimento). Sem eles, o depósito conta pelo valor líquido.</li>
+<li><b>Renda variável</b>: vendas de ações, ETF e fundos imobiliários mês a mês, com prejuízo compensado nos meses
+seguintes e o DARF a pagar, usando as alíquotas e o limite de isenção que você informar.</li>
+<li><b>Carnê-Leão</b>: receitas de pessoa física ou do exterior, mês a mês; o imposto é calculado no Carnê-Leão
+Web, e aqui se registra o pagamento. Os vencimentos aparecem em Atenção.</li>
+<li><b>Simplificada ou completa</b>: simulação com a tabela anual e os limites que você copiar da fonte oficial.</li>
+</ul>
+<p>CPF e CNPJ ficam só dentro do cofre. O relatório em PDF (Mais) sai sem criptografia, com aviso.</p>
+""",
     "Orçamento": """
 <p>Quanto você planeja gastar por categoria em cada mês, quanto já gastou e quanto resta.</p>
 <ul>

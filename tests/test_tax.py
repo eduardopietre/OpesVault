@@ -347,3 +347,12 @@ def test_tax_records_survive_save_and_undo() -> None:
     f = _salary_setup()
     restored = Ledger.from_records(f.ledger.to_records())
     assert declaration.income(restored, Y).taxable[0].tax_id == "11222333000181"
+
+
+def test_report_for_the_return_lists_the_sheets() -> None:
+    from opesvault.exports import tax_report_html
+
+    f = _salary_setup()
+    html = tax_report_html(f.ledger, Y, None)
+    assert "Empresa Exemplo Ltda" in html and "11.222.333/0001-81" in html
+    assert "Bens e direitos" in html and "Pendências" in html

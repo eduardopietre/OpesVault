@@ -407,6 +407,7 @@ class LedgerPage(Page):
             ("Reclassificar…", self.reclassify_selected),
             ("Marcadores…", self.tag_selected),
             ("Anexar comprovante…", self.attach_receipt),
+            ("Detalhar rendimento (IR)…", self.detail_income),
             ("Nomear estabelecimento…", self.name_merchant),
             ("Reembolso a receber…", self.request_reimbursement),
             ("Está certo (silenciar aviso)", self.mark_reviewed),
@@ -908,6 +909,22 @@ class LedgerPage(Page):
         session = self.session
         if run_guarded(self, lambda: attach(session, op.id, path.name, data)):
             self.notify("Comprovante anexado e guardado cifrado no cofre.")
+            self.changed()
+
+    def detail_income(self) -> None:
+        """Gross, IRRF and INSS of a salary deposit, for the income tax return."""
+        op = self._selected()
+        if op is None or self.session is None:
+            return
+        from opesvault.tax.records import received_amount
+        from opesvault.ui.tax_dialogs import IncomeDetailDialog
+
+        if received_amount(self.session.ledger, op.id) <= 0:
+            self.notify("Só receitas têm detalhamento de rendimento.")
+            return
+        dialog = IncomeDetailDialog(self, self.session.ledger, op.id)
+        if dialog.exec() and run_guarded(self, lambda: dialog.apply() or True):
+            self.notify("Rendimento detalhado: aparece em Imposto de renda.")
             self.changed()
 
     def open_attachment(self, document_id: UUID) -> None:

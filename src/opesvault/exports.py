@@ -11,6 +11,7 @@ import io
 import json
 from datetime import UTC, datetime
 from typing import Any
+from uuid import UUID
 
 from opesvault.domain.ledger import Ledger
 
@@ -276,5 +277,189 @@ def annual_report_html(ledger: Ledger, year: int) -> str:
                 {2},
             )
         )
+    parts.append("</body></html>")
+    return "".join(parts)
+
+
+def tax_report_html(ledger: Ledger, year: int, declarant_id: UUID | None = None) -> str:
+    """The year in the shape of the return's sheets, for the declarant and their dependents."""
+    from opesvault.domain.deductibles import KIND_LABELS
+    from opesvault.tax import checklist, declaration, ids, issues, records, simulation, variable_income
+    from opesvault.tax.model import BUCKET_LABELS, NATURE_LABELS, IncomeNature
+
+    people = records.people_of(ledger, declarant_id)
+
+    def person(member_id: UUID | None) -> str:
+        member = ledger.members.get(member_id) if member_id else None
+        return member.name if member else "—"
+
+    def tid(value: str | None) -> str:
+        return ids.display(value) if value else "falta"
+
+    who = person(declarant_id) if declarant_id else "todo o projeto"
+    found = declaration.income(ledger, year, people)
+    parts = [
+        f"<html><head><meta charset='utf-8'>{_STYLE}</head><body>",
+        f"<h1>{_h(ledger.meta.family_name or 'Projeto')} — imposto de renda, ano-calendário {year}</h1>",
+        f"<p>Declarante: <b>{_h(who)}</b></p>",
+        f'<p class="note">{_h(WARNING)} {_h(declaration.NOTICE)}</p>',
+    ]
+    if declarant_id:
+        info = records.member_info(ledger, declarant_id)
+        parts.append(f"<p>CPF: {_h(tid(info.cpf if info else None))}</p>")
+        deps = declaration.dependents(ledger, declarant_id)
+        if deps:
+            parts.append("<h2>Dependentes</h2>")
+            parts.append(
+                _table(
+                    ["Nome", "CPF", "Nascimento", "Relação"],
+                    [
+                        [
+                            d.name,
+                            tid(d.cpf),
+                            d.birth_date.strftime("%d/%m/%Y") if d.birth_date else "—",
+                            d.relation or "—",
+                        ]
+                        for d in deps
+                    ],
+                )
+            )
+    parts.append("<h2>Rendimentos tributáveis recebidos de pessoa jurídica</h2>")
+    parts.append(
+        _table(
+            ["Fonte pagadora", "CNPJ", "Integrante", "Rendimentos", "INSS", "IR retido", "13º", "IR 13º"],
+            [
+                [
+                    r.payer,
+                    tid(r.tax_id),
+                    person(r.member_id),
+                    r.taxable,
+                    r.social_security,
+                    r.withheld,
+                    r.thirteenth,
+                    r.thirteenth_withheld,
+                ]
+                for r in found.taxable
+            ],
+            {3, 4, 5, 6, 7},
+        )
+    )
+    for nature in (IncomeNature.CARNE_LEAO, IncomeNature.EXEMPT, IncomeNature.EXCLUSIVE, None):
+        rows = found.by_nature(nature)
+        if not rows:
+            continue
+        title = NATURE_LABELS[nature] if nature else "Rendimentos sem natureza definida (a classificar)"
+        parts.append(f"<h2>{_h(title)}</h2>")
+        parts.append(
+            _table(
+                ["Fonte", "CNPJ", "Integrante", "Valor", "IR retido"],
+                [
+                    [r.source, (r.tax_id and ids.display(r.tax_id)) or "—", person(r.member_id), r.amount, r.withheld]
+                    for r in rows
+                ],
+                {3, 4},
+            )
+        )
+    payments = declaration.payments(ledger, year, people)
+    if payments:
+        parts.append("<h2>Pagamentos efetuados</h2>")
+        parts.append(
+            _table(
+                ["Tipo", "Quem recebeu", "CPF/CNPJ", "Beneficiário", "Pago", "Parcela não dedutível"],
+                [
+                    [
+                        KIND_LABELS[r.kind],
+                        r.payee,
+                        tid(r.tax_id),
+                        person(r.beneficiary_id),
+                        r.paid,
+                        r.not_deductible,
+                    ]  # type: ignore[call-overload]
+                    for r in payments
+                ],
+                {4, 5},
+            )
+        )
+    parts.append("<h2>Bens e direitos (custo de aquisição)</h2>")
+    parts.append(
+        _table(
+            ["Grupo", "Código", "Discriminação", "CNPJ", f"31/12/{year - 1}", f"31/12/{year}"],
+            [
+                [
+                    f"{r.group or '—'}{' (sugerido)' if r.suggested else ''}",
+                    r.code or "—",
+                    r.description,
+                    tid(r.tax_id) if r.subject != "declared" else "—",
+                    "—" if r.previous is None else r.previous,
+                    "—" if r.current is None else r.current,
+                ]
+                for r in declaration.assets(ledger, year, people)
+            ],
+            {4, 5},
+        )
+    )
+    debts = declaration.debts(ledger, year, people)
+    if debts:
+        parts.append("<h2>Dívidas e ônus reais</h2>")
+        parts.append(
+            _table(
+                ["Dívida", "CNPJ", f"31/12/{year - 1}", f"31/12/{year}"],
+                [[d.name, tid(d.tax_id), abs(d.previous), abs(d.current)] for d in debts],
+                {2, 3},
+            )
+        )
+    months = variable_income.months(ledger, year, people)
+    if months:
+        parts.append("<h2>Renda variável</h2>")
+        parts.append(
+            _table(
+                ["Mês", "Tipo", "Vendas", "Resultado", "Isento", "Base", "Imposto", "IR fonte", "DARF pago"],
+                [
+                    [
+                        f"{r.month.month:02d}/{r.month.year}",
+                        BUCKET_LABELS[r.bucket],
+                        r.sales,
+                        r.result,
+                        r.exempt_gain,
+                        r.base,
+                        "—" if r.tax is None else r.tax,
+                        r.withheld,
+                        r.paid,
+                    ]
+                    for r in months
+                ],
+                {2, 3, 4, 5, 6, 7, 8},
+            )
+        )
+    comparison = simulation.compare(ledger, year, declarant_id)
+    parts.append("<h2>Simplificada ou completa (simulação)</h2>")
+    parts.append(f'<p class="note">{_h(simulation.NOTICE)}</p>')
+    if comparison.missing:
+        parts.append(f"<p>Falta informar: {_h(', '.join(comparison.missing))}.</p>")
+    else:
+        parts.append(
+            _table(
+                ["", "Simplificada", "Completa"],
+                [
+                    [
+                        "Base de cálculo",
+                        comparison.simplified.base if comparison.simplified else "—",
+                        comparison.itemized.base if comparison.itemized else "—",
+                    ],
+                    [
+                        "Imposto devido",
+                        comparison.simplified.tax if comparison.simplified else "—",
+                        comparison.itemized.tax if comparison.itemized else "—",
+                    ],
+                ],
+                {1, 2},
+            )
+        )
+    pending = issues.issues(ledger, year, declarant_id)
+    absent = checklist.missing(checklist.expected(ledger, year, people))
+    if pending or absent:
+        parts.append("<h2>Pendências e documentos que faltam</h2>")
+        parts.append("<ul>" + "".join(f"<li>{_h(i.title)} — {_h(i.detail)}</li>" for i in pending))
+        parts.append("".join(f"<li>{_h(d.title)}</li>" for d in absent) + "</ul>")
     parts.append("</body></html>")
     return "".join(parts)

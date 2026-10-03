@@ -12,6 +12,7 @@ from decimal import Decimal
 from uuid import UUID
 
 from opesvault.domain import merchants, queries
+from opesvault.domain.deductibles import DeductibleKind
 from opesvault.domain.ledger import Ledger
 from opesvault.domain.model import AccountSubtype, AccountType, Operation, Posting, YearMonth
 from opesvault.domain.money import ZERO
@@ -269,7 +270,7 @@ def _investment_income(
 
 @dataclass
 class PaymentRow:
-    kind: object  # deductibles.DeductibleKind
+    kind: DeductibleKind
     payee_key: str
     payee: str
     tax_id: str | None
@@ -290,7 +291,7 @@ def payments(ledger: Ledger, year: int, people: set[UUID] | None = None) -> list
     receipts = {
         op_id: item.operation_id for item in sharing.reimbursements(ledger).values() for op_id in item.receipt_ids
     }
-    rows: dict[tuple[object, str, UUID | None], PaymentRow] = {}
+    rows: dict[tuple[DeductibleKind, str, UUID | None], PaymentRow] = {}
     for group in deductibles.annual(ledger, year):
         for line in group.lines:
             op = line.operation
@@ -317,7 +318,7 @@ def payments(ledger: Ledger, year: int, people: set[UUID] | None = None) -> list
                 if line.amount > 0 and not attachments.of_operation(ledger, op.id):
                     row.without_receipt += 1
     order = list(deductibles.DeductibleKind)
-    return sorted(rows.values(), key=lambda r: (order.index(r.kind), r.payee.casefold(), str(r.beneficiary_id)))  # type: ignore[arg-type]
+    return sorted(rows.values(), key=lambda r: (order.index(r.kind), r.payee.casefold(), str(r.beneficiary_id)))
 
 
 # ── assets and debts ──────────

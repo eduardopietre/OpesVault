@@ -48,6 +48,7 @@ from opesvault.ui.pages.recurrences_page import RecurrencesPage
 from opesvault.ui.pages.reports_page import ReportsPage
 from opesvault.ui.pages.settings_page import SettingsPage
 from opesvault.ui.pages.sharing_page import SharingPage
+from opesvault.ui.pages.tax_page import TaxPage
 from opesvault.ui.theme import NAV_ROW_HEIGHT, SPACE_M, SPACE_S, SPACE_XS, restyle
 from opesvault.vault.client import VaultClient
 from opesvault.vault.errors import ErrorCode, VaultError
@@ -471,6 +472,7 @@ class MainWindow(QMainWindow):
             ReportsPage(self.on_changed),
             GoalsPage(self.on_changed),
             SharingPage(self.on_changed),
+            TaxPage(self.on_changed),
             DocumentsPage(self.on_changed),
             SettingsPage(self.on_changed),
         ]
@@ -998,6 +1000,7 @@ class MainWindow(QMainWindow):
         "goals": "GoalsPage",
         "settings": "SettingsPage",
         "documents": "DocumentsPage",
+        "tax": "TaxPage",
     }
 
     def navigate(self, target: str, ref: object = None, *, act: bool = False) -> None:

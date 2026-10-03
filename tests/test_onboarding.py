@@ -25,7 +25,7 @@ def plan(**changes: object) -> SetupPlan:
 
 
 def test_setup_creates_everything() -> None:
-    ledger = Ledger.new("Família")
+    ledger = Ledger.new("Projeto")
     result = apply_setup(ledger, plan())
     assert (result.members, result.accounts, result.cards, result.opening_balances) == (2, 3, 1, 2)
     accounts = {a.name: a for a in ledger.accounts.values()}
@@ -57,7 +57,7 @@ def test_setup_creates_everything() -> None:
     ],
 )
 def test_invalid_plan_changes_nothing(changes: dict[str, object]) -> None:
-    ledger = Ledger.new("Família")
+    ledger = Ledger.new("Projeto")
     before = ledger.change_count
     with pytest.raises(DomainError):
         apply_setup(ledger, plan(**changes))

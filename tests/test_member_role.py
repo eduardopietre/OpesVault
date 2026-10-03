@@ -7,7 +7,7 @@ from .domain_fixtures import family
 
 
 def test_new_members_are_holders_unless_said_otherwise() -> None:
-    ledger = Ledger.new("Família")
+    ledger = Ledger.new("Projeto")
     assert ledger.add_member("Ana").role is MemberRole.HOLDER
     assert ledger.add_member("Lia", MemberRole.DEPENDENT).role is MemberRole.DEPENDENT
 

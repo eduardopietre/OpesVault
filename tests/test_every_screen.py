@@ -351,3 +351,34 @@ def test_no_combo_is_searched_by_identity() -> None:
         if ".findData(" in line.split("#", 1)[0]
     ]
     assert found == []
+
+
+def test_the_interface_says_projeto_never_familia(window: MainWindow) -> None:
+    """The vault belongs to a "Projeto" on screen (CLAUDE.md); code and docs may still say family.
+
+    Every string literal of the program is checked (messages, labels, dialogs, PDFs, domain
+    errors shown to the user), and then every text on screen with the demo vault open. The
+    local AI prompt is the one exception: it goes to the model, never to the screen.
+    """
+    import io
+    import tokenize
+
+    root = Path(__file__).resolve().parents[1] / "src" / "opesvault"
+    model_only = {root / "ai" / "ollama.py"}
+    found = []
+    for path in sorted(root.rglob("*.py")):
+        if path in model_only:
+            continue
+        source = path.read_text(encoding="utf-8")
+        for token in tokenize.generate_tokens(io.StringIO(source).readline):
+            if token.type == tokenize.STRING and "famíl" in token.string.casefold():
+                found.append(f"{path.relative_to(root)}:{token.start[0]}")
+    assert found == []
+    shown = [window.windowTitle(), *_visible_texts(window)]
+    for menu in window.menuBar().findChildren(QMenu):
+        shown += [action.text() for action in menu.actions()]
+    for index, page in enumerate(window.pages):
+        window.show_page(index)
+        for tabs in page.findChildren(QTabWidget):
+            shown += [tabs.tabText(i) for i in range(tabs.count())]
+    assert [text for text in shown if "famíl" in text.casefold()] == []

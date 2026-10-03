@@ -25,7 +25,7 @@ from .domain_fixtures import family
 
 
 def saved_session(path: Path, client: VaultClient) -> Session:
-    session = Session.new(path, "Família")
+    session = Session.new(path, "Projeto")
     f = family()
     session.ledger = f.ledger
     f.ledger.record_opening_balance(f.bank, "1000.00", date(2026, 1, 1))
@@ -116,7 +116,7 @@ def _visible_texts(window: MainWindow) -> str:
 
 def test_ta31_switching_family_shows_nothing_from_the_previous(app: QApplication, tmp_path: Path) -> None:
     window = MainWindow()
-    first = Session.new(tmp_path / "a.opesvault", "Família A")
+    first = Session.new(tmp_path / "a.opesvault", "Projeto A")
     f = family()
     first.ledger = f.ledger
     f.ledger.record_expense(f.bank, f.groceries, "77.77", date(2026, 1, 3), "MARCADOR_FAMILIA_A")
@@ -125,14 +125,14 @@ def test_ta31_switching_family_shows_nothing_from_the_previous(app: QApplication
     window._refresh()
     assert "MARCADOR_FAMILIA_A" in _visible_texts(window)
 
-    second = Session.new(tmp_path / "b.opesvault", "Família B")
+    second = Session.new(tmp_path / "b.opesvault", "Projeto B")
     second.ledger.add_member("Zé")
     window._drop_session()
     window.session = second
     window._refresh()
     texts = _visible_texts(window)
     assert "MARCADOR_FAMILIA_A" not in texts and "77,77" not in texts
-    assert "nu.pdf" not in texts and "Família A" not in window.windowTitle()
+    assert "nu.pdf" not in texts and "Projeto A" not in window.windowTitle()
 
 
 def test_ta33_migrated_vault_is_backed_up_before_any_write(
@@ -247,7 +247,7 @@ def test_ta30_every_page_renders_with_external_network_blocked(
 
     monkeypatch.setattr(socket.socket, "connect", guarded)
     window = MainWindow()
-    session = Session.new(tmp_path / "x.opesvault", "Família")
+    session = Session.new(tmp_path / "x.opesvault", "Projeto")
     f = family()
     session.ledger = f.ledger
     f.ledger.record_opening_balance(f.bank, "1000.00", date(2026, 1, 1))

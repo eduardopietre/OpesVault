@@ -22,7 +22,7 @@ def demo_session(path: Path):  # type: ignore[no-untyped-def]
 
     f = family()
     ledger = f.ledger
-    session = Session.new(path, "Família Silva")
+    session = Session.new(path, "Projeto Silva")
     session.ledger = ledger
     ledger.record_opening_balance(f.bank, "8450.00", date(2026, 1, 1))
     ledger.record_opening_balance(f.joint, "2300.00", date(2026, 1, 1))

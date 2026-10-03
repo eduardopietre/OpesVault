@@ -119,6 +119,9 @@ Regra: quem vê um problema chega ao objeto e ao comando que o resolve, sem proc
 | Aviso de valor de assinatura que mudou | Recorrências › Assinaturas e contas fixas, com a regra selecionada | `Alert.ref` = ("rule", regra) |
 | Vencimento no Calendário | A fatura, a parcela ou a previsão, com a ação aberta quando pendente | `AgendaPage.open_selected` |
 | Marcador em Relatórios | Livro filtrado pelo marcador | `LedgerPage.reveal(("tag", nome))` |
+| Aviso de possível duplicidade ou valor fora do comum | Livro filtrado na conta e nos dias do aviso; **Ações › Está certo** silencia | `Alert.ref` = ("filter", conta, (de, até)) |
+| Aviso de backup antigo ou ausente | Configurações | `MainWindow.backup_alerts` (lê a pasta; o domínio não lê disco) |
+| Comprovante no inspetor do Livro | Documentos, com o arquivo selecionado (PDF ou imagem) | `DocumentsPage.reveal(documento)` |
 
 - **Pagar fatura:** a aba Faturas tem **Pagar…** (também duplo clique na fatura). O formulário já traz a conta, o valor restante e a data de hoje. Pagamento depois do vencimento quita primeiro a fatura vencida (`04` §5, `domain.cards.bills`); o formulário diz isso quando a data passa do vencimento.
 - **Mês compartilhado:** o mês escolhido na Visão geral vale no Orçamento e é a segunda opção de período do Livro, que abre em "Todo o período" para não esconder lançamentos de quem chega pela barra lateral. Ao abrir o cofre, a Visão geral escolhe o último mês com movimento e os outros a seguem.

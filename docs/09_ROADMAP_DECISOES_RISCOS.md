@@ -48,29 +48,29 @@ Critério de escolha: o que uma família precisa todo mês e hoje exige trabalho
 | **Orçamento por categoria e mês**: limite planejado, realizado por competência, saldo restante e alerta ao passar do limite; cópia do mês anterior | É a pergunta mensal mais comum ("quanto ainda posso gastar?") | **Feito** (`13` §2.2); escopo aprovado pelo usuário |
 | **Regras de categorização editáveis**: "descrição contém X → categoria Y", por conta ou cartão, criadas a partir de uma correção na revisão | Maior ganho de tempo na revisão de faturas | **Feito** (`13` §2.2) |
 | **Alertas de vencimento ao abrir o cofre**: faturas e recorrências que vencem nos próximos dias, previsões sem realização, orçamento estourado e importações pendentes | O app é offline e não notifica; ao abrir, deve dizer o que pede atenção | **Feito** (`13` §2.2) |
-| **Comprovantes em lançamentos manuais**: anexar PDF/imagem a qualquer operação, guardado cifrado como os documentos importados | Hoje só itens importados têm evidência; recibos de aluguel, médicos e escolas ficam fora | Não |
-| **Drill-down**: clicar num número da Visão geral, numa barra ou numa categoria abre o Livro já filtrado | Liga "quanto" a "o quê" sem refazer filtros | Não |
-| **Visão por integrante**: Visão geral e relatórios filtrados por integrante, com rateio, ao lado do consolidado (fecha o TA-18 e o TA-24) | Contas conjuntas e despesas divididas são o caso típico de família | Não |
-| **Filtros salvos** no Livro ("Cartão da Ana este mês") | Revisão mensal repete os mesmos filtros | Não |
-| **Arrastar arquivos** para "Importar e revisar" | Atalho óbvio no desktop | Não |
-| **Relatório mensal para impressão/PDF** (resumo, categorias, faturas, pendências), com o mesmo aviso de exportação sem cifra | Conversa da família sobre o mês; hoje só há CSV/JSON | Não |
+| **Comprovantes em lançamentos manuais**: anexar PDF/imagem a qualquer operação, guardado cifrado como os documentos importados | Hoje só itens importados têm evidência; recibos de aluguel, médicos e escolas ficam fora | **Feito** (`13` §2.3): PDF, PNG ou JPEG, reconhecidos pelo conteúdo; o mesmo arquivo vira um só documento |
+| **Drill-down**: clicar num número da Visão geral, numa barra ou numa categoria abre o Livro já filtrado | Liga "quanto" a "o quê" sem refazer filtros | **Feito**: linhas da Visão geral (também na visão de um integrante e na comparação), pontos e linhas da tabela em Relatórios, avisos de suspeita, conta selecionada em Contas |
+| **Visão por integrante**: Visão geral e relatórios filtrados por integrante, com rateio, ao lado do consolidado (fecha o TA-18 e o TA-24) | Contas conjuntas e despesas divididas são o caso típico de família | **Feito** na Visão geral (seletor "Visão de") e no relatório mensal em PDF; em Relatórios, o Resultado mensal já filtrava por integrante |
+| **Filtros salvos** no Livro ("Cartão da Ana este mês") | Revisão mensal repete os mesmos filtros | **Feito**: guardados no cofre (citam contas e integrantes) |
+| **Arrastar arquivos** para "Importar e revisar" | Atalho óbvio no desktop | **Feito**: na tela Importar e, desde 03/10/2026, em qualquer tela |
+| **Relatório mensal para impressão/PDF** (resumo, categorias, faturas, pendências), com o mesmo aviso de exportação sem cifra | Conversa da família sobre o mês; hoje só há CSV/JSON | **Feito**: Visão geral › Mais e Cofre › Relatório do mês (PDF), gerado em memória, com o aviso de arquivo sem cifra |
 
 **B. Confiança e recuperação (fase 12)**
 
 | Item | Por quê | Decisão? |
 |---|---|---|
 | **Desfazer/refazer na sessão** (Ctrl+Z / Ctrl+Shift+Z) para as edições ainda não salvas; depois de salvo, a correção continua por histórico e estorno | Erros de clique exigiam estorno com motivo | **Feito** (`13` §2.2); decidido: só o que não foi salvo |
-| **Verificação de backup**: abrir um backup no worker (senha digitada nele) e conferir integridade e contagens; lembrete de "último backup há N dias" | Backup que nunca foi restaurado não é garantia (`03`) | Não |
-| **Compactação opcional do histórico** antigo, com backup antes | O cofre cresce indefinidamente | Sim (já listada) |
-| **Detecção de lançamentos suspeitos**: valor muito acima da média da categoria, possível cobrança duplicada no cartão, assinatura que mudou de valor | Pega erro de digitação e cobrança indevida, sem IA | Não |
+| **Verificação de backup**: abrir um backup no worker (senha digitada nele) e conferir integridade e contagens; lembrete de "último backup há N dias" | Backup que nunca foi restaurado não é garantia (`03`) | **Feito**: Cofre › Verificar backup (abre no worker, autentica todas as páginas, lê o livro e compara com o cofre aberto); aviso "Último backup há N dias" a partir de 30 dias |
+| **Compactação opcional do histórico** antigo, com backup antes | O cofre cresce indefinidamente | Sim (já listada). **Não feito**: apaga versões anteriores; segue à espera da decisão do usuário |
+| **Detecção de lançamentos suspeitos**: valor muito acima da média da categoria, possível cobrança duplicada no cartão, assinatura que mudou de valor | Pega erro de digitação e cobrança indevida, sem IA | **Feito**: duplicidade em até 3 dias, valor acima de 3× a mediana da categoria no ano anterior, mudança de preço de assinatura; "Está certo" silencia |
 
 **C. Patrimônio e impostos (fase 13)**
 
 | Item | Por quê | Decisão? |
 |---|---|---|
-| **Fechamento do ano**: patrimônio em 31/12 por conta e investimento, rendimentos isentos e tributáveis informados, imposto retido, ganhos realizados por classe | Material de apoio para a declaração anual, a partir de dados já registrados | Sim: o `00` §5 exclui "declaração fiscal oficial"; isto seria apoio, não declaração |
+| **Fechamento do ano**: patrimônio em 31/12 por conta e investimento, rendimentos isentos e tributáveis informados, imposto retido, ganhos realizados por classe | Material de apoio para a declaração anual, a partir de dados já registrados | **Feito como apoio** (pedido do usuário em 03/10/2026): Relatórios › Fechamento do ano e PDF anual; não classifica rendimentos como isentos ou tributáveis nem aplica regras fiscais |
 | **Tabelas fiscais por classe**, parametrizadas e versionadas por data, usadas pelo simulador | Hoje as regras são informadas manualmente | Sim |
-| **Metas de patrimônio ou reserva** (valor-alvo e data, com progresso) | Pedido comum de família; usa o patrimônio já calculado | Sim: entra no escopo |
+| **Metas de patrimônio ou reserva** (valor-alvo e data, com progresso) | Pedido comum de família; usa o patrimônio já calculado | **Feito** (pedido do usuário em 03/10/2026): página Metas, por patrimônio ou contas escolhidas, com gráfico e tabela |
 
 **D. IA local (próximos passos)**
 
@@ -79,7 +79,7 @@ Feito em 03/10/2026 (`05` §5): exemplos da família no prompt, perguntas sem re
 | Item | Por quê | Decisão? |
 |---|---|---|
 | **Avaliar com descrições reais**: `avaliar_modelos.py --arquivo` lendo uma lista rotulada fora do repositório (exportada dos itens aprovados) | O benchmark atual é sintético; a escolha do modelo precisa ser confirmada na fase 7 | Não |
-| **Estabelecimento normalizado**: "IFD*IFOOD.COM AGENCIA" → "iFood", sugerido pela IA e aprovado na revisão | Busca, relatórios e regras por estabelecimento ficam legíveis | Sim: campo novo (esquema do domínio 3) |
+| **Estabelecimento normalizado**: "IFD*IFOOD.COM AGENCIA" → "iFood", sugerido pela IA e aprovado na revisão | Busca, relatórios e regras por estabelecimento ficam legíveis | **Feito sem mudar o esquema**: nome aprovado guardado ao lado (`merchant_alias`), casado pela descrição limpa; sugestão por limpeza determinística, sem IA. Falta a sugestão pela IA |
 | **Regra a partir de sugestões aceitas**: ao aprovar a mesma categoria da IA para um estabelecimento algumas vezes, oferecer criar a regra | Tira o modelo do caminho para o que já é certo | Não |
 | **Sugestão só com concordância**: perguntar duas vezes (ou a dois modelos) e sugerir só quando concordam | Sugestão errada é pior que abstenção; custa o dobro do tempo | Sim: tempo × acerto |
 | **Aviso de modelo na CPU**: em Configurações, dizer quando o modelo não coube na GPU (`/api/ps`) | Na CPU cada lote leva muitas vezes mais | Não |
@@ -179,8 +179,8 @@ ADR-01 a ADR-03 refletem escolhas aprovadas; os mecanismos específicos e demais
 |---|---|---|
 | Desbloqueio após inatividade pede a senha do cofre (implementado assim; cofre nunca salvo desbloqueia sem senha) e o tempo padrão é 10 min | Equilíbrio entre proteção e incômodo | Revisável |
 | Compactar o histórico antigo de alterações | Reduz o cofre, mas perde versões anteriores | Fase 12 (opcional) |
-| Incluir **metas** de patrimônio no escopo (`00` §5); o orçamento já foi aprovado e implementado | Funcionalidade de valor mensal | Fase 13 |
-| **Fechamento do ano** como material de apoio à declaração. Já existe a parte de despesas dedutíveis (§1.3 E), sem limites legais; faltam patrimônio em 31/12, rendimentos e imposto retido | O `00` §5 exclui declaração fiscal oficial; o apoio precisa de limite claro | Fase 13 |
+| ~~Metas~~ e ~~fechamento do ano~~: implementados a pedido do usuário em 03/10/2026 ("implemente todas essas funcionalidades"), o fechamento como material de apoio, sem regras fiscais | — | Resolvida |
+| Classificar rendimentos como **isentos ou tributáveis** no fechamento do ano | Exigiria regras fiscais por classe (tabelas fiscais, §1.3 C) | Fase 13 |
 | Certificado de assinatura de código | Evita alertas do SmartScreen no instalador | Fase 10 |
 | Quando rodar os gates G0–G7 e qual é a máquina Windows de referência (RAM, disco, antivírus) | Sem isso, distribuição e metas de desempenho não têm base | Fases 7, 8 e 10 |
 | Bancos e produtos prioritários, com documentos reais (faturas, extratos, CSV/OFX) | Layouts sintéticos só viram suporte com amostras | Fase 7 |
@@ -208,6 +208,7 @@ Cada alteração de escopo registra motivo, documentos afetados, migração de d
 | 02/10/2026 | Pendências de fluxo: assistente com contas em formulário, orçamento do mês em grade, Relatórios com filtro por conta, integrante ou categoria e "Ver lançamentos", papel do integrante | Pedido do usuário | 04, 09, 16 | **Esquema do domínio 2**: integrante ganha `role`; cofres do esquema 1 são migrados ao abrir (cópia do original em `backups-migracao`) e versões anteriores do app recusam o cofre salvo com a mensagem de versão mais nova | Nada novo sai da memória | `test_flows`, `test_member_role` |
 | 02/10/2026 | Fluxos de interface: avisos levam ao objeto e à ação, pagar fatura na aba Faturas, Configurações sem Aplicar, salvar e seguir, mês compartilhado, início com recentes consentidos e Restaurar, correção pelo formulário do dia a dia | Pedido do usuário (revisão de fluxos) | 09, 16 | Nenhum tipo persistido novo; preferências do computador seguem fora do cofre | Recentes só com consentimento; nada novo sai da memória | `test_flows` |
 | 03/10/2026 | IA local revista: exemplos da família no prompt (`p3`), descrições repetidas perguntadas uma vez, nova tentativa por lote, consulta sem bloquear a revisão e automática após importar, progresso e cancelamento, digest do modelo na origem da sugestão, descarga do modelo ao fechar o cofre | Pedido do usuário | 05, 09, 16, CLAUDE.md | Nenhum tipo persistido novo; `suggestion_source` ganha `@<digest>` | Descrições de itens já aprovados também vão ao Ollama local, como exemplo; o prompt em cache no Ollama é descartado ao fechar o cofre | `test_ai`, `test_flows` |
+| 03/10/2026 | Pendências do §1.3 A–D sem bloqueio de decisão: comprovantes, drill-down, visão por integrante, filtros salvos, arrastar arquivos em qualquer tela, relatório mensal e anual em PDF, verificação de backup e lembrete, lançamentos suspeitos, metas, fechamento do ano (apoio) e estabelecimentos | Pedido do usuário | 00, 04, 07, 09, 13, 16, CLAUDE.md | Novos tipos `attachment`, `saved_filter`, `merchant_alias`, `reviewed_suspicion`, `goal`; esquema segue 2 | Comprovantes são documentos cifrados do cofre; PDFs gerados em memória com aviso de arquivo sem cifra; filtros salvos ficam no cofre (citam contas); verificar backup usa o worker e não toca o cofre aberto | `test_planning_more`, `test_planning_ui` |
 | 03/10/2026 | Revisão de funcionalidades (§1.3 E): gráfico e tabela juntos e recolhíveis em vez de abas; saldo projetado; comparações; financiamentos; marcadores; reembolsos e acertos; assinaturas; calendário; indicadores; conferência de saldo; dedutíveis | Pedido do usuário | 00, 04, 07, 09, 13, 16, CLAUDE.md | Novos tipos persistidos `loan_plan`, `loan_payment`, `loan_prepayment`, `operation_tags`, `reimbursement`, `member_settlement`, `balance_check`, `deductible_category`; esquema do domínio segue 2 (versões anteriores recusam o cofre com a mensagem de versão mais nova) | Seções recolhidas ficam em `QSettings`, sem dados financeiros; "Exportar valores…" avisa que o CSV sai sem cifra; tabelas novas são limpas ao fechar o cofre (TA-31) | `test_planning`, `test_planning_ui` |
 | 02/10/2026 | Roadmap 1.3: fases 11 a 14 com funcionalidades propostas (orçamento, regras editáveis, alertas, comprovantes, desfazer, verificação de backup, fechamento do ano) | Pedido do usuário | 09, CLAUDE.md | A definir por item | A definir por item | Critérios de saída por fase |
 

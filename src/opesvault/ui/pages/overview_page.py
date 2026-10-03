@@ -8,6 +8,7 @@ from typing import Any
 from PySide6.QtCore import QRectF, Qt
 from PySide6.QtGui import QColor, QPainter
 from PySide6.QtWidgets import (
+    QComboBox,
     QGridLayout,
     QStyledItemDelegate,
     QStyleOptionViewItem,
@@ -20,7 +21,17 @@ from opesvault.domain.model import AccountType, YearMonth
 from opesvault.domain.money import ZERO
 from opesvault.ui.alerts_panel import AlertsPanel
 from opesvault.ui.common import fit_to_rows, fmt, fmt_date, month_label, set_rows, stretch_column, summary_table
-from opesvault.ui.components import Collapsible, Figures, MonthPicker, Section, button, scroll_body, separator, text
+from opesvault.ui.components import (
+    Collapsible,
+    Figures,
+    MonthPicker,
+    Section,
+    button,
+    menu_button,
+    scroll_body,
+    separator,
+    text,
+)
 from opesvault.ui.pages.base import Page
 from opesvault.ui.theme import SPACE_M, SPACE_S, SPACE_XL, SPACE_XS, SPACE_XXL, tokens
 
@@ -76,8 +87,22 @@ class OverviewPage(Page):
         self.month.changed.connect(self._month_changed)
         self.close_button = button("Fechar mês…", self.close_month, tip="Bloqueia alterações no mês")
         self.reopen_button = button("Reabrir mês…", self.reopen_month, tip="Libera alterações; exige motivo")
-        # Time navigation and the month action are separate groups.
-        self.header.add(self.month, SPACE_XL, self.close_button, self.reopen_button)
+        # Whose view: the whole family (consolidated) or one member's share (docs/04 §6, TA-18).
+        self.member = QComboBox()
+        self.member.setAccessibleName("Visão de")
+        self.member.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToContents)
+        self.member.currentIndexChanged.connect(lambda _: self.refresh())
+        self.more = menu_button(
+            "Mais",
+            [
+                ("Relatório do mês em PDF…", self.export_report),
+                ("Comparação completa (Relatórios)", lambda: self.navigate("reports", "comparison")),
+            ],
+            tip="Relatório do mês para conversar em família (arquivo sem cifra)",
+        )
+        # Who and when, then the month's actions: separate groups.
+        self.header.add(self.member, self.month, SPACE_XL, self.more, self.close_button, self.reopen_button)
+        self.extra_alerts: Any = None  # set by the window: alerts that read the disk (backups)
         self._month_chosen = False
         self.alerts = AlertsPanel(self.navigate)
 
@@ -235,13 +260,22 @@ class OverviewPage(Page):
             return
         self._default_month()
         ledger = self.session.ledger
-        from opesvault.domain.alerts import alerts
+        from opesvault.domain.alerts import ORDER, alerts
 
-        self.alerts.set_alerts(alerts(ledger))
+        found = alerts(ledger)
+        if self.extra_alerts is not None:
+            found = sorted([*found, *self.extra_alerts()], key=lambda a: ORDER[a.severity])
+        self.alerts.set_alerts(found)
+        self._fill_members()
+        member_id = self.member.currentData()
         month: YearMonth = self.month.current()
-        flow = queries.cash_flow(ledger, month, month)[month]
-        statement = queries.income_statement(ledger, month)
-        worth = queries.net_worth(ledger, month.last_day())
+        # A member's view: competence by their shares; cash and net worth by the accounts they hold
+        # (a joint account appears whole, so the members' views do not add up to the family's).
+        held = self._held_accounts(member_id)
+        liquid = None if held is None else [a for a in held if ledger.account(a).is_liquid]
+        flow = queries.cash_flow(ledger, month, month, liquid)[month]
+        statement = queries.income_statement(ledger, month, member_id)
+        worth = _net_worth(ledger, month.last_day(), held)
         self.cash.set("Entradas", fmt(flow.inflow))
         self.cash.set("Saídas", fmt(flow.outflow))
         self.cash.set("Saldo do mês", fmt(flow.net), _tone(flow.net))
@@ -258,7 +292,8 @@ class OverviewPage(Page):
         pending = pending_items(ledger, month)
         # The month itself is shown once, in the picker.
         self.header.set_subtitle("Mês fechado" if closed else "Mês aberto")
-        self.worth_caption.setText(f"Saldos de todas as contas em {fmt_date(month.last_day())}.")
+        whose = "de todas as contas" if member_id is None else "das contas de que é titular (conjuntas inteiras)"
+        self.worth_caption.setText(f"Saldos {whose} em {fmt_date(month.last_day())}.")
         self.close_button.setVisible(not closed)
         self.reopen_button.setVisible(closed)
         self.pending.setText("\n".join(f"• {p}" for p in pending))
@@ -267,14 +302,22 @@ class OverviewPage(Page):
         at = month.last_day()
         all_balances = queries.balances(ledger, at)
         accounts = sorted(
-            (a for a in ledger.accounts.values() if a.type in (AccountType.ASSET, AccountType.LIABILITY)),
+            (
+                a
+                for a in ledger.accounts.values()
+                if a.type in (AccountType.ASSET, AccountType.LIABILITY) and (held is None or a.id in held)
+            ),
             key=lambda a: (a.type.value, a.name.casefold()),
         )
         set_rows(
             self.balances,
             [([a.name, fmt(all_balances.get(a.id, ZERO))], a.id) for a in accounts if not a.archived],
         )
-        spending = queries.expenses_by_category(ledger, month, month)
+        spending = (
+            queries.expenses_by_category(ledger, month, month)
+            if member_id is None
+            else {k: v for k, v in statement.expense.items() if v}
+        )
         total = sum(spending.values(), ZERO)
         rows = []
         for account_id, value in sorted(spending.items(), key=lambda kv: kv[1], reverse=True):
@@ -342,7 +385,42 @@ class OverviewPage(Page):
         item = table.item(row, 0)
         account_id = item.data(Qt.ItemDataRole.UserRole) if item is not None else None
         if account_id is not None:
-            self.navigate("ledger", ("filter", account_id, self.month.current()))
+            self.navigate("ledger", ("filter", account_id, self.month.current(), self.member.currentData()))
+
+    def _fill_members(self) -> None:
+        assert self.session is not None
+        current = self.member.currentData()
+        members = [(m.name, m.id) for m in self.session.ledger.members.values() if m.active]
+        self.member.blockSignals(True)
+        self.member.clear()
+        self.member.addItem("Família inteira", None)
+        for name, member_id in members:
+            self.member.addItem(name, member_id)
+        index = next((i for i in range(self.member.count()) if self.member.itemData(i) == current), 0)
+        self.member.setCurrentIndex(index)
+        self.member.blockSignals(False)
+        self.member.setVisible(len(members) > 1)
+
+    def _held_accounts(self, member_id: Any) -> list[Any] | None:
+        """Liquid and other balance accounts the member holds; None for the whole family."""
+        if member_id is None or self.session is None:
+            return None
+        ledger = self.session.ledger
+        held = [a.id for a in ledger.accounts.values() if member_id in a.holders]
+        cards = [c.liability_account_id for c in ledger.cards.values() if c.holder_id == member_id]
+        return held + cards
+
+    def export_report(self) -> None:
+        if self.session is None:
+            return
+        from opesvault.exports import monthly_report_html
+        from opesvault.ui.pdf_export import save_pdf
+
+        ledger = self.session.ledger
+        month: YearMonth = self.month.current()
+        member_id = self.member.currentData()
+        if save_pdf(self, f"resumo-{month}.pdf", lambda: monthly_report_html(ledger, month, member_id)):
+            self.notify(f"Relatório de {month_label(month)} gerado.")
 
     def close_month(self) -> None:
         if self.session is None:
@@ -375,6 +453,23 @@ class OverviewPage(Page):
         if reason and run_guarded(self, lambda: reopen_month(ledger, month, reason)):
             self.notify(f"{month_label(month).capitalize()} reaberto.")
             self.changed()
+
+
+def _net_worth(ledger: Any, at: Any, accounts: list[Any] | None) -> queries.NetWorth:
+    worth = queries.net_worth(ledger, at)
+    if accounts is None:
+        return worth
+    held = set(accounts)
+    out = queries.NetWorth()
+    for account_id, value in worth.by_account.items():
+        if account_id not in held:
+            continue
+        if ledger.account(account_id).type is AccountType.ASSET:
+            out.assets += value
+        else:
+            out.liabilities += value
+        out.by_account[account_id] = value
+    return out
 
 
 def _align_right(table: QTableWidget, column: int) -> None:

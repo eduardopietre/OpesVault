@@ -18,6 +18,8 @@ ACTION_LABELS = {
     "import": "Revisar",
     "budget": "Ver no orçamento",
     "reports": "Ver projeção",
+    "ledger": "Ver lançamentos",
+    "settings": "Abrir Configurações",
 }
 # Alerts whose fix is one command open it directly, with the object already chosen.
 ACT_LABELS = {"accounts": "Pagar…", "recurrences": "Vincular…"}

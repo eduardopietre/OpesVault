@@ -31,6 +31,8 @@ class Target(StrEnum):
     IMPORT = "import"
     BUDGET = "budget"
     REPORTS = "reports"
+    LEDGER = "ledger"
+    SETTINGS = "settings"
 
 
 @dataclass(frozen=True)
@@ -260,6 +262,48 @@ def price_alerts(ledger: Ledger) -> list[Alert]:
     ]
 
 
+def suspicion_alerts(ledger: Ledger, today: date) -> list[Alert]:
+    from opesvault.domain.anomalies import suspicions
+
+    return [
+        Alert(
+            Severity.INFO,
+            s.title,
+            s.detail + " · no Livro, Ações › Está certo silencia o aviso",
+            Target.LEDGER,
+            s.on,
+            ("filter", s.account_id, (s.on - timedelta(days=DUPLICATE_SPAN), s.on)),
+        )
+        for s in suspicions(ledger, today)
+    ]
+
+
+DUPLICATE_SPAN = 3
+BACKUP_AGE_DAYS = 30
+
+
+def backup_alert(last_backup: date | None, today: date, configured: bool) -> list[Alert]:
+    """Said when the newest backup is old or missing. The caller reads the folder (not the domain)."""
+    if last_backup is None:
+        detail = (
+            "nenhum backup encontrado na pasta de backups"
+            if configured
+            else "defina uma pasta de backups em Configurações ou use Cofre › Fazer backup agora"
+        )
+        return [Alert(Severity.INFO, "Faça um backup do cofre", detail, Target.SETTINGS)]
+    age = (today - last_backup).days
+    if age < BACKUP_AGE_DAYS:
+        return []
+    return [
+        Alert(
+            Severity.INFO,
+            f"Último backup há {age} dias",
+            f"de {last_backup:%d/%m/%Y}; faça um novo e confira com Cofre › Verificar backup",
+            Target.SETTINGS,
+        )
+    ]
+
+
 ORDER = {Severity.URGENT: 0, Severity.SOON: 1, Severity.INFO: 2}
 
 
@@ -274,6 +318,7 @@ def alerts(ledger: Ledger, today: date | None = None, horizon: int = HORIZON_DAY
         *budget_alerts(ledger, today),
         *balance_check_alerts(ledger),
         *price_alerts(ledger),
+        *suspicion_alerts(ledger, today),
         *import_alerts(ledger),
     ]
     return sorted(found, key=lambda a: (ORDER[a.severity], a.due_on or date.max, a.title))

@@ -160,7 +160,23 @@ Pedido do usuário: o que um aplicativo de finanças precisa ter e não tínhamo
 - **Conferência de saldo** (`domain/balance_checks.py`, Contas): saldo do extrato numa data contra o do aplicativo; diferença calculada na hora, coluna "Conferido com o banco" e aviso enquanto diverge.
 - **Despesas dedutíveis** (`domain/deductibles.py`): marcação da categoria (herdada pelas subcategorias) e Relatórios › Despesas dedutíveis por pessoa e ano.
 - Novos tipos persistidos: `loan_plan`, `loan_payment`, `loan_prepayment`, `operation_tags`, `reimbursement`, `member_settlement`, `balance_check`, `deductible_category` (em `registry.MODULES`).
-- Testes: `test_planning` (domínio, 24) e `test_planning_ui` (interface, 9). `scripts/capturar_telas.py` inclui dados de demonstração de todas as funcionalidades novas.
+- Testes: `test_planning` (domínio, 24) e `test_planning_ui` (interface). `scripts/capturar_telas.py` inclui dados de demonstração de todas as funcionalidades novas.
+
+Pendências do `09` §1.3 A–D feitas no mesmo dia:
+
+- **Comprovantes** (`domain/attachments.py`, Livro › Ações › Anexar comprovante): PDF, PNG ou JPEG reconhecidos pelos primeiros bytes, até 25 MB, guardados como documentos do cofre (o mesmo arquivo vira um só documento); vínculo ao lado da operação, permitido em mês fechado; Documentos mostra "Comprovante" e exibe imagens em memória.
+- **Visão por integrante** (Visão geral › "Visão de"): competência pelas partes do integrante; caixa, saldos e patrimônio pelas contas de que é titular (conjuntas inteiras, dito na legenda).
+- **Filtros salvos** (`domain/saved_filters.py`, Livro › Filtros salvos): no cofre; período personalizado não é salvo.
+- **Arrastar arquivos** em qualquer tela leva à Importação (a tela Importar já aceitava).
+- **Relatório do mês e fechamento do ano em PDF** (`exports.monthly_report_html`, `annual_report_html`, `ui/pdf_export.py`): HTML com textos escapados, convertido em PDF em memória (`QTextDocument` + `QPdfWriter`), só no caminho escolhido e depois do aviso.
+- **Verificação de backup** (Cofre › Verificar backup): abre o backup no worker (senha digitada nele), autentica as páginas, lê o livro e compara com o cofre aberto (mesmo cofre, revisões atrás); aviso "Faça um backup" ou "Último backup há N dias" (≥ 30) a partir da pasta de backups.
+- **Lançamentos suspeitos** (`domain/anomalies.py`): mesma conta, valor e descrição em até 3 dias; valor acima de 3× a mediana da categoria no ano anterior (≥ 5 amostras); verificados nos últimos 60 dias; "Está certo" silencia. Avisos com "Ver lançamentos".
+- **Estabelecimentos** (`domain/merchants.py`): limpeza determinística da descrição (prefixos de adquirentes, códigos, sufixos), nome aprovado pelo usuário guardado ao lado; Relatórios › Despesas por estabelecimento.
+- **Metas** (`domain/goals.py`, página Metas): patrimônio líquido ou saldo de contas escolhidas, progresso, quanto falta por mês até o prazo, ritmo recente e mês em que a meta é alcançada nesse ritmo; gráfico e tabela mês a mês.
+- **Fechamento do ano** (`domain/annual.py`, Relatórios › Fechamento do ano): bens e dívidas em 31/12 com o ano anterior, receitas por categoria, proventos, imposto retido, ganhos realizados (resgates sem bruto ou custo ficam fora e são contados) e dedutíveis por pessoa no PDF.
+- **Desempenho**: com 50 mil lançamentos, os avisos ao abrir levam ~1,2 s na primeira vez (quase tudo é o índice que a Visão geral já montava) e o resto é cache por estado do livro: histórico de faturas por cartão, ciclos de fatura (`lru_cache`) e suspeitas.
+- **Não feito**: compactação do histórico (apaga versões; aguarda decisão) e os itens de IA do §1.3 D além do estabelecimento.
+- Testes: `test_planning_more` (domínio) e os novos casos de `test_planning_ui`.
 
 ## 3. Cobertura de importação
 

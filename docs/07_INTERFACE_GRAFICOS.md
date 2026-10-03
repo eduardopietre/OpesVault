@@ -4,7 +4,7 @@ Versão 1.0 • 01/10/2026. Especificação de experiência, sem mockup executá
 
 ## 1. Estrutura de navegação
 
-Janela principal com navegação lateral: Visão geral; Orçamento; Calendário; Livro financeiro; Importar e revisar; Contas e cartões; Recorrências; Investimentos; Relatórios; Reembolsos e acertos; Documentos; Configurações. Nome do cofre, período, regime e estado de salvamento sempre visíveis.
+Janela principal com navegação lateral: Visão geral; Orçamento; Calendário; Livro financeiro; Importar e revisar; Contas e cartões; Recorrências; Investimentos; Relatórios; Metas; Reembolsos e acertos; Documentos; Configurações. Arquivos soltos em qualquer tela vão para a importação. Nome do cofre, período, regime e estado de salvamento sempre visíveis.
 
 Tela inicial apresenta criar/abrir/restaurar. Lista de recentes é opcional e guarda apenas caminhos consentidos; não exibe saldos com cofre fechado. Nome da família pode ficar oculto até desbloqueio.
 
@@ -22,6 +22,7 @@ Tela inicial apresenta criar/abrir/restaurar. Lista de recentes é opcional e gu
 | Backup | Revisão salva, cópias e integridade | Criar cópia e restaurar em destino separado |
 | Calendário | Faturas, recorrências e parcelas de financiamento do mês, por dia, com situação | Abrir o ponto onde se paga ou vincula |
 | Reembolsos e acertos | Reembolsos a receber; quem deve a quem na família e as despesas que formam o saldo | Registrar recebimento, negativa e acerto |
+| Metas | Metas, progresso, quanto falta por mês, ritmo recente; gráfico e tabela da meta | Criar, editar, arquivar |
 | Financiamentos (Contas e cartões) | Contrato, cronograma, saldo devedor, juros a pagar | Pagar parcela, simular e registrar amortização antecipada |
 
 ## 3. Adicionar avaliação
@@ -48,6 +49,8 @@ Se já existir avaliação naquela data, apresentar “corrigir observação” 
 | Comparação com a média | Mês, média dos meses anteriores e mesmo mês do ano anterior, por categoria | Meses antes dos registros não entram na média |
 | Marcadores | Despesa total por marcador, ou por categoria dentro de um marcador | Soma em qualquer mês |
 | Despesas dedutíveis | Por categoria marcada e por pessoa, no ano | Material de apoio, sem limites legais |
+| Despesas por estabelecimento | Maiores estabelecimentos no período e "Outros" | Nome aprovado ou descrição limpa, indicado no ponto |
+| Fechamento do ano | Bens e dívidas em 31/12, com o ano anterior na tabela | Material de apoio; PDF anual com receitas, proventos, imposto retido, ganhos e dedutíveis |
 | Mês a mês (Visão geral), saldo da conta, faturas, orçamento, financiamento | Séries mensais ou por parcela | Sempre com a tabela dos mesmos valores abaixo |
 
 Todo gráfico com valores ao longo do tempo tem, na mesma tela e logo abaixo, a tabela com os mesmos números, gerada do mesmo conjunto de dados (`charts.data.table_rows`). Gráfico e tabela ficam em seções recolhíveis, nunca em abas separadas (`16` §4, regra 9).

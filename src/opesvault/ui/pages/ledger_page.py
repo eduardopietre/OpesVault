@@ -224,6 +224,7 @@ class OperationInspector(QScrollArea):
         self.body.setSpacing(SPACE_S)
         self.setWidget(body)
         self.setAccessibleName("Detalhes do lançamento")
+        self.open_document: Any = None  # set by the page: opens a receipt in Documentos
 
     def _clear(self) -> None:
         while self.body.count():
@@ -272,6 +273,22 @@ class OperationInspector(QScrollArea):
         tags = tags_of(ledger, op.id)
         if tags:
             add(_pair("Marcadores", ", ".join(tags)))
+        from opesvault.domain.merchants import merchant_of
+
+        add(_pair("Estabelecimento", merchant_of(ledger, op.description)))
+        from opesvault.domain.anomalies import of_operation
+
+        for suspicion in of_operation(ledger, op.id):
+            warning = text(f"{suspicion.title}: {suspicion.detail}", "caption", wrap=True)
+            warning.setProperty("tone", "warning")
+            add(warning)
+        from opesvault.domain.attachments import of_operation as receipts
+
+        found = receipts(ledger, op.id)
+        if found and self.open_document is not None:
+            add(text("Comprovantes", "strong"))
+            for receipt in found:
+                add(button("Abrir comprovante", lambda d=receipt.document_id: self.open_document(d), role="plain"))
         for item in sharing.reimbursements(ledger).values():
             if item.operation_id == op.id:
                 state = sharing.STATE_LABELS[sharing.state(ledger, item)]
@@ -378,12 +395,20 @@ class LedgerPage(Page):
         for optional in (self.filter_start, self.filter_end):
             optional.edit.dateChanged.connect(self.refresh)
         self.clear_filters = button("Limpar filtros", self.reset_filters, role="plain")
+        self.saved_filters = menu_button("Filtros salvos", [], tip="Guardar ou aplicar uma combinação de filtros")
+        self.saved_filters.setAccessibleName("Filtros salvos")
+        saved_menu = self.saved_filters.menu()
+        if saved_menu is not None:
+            saved_menu.aboutToShow.connect(self._fill_saved_filters)
         row_commands: list[Any] = [
             ("Corrigir…", self.edit, "Return"),
             ("Corrigir partidas…", self.edit_postings),
             ("Reclassificar…", self.reclassify_selected),
             ("Marcadores…", self.tag_selected),
+            ("Anexar comprovante…", self.attach_receipt),
+            ("Nomear estabelecimento…", self.name_merchant),
             ("Reembolso a receber…", self.request_reimbursement),
+            ("Está certo (silenciar aviso)", self.mark_reviewed),
             ("Estornar…", self.reverse),
             ("Histórico", self.show_history),
             None,
@@ -407,7 +432,8 @@ class LedgerPage(Page):
             self.filter_tag,
             self.clear_filters,
         )
-        filters = hbox(flow_host, self.actions_button, self.details_button)
+        filters = hbox(flow_host, self.saved_filters, self.actions_button, self.details_button)
+        filters.setAlignment(self.saved_filters, Qt.AlignmentFlag.AlignTop)
         filters.setAlignment(self.actions_button, Qt.AlignmentFlag.AlignTop)
         filters.setAlignment(self.details_button, Qt.AlignmentFlag.AlignTop)
 
@@ -444,6 +470,7 @@ class LedgerPage(Page):
         for widget in (self.table, self.empty, self.empty_new):
             self.views.addWidget(widget)
         self.inspector = OperationInspector()
+        self.inspector.open_document = self.open_attachment
         self.split = QSplitter(Qt.Orientation.Horizontal)
         self.split.setChildrenCollapsible(False)
         self.split.addWidget(self.views)
@@ -559,6 +586,92 @@ class LedgerPage(Page):
             origin=self.filter_origin.currentData(),
             operation_ids=self._tagged(),
         )
+
+    # ── saved filters ───────────────────────────────
+
+    def _fill_saved_filters(self) -> None:
+        from opesvault.domain.saved_filters import saved
+
+        menu = self.saved_filters.menu()
+        if menu is None:
+            return
+        menu.clear()
+        save = menu.addAction("Salvar filtro atual…")
+        save.triggered.connect(lambda _=False: self.save_current_filter())
+        found = saved(self.session.ledger) if self.session is not None else []
+        if found:
+            menu.addSeparator()
+        for flt in found:
+            action = menu.addAction(flt.name)
+            action.triggered.connect(lambda _=False, f=flt: self.apply_saved_filter(f))
+        if found:
+            menu.addSeparator()
+            remove = menu.addMenu("Excluir filtro")
+            for flt in found:
+                action = remove.addAction(flt.name)
+                action.triggered.connect(lambda _=False, f=flt: self.delete_saved_filter(f.id))
+
+    def save_current_filter(self) -> None:
+        if self.session is None:
+            return
+        from PySide6.QtWidgets import QInputDialog
+
+        from opesvault.domain.saved_filters import SavedFilter, save_filter
+
+        if self.period.currentData() == "custom":
+            QMessageBox.information(
+                self, "Filtros salvos", "Período personalizado não é salvo. Escolha um período com nome."
+            )
+            return
+        name, ok = QInputDialog.getText(self, "Salvar filtro", "Nome (ex.: Cartão da Ana este mês):")
+        if not ok or not name.strip():
+            return
+        status = self.filter_status.currentData()
+        origin = self.filter_origin.currentData()
+        flt = SavedFilter(
+            name=name,
+            period=self.period.currentData() or "all",
+            account_id=self.filter_account.currentData(),
+            member_id=self.filter_member.currentData(),
+            text=self.filter_text.text().strip(),
+            status=str(status.value if hasattr(status, "value") else status or "all"),
+            origin=str(origin.value if hasattr(origin, "value") else origin) if origin else None,
+            tag=self.filter_tag.currentData(),
+        )
+        ledger = self.session.ledger
+        if run_guarded(self, lambda: save_filter(ledger, flt)):
+            self.notify(f"Filtro “{flt.name.strip()}” salvo no cofre.")
+            self.changed()
+
+    def apply_saved_filter(self, flt: Any) -> None:
+        self.reset_filters()
+        self.refresh()  # fills the lists before choosing from them
+        for combo, value in (
+            (self.period, flt.period),
+            (self.filter_account, flt.account_id),
+            (self.filter_member, flt.member_id),
+            (self.filter_status, StatusFilter(flt.status)),
+            (self.filter_origin, OriginKind(flt.origin) if flt.origin else None),
+            (self.filter_tag, flt.tag),
+        ):
+            combo.blockSignals(True)
+            select_combo(combo, value)
+            combo.blockSignals(False)
+        self.filter_text.blockSignals(True)
+        self.filter_text.setText(flt.text)
+        self.filter_text.blockSignals(False)
+        self.custom_dates.hide()
+        self.refresh()
+        self.notify(f"Filtro “{flt.name}” aplicado.")
+
+    def delete_saved_filter(self, filter_id: UUID) -> None:
+        if self.session is None:
+            return
+        from opesvault.domain.saved_filters import delete_filter
+
+        delete_filter(self.session.ledger, filter_id)
+        self.notify("Filtro excluído. Ctrl+Z desfaz.")
+        self.changed()
 
     def _tagged(self) -> frozenset[UUID] | None:
         tag = self.filter_tag.currentData()
@@ -767,6 +880,66 @@ class LedgerPage(Page):
             if changed:
                 self.notify(f"Marcadores alterados em {changed} lançamento(s).")
                 self.changed()
+
+    def attach_receipt(self) -> None:
+        """A receipt (PDF or image) for the selected operation, kept encrypted in the vault."""
+        op = self._selected()
+        if op is None or self.session is None:
+            return
+        from PySide6.QtWidgets import QFileDialog
+
+        from opesvault.domain.attachments import attach
+
+        name, _ = QFileDialog.getOpenFileName(self, "Anexar comprovante", "", "Comprovantes (*.pdf *.png *.jpg *.jpeg)")
+        if not name:
+            return
+        from pathlib import Path
+
+        path = Path(name)
+        try:
+            data = path.read_bytes()
+        except OSError:
+            QMessageBox.warning(self, "Anexar comprovante", "Não foi possível ler o arquivo.")
+            return
+        session = self.session
+        if run_guarded(self, lambda: attach(session, op.id, path.name, data)):
+            self.notify("Comprovante anexado e guardado cifrado no cofre.")
+            self.changed()
+
+    def open_attachment(self, document_id: UUID) -> None:
+        self.navigate("documents", document_id)
+
+    def name_merchant(self) -> None:
+        op = self._selected()
+        if op is None or self.session is None:
+            return
+        from PySide6.QtWidgets import QInputDialog
+
+        from opesvault.domain.merchants import merchant_of, name_merchant
+
+        ledger = self.session.ledger
+        current = merchant_of(ledger, op.description)
+        name, ok = QInputDialog.getText(
+            self,
+            "Nomear estabelecimento",
+            f"Nome para “{op.description}” e descrições parecidas:",
+            text=current,
+        )
+        if ok and run_guarded(self, lambda: name_merchant(ledger, op.description, name)):
+            self.notify(f"Estabelecimento “{name.strip()}” definido; a descrição original continua guardada.")
+            self.changed()
+
+    def mark_reviewed(self) -> None:
+        ids = self.selected_ids()
+        if not ids or self.session is None:
+            return
+        from opesvault.domain.anomalies import mark_reviewed
+
+        ledger = self.session.ledger
+        silenced = sum(mark_reviewed(ledger, op_id) for op_id in ids)
+        self.notify(f"{len(ids)} lançamento(s) conferido(s); avisos de duplicidade ou valor silenciados.")
+        if silenced:
+            self.changed()
 
     def request_reimbursement(self) -> None:
         op = self._selected()

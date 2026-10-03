@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from decimal import Decimal
 from enum import StrEnum
+from functools import cached_property, lru_cache
 from typing import Any
 from uuid import UUID
 
@@ -42,12 +43,26 @@ class Cycle:
     closing: date
     due: date
 
-    @property
+    @cached_property  # frozen, but cached_property writes the instance dict directly
     def month(self) -> YearMonth:
         return YearMonth.of(self.due)
 
 
+@dataclass(frozen=True)
+class _Days:
+    id: UUID
+    closing_day: int
+    due_day: int
+
+
 def cycle_for(card: Card, purchase: date) -> Cycle:
+    return _cycle_for(card.id, card.closing_day, card.due_day, purchase)
+
+
+@lru_cache(maxsize=65536)
+def _cycle_for(card_id: UUID, closing_day: int, due_day: int, purchase: date) -> Cycle:
+    """Pure in its arguments (the card's days, not the card), so a changed card never hits an old entry."""
+    card = _Days(card_id, closing_day, due_day)
     closing = _clamped(purchase.year, purchase.month, card.closing_day)
     if purchase > closing:
         nxt = YearMonth.of(purchase).add(1)
@@ -240,6 +255,19 @@ def bills(ledger: Ledger, card_id: UUID, months: list[YearMonth]) -> list[Bill]:
     are returned.
     """
     card = ledger.cards[card_id]
+    by_month = _card_history(ledger, card_id)
+    # Months outside the card's history have no charges nor payments: an empty bill each.
+    return [by_month[m] if m in by_month else Bill(cycle_by_due_month(card, m)) for m in months]
+
+
+def _card_history(ledger: Ledger, card_id: UUID) -> dict[YearMonth, Bill]:
+    """Every bill of the card from its first to its last movement, cached per ledger state:
+    alerts, the projection, the calendar and the bills tab all ask for the same history."""
+    cache: dict[UUID, tuple[int, dict[YearMonth, Bill]]] = ledger.__dict__.setdefault("_bill_cache", {})
+    hit = cache.get(card_id)
+    if hit is not None and hit[0] == ledger.change_count:
+        return hit[1]
+    card = ledger.cards[card_id]
     plan_ops = {oid for p in plans(ledger).values() if p.card_id == card_id for oid in p.operation_ids}
     charges: list[tuple[YearMonth, Decimal, UUID]] = []  # (bill month, liability change, operation)
     payments: list[tuple[date, Decimal, UUID]] = []
@@ -265,18 +293,16 @@ def bills(ledger: Ledger, card_id: UUID, months: list[YearMonth]) -> list[Bill]:
         for item in schedule(ledger, plan)
     ]
     involved = [
-        *months,
         *(m for m, _, _ in charges),
         *(m for m, _ in scheduled),
         *(_due_month(card, d) for d, _, _ in payments),
     ]
-    if not involved:
-        return []
     by_month: dict[YearMonth, Bill] = {}
-    cursor, last = min(involved), max(involved)
-    while cursor <= last:  # every month in between, so no overdue bill is skipped
-        by_month[cursor] = Bill(cycle_by_due_month(card, cursor))
-        cursor = cursor.add(1)
+    if involved:
+        cursor, last = min(involved), max(involved)
+        while cursor <= last:  # every month in between, so no overdue bill is skipped
+            by_month[cursor] = Bill(cycle_by_due_month(card, cursor))
+            cursor = cursor.add(1)
     for month, liability, op_id in charges:
         bill = by_month[month]
         if liability < 0:
@@ -302,7 +328,8 @@ def bills(ledger: Ledger, card_id: UUID, months: list[YearMonth]) -> list[Bill]:
             own = by_month[_due_month(card, paid_on)]
             own.payments += left
             own.operation_ids.append(op_id)
-    return [by_month[m] for m in months]
+    cache[card_id] = (ledger.change_count, by_month)
+    return by_month
 
 
 class _ImportedPlanMatch(BaseModel):

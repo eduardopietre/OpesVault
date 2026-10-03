@@ -38,6 +38,11 @@ Um cofre tem identificador, versão de formato, revisão e moeda de apresentaç�
 | Acerto entre integrantes | Quem pagou, para quem, valor e data; não movimenta dinheiro |
 | Conferência de saldo | Conta, data e saldo informado pelo banco; a diferença é calculada na hora |
 | Categoria dedutível | Categoria de despesa e tipo de dedução (saúde, educação, PGBL, pensão, doações, outras) |
+| Comprovante | Operação e documento do cofre (PDF ou imagem) |
+| Filtro salvo | Nome e filtros do Livro (período nomeado, conta, integrante, texto, situação, origem, marcador) |
+| Estabelecimento | Chave (descrição limpa e normalizada) e nome aprovado |
+| Suspeita conferida | Operação e tipo (duplicidade, valor fora do comum) marcados como "está certo" |
+| Meta | Nome, patrimônio líquido ou contas escolhidas, valor-alvo, prazo opcional, criação e arquivamento |
 
 Os tipos da revisão de 03/10/2026 são novos tipos persistidos, sem mudar os existentes: o esquema do domínio continua 2, e versões anteriores do aplicativo recusam o cofre com a mensagem de versão mais nova.
 

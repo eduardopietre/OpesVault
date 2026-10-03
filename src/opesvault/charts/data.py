@@ -595,3 +595,66 @@ def tags_overview(ledger: Ledger) -> Chart:
         ],
         ["Cada marcador soma seus lançamentos em qualquer mês, com várias categorias."],
     )
+
+
+def merchants_chart(ledger: Ledger, start: date, end: date, top: int = 15) -> Chart:
+    """Expense per merchant (approved names, or the cleaned description), largest first."""
+    from opesvault.domain.merchants import totals
+
+    found = totals(ledger, start, end)
+    shown = found[:top]
+    rest = sum((m.expense for m in found[top:]), ZERO)
+    points = [
+        Point(m.name, m.expense, {"lançamentos": str(m.count), "nome": "aprovado" if m.approved else "da descrição"})
+        for m in shown
+    ]
+    if rest:
+        points.append(Point("Outros", rest, {"estabelecimentos": str(len(found) - top)}))
+    return Chart(
+        "Despesas por estabelecimento",
+        "BRL",
+        [Series("Despesas", points)],
+        ["Nomes aprovados no Livro (Ações › Nomear estabelecimento); os demais vêm da descrição, limpa."],
+    )
+
+
+def annual_chart(ledger: Ledger, year: int) -> Chart:
+    """Balances on 31/12 per account, with the previous year's in the table (fechamento do ano)."""
+    from opesvault.domain.annual import NOTICE, annual
+
+    summary = annual(ledger, year)
+    end, before = [], []
+    for line in summary.balances:
+        kind = "bem" if line.kind is AccountType.ASSET else "dívida"
+        end.append(Point(line.name, line.year_end, {"tipo": kind}))
+        before.append(Point(line.name, line.previous_year_end, {"tipo": kind}))
+    return Chart(
+        f"Bens e dívidas em 31/12/{year}",
+        "BRL",
+        [Series(f"31/12/{year}", end), Series(f"31/12/{year - 1}", before, hidden=True)],
+        [NOTICE],
+    )
+
+
+def goal_chart(ledger: Ledger, goal_id: UUID, end: YearMonth, months: int = 12) -> Chart:
+    """The goal's value at the end of each month, against the target."""
+    from opesvault.domain.goals import KIND_LABELS, value_of
+
+    goal = ledger.entities("goal")[goal_id]
+    value, target = [], []
+    for month in months_between(end.add(-(months - 1)), end):
+        at = min(month.last_day(), date.today())
+        value.append(Point(str(month), value_of(ledger, goal, at), {"base": KIND_LABELS[goal.kind].lower()}))
+        target.append(Point(str(month), goal.target))
+    notes = ["Valor no fim de cada mês (o mês atual, até hoje)."]
+    if goal.target_date:
+        notes.append(f"Prazo: {goal.target_date:%d/%m/%Y}.")
+    return Chart(
+        f"Meta: {goal.name}",
+        "BRL",
+        [
+            Series("Valor", value, style="line", marker_points=True),
+            Series("Meta", target, style="line", summable=False),
+        ],
+        notes,
+    )

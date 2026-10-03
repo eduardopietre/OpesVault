@@ -68,6 +68,16 @@ class PdfView(QWidget):
             return
         self._show_page(page)
 
+    def show_image(self, data: bytes) -> None:
+        """A photographed receipt, decoded in memory (never written to disk)."""
+        self.show_pdf(None)
+        pixmap = QPixmap()
+        if not pixmap.loadFromData(data):
+            self.image.setText("Não foi possível abrir esta imagem.")
+            return
+        width = max(self.width() - 40, 200)
+        self.image.setPixmap(pixmap.scaledToWidth(min(width, pixmap.width())))
+
     def _open(self, password: str | None) -> bool:
         from opesvault.pdf_render import PdfPasswordRequired, open_document
 
@@ -160,7 +170,8 @@ class DocumentsPage(Page):
         split.setSizes([620, 520])
         self.empty = EmptyState(
             "Nenhum documento no cofre",
-            "Os arquivos importados ficam guardados aqui, cifrados, como evidência dos lançamentos.",
+            "Os arquivos importados e os comprovantes anexados no Livro ficam guardados aqui, cifrados, "
+            "como evidência dos lançamentos.",
         )
         self.views = QStackedWidget()
         self.views.addWidget(split)
@@ -173,6 +184,7 @@ class DocumentsPage(Page):
             self.table.setRowCount(0)
             self.viewer.show_pdf(None)
             return
+        from opesvault.domain import attachments
         from opesvault.importing import pipeline
         from opesvault.ui.common import fmt_date
         from opesvault.ui.pages.import_page import STATUS_LABELS
@@ -191,6 +203,12 @@ class DocumentsPage(Page):
                 card = ledger.cards.get(batch.card_id) if batch.card_id else None
                 where = card.name if card else account.name if account else "—"
                 state = STATUS_LABELS.get(batch.status, "—")
+            receipts = attachments.of_document(ledger, d.meta.id)
+            if batch is None and receipts:
+                op = ledger.operations.get(receipts[0].operation_id)
+                when = fmt_date(op.occurred_on or op.cash_date) if op else "—"
+                where = op.description if op else "—"
+                state = "Comprovante" + (f" de {len(receipts)} lançamentos" if len(receipts) > 1 else "")
             rows.append(([d.meta.original_name, when, where, state], d.meta.id))
         set_rows(self.table, rows)
         for row, d in enumerate(self.session.documents):
@@ -213,7 +231,20 @@ class DocumentsPage(Page):
         if self.session is None or doc_id is None:
             return
         document = self.session.document(doc_id)
-        if document.meta.original_name.lower().endswith(".pdf"):
+        from opesvault.domain.attachments import kind_of
+
+        kind = kind_of(document.data)
+        if kind == "pdf":
             self.viewer.show_pdf(document.data)
+        elif kind in ("png", "jpeg"):
+            self.viewer.show_image(document.data)
         else:
             self.viewer.image.setText("Arquivo estruturado (CSV/OFX): sem visualização de página.")
+
+    def reveal(self, ref: object, *, act: bool = False) -> None:
+        """A receipt opened from the Ledger: select its document."""
+        for row in range(self.table.rowCount()):
+            item = self.table.item(row, 0)
+            if item is not None and item.data(Qt.ItemDataRole.UserRole) == ref:
+                self.table.selectRow(row)
+                return

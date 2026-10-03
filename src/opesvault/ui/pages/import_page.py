@@ -373,6 +373,10 @@ class ImportPage(Page):
         if self.session is None or not paths:
             return
         event.acceptProposedAction()
+        self.import_paths(paths)
+
+    def import_paths(self, paths: list[Path]) -> None:
+        """Files dropped here or anywhere on the window: the same queue as "Importar arquivos…"."""
         self._queue.extend(paths)
         self._next_import()
 

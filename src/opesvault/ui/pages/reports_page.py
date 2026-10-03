@@ -35,8 +35,10 @@ CHARTS = (
     ("Patrimônio", "net_worth"),
     ("Composição da carteira", "composition"),
     ("Projeção de compromissos", "projection"),
+    ("Despesas por estabelecimento", "merchants"),
     ("Marcadores", "tags"),
     ("Despesas dedutíveis", "deductibles"),
+    ("Fechamento do ano", "annual"),
 )
 
 
@@ -50,10 +52,11 @@ SCOPES = {
     "comparison": "window",
     "tags": "tag",
     "deductibles": "year",
+    "annual": "year",
     "projected_balance": "horizon",
 }
 # Charts that read a range of months (the period combo); the others have their own reference.
-MONTHLY = {"in_out", "result", "cash", "categories", "net_worth"}
+MONTHLY = {"in_out", "result", "cash", "categories", "net_worth", "merchants"}
 
 
 def _month_of(x: object) -> YearMonth | None:
@@ -99,7 +102,8 @@ class ReportsPage(Page):
         self.months.currentIndexChanged.connect(self.refresh)
         self.scope.currentIndexChanged.connect(self.refresh)
         self.export_image = button("Exportar imagem…", self.export)
-        self.header.add(self.scope, self.months, self.export_image)
+        self.year_pdf = button("Relatório anual (PDF)…", self.export_year, tip="Material de apoio à declaração")
+        self.header.add(self.scope, self.months, self.year_pdf, self.export_image)
         self.panel = ChartPanel("relatorios", self.inspect, chart_height=320)
         self.chart = self.panel.chart  # kept for scripts and tests
         self.point = text(HINT, "caption", wrap=True)
@@ -175,6 +179,7 @@ class ReportsPage(Page):
                     self.scope.addItem(name, value)
         self.scope.setVisible(self.scope.count() > 1)
         self.months.setVisible(self._key() in MONTHLY)
+        self.year_pdf.setVisible(self._key() == "annual")
         self.scope.blockSignals(False)
 
     def follow_month(self, month: object) -> None:
@@ -224,6 +229,10 @@ class ReportsPage(Page):
             return charts.tag_chart(ledger, chosen) if chosen else charts.tags_overview(ledger)
         if key == "deductibles":
             return deductibles_chart(ledger, int(chosen or self._end.year))
+        if key == "annual":
+            return charts.annual_chart(ledger, int(chosen or self._end.year))
+        if key == "merchants":
+            return charts.merchants_chart(ledger, start.first_day(), end.last_day())
         return charts.commitments_projection(ledger, end, 12)
 
     def set_session(self, session) -> None:  # type: ignore[no-untyped-def]
@@ -261,6 +270,10 @@ class ReportsPage(Page):
             from opesvault.domain.deductibles import NOTICE
 
             return NOTICE
+        if key == "annual":
+            from opesvault.domain.annual import NOTICE as ANNUAL_NOTICE
+
+            return ANNUAL_NOTICE
         return ""
 
     def inspect(self, series: str, point: Point) -> None:
@@ -308,6 +321,17 @@ class ReportsPage(Page):
         ref = self._ledger_ref()
         if ref is not None:
             self.navigate("ledger", ref)
+
+    def export_year(self) -> None:
+        if self.session is None:
+            return
+        from opesvault.exports import annual_report_html
+        from opesvault.ui.pdf_export import save_pdf
+
+        ledger = self.session.ledger
+        year = int(self._chosen() or self._end.year)
+        if save_pdf(self, f"fechamento-{year}.pdf", lambda: annual_report_html(ledger, year)):
+            self.notify(f"Fechamento de {year} gerado.")
 
     def export(self) -> None:
         if self.chart.chart is None:

@@ -1,7 +1,7 @@
 """Interface of the review of 03/10/2026: charts beside their values (no tabs), collapsible sections,
 and the screens of the new features."""
 
-from datetime import date
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
@@ -208,3 +208,133 @@ def test_new_pages_have_accessible_controls_and_fit(setup: tuple[MainWindow, Fam
         page = _page(window, name)
         assert unnamed(page) == [], name
         assert window.minimumSizeHint().width() <= 1000, name
+
+
+# ── second part: receipts, saved filters, member view, drop, PDF, goals, backup ─────
+
+
+def test_receipt_attached_from_the_ledger_opens_in_documents(
+    setup: tuple[MainWindow, Family], monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    from PySide6.QtWidgets import QFileDialog
+
+    window, _f = setup
+    receipt = tmp_path / "recibo.png"
+    receipt.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 16)
+    monkeypatch.setattr(QFileDialog, "getOpenFileName", lambda *a, **k: (str(receipt), ""))
+    page = _page(window, "LedgerPage")
+    page.table.selectRow(0)
+    page.attach_receipt()
+    assert window.session is not None and [d.meta.original_name for d in window.session.documents] == ["recibo.png"]
+    page._update_selection()
+    document_id = window.session.documents[0].meta.id
+    page.open_attachment(document_id)
+    documents = _page(window, "DocumentsPage")
+    assert documents.table.item(documents.table.currentRow(), 3).text() == "Comprovante"
+
+
+def test_saved_filter_round_trip(setup: tuple[MainWindow, Family], monkeypatch: pytest.MonkeyPatch) -> None:
+    from PySide6.QtWidgets import QInputDialog
+
+    from opesvault.domain.saved_filters import saved
+
+    window, f = setup
+    page = _page(window, "LedgerPage")
+    page.reveal(("filter", f.groceries, None))
+    monkeypatch.setattr(QInputDialog, "getText", lambda *a, **k: ("Mercado", True))
+    page.save_current_filter()
+    [flt] = saved(f.ledger)
+    assert flt.account_id == f.groceries
+    page.reset_filters()
+    page.apply_saved_filter(flt)
+    assert page.filter_account.currentData() == f.groceries and page.model.rowCount() == 3
+
+
+def test_member_view_on_the_overview(setup: tuple[MainWindow, Family]) -> None:
+    window, f = setup
+    page = _page(window, "OverviewPage")
+    page.follow_month(YearMonth(year=2026, month=3))
+    assert page.member.isVisibleTo(page)
+    index = next(i for i in range(page.member.count()) if page.member.itemData(i) == f.bruno)
+    page.member.setCurrentIndex(index)  # Bruno holds only the joint account and has no shares
+    assert page.result.values["Despesas"].text() == "R$ 0,00"
+    names = [page.balances.item(r, 0).text() for r in range(page.balances.rowCount())]
+    assert names == ["Conjunta"]
+    page.member.setCurrentIndex(0)
+    assert page.result.values["Despesas"].text() == "R$ 900,00"
+
+
+def test_files_dropped_anywhere_go_to_import(setup: tuple[MainWindow, Family], tmp_path: Path) -> None:
+    from PySide6.QtCore import QMimeData, QUrl
+
+    from opesvault.ui.pages.import_page import ImportPage
+
+    window, _f = setup
+    pdf = tmp_path / "fatura.pdf"
+    pdf.write_bytes(b"%PDF-1.4\n")
+    mime = QMimeData()
+    mime.setUrls([QUrl.fromLocalFile(str(pdf)), QUrl.fromLocalFile(str(tmp_path / "planilha.xlsx"))])
+    queued: list[list[Path]] = []
+    page = next(p for p in window.pages if isinstance(p, ImportPage))
+    page.import_paths = lambda paths: queued.append(paths)  # type: ignore[method-assign]
+
+    class Drop:
+        accepted = False
+
+        def mimeData(self) -> QMimeData:  # noqa: N802 - Qt API
+            return mime
+
+        def acceptProposedAction(self) -> None:  # noqa: N802 - Qt API
+            self.accepted = True
+
+    event = Drop()
+    window.dropEvent(event)
+    assert event.accepted and queued == [[pdf]]
+    assert window.stack.currentWidget() is page
+
+
+def test_pdf_report_is_written_only_where_chosen(tmp_path: Path, app: QApplication) -> None:
+    from opesvault.ui.pdf_export import write_pdf
+
+    target = tmp_path / "resumo.pdf"
+    write_pdf(str(target), "<h1>Resumo</h1><p>R$ 1.000,00</p>")
+    assert target.read_bytes().startswith(b"%PDF")
+    assert [p.name for p in tmp_path.iterdir()] == ["resumo.pdf"]  # no temporary files beside it
+
+
+def test_goals_page(setup: tuple[MainWindow, Family]) -> None:
+    from opesvault.domain import goals
+
+    window, f = setup
+    goals.add_goal(
+        f.ledger,
+        goals.Goal(
+            name="Reserva", kind=goals.GoalKind.NET_WORTH, target=Decimal("50000.00"), created_on=date(2026, 1, 1)
+        ),
+    )
+    window._refresh()
+    page = _page(window, "GoalsPage")
+    assert page.table.item(0, 0).text() == "Reserva"
+    assert page.panel.data is not None and page.panel.data.title == "Meta: Reserva"
+
+
+def test_backup_report_compares_with_the_open_vault(tmp_path: Path) -> None:
+    from opesvault.ui.main_window import backup_report
+    from opesvault.vault.model import RevisionInfo
+
+    f = family()
+    restored = Session.new(tmp_path / "b.opesvault")
+    restored.ledger = f.ledger
+    restored.revision = RevisionInfo(
+        vault_id=restored.vault_id,
+        format_version=1,
+        revision=3,
+        revision_id=restored.vault_id,
+        saved_at=datetime(2026, 3, 1, 10, tzinfo=UTC),
+    )
+    current = Session(path=tmp_path / "a.opesvault", vault_id=restored.vault_id, ledger=f.ledger)
+    current.revision = restored.revision.model_copy(update={"revision": 5})
+    text = backup_report(restored, current)
+    assert "Backup íntegro" in text and "Revisão 3" in text and "2 revisão(ões) atrás" in text
+    other = Session.new(tmp_path / "c.opesvault")
+    assert "outro cofre" in backup_report(restored, other)

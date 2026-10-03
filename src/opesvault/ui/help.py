@@ -15,6 +15,8 @@ GENERAL = """
 <tr><td><b>Ctrl+L</b></td><td>Ocultar o conteúdo agora (bloqueio visual)</td></tr>
 <tr><td><b>F1</b></td><td>Ajuda da tela atual</td></tr>
 </table>
+<p>Arraste arquivos (PDF, CSV, OFX) para qualquer tela para importá-los. <b>Cofre › Verificar backup</b> abre
+um backup (com a senha dele) e confirma que está íntegro, sem mexer no cofre aberto.</p>
 <p>O OpesVault funciona sem internet. Os dados ficam só no arquivo <code>.opesvault</code>, cifrado com a sua senha.
 Não existe recuperação de senha: guarde backups e a senha com cuidado.</p>
 """
@@ -34,6 +36,11 @@ parcelas e quantos meses de despesa a reserva cobre. Cada um diz como é calcula
 <p><b>Comparado aos meses anteriores</b>: o mês contra a média dos 3 meses anteriores e contra o mesmo mês do ano
 anterior, com as categorias que mais subiram. <b>Mês a mês</b> mostra o gráfico e, abaixo, a tabela com os mesmos
 valores. Cada seção pode ser recolhida clicando no título; a escolha fica neste computador.</p>
+<p><b>Visão de</b>: a família inteira ou um integrante. Na visão de um integrante, a competência mostra as partes
+atribuídas a ele (rateio) e o caixa e o patrimônio mostram as contas de que é titular; contas conjuntas aparecem
+inteiras, por isso as visões dos integrantes não somam a da família.</p>
+<p><b>Relatório em PDF</b>: resumo, comparação, categorias com o orçamento, vencimentos, indicadores e pendências do
+mês, para conversar em família. O arquivo sai sem cifra; o aplicativo avisa antes.</p>
 <p>Valores desconhecidos aparecem como “—”, nunca como zero.</p>
 """,
     "Calendário": """
@@ -42,6 +49,13 @@ em negrito; os atrasados, em destaque, com a situação escrita na lista.</p>
 <p>Clique num dia para ver só os seus vencimentos (<b>Mês inteiro</b> volta à lista do mês). <b>Abrir…</b> (ou
 duplo clique) leva à tela onde se paga a fatura ou a parcela, ou se vincula a conta ao lançamento.</p>
 <p>Compras parceladas no cartão aparecem dentro da fatura. Previsões nunca alteram saldos.</p>
+""",
+    "Metas": """
+<p>Metas de patrimônio líquido ou de saldo de contas escolhidas (reserva de emergência, entrada de um imóvel).
+A tabela mostra o valor atual, o alvo, o progresso e quanto falta; com prazo, quanto é preciso guardar por mês.
+<b>Ritmo recente</b> é quanto o valor mudou por mês, em média, nos últimos meses com registros, e <b>Alcança em</b>
+diz quando a meta é atingida nesse ritmo. Abaixo, o gráfico e a tabela da meta selecionada, mês a mês.</p>
+<p>A meta só acompanha valores que o livro já tem: não reserva nem movimenta dinheiro.</p>
 """,
     "Reembolsos e acertos": """
 <p><b>Reembolsos</b>: despesas que o plano de saúde, a empresa ou outra pessoa vai devolver. Marque no Livro
@@ -83,6 +97,13 @@ Toda correção exige um motivo e fica no histórico.</li>
 reforma. Não mudam valores e valem também em meses fechados; uma compra parcelada é marcada inteira. Filtre por
 marcador e veja o total em Relatórios › Marcadores.</li>
 <li><b>Reembolso a receber</b>: marca uma despesa que alguém vai devolver (Reembolsos e acertos).</li>
+<li><b>Anexar comprovante</b>: um PDF ou foto (PNG, JPEG) do recibo, guardado cifrado no cofre e visto em
+Documentos. Vale para qualquer lançamento, inclusive de mês fechado.</li>
+<li><b>Nomear estabelecimento</b>: “IFD*IFOOD.COM AGENCIA” vira “iFood” em todos os lançamentos parecidos; a
+descrição do banco continua guardada. Relatórios › Despesas por estabelecimento usa esses nomes.</li>
+<li><b>Está certo</b>: silencia os avisos de possível cobrança duplicada ou de valor fora do comum.</li>
+<li><b>Filtros salvos</b>: guarda a combinação atual de filtros com um nome (“Cartão da Ana este mês”), no
+cofre, para aplicar depois com um clique.</li>
 <li>Meses fechados não aceitam alterações até serem reabertos com motivo.</li>
 </ul>
 """,
@@ -145,10 +166,13 @@ média nos fluxos mensais), que pode ser exportada em CSV. Gráfico e tabela se 
 <p><b>Saldo projetado</b>: o saldo de hoje de cada conta mais o que já está registrado para vir (recorrências,
 faturas e parcelas). É previsão: não altera saldos e não adivinha compras que ainda não existem.</p>
 <p><b>Despesas dedutíveis</b> é material de apoio: não aplica limites legais nem substitui a declaração.</p>
+<p><b>Fechamento do ano</b>: bens e dívidas em 31/12 (com o ano anterior na tabela) e o <b>Relatório anual
+(PDF)</b> com receitas por categoria, proventos, imposto retido, ganhos realizados e dedutíveis por pessoa. Também
+é material de apoio: não classifica rendimentos como isentos ou tributáveis.</p>
 """,
     "Documentos": """
-<p>Arquivos guardados no cofre e os lançamentos ligados a cada um.
-Os documentos nunca são gravados em disco sem cifra.</p>
+<p>Arquivos guardados no cofre e os lançamentos ligados a cada um: documentos importados e comprovantes anexados
+no Livro financeiro (PDF e fotos). Os documentos nunca são gravados em disco sem cifra.</p>
 """,
     "Configurações": """
 <p><b>Backup e salvamento</b> e <b>IA local</b> ficam no cofre: a mudança vale na hora e é gravada com

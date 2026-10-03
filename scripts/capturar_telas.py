@@ -133,6 +133,20 @@ def _demo_planning(f, ledger) -> None:  # type: ignore[no-untyped-def]
     deductibles.mark(ledger, category(ledger, "Saúde"), deductibles.DeductibleKind.HEALTH)
     deductibles.mark(ledger, category(ledger, "Educação"), deductibles.DeductibleKind.EDUCATION)
     balance_checks.record(ledger, f.bank, date(2026, 3, 31), "9000.00", "extrato do aplicativo")
+    from opesvault.domain import goals, merchants
+
+    goals.add_goal(
+        ledger,
+        goals.Goal(
+            name="Reserva de emergência",
+            kind=goals.GoalKind.ACCOUNTS,
+            target=Decimal("30000.00"),
+            target_date=date(2027, 12, 31),
+            account_ids=(f.bank, f.savings),
+            created_on=date(2026, 1, 1),
+        ),
+    )
+    merchants.name_merchant(ledger, "NETFLIX.COM", "Netflix")
 
 
 def main() -> int:

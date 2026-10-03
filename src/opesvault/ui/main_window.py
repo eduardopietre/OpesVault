@@ -39,6 +39,7 @@ from opesvault.ui.pages.agenda_page import AgendaPage
 from opesvault.ui.pages.base import Page
 from opesvault.ui.pages.budget_page import BudgetPage
 from opesvault.ui.pages.documents_page import DocumentsPage
+from opesvault.ui.pages.goals_page import GoalsPage
 from opesvault.ui.pages.import_page import ImportPage
 from opesvault.ui.pages.investments_page import InvestmentsPage
 from opesvault.ui.pages.ledger_page import LedgerPage
@@ -238,6 +239,10 @@ class MainWindow(QMainWindow):
         self.show_page(0)
         self.idle = IdleWatcher(self, lock_minutes())
         self.idle.idle.connect(self._on_idle)
+        self.setAcceptDrops(True)  # files dropped anywhere go to "Importar e revisar"
+        overview = next((p for p in self.pages if isinstance(p, OverviewPage)), None)
+        if overview is not None:
+            overview.extra_alerts = self.backup_alerts
         app = QApplication.instance()
         if app is not None:
             app.installEventFilter(self.idle)
@@ -464,6 +469,7 @@ class MainWindow(QMainWindow):
             RecurrencesPage(self.on_changed),
             InvestmentsPage(self.on_changed),
             ReportsPage(self.on_changed),
+            GoalsPage(self.on_changed),
             SharingPage(self.on_changed),
             DocumentsPage(self.on_changed),
             SettingsPage(self.on_changed),
@@ -482,10 +488,13 @@ class MainWindow(QMainWindow):
         self._action(menu, "Assistente de configuração…", None, self.run_setup_wizard)
         self._action(menu, "Trocar senha…", None, self.change_password)
         self._action(menu, "Fazer backup agora", None, self.backup_now)
+        self._action(menu, "Verificar backup…", None, self.verify_backup)
         self._action(menu, "Restaurar backup…", None, self.restore_backup)
         menu.addSeparator()
         self._action(menu, "Exportar livro financeiro (CSV)…", None, lambda: self.export("csv"))
         self._action(menu, "Exportar dados para intercâmbio (JSON)…", None, lambda: self.export("json"))
+        self._action(menu, "Relatório do mês (PDF)…", None, self.export_month_report)
+        self._action(menu, "Fechamento do ano (PDF)…", None, self.export_year_report)
         menu.addSeparator()
         view = self.menuBar().addMenu("E&xibir")
         self.view_menu = view
@@ -697,6 +706,102 @@ class MainWindow(QMainWindow):
 
         self._run(load, loaded)
 
+    def verify_backup(self) -> None:
+        """Opens a backup in the worker (its password typed there) and reports what it holds.
+
+        A backup that was never opened is not a guarantee (docs/03): this proves the file decrypts,
+        every page authenticates and the data reads as a ledger, without touching the open vault.
+        """
+        if self.busy:
+            return
+        from opesvault.domain.settings import get_settings
+
+        folder = ""
+        if self.session is not None:
+            folder = get_settings(self.session.ledger).backup_dir or ""
+        name, _ = QFileDialog.getOpenFileName(self, "Backup a verificar", folder, VAULT_FILTER)
+        if not name:
+            return
+        backup = Path(name)
+        current = self.session
+
+        def load() -> Session | DomainError:
+            opened = self.client.open_raw(backup)
+            try:
+                return Session.from_opened(backup, opened)
+            except DomainError as exc:
+                return exc
+
+        def loaded(result: Any) -> None:
+            if isinstance(result, DomainError):
+                QMessageBox.warning(self, "Verificar backup", str(result))
+                return
+            QMessageBox.information(self, "Verificar backup", backup_report(result, current))
+
+        self._run(load, loaded)
+
+    def backup_alerts(self) -> list[Any]:
+        """'Último backup há N dias', from the backup folder (the domain never reads the disk)."""
+        from datetime import date as day
+
+        from opesvault.domain.alerts import backup_alert
+        from opesvault.domain.settings import get_settings
+        from opesvault.vault.backup import list_backups
+
+        session = self.session
+        if session is None or session.revision is None:
+            return []  # a vault never saved has nothing to back up yet
+        settings = get_settings(session.ledger)
+        if not settings.backup_dir:
+            return backup_alert(None, day.today(), configured=False)
+        try:
+            found = list_backups(Path(settings.backup_dir), session.path.stem)
+        except OSError:
+            found = []
+        newest = max((b.created.date() for b in found), default=None)
+        return backup_alert(newest, day.today(), configured=True)
+
+    def export_month_report(self) -> None:
+        if self.session is None:
+            return
+        overview = next((p for p in self.pages if isinstance(p, OverviewPage)), None)
+        if overview is not None:
+            overview.export_report()
+
+    def export_year_report(self) -> None:
+        if self.session is None:
+            return
+        from datetime import date as day
+
+        from PySide6.QtWidgets import QInputDialog
+
+        from opesvault.exports import annual_report_html
+        from opesvault.ui.pdf_export import save_pdf
+
+        year, ok = QInputDialog.getInt(self, "Fechamento do ano", "Ano:", day.today().year - 1, 1990, 2999)
+        if ok:
+            ledger = self.session.ledger
+            save_pdf(self, f"fechamento-{year}.pdf", lambda: annual_report_html(ledger, year))
+
+    # Files dropped anywhere: the import queue (the Import page also accepts them directly).
+    def dragEnterEvent(self, event: Any) -> None:  # noqa: N802 - Qt override
+        from opesvault.ui.pages.import_page import ImportPage
+
+        if self.session is not None and not self.locked and ImportPage._dropped_paths(event.mimeData()):
+            event.acceptProposedAction()
+
+    def dropEvent(self, event: Any) -> None:  # noqa: N802 - Qt override
+        from opesvault.ui.pages.import_page import ImportPage
+
+        paths = ImportPage._dropped_paths(event.mimeData())
+        page = next((p for p in self.pages if isinstance(p, ImportPage)), None)
+        if self.session is None or self.locked or not paths or page is None:
+            return
+        event.acceptProposedAction()
+        self.navigate("import")
+        page.import_paths(paths)
+        self.notify(f"{len(paths)} arquivo(s) na fila de importação.")
+
     def change_password(self) -> None:
         session = self.session
         if session is None or self.busy:
@@ -890,6 +995,9 @@ class MainWindow(QMainWindow):
         "investments": "InvestmentsPage",
         "agenda": "AgendaPage",
         "sharing": "SharingPage",
+        "goals": "GoalsPage",
+        "settings": "SettingsPage",
+        "documents": "DocumentsPage",
     }
 
     def navigate(self, target: str, ref: object = None, *, act: bool = False) -> None:
@@ -1177,3 +1285,33 @@ class MainWindow(QMainWindow):
         self._save_geometry()
         self._drop_session(exiting=True)
         event.accept()
+
+
+def backup_report(restored: Session, current: Session | None) -> str:
+    """What a verified backup holds, compared with the open vault when it is the same family."""
+    from opesvault.domain.model import OperationStatus
+
+    revision = restored.revision
+    ledger = restored.ledger
+    operations = sum(1 for op in ledger.operations.values() if op.status is OperationStatus.ACTIVE)
+    lines = [
+        "Backup íntegro: abriu com a senha, todas as páginas foram autenticadas e os dados foram lidos.",
+        "",
+    ]
+    if revision is not None:
+        lines.append(f"Revisão {revision.revision}, salva em {revision.saved_at:%d/%m/%Y %H:%M} (UTC).")
+    lines.append(
+        f"{operations} lançamento(s) ativo(s), {len(ledger.accounts)} conta(s) e categoria(s), "
+        f"{len(restored.documents)} documento(s)."
+    )
+    if current is not None and current.vault_id == restored.vault_id and current.revision is not None:
+        behind = current.revision.revision - (revision.revision if revision else 0)
+        if behind > 0:
+            lines.append(f"É deste cofre, {behind} revisão(ões) atrás da aberta.")
+        elif behind == 0:
+            lines.append("É deste cofre, na mesma revisão da aberta.")
+    elif current is not None:
+        lines.append("É de outro cofre (outro arquivo ou outra família).")
+    lines.append("")
+    lines.append("Nada foi alterado: para usar o backup, Cofre › Restaurar backup.")
+    return "\n".join(lines)

@@ -92,6 +92,13 @@ class LedgerFilters(QObject):
             self.clear_button,
         )
 
+    def add_to_row(self, *widgets: QWidget) -> None:
+        """Commands that wrap together with the filters (saved filters, row actions)."""
+        flow = self.row.layout()
+        assert flow is not None
+        for widget in widgets:
+            flow.addWidget(widget)
+
     def combos(self) -> tuple[QComboBox, ...]:
         """Period first: every filter that a reset or a reveal puts back to its first option."""
         return (self.period, self.account, self.member, self.status, self.origin, self.tag)

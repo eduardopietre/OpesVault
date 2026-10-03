@@ -3,11 +3,12 @@ import/save race."""
 
 from datetime import date
 from decimal import Decimal
+from itertools import pairwise
 from pathlib import Path
 
 import pytest
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QWidget
 
 from opesvault.domain import queries
 from opesvault.domain.ledger import DomainError
@@ -242,3 +243,17 @@ def test_choosing_a_filter_refreshes_the_table_once(window: MainWindow, monkeypa
     assert len(refreshes) == 2 and page.model.rowCount() == 2
     page.filters.show(ledger, groceries, None)
     assert len(refreshes) == 3 and page.model.rowCount() == 1
+
+
+def test_filters_and_commands_share_lines_on_a_small_window(window: MainWindow) -> None:
+    """At 900 px the six filters and the row commands wrap together: no filter alone on a line."""
+    page = ledger_page(window)
+    window.resize(900, 640)
+    window.show()
+    QApplication.processEvents()
+    row = page.filters.row
+    controls = [w for w in row.findChildren(QWidget, options=Qt.FindChildOption.FindDirectChildrenOnly)]
+    centers = sorted(w.geometry().center().y() for w in controls if w.isVisible())
+    lines = 1 + sum(1 for above, below in pairwise(centers) if below - above > 12)
+    assert 1 < lines <= 3  # wrapped, three lines at most (were six)
+    assert page.saved_filters.parentWidget() is row and page.details_button.parentWidget() is row

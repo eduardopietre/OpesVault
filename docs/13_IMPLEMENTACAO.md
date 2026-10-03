@@ -9,11 +9,11 @@ Versão 1.1 • 02/10/2026. Registra o que foi construído em cada fase do roadm
 | Pacote | Conteúdo |
 |---|---|
 | `domain/` | Dinheiro exato (`money`), entidades (`model`), agregado `Ledger` com invariantes, histórico e registro de alterações para a gravação incremental, consultas indexadas de caixa, competência e patrimônio (`queries`), filtros do livro (`search`), reclassificação em lote (`edits`), configuração inicial (`onboarding`), faturas e parcelas (`cards`), recorrências (`recurrence`), fechamento mensal (`periods`), configurações (`settings`), migrações de esquema |
-| `importing/` | Fonte em memória (PDF/CSV/OFX), parsers por layout, pipeline de importação, sugestões por IA local |
+| `importing/` | Fonte em memória (PDF/CSV/OFX), parsers por layout, pipeline de importação, regras do usuário (`rules`), categorias aprendidas com o uso (`learning`), sugestões por IA local |
 | `investments/` | Posições, avaliações e fluxos (`service`), resultados (`performance`), simulador, lotes e negociações (`trades`), TWR/XIRR/Dietz (`returns`), notas de corretagem (`notes`), índices locais (`benchmarks`) |
 | `charts/` | Dados dos gráficos com proveniência (`data`) e renderização Matplotlib com tooltip e inspeção (`render`) |
 | `vault/` | Cofre SQLCipher (gravação completa ou incremental), worker transitório, backup, troca de senha e desbloqueio da tela |
-| `ui/` | Janela principal e uma página por seção do `07`; edição completa de lançamentos (`operation_edit`), assistente de primeiro uso (`setup_wizard`), ajuda F1 (`help`), bloqueio visual (`idle_lock`) |
+| `ui/` | Janela principal (`main_window`, com as partes em `shell/`), preferências do computador (`preferences`) e uma página por seção do `07` (as grandes em pacotes: `pages/ledger`, `investments`, `tax`, `imports`, `accounts`); edição completa de lançamentos (`operation_edit`), assistente de primeiro uso (`setup_wizard`), ajuda F1 (`help`), bloqueio visual (`idle_lock`) |
 | `diagnostics.py` | Registro técnico só com códigos e ganchos globais de exceção (`14` §2) |
 | `exports.py` | Exportações explícitas (CSV do livro e JSON de intercâmbio) |
 | `registry.py` | Lista explícita dos módulos que registram tipos persistidos e guardas |
@@ -226,6 +226,30 @@ Revisão de todas as telas, abas e diálogos em 1920×1080, 1280×800, 900×640 
 - **Mensagens**: orientações curtas foram para a barra de status em vez de caixas de diálogo.
 - **Refatoração**: `select_id` substituiu onze cópias do laço que procurava a linha de um objeto; `fit_columns` mede as colunas em todas as tabelas.
 - Testes: `test_ui_refinements` (nome cortado, cabeçalho que quebra linha, colunas, janela de 900 px com nome longo, segunda escala, legenda e notas, `select_id`, aviso em vez de diálogo), `test_banking_ui` (novo investimento selecionado, números do investimento) e `test_ui_design` (a janela cabe em 900 px, não mais 1000).
+
+### 2.8 Organização do código, testes de todas as telas e regras que aprendem (03/10/2026)
+
+- **Testes de todas as telas** (`tests/test_every_screen.py`, com o cofre de demonstração em `tests/demo_vault.py`, o mesmo das capturas): TA-31 em todas as páginas, abas, combos e dicas; cada botão e item de menu acionado com e sem seleção e num cofre vazio, com diálogos cancelados; largura de 900 px com dados; nada de cor fixa, `QSettings` fora de `ui/preferences.py` ou `findData`. Achou e corrigiu:
+  - nomes de contas, integrantes e marcadores que ficavam nos filtros do Livro depois de fechar o cofre;
+  - a resposta do "Verificar Ollama" tocando um botão de uma janela já destruída (agora `while_alive`);
+  - durante a refatoração, um sinal que recebia o índice do combo e um preenchimento que religava sinais no meio de uma atualização em lote.
+- **Combos por valor**: `QComboBox.findData` compara objetos por identidade; a revisão de importação mostrava "(escolha)" num lote que já tinha cartão, e as categorias dos itens voltariam a "(padrão)" depois de reabrir o cofre. Tudo passa por `select_combo`.
+- **Preferências** num só ponto (`ui/preferences.py`); os testes desviam todas para um arquivo temporário (antes, seções recolhidas, colunas e bloqueio gravavam no perfil real durante os testes).
+- **Divisão dos arquivos grandes**, sem mudar o comportamento:
+
+  | Antes | Depois |
+  |---|---|
+  | `main_window.py` (1350 linhas) | `main_window.py` (montagem, menus, navegação, estado) e `ui/shell/` (barra lateral, boas-vindas, comandos do cofre, backups, bloqueio, recentes) |
+  | `ledger_page.py` (1010) | `pages/ledger/`: página, `LedgerFilters` (um sinal por escolha), modelo, inspetor, comandos de linha |
+  | `investments_page.py` (1051) | `pages/investments/`: página, `InvestmentDetail`, formulário, eventos, negociações |
+  | `tax_page.py` (1074) | `pages/tax/`: página, `rows.py` (linhas das fichas sem Qt, com testes próprios), comandos, informes |
+  | `import_page.py` (962) | `pages/imports/`: página, fila, revisão, IA local, rótulos; arquivo sumido antes da leitura vira aviso |
+  | `accounts_page.py` (860) | `pages/accounts/`: página e abas sobre `PageTab` (contas bancárias, todas as contas, faturas, financiamentos, regras) |
+
+  Relatórios passaram a usar `select_id` (que agora também seleciona itens de lista).
+- **Livro em janela estreita**: filtros e comandos (Filtros salvos, Ações, Detalhes) quebram linha juntos; em 900 px os filtros ocupam três linhas em vez de seis.
+- **Regras que aprendem com o uso** (`importing/learning.py`): a categoria de cada lançamento ativo, pela chave do estabelecimento, sugere a de um item novo (depois das regras do usuário, antes das palavras-chave), segue a mudança de ideia da família (as 5 escolhas mais recentes decidem) e prefere as escolhas da mesma conta. Também propõe regras (a mesma categoria 3 vezes) e aponta regras contrariadas. Nada novo no cofre; o cálculo é refeito só quando lançamentos ou contas mudam (`Ledger.changes_of`): ~0,3 s para 20 mil lançamentos, 30 ms para sugerir 200 itens. O lançamento manual sugere a categoria pela descrição. O texto sugerido para regra deixou de carregar restos de parcelas ("LOJA TV (6x)" → "LOJA TV").
+- Testes novos: `test_every_screen`, `test_learning`, `test_learning_ui`, `test_tax_rows`, `test_selection`, `test_background`, além de casos em `test_ledger_view`, `test_daily_use` e `test_rules`.
 
 ## 3. Cobertura de importação
 

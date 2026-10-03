@@ -18,7 +18,7 @@ from PySide6.QtWidgets import QAbstractItemView, QLabel, QMenu, QSplitter, QStac
 from opesvault.domain.model import Operation, YearMonth
 from opesvault.domain.search import find_operations
 from opesvault.ui.common import install_column_chooser, month_label, run_guarded, share_width, style_table
-from opesvault.ui.components import EmptyState, button, fill_menu, hbox, menu_button
+from opesvault.ui.components import EmptyState, button, fill_menu, menu_button
 from opesvault.ui.dialogs import OperationDialog
 from opesvault.ui.pages.base import Page
 from opesvault.ui.pages.ledger.actions import OperationActions
@@ -72,9 +72,9 @@ class LedgerPage(OperationActions, Page):
         self.details_button.setCheckable(True)
         self.details_button.setChecked(True)
         self._inspector_chosen = False
-        filters = hbox(self.filters.row, self.saved_filters, self.actions_button, self.details_button)
-        for widget in (self.saved_filters, self.actions_button, self.details_button):
-            filters.setAlignment(widget, Qt.AlignmentFlag.AlignTop)
+        # One flow for filters and row commands: on a narrow window they share the lines, instead
+        # of the commands keeping a column that leaves the filters one per line.
+        self.filters.add_to_row(self.saved_filters, self.actions_button, self.details_button)
 
         self.model = OperationsModel()
         self.table = QTableView()
@@ -121,7 +121,7 @@ class LedgerPage(OperationActions, Page):
 
         self.count = QLabel()  # kept for scripts and tests; the visible count is the header subtitle
         layout = self.page_layout()
-        layout.addLayout(filters)
+        layout.addWidget(self.filters.row)
         layout.addWidget(self.split, 1)
 
     # ── filters ─────────────────────────────────────

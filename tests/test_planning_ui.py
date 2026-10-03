@@ -121,10 +121,10 @@ def test_ledger_tags_filter_and_command(setup: tuple[MainWindow, Family], monkey
     tags.add_tag(f.ledger, [op.id], "Casa")
     window._refresh()
     page.reveal(("tag", "Casa"))
-    assert page.model.rowCount() == 1 and not page.clear_filters.isHidden()
-    assert page.filter_tag.currentData() == "Casa"
+    assert page.model.rowCount() == 1 and not page.filters.clear_button.isHidden()
+    assert page.filters.tag.currentData() == "Casa"
     page.reset_filters()
-    assert page.filter_tag.currentIndex() == 0 and page.model.rowCount() > 1
+    assert page.filters.tag.currentIndex() == 0 and page.model.rowCount() > 1
 
 
 def test_accounts_loan_tab_pays_an_installment(
@@ -238,7 +238,7 @@ def test_saved_filter_round_trip(setup: tuple[MainWindow, Family], monkeypatch: 
     assert flt.account_id == f.groceries
     page.reset_filters()
     page.apply_saved_filter(flt)
-    assert page.filter_account.currentData() == f.groceries and page.model.rowCount() == 3
+    assert page.filters.account.currentData() == f.groceries and page.model.rowCount() == 3
 
 
 def test_member_view_on_the_overview(setup: tuple[MainWindow, Family]) -> None:

@@ -79,17 +79,17 @@ def test_window_fits_a_small_desktop(window: MainWindow) -> None:
 
 
 def test_ledger_filters_show_how_to_clear_them(window: MainWindow) -> None:
-    from opesvault.ui.pages.ledger_page import LedgerPage
+    from opesvault.ui.pages.ledger import LedgerPage
 
     page = next(p for p in window.pages if isinstance(p, LedgerPage))
     window.show_page(window.pages.index(page))
-    assert page.clear_filters.isHidden()
-    page.filter_text.setText("nada parecido")
-    page._debounce.timeout.emit()
-    assert not page.clear_filters.isHidden()
+    assert page.filters.clear_button.isHidden()
+    page.filters.search.setText("nada parecido")
+    page.filters.debounce.timeout.emit()
+    assert not page.filters.clear_button.isHidden()
     assert page.views.currentWidget() is page.empty
     page.reset_filters()
-    assert page.views.currentWidget() is page.table and page.filter_text.text() == ""
+    assert page.views.currentWidget() is page.table and page.filters.search.text() == ""
     assert "lançamentos" in page.header.subtitle.text()
 
 
@@ -201,7 +201,8 @@ def test_overview_attention_is_a_rail_on_wide_windows(window: MainWindow) -> Non
 
 
 def test_ledger_gives_wide_windows_to_the_text_columns(window: MainWindow) -> None:
-    from opesvault.ui.pages.ledger_page import LedgerPage, OperationsModel
+    from opesvault.ui.pages.ledger import LedgerPage
+    from opesvault.ui.pages.ledger.model import OperationsModel
 
     page = _at(window, LedgerPage, 1920, 1080)
     header = page.table.horizontalHeader()

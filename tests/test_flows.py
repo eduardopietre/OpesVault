@@ -17,7 +17,7 @@ from opesvault.ui.main_window import MainWindow
 from opesvault.ui.pages.accounts_page import AccountsPage
 from opesvault.ui.pages.base import Page
 from opesvault.ui.pages.budget_page import BudgetPage
-from opesvault.ui.pages.ledger_page import LedgerPage
+from opesvault.ui.pages.ledger import LedgerPage
 from opesvault.ui.pages.overview_page import OverviewPage
 from opesvault.ui.pages.settings_page import SettingsPage
 
@@ -111,7 +111,7 @@ def test_overview_month_is_shared_and_lines_open_the_ledger(setup: tuple[MainWin
     march = YearMonth(year=2026, month=3)
     overview.month.set_month(march)
     assert budget_page.month.current() == march  # the Budget follows the Overview
-    assert "março de 2026" in ledger.period.itemText(1).lower()
+    assert "março de 2026" in ledger.filters.period.itemText(1).lower()
 
     names = [
         item.text() if (item := overview.categories.item(r, 0)) else "" for r in range(overview.categories.rowCount())
@@ -119,7 +119,7 @@ def test_overview_month_is_shared_and_lines_open_the_ledger(setup: tuple[MainWin
     row = names.index("Alimentação")
     overview._open_row(overview.categories, row)
     assert window.stack.currentWidget() is ledger
-    assert ledger.period.currentData() == "month" and ledger.filter_account.currentData() == f.groceries
+    assert ledger.filters.period.currentData() == "month" and ledger.filters.account.currentData() == f.groceries
     assert [op.description for op in ledger.model.ops] == ["Padaria"]
 
 
@@ -232,7 +232,7 @@ def test_reports_filter_by_account_and_open_the_ledger(setup: tuple[MainWindow, 
     reports._open_ledger()
     ledger = page_of(window, LedgerPage)
     assert window.stack.currentWidget() is ledger
-    assert ledger.filter_account.currentData() == f.bank and ledger.period.currentData() == "month"
+    assert ledger.filters.account.currentData() == f.bank and ledger.filters.period.currentData() == "month"
     assert [op.description for op in ledger.model.ops] == ["Feira"]
 
     window.navigate("reports", "composition")

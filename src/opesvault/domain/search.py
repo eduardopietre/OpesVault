@@ -24,8 +24,12 @@ class OperationFilter:
     text: str = ""
     status: StatusFilter = StatusFilter.ALL
     origin: OriginKind | None = None
+    # Restricts to these operations (a tag, an installment plan…); None means no restriction.
+    operation_ids: frozenset[UUID] | None = None
 
     def matches(self, op: Operation) -> bool:
+        if self.operation_ids is not None and op.id not in self.operation_ids:
+            return False
         if self.status is StatusFilter.ACTIVE and not op.active:
             return False
         if self.status is StatusFilter.CANCELLED and op.active:

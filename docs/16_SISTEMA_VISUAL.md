@@ -69,6 +69,8 @@ Configurações (rodapé)
 | `flow_row` / `FlowLayout` | Filtros e ações quebram linha em janelas estreitas |
 | `MonthPicker` | Mês por extenso, com botões ‹ › do mesmo tamanho e moldura do seletor, e Alt+← / Alt+→ |
 | `style_table`, `install_column_chooser` | Tabelas sem grade, zebradas, colunas escolhidas pelo botão direito e lembradas |
+| `Collapsible` | Seção que se recolhe: o título é o botão (seta ▸/▾), as ações ficam na linha do título e somem quando recolhida. Com uma chave, a escolha do usuário (só o clique, não a mudança feita pelo código) fica neste computador |
+| `ChartPanel` (`ui/chart_panel.py`) | Gráfico e tabela de valores do mesmo `Chart`, cada um num `Collapsible`. Clicar numa linha aponta o valor no gráfico; clicar no gráfico seleciona a linha. Fluxos mensais ganham linhas "Total" e "Média"; posições (saldos) não somam. "Exportar valores…" grava CSV com o aviso de arquivo sem cifra. `clear()` ao fechar o cofre |
 
 Formulários (`FormDialog`) usam rótulos alinhados e um botão com verbo ("Registrar", "Salvar correção"). O erro aparece **dentro** do formulário, sem segundo diálogo. A senha é conferida enquanto o usuário digita: o botão só se habilita quando as senhas coincidem.
 
@@ -87,11 +89,15 @@ Formulários (`FormDialog`) usam rótulos alinhados e um botão com verbo ("Regi
    - botão direito oferece os mesmos comandos de linha.
 7. Gráficos usam a fonte da interface, uma paleta dessaturada e as cores do tema, sem moldura, e mantêm só a navegação (início, mover, zoom). Datas no eixo seguem o uso brasileiro ("mar/26", "01/03/26"). O nome do gráfico aparece no próprio gráfico; o subtítulo da página diz o período. A inspeção de um ponto aparece ao lado do gráfico, sem diálogo. Não se acrescenta gráfico para preencher espaço: na Visão geral, a distribuição por categoria só ganha barras neutras a partir de três categorias.
 8. Preferências deste computador ficam fora do cofre, em `QSettings`, e nunca guardam dados financeiros. São elas:
+   - seções recolhidas ou abertas (`secoes/…`);
    - geometria da janela;
    - largura e visibilidade da barra lateral;
    - colunas visíveis;
    - bloqueio por inatividade;
    - cofres recentes.
+
+9. **Gráfico e tabela juntos, abas só para objetos diferentes** (revisão de 03/10/2026). Os números de um gráfico ao longo do tempo aparecem na mesma tela, logo abaixo, numa tabela que pode ser recolhida (`ChartPanel`); nunca numa aba separada. Abas separam coisas diferentes (Contas, Cartões, Faturas, Financiamentos, Categorias; as seções de Configurações). Investimentos trocou as seis abas (Evolução, Resultado, Avaliações, Movimentos, Lotes, Rentabilidade) por seções recolhíveis numa página só.
+10. Toda tabela ou gráfico novo é limpo quando o cofre fecha (TA-31): `ChartPanel.clear()`, `ChartWidget.clear()` e `setRowCount(0)` no ramo sem sessão de `refresh`.
 
 ## 5. Fluxos: ver, ir ao ponto e concluir
 
@@ -107,6 +113,12 @@ Regra: quem vê um problema chega ao objeto e ao comando que o resolve, sem proc
 | Documento | A revisão do lote ligado a ele (**Abrir na revisão**) | `DocumentsPage` |
 | Ponto de um gráfico mensal em Relatórios | Livro filtrado no mês do ponto, com a conta, a categoria ou o integrante do filtro (**Ver lançamentos**) | `ReportsPage._ledger_ref` |
 | Composição da carteira (Investimentos › Mais) e Projeção de compromissos (Recorrências › Mais) | O gráfico correspondente em Relatórios | `ReportsPage.reveal` |
+| Aviso de parcela de financiamento | Contas e cartões › Financiamentos, com a parcela selecionada e **Pagar…** aberto | `Alert.ref` = ("loan", plano, nº); `AccountsPage.reveal` |
+| Aviso de saldo previsto negativo | Relatórios › Saldo projetado | `ReportsPage.reveal("projected_balance")` |
+| Aviso de saldo diferente do banco | Contas e cartões › Contas, com a conta e as conferências abertas | `Alert.ref` = ("check", conta) |
+| Aviso de valor de assinatura que mudou | Recorrências › Assinaturas e contas fixas, com a regra selecionada | `Alert.ref` = ("rule", regra) |
+| Vencimento no Calendário | A fatura, a parcela ou a previsão, com a ação aberta quando pendente | `AgendaPage.open_selected` |
+| Marcador em Relatórios | Livro filtrado pelo marcador | `LedgerPage.reveal(("tag", nome))` |
 
 - **Pagar fatura:** a aba Faturas tem **Pagar…** (também duplo clique na fatura). O formulário já traz a conta, o valor restante e a data de hoje. Pagamento depois do vencimento quita primeiro a fatura vencida (`04` §5, `domain.cards.bills`); o formulário diz isso quando a data passa do vencimento.
 - **Mês compartilhado:** o mês escolhido na Visão geral vale no Orçamento e é a segunda opção de período do Livro, que abre em "Todo o período" para não esconder lançamentos de quem chega pela barra lateral. Ao abrir o cofre, a Visão geral escolhe o último mês com movimento e os outros a seguem.

@@ -144,6 +144,24 @@ Persistência: o domínio vira registros `(id, tipo, JSON)` dentro do snapshot. 
   - no salvamento incremental, o que foi desfeito vira exclusão.
 - Testes: `test_rules`, `test_budget`, `test_alerts`, `test_undo` e `test_family_routine`. O `conftest` descarta as janelas ao fim de cada teste: dezenas de janelas acumuladas faziam o Qt repolir widgets meio destruídos ao trocar o tema e derrubavam o interpretador.
 
+### 2.3 Revisão de funcionalidades de 03/10/2026 (`09` §1.3 E)
+
+Pedido do usuário: o que um aplicativo de finanças precisa ter e não tínhamos, com gráficos e tabelas de valores na mesma tela, recolhíveis, e não em abas.
+
+- **Gráfico + tabela de valores** (`ui/chart_panel.py`, `charts.data.table_rows`): Relatórios (todos os gráficos), Visão geral (Mês a mês, 12 meses), Orçamento (planejado × realizado por mês), Contas (saldo no fim de cada mês, com o saldo informado pelo banco), Faturas (gráfico sobre a tabela), Financiamentos (gráfico e cronograma) e Investimentos (seis abas viraram seções recolhíveis).
+- **Saldo projetado** (`domain/projection.py`): saldo de hoje + recorrências pendentes + faturas (pela conta de pagamento do cartão, com recorrências lançadas no cartão) + parcelas de financiamento; atrasados contam hoje. Aviso "Saldo previsto negativo" em até 30 dias. Relatórios › Saldo projetado (30/60/90 dias).
+- **Comparações** (`domain/comparisons.py`): mês × média de 3/6/12 meses × mesmo mês do ano anterior, por categoria e nos totais; meses antes do primeiro registro não entram. Visão geral (totais e categorias que mais subiram) e Relatórios › Comparação com a média.
+- **Financiamentos** (`domain/loans.py`, Contas e cartões › Financiamentos): SAC e Price, taxa ao mês ou ao ano (efetiva), seguros por parcela, entrada da dívida como saldo de abertura ou dinheiro recebido, pagamento separando amortização/juros/encargos, amortização antecipada com simulação (reduzir prazo ou parcela). Aviso de parcela a vencer ou vencida.
+- **Marcadores** (`domain/tags.py`): adicionar/remover no Livro (Ações › Marcadores…), compra parcelada marcada inteira, permitido em mês fechado, renomear, filtro no Livro e Relatórios › Marcadores.
+- **Reembolsos e acertos** (`domain/sharing.py`, página Reembolsos e acertos): reembolso a receber marcado no Livro, recebimento como estorno das categorias, negativa; saldo entre integrantes a partir do rateio e de quem pagou, com as despesas que o formam e o registro de acertos.
+- **Assinaturas e contas fixas** (`domain/subscriptions.py`, Recorrências): custo anual, última cobrança, "Valor mudou" (também como aviso) e cobranças que parecem recorrentes, com "Criar recorrência…" preenchido.
+- **Calendário** (`domain/agenda.py`, página Calendário): grade do mês, totais a pagar/atrasado/pago/a receber, lista por dia e "Abrir…" que leva ao ponto de pagamento ou vínculo.
+- **Indicadores** (`domain/indicators.py`, Visão geral): poupança do mês e de 12 meses, despesas fixas, renda comprometida com parcelas e reserva em meses de despesa; "—" com o motivo quando os dados não permitem.
+- **Conferência de saldo** (`domain/balance_checks.py`, Contas): saldo do extrato numa data contra o do aplicativo; diferença calculada na hora, coluna "Conferido com o banco" e aviso enquanto diverge.
+- **Despesas dedutíveis** (`domain/deductibles.py`): marcação da categoria (herdada pelas subcategorias) e Relatórios › Despesas dedutíveis por pessoa e ano.
+- Novos tipos persistidos: `loan_plan`, `loan_payment`, `loan_prepayment`, `operation_tags`, `reimbursement`, `member_settlement`, `balance_check`, `deductible_category` (em `registry.MODULES`).
+- Testes: `test_planning` (domínio, 24) e `test_planning_ui` (interface, 9). `scripts/capturar_telas.py` inclui dados de demonstração de todas as funcionalidades novas.
+
 ## 3. Cobertura de importação
 
 O catálogo fica em Configurações e em `importing/parsers/__init__.py`.

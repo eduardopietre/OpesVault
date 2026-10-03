@@ -20,11 +20,21 @@ from opesvault.domain.model import AccountType, YearMonth
 from opesvault.domain.money import ZERO
 from opesvault.ui.alerts_panel import AlertsPanel
 from opesvault.ui.common import fit_to_rows, fmt, fmt_date, month_label, set_rows, stretch_column, summary_table
-from opesvault.ui.components import Figures, MonthPicker, Section, button, scroll_body, separator, text
+from opesvault.ui.components import Collapsible, Figures, MonthPicker, Section, button, scroll_body, separator, text
 from opesvault.ui.pages.base import Page
 from opesvault.ui.theme import SPACE_M, SPACE_S, SPACE_XL, SPACE_XS, SPACE_XXL, tokens
 
 SHARE_ROLE = Qt.ItemDataRole.UserRole + 2
+SUMMARY_MONTHS = 12
+COMPARISON_CATEGORIES = 5
+INDICATOR_KEYS = {
+    "savings": "Poupança no mês",
+    "savings_12m": "Poupança em 12 meses",
+    "fixed": "Despesas fixas",
+    "committed": "Renda em parcelas",
+    "reserve": "Reserva",
+}
+INDICATOR_LABELS = list(INDICATOR_KEYS.values())
 SHARE_BARS_FROM = 3  # categories needed before a bar adds anything to the percentage
 
 
@@ -134,6 +144,36 @@ class OverviewPage(Page):
             tables.addWidget(table, 1, column, Qt.AlignmentFlag.AlignTop)
             tables.setColumnStretch(column, 1)
 
+        # Indicators, the month against the recent average, and the months side by side.
+        from opesvault.ui.chart_panel import ChartPanel
+
+        self.indicators = Figures(INDICATOR_LABELS)
+        self.indicator_notes = text("", "caption", wrap=True)
+        self.indicator_notes.setMinimumWidth(160)
+        self.indicators_section = Collapsible("Indicadores", "visao_geral/indicadores")
+        self.indicators_section.add(self.indicators)
+        self.indicators_section.add(self.indicator_notes)
+        self.comparison = summary_table(["", "Este mês", "Média de 3 meses", "Variação", "Um ano antes"], max_rows=10)
+        self.comparison.setAccessibleName("Comparação com a média")
+        stretch_column(self.comparison)
+        self.comparison.cellClicked.connect(lambda row, _column: self._open_row(self.comparison, row))
+        self.comparison_section = Collapsible(
+            "Comparado aos meses anteriores",
+            "visao_geral/comparacao",
+            caption="Competência. Meses antes do início dos registros não entram na média. "
+            "Abaixo dos totais, as categorias que mais subiram.",
+        )
+        self.comparison_section.add_actions(
+            button("Comparação completa", lambda: self.navigate("reports", "comparison"), role="plain")
+        )
+        self.comparison_section.add(self.comparison)
+        self.months_panel = ChartPanel(
+            "visao_geral/meses",
+            chart_title="Mês a mês",
+            table_title="Valores mês a mês",
+            chart_height=260,
+        )
+
         # Short windows scroll the content instead of forcing a taller window.
         scroll, content = scroll_body()
         content.addWidget(self.alerts)
@@ -141,6 +181,9 @@ class OverviewPage(Page):
         content.addLayout(worth)
         content.addWidget(self.pending_section)
         content.addLayout(tables)
+        content.addWidget(self.indicators_section)
+        content.addWidget(self.comparison_section)
+        content.addWidget(self.months_panel)
         content.addStretch(1)
         layout = self.page_layout()
         layout.addWidget(scroll, 1)
@@ -185,6 +228,10 @@ class OverviewPage(Page):
     def refresh(self) -> None:
         if self.session is None:
             self.alerts.set_alerts([])
+            for table in (self.balances, self.categories, self.comparison):
+                table.setRowCount(0)
+            self.months_panel.clear()
+            self.indicator_notes.setText("")
             return
         self._default_month()
         ledger = self.session.ledger
@@ -244,6 +291,52 @@ class OverviewPage(Page):
         self.categories.setColumnWidth(2, 150 if bars else 96)
         fit_to_rows(self.balances)
         fit_to_rows(self.categories)
+        self._refresh_indicators(month)
+        self._refresh_comparison(month)
+        from opesvault.charts.data import monthly_summary
+
+        self.months_panel.show_chart(monthly_summary(ledger, month.add(-(SUMMARY_MONTHS - 1)), month))
+
+    def _refresh_indicators(self, month: YearMonth) -> None:
+        assert self.session is not None
+        from opesvault.domain.indicators import indicators
+
+        notes = []
+        for indicator in indicators(self.session.ledger, month):
+            label = INDICATOR_KEYS[indicator.key]
+            if indicator.value is None:
+                self.indicators.set(label, "—")
+            elif indicator.unit == "%":
+                tone = "negative" if indicator.key == "savings" and indicator.value < 0 else None
+                self.indicators.set(label, f"{(indicator.value * 100).quantize(Decimal('1'))}%", tone)
+            else:
+                self.indicators.set(label, f"{str(indicator.value).replace('.', ',')} meses")
+            self.indicators.values[label].setToolTip(indicator.detail)
+            notes.append(f"{label}: {indicator.detail}")
+        self.indicator_notes.setText("\n".join(notes))
+
+    def _refresh_comparison(self, month: YearMonth) -> None:
+        assert self.session is not None
+        from opesvault.domain.comparisons import category_comparison, totals_comparison
+
+        ledger = self.session.ledger
+        rows: list[tuple[list[str], Any]] = []
+
+        def cells(name: str, row: Any) -> list[str]:
+            change = row.change
+            variation = "—" if change is None else f"{(change * 100).quantize(Decimal('1')):+}%"
+            return [name, fmt(row.current), fmt(row.average), variation, fmt(row.last_year)]
+
+        for row in totals_comparison(ledger, month):
+            rows.append((cells(row.name, row), None))
+        risers = [r for r in category_comparison(ledger, month) if r.delta is not None and r.delta > 0]
+        risers.sort(key=lambda r: r.delta or ZERO, reverse=True)
+        for row in risers[:COMPARISON_CATEGORIES]:
+            rows.append((cells(f"  {row.name}", row), row.category_id))
+        set_rows(self.comparison, rows)
+        for column in (1, 2, 3, 4):
+            _align_right(self.comparison, column)
+        fit_to_rows(self.comparison)
 
     def _open_row(self, table: QTableWidget, row: int) -> None:
         item = table.item(row, 0)

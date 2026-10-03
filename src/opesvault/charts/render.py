@@ -74,16 +74,17 @@ def draw(figure: Figure, chart: Chart) -> list[tuple[Any, list[Point], str]]:
     ax.spines["bottom"].set_color(t.separator)
     ax.tick_params(colors=t.secondary, labelsize=9, length=0)
     hover: list[tuple[Any, list[Point], str]] = []
-    categorical = any(isinstance(p.x, str) for s in chart.series for p in s.points)
-    bar_series = [s for s in chart.series if s.style in ("bar", "forecast")]
+    drawn = [s for s in chart.series if not s.hidden]  # hidden series live only in the table of values
+    categorical = any(isinstance(p.x, str) for s in drawn for p in s.points)
+    bar_series = [s for s in drawn if s.style in ("bar", "forecast")]
     width = 0.8 / max(len(bar_series), 1)
     labels: list[str] = []
     if categorical:
-        for s in chart.series:
+        for s in drawn:
             for p in s.points:
                 if str(p.x) not in labels:
                     labels.append(str(p.x))
-    for index, s in enumerate(chart.series):
+    for index, s in enumerate(drawn):
         color = PALETTE[index % len(PALETTE)]
         known = [p for p in s.points if p.y is not None]  # missing data is a gap, never zero
         if not known:
@@ -104,6 +105,9 @@ def draw(figure: Figure, chart: Chart) -> list[tuple[Any, list[Point], str]]:
             )
         elif s.style == "scatter":
             artist = ax.scatter(xs_all, ys, label=s.name, color=color, marker="v", zorder=3)
+        elif s.style == "step":  # a balance holds until the next movement
+            (artist,) = ax.step(xs_all, ys, where="post", label=s.name, color=color)
+            ax.plot(xs_all, ys, linestyle="none", marker="o", markersize=3, color=color)
         else:
             (artist,) = ax.plot(xs_all, ys, label=s.name, color=color, marker="o" if s.marker_points else None)
         hover.append((artist, known, s.name))
@@ -121,7 +125,7 @@ def draw(figure: Figure, chart: Chart) -> list[tuple[Any, list[Point], str]]:
     )
     ax.grid(axis="y", color=t.separator, linewidth=0.8)
     ax.set_axisbelow(True)
-    if len(chart.series) > 1:
+    if len(hover) > 1:
         legend = ax.legend(loc="best", fontsize=9, frameon=False)
         for item in legend.get_texts():
             item.set_color(t.text)
@@ -199,7 +203,7 @@ class ChartWidget(QWidget):
         lines = [name, when, _label(point.y, self.chart.unit) + (" (BRL)" if self.chart.unit == "BRL" else "")]
         if self.chart.regime:
             lines.append(f"regime: {self.chart.regime}")
-        lines += [f"{k}: {v}" for k, v in point.info.items()]
+        lines += [f"{k}: {v}" for k, v in point.info.items() if not k.startswith("_")]  # "_": internal keys
         return "\n".join(lines)
 
     def _on_move(self, event) -> None:  # type: ignore[no-untyped-def]
@@ -223,6 +227,35 @@ class ChartWidget(QWidget):
         found = self._find(event)
         if found is not None:
             self._on_inspect(found[0], found[1])
+
+    def clear(self) -> None:
+        self.chart = None
+        self._hover = []
+        self._annotation = None
+        self.figure.clear()
+        self.canvas.draw_idle()
+
+    def highlight(self, x: object) -> Point | None:
+        """Points at `x` on the first drawn series that has it (a row chosen in the table)."""
+        if self._annotation is None or self.chart is None:
+            return None
+        for artist, points, name in self._hover:
+            for index, point in enumerate(points):
+                if point.x != x:
+                    continue
+                if hasattr(artist, "patches"):
+                    patch = artist.patches[index]
+                    xy = (patch.get_x() + patch.get_width() / 2, patch.get_height())
+                elif hasattr(artist, "get_xydata"):
+                    xy = tuple(artist.get_xydata()[index])
+                else:
+                    xy = tuple(artist.get_offsets()[index])
+                self._annotation.xy = xy
+                self._annotation.set_text(self.tooltip_text(name, point))
+                self._annotation.set_visible(True)
+                self.canvas.draw_idle()
+                return point
+        return None
 
     def export_png(self, path: str) -> None:
         self.figure.savefig(path, dpi=150)

@@ -30,6 +30,7 @@ class Target(StrEnum):
     RECURRENCES = "recurrences"
     IMPORT = "import"
     BUDGET = "budget"
+    REPORTS = "reports"
 
 
 @dataclass(frozen=True)
@@ -183,6 +184,82 @@ def budget_alerts(ledger: Ledger, today: date) -> list[Alert]:
     return out
 
 
+def loan_alerts(ledger: Ledger, today: date, horizon: int = HORIZON_DAYS) -> list[Alert]:
+    from opesvault.domain.loans import upcoming
+
+    out = []
+    for plan, item in upcoming(ledger, today - timedelta(days=LOOKBACK_DAYS), today + timedelta(days=horizon)):
+        late = item.due < today
+        out.append(
+            Alert(
+                Severity.URGENT if late else Severity.SOON,
+                f"{'Parcela vencida' if late else 'Parcela a vencer'}: {plan.name}",
+                f"parcela {item.number} · {_when(item.due, today)} · {format_brl(item.payment)}",
+                Target.ACCOUNTS,
+                item.due,
+                ("loan", plan.id, item.number),
+            )
+        )
+    return out
+
+
+def projection_alerts(ledger: Ledger, today: date) -> list[Alert]:
+    from opesvault.domain.projection import ALERT_DAYS, negative_ahead
+
+    out = []
+    for projection in negative_ahead(ledger, today, ALERT_DAYS):
+        first = projection.first_negative
+        on, lowest = projection.lowest
+        account = ledger.accounts.get(projection.account_id)
+        if first is None or account is None:
+            continue
+        out.append(
+            Alert(
+                Severity.SOON,
+                f"Saldo previsto negativo: {account.name}",
+                f"a partir de {first:%d/%m}, chega a {format_brl(lowest)} em {on:%d/%m}, "
+                "com faturas, recorrências e parcelas já registradas",
+                Target.REPORTS,
+                first,
+                "projected_balance",
+            )
+        )
+    return out
+
+
+def balance_check_alerts(ledger: Ledger) -> list[Alert]:
+    from opesvault.domain.balance_checks import divergent
+
+    return [
+        Alert(
+            Severity.INFO,
+            f"Saldo diferente do banco: {ledger.accounts[r.check.account_id].name}",
+            f"em {r.check.on:%d/%m/%Y} o banco mostra {format_brl(r.check.informed)} e o aplicativo "
+            f"{format_brl(r.computed)} (diferença {format_brl(r.difference)})",
+            Target.ACCOUNTS,
+            ref=("check", r.check.account_id),
+        )
+        for r in divergent(ledger)
+    ]
+
+
+def price_alerts(ledger: Ledger) -> list[Alert]:
+    from opesvault.domain.subscriptions import commitments
+
+    return [
+        Alert(
+            Severity.INFO,
+            f"Valor mudou: {c.rule.description}",
+            f"previsto {format_brl(c.rule.amount)}, cobrado {format_brl(c.last_paid)}"
+            + (f" em {c.last_paid_on:%d/%m}" if c.last_paid_on else ""),
+            Target.RECURRENCES,
+            ref=("rule", c.rule.id),
+        )
+        for c in commitments(ledger)
+        if c.price_changed and c.last_paid is not None
+    ]
+
+
 ORDER = {Severity.URGENT: 0, Severity.SOON: 1, Severity.INFO: 2}
 
 
@@ -192,7 +269,11 @@ def alerts(ledger: Ledger, today: date | None = None, horizon: int = HORIZON_DAY
     found = [
         *card_alerts(ledger, today, horizon),
         *recurrence_alerts(ledger, today, horizon),
+        *loan_alerts(ledger, today, horizon),
+        *projection_alerts(ledger, today),
         *budget_alerts(ledger, today),
+        *balance_check_alerts(ledger),
+        *price_alerts(ledger),
         *import_alerts(ledger),
     ]
     return sorted(found, key=lambda a: (ORDER[a.severity], a.due_on or date.max, a.title))

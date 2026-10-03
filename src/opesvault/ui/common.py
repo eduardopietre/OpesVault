@@ -210,7 +210,13 @@ def fit_to_rows(table: QTableWidget) -> None:
     limit = table.property("maxRows") or 8
     rows = min(max(table.rowCount(), 1), int(limit))
     header = table.horizontalHeader().sizeHint().height()
-    table.setFixedHeight(header + rows * table.verticalHeader().defaultSectionSize() + 2 * table.frameWidth())
+    # A table that may scroll sideways (many columns, narrow window) keeps room for its scroll bar.
+    sideways = 0
+    if table.horizontalScrollBarPolicy() != Qt.ScrollBarPolicy.ScrollBarAlwaysOff:
+        sideways = table.horizontalScrollBar().sizeHint().height()
+    table.setFixedHeight(
+        header + rows * table.verticalHeader().defaultSectionSize() + 2 * table.frameWidth() + sideways
+    )
 
 
 def set_rows(table: QTableWidget, rows: list[tuple[list[Any], Any]]) -> None:

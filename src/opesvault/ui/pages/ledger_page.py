@@ -266,6 +266,16 @@ class OperationInspector(QScrollArea):
             share = ledger.members.get(posting.member_id) if posting.member_id else None
             detail = f"{side} · {share.name}" if share else side
             add(_pair(account.name if account else "?", f"{fmt(abs(posting.amount))} ({detail})"))
+        from opesvault.domain import sharing
+        from opesvault.domain.tags import tags_of
+
+        tags = tags_of(ledger, op.id)
+        if tags:
+            add(_pair("Marcadores", ", ".join(tags)))
+        for item in sharing.reimbursements(ledger).values():
+            if item.operation_id == op.id:
+                state = sharing.STATE_LABELS[sharing.state(ledger, item)]
+                add(_pair("Reembolso", f"{item.payer} · {fmt(item.expected)} · {state}"))
         if op.notes:
             add(separator())
             add(text("Observações", "headline"))
@@ -351,17 +361,19 @@ class LedgerPage(Page):
         self.filter_status = QComboBox()
         self.filter_status.setAccessibleName("Situação")
         fill_combo(self.filter_status, [(label, s) for s, label in STATUS_LABELS.items()])
+        self.filter_tag = QComboBox()
+        self.filter_tag.setAccessibleName("Marcador")
         self.filter_origin = QComboBox()
         self.filter_origin.setAccessibleName("Origem")
         fill_combo(self.filter_origin, [(label, o) for o, label in ORIGIN_LABELS.items()], empty="Todas as origens")
         # Short, fixed option lists show their whole text (the row wraps on narrow windows);
         # account names can be long, so that one keeps a bounded width.
-        for combo in (self.period, self.filter_member, self.filter_status, self.filter_origin):
+        for combo in (self.period, self.filter_member, self.filter_status, self.filter_origin, self.filter_tag):
             combo.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToContents)
         self.filter_account.setMinimumContentsLength(18)
         self.filter_account.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
         self.period.currentIndexChanged.connect(self._period_changed)
-        for combo in (self.filter_account, self.filter_member, self.filter_status, self.filter_origin):
+        for combo in self._filter_combos()[1:]:
             combo.currentIndexChanged.connect(self.refresh)
         for optional in (self.filter_start, self.filter_end):
             optional.edit.dateChanged.connect(self.refresh)
@@ -370,6 +382,8 @@ class LedgerPage(Page):
             ("Corrigir…", self.edit, "Return"),
             ("Corrigir partidas…", self.edit_postings),
             ("Reclassificar…", self.reclassify_selected),
+            ("Marcadores…", self.tag_selected),
+            ("Reembolso a receber…", self.request_reimbursement),
             ("Estornar…", self.reverse),
             ("Histórico", self.show_history),
             None,
@@ -390,6 +404,7 @@ class LedgerPage(Page):
             self.filter_member,
             self.filter_status,
             self.filter_origin,
+            self.filter_tag,
             self.clear_filters,
         )
         filters = hbox(flow_host, self.actions_button, self.details_button)
@@ -443,6 +458,17 @@ class LedgerPage(Page):
 
     # ── data ────────────────────────────────────────
 
+    def _filter_combos(self) -> tuple[QComboBox, ...]:
+        """Period first: every filter that a reset or a reveal puts back to its first option."""
+        return (
+            self.period,
+            self.filter_account,
+            self.filter_member,
+            self.filter_status,
+            self.filter_origin,
+            self.filter_tag,
+        )
+
     def focus_search(self) -> bool:
         self.filter_text.setFocus()
         self.filter_text.selectAll()
@@ -473,12 +499,21 @@ class LedgerPage(Page):
 
         `period` is a month (Overview, Reports), a (start, end) pair of dates, or None for all.
         """
+        if isinstance(ref, tuple) and len(ref) == 2 and ref[0] == "tag":
+            self.reset_filters()
+            self.refresh()  # fills the tag list before choosing from it
+            self.filter_tag.blockSignals(True)
+            select_combo(self.filter_tag, ref[1])
+            self.filter_tag.blockSignals(False)
+            self.refresh()
+            return
         if not (isinstance(ref, tuple) and len(ref) in (3, 4) and ref[0] == "filter"):
             return
-        account_id, period, member_id = ref[1], ref[2], ref[3] if len(ref) == 4 else None
+        parts: tuple[Any, ...] = ref
+        account_id, period, member_id = parts[1], parts[2], parts[3] if len(parts) == 4 else None
         custom = isinstance(period, tuple)
         index = MONTH_PERIOD if isinstance(period, YearMonth) else self.period.count() - 1 if custom else 0
-        for combo in (self.period, self.filter_account, self.filter_member, self.filter_status, self.filter_origin):
+        for combo in self._filter_combos():
             combo.blockSignals(True)
             combo.setCurrentIndex(index if combo is self.period else 0)
             combo.blockSignals(False)
@@ -522,21 +557,29 @@ class LedgerPage(Page):
             text=self.filter_text.text(),
             status=self.filter_status.currentData() or StatusFilter.ALL,
             origin=self.filter_origin.currentData(),
+            operation_ids=self._tagged(),
         )
 
+    def _tagged(self) -> frozenset[UUID] | None:
+        tag = self.filter_tag.currentData()
+        if tag is None or self.session is None:
+            return None
+        from opesvault.domain.tags import operations_with
+
+        return frozenset(operations_with(self.session.ledger, tag))
+
     def filters_active(self) -> bool:
-        combos = (self.period, self.filter_account, self.filter_member, self.filter_status, self.filter_origin)
-        return any(c.currentIndex() > 0 for c in combos) or bool(self.filter_text.text().strip())
+        return any(c.currentIndex() > 0 for c in self._filter_combos()) or bool(self.filter_text.text().strip())
 
     def _only_period_filter(self) -> bool:
-        others = (self.filter_account, self.filter_member, self.filter_status, self.filter_origin)
+        others = self._filter_combos()[1:]
         return not any(c.currentIndex() > 0 for c in others) and not self.filter_text.text().strip()
 
     def _empty_action(self) -> None:
         self.reset_filters()  # back to "Todo o período", which is also what "Ver todo o período" means
 
     def reset_filters(self) -> None:
-        for combo in (self.period, self.filter_account, self.filter_member, self.filter_status, self.filter_origin):
+        for combo in self._filter_combos():
             combo.blockSignals(True)
             combo.setCurrentIndex(0)
             combo.blockSignals(False)
@@ -565,6 +608,10 @@ class LedgerPage(Page):
             "Todas as contas",
         )
         self._refill(self.filter_member, [(m.name, m.id) for m in ledger.members.values()], "Todos os integrantes")
+        from opesvault.domain.tags import all_tags
+
+        self._refill(self.filter_tag, [(t, t) for t in all_tags(ledger)], "Todos os marcadores")
+        self.filter_tag.setVisible(self.filter_tag.count() > 1 or self.filter_tag.currentIndex() > 0)
         selected = set(self.selected_ids())
         ops = find_operations(ledger, self.current_filter())
         self.model.reset(ledger, ops)
@@ -705,6 +752,31 @@ class LedgerPage(Page):
         else:
             self.notify(message)
         if result.changed:
+            self.changed()
+
+    def tag_selected(self) -> None:
+        ids = self.selected_ids()
+        if not ids or self.session is None:
+            return
+        from opesvault.ui.planning_dialogs import TagDialog
+
+        ledger = self.session.ledger
+        dialog = TagDialog(self, ledger, ids)
+        if dialog.exec():
+            changed = run_guarded(self, dialog.apply)
+            if changed:
+                self.notify(f"Marcadores alterados em {changed} lançamento(s).")
+                self.changed()
+
+    def request_reimbursement(self) -> None:
+        op = self._selected()
+        if op is None or self.session is None:
+            return
+        from opesvault.ui.planning_dialogs import ReimbursementDialog
+
+        dialog = ReimbursementDialog(self, self.session.ledger, op)
+        if dialog.exec() and run_guarded(self, dialog.apply):
+            self.notify("Reembolso registrado. Acompanhe em Reembolsos e acertos.")
             self.changed()
 
     def reverse(self) -> None:

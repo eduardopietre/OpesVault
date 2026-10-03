@@ -12,7 +12,7 @@ from uuid import UUID
 from opesvault.domain import queries
 from opesvault.domain.ledger import Ledger
 from opesvault.domain.model import AccountType, OperationKind, YearMonth
-from opesvault.domain.money import ZERO
+from opesvault.domain.money import ZERO, round_money
 
 
 @dataclass(frozen=True)
@@ -28,6 +28,13 @@ class Series:
     points: list[Point]
     style: str = "bar"  # bar, line, scatter, step, forecast
     marker_points: bool = False
+    hidden: bool = False  # only in the table of values, not drawn (keeps the chart readable)
+    # Whether a total over the rows means something: flows (bars) add up, positions (lines) do not.
+    summable: bool | None = None
+
+    @property
+    def adds_up(self) -> bool:
+        return self.summable if self.summable is not None else self.style in ("bar", "forecast")
 
 
 @dataclass
@@ -299,3 +306,292 @@ def returns_chart(ledger: Ledger, position_id: UUID, start: date, end: date) -> 
             )
         )
     return Chart(f"Rentabilidade {start:%d/%m/%Y} a {end:%d/%m/%Y}", "%", [Series("Retorno", points)], notes)
+
+
+# ── the table of values behind a chart ─────────────────────
+
+
+@dataclass(frozen=True)
+class TableRow:
+    x: date | str | None  # None for the summary rows
+    label: str
+    values: list[Decimal | None]
+
+
+def table_rows(chart: Chart) -> tuple[list[str], list[TableRow]]:
+    """The chart's numbers as rows (one per x) and columns (one per series, hidden ones included).
+
+    Monthly charts get "Total" and "Média" rows for the series that add up (flows); positions
+    such as balances never get a total. Unknown values stay None.
+    """
+    xs: list[date | str] = []
+    for series in chart.series:
+        for point in series.points:
+            if point.x not in xs:
+                xs.append(point.x)
+    if all(isinstance(x, date) for x in xs):
+        xs.sort()  # type: ignore[call-overload]
+    lookup = [{p.x: p.y for p in s.points} for s in chart.series]
+    rows = [TableRow(x, str(x), [values.get(x) for values in lookup]) for x in xs]
+    monthly = bool(xs) and all(isinstance(x, str) and _is_month(x) for x in xs)
+    summable = [s.adds_up for s in chart.series]
+    if monthly and len(rows) > 1 and any(summable) and chart.unit == "BRL":
+        totals: list[Decimal | None] = []
+        averages: list[Decimal | None] = []
+        for column, adds in enumerate(summable):
+            known = [r.values[column] for r in rows if r.values[column] is not None]
+            if not adds or not known:
+                totals.append(None)
+                averages.append(None)
+                continue
+            total = sum((v for v in known if v is not None), ZERO)
+            totals.append(total)
+            averages.append(round_money(total / len(known)))
+        rows.append(TableRow(None, "Total", totals))
+        rows.append(TableRow(None, "Média", averages))
+    return [s.name for s in chart.series], rows
+
+
+def _is_month(text: str) -> bool:
+    try:
+        YearMonth.parse(text)
+    except (ValueError, TypeError):
+        return False
+    return True
+
+
+# ── charts added with the review of 03/10/2026 ─────────────
+
+
+def monthly_summary(ledger: Ledger, start: YearMonth, end: YearMonth) -> Chart:
+    """The months side by side: cash, competence result and net worth (Visão geral)."""
+    months = months_between(start, end)
+    flows = queries.cash_flow(ledger, start, end)
+    income, expense, result, worth, inflow, outflow = [], [], [], [], [], []
+    for month in months:
+        statement = queries.income_statement(ledger, month)
+        label = str(month)
+        competence = {"regime": "competência"}
+        income.append(Point(label, statement.total_income, competence))
+        expense.append(Point(label, statement.total_expense, competence))
+        result.append(Point(label, statement.result, competence))
+        inflow.append(Point(label, flows[month].inflow, {"regime": "caixa"}))
+        outflow.append(Point(label, flows[month].outflow, {"regime": "caixa"}))
+        worth.append(Point(label, queries.net_worth(ledger, month.last_day()).net, {"base": "fim do mês"}))
+    return Chart(
+        "Mês a mês",
+        "BRL",
+        [
+            Series("Receitas", income),
+            Series("Despesas", expense),
+            Series("Resultado", result, style="line", marker_points=True, summable=True),
+            Series("Entradas (caixa)", inflow, hidden=True),
+            Series("Saídas (caixa)", outflow, hidden=True),
+            Series("Patrimônio líquido", worth, style="line", hidden=True),
+        ],
+        ["Receitas, despesas e resultado por competência; entradas e saídas por caixa (na tabela)."],
+        "competência",
+    )
+
+
+def projected_balance(ledger: Ledger, today: date, days: int = 60) -> Chart:
+    """Each liquid account's balance from today, with the movements already known (a forecast).
+
+    Every account has a value on every day with a movement, so the table reads across: a balance
+    that does not change on a day is still known that day. Late items that may still happen are
+    counted today.
+    """
+    from opesvault.domain.projection import events, project
+
+    end = date.fromordinal(today.toordinal() + days)
+    projections = [p for p in project(ledger, today, days) if p.events or p.start_balance != 0]
+    by_day: dict[date, list[str]] = defaultdict(list)
+    for projection in projections:
+        for event in projection.events:
+            late = ", atrasado" if event.late else ""
+            by_day[event.on].append(f"{event.description} ({event.source}{late})")
+    days_shown = sorted({today, end, *by_day})
+    series = []
+    for projection in projections:
+        account = ledger.account(projection.account_id)
+        own = {e.on for e in projection.events}
+        points = []
+        for day in days_shown:
+            info = {"natureza": "saldo de hoje" if day == today else "previsão"}
+            if day in own:
+                info["movimentos"] = "; ".join(
+                    f"{e.description} ({e.source})" for e in projection.events if e.on == day
+                )
+            points.append(Point(day, projection.balance_on(day), info))
+        series.append(Series(account.name, points, style="step", marker_points=True))
+    _found, notes = events(ledger, today, end)
+    return Chart(
+        "Saldo projetado",
+        "BRL",
+        series,
+        [
+            "Previsão com recorrências, faturas e parcelas já registradas; atrasados contam hoje. Não altera saldos.",
+            *notes,
+        ],
+    )
+
+
+def category_comparison_chart(ledger: Ledger, month: YearMonth, window: int = 3) -> Chart:
+    from opesvault.domain.comparisons import category_comparison
+
+    rows = category_comparison(ledger, month, window)
+    label_now = f"{_month_name(month)}"
+    current, average, last_year = [], [], []
+    for row in rows:
+        info = {}
+        if row.change is not None:
+            info["variação"] = f"{row.change * 100:+.0f}% sobre a média".replace(".", ",")
+        current.append(Point(row.name, row.current, info))
+        average.append(Point(row.name, row.average, {"meses na média": str(row.months_averaged)}))
+        last_year.append(Point(row.name, row.last_year))
+    notes = [f"Competência. Média dos {window} meses anteriores com registros; meses sem registros não entram."]
+    if rows and rows[0].months_averaged < window:
+        notes.append(f"Só {rows[0].months_averaged} mês(es) anterior(es) com registros.")
+    return Chart(
+        "Comparação com a média",
+        "BRL",
+        [
+            Series(label_now, current),
+            Series(f"Média de {window} meses", average),
+            Series("Mesmo mês do ano anterior", last_year),
+        ],
+        notes,
+        "competência",
+    )
+
+
+def _month_name(month: YearMonth) -> str:
+    names = ("jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez")
+    return f"{names[month.month - 1]}/{month.year}"
+
+
+def budget_history(ledger: Ledger, start: YearMonth, end: YearMonth, category_id: UUID | None = None) -> Chart:
+    """Planned against actual month by month, for the whole budget or one category."""
+    from opesvault.domain.budget import status
+
+    planned, actual = [], []
+    for month in months_between(start, end):
+        current = status(ledger, month)
+        if category_id is None:
+            plan: Decimal | None = current.total_planned if current.rows else None
+            spent: Decimal | None = current.total_actual if current.rows else None
+        else:
+            row = next((r for r in current.rows if r.category_id == category_id), None)
+            plan = row.planned if row else None
+            spent = row.actual if row else None
+        planned.append(Point(str(month), plan, {"situação": "sem orçamento"} if plan is None else {}))
+        actual.append(Point(str(month), spent, {"regime": "competência"}))
+    name = ledger.account(category_id).name if category_id else "Categorias com orçamento"
+    return Chart(
+        f"Orçamento mês a mês: {name}",
+        "BRL",
+        [Series("Planejado", planned), Series("Realizado", actual)],
+        ["Meses sem orçamento ficam vazios, não zerados."],
+        "competência",
+    )
+
+
+def account_balance_history(ledger: Ledger, account_id: UUID, start: YearMonth, end: YearMonth) -> Chart:
+    """End-of-month balance of one account, with the bank checks informed by the user."""
+    from opesvault.domain.balance_checks import results
+
+    account = ledger.account(account_id)
+    balances = [
+        Point(str(m), queries.balance(ledger, account_id, m.last_day()), {"saldo": "fim do mês"})
+        for m in months_between(start, end)
+    ]
+    series = [Series("Saldo no fim do mês", balances, style="line", marker_points=True)]
+    checks = [r for r in results(ledger, account_id) if start.first_day() <= r.check.on <= end.last_day()]
+    if checks:
+        by_month: dict[str, Decimal] = {}
+        for r in sorted(checks, key=lambda r: r.check.on):
+            by_month[str(YearMonth.of(r.check.on))] = r.check.informed
+        series.append(
+            Series(
+                "Saldo informado pelo banco",
+                [Point(str(m), by_month.get(str(m))) for m in months_between(start, end)],
+                style="scatter",
+            )
+        )
+    return Chart(f"Saldo: {account.name}", "BRL", series, ["Saldo por data de caixa."], "caixa")
+
+
+def card_bills_history(ledger: Ledger, card_id: UUID, months: list[YearMonth]) -> Chart:
+    from opesvault.domain.cards import bills
+
+    card = ledger.cards[card_id]
+    found = bills(ledger, card_id, months)
+    total = [Point(str(b.cycle.month), b.total, {"vencimento": f"{b.cycle.due:%d/%m/%Y}"}) for b in found]
+    paid = [Point(str(b.cycle.month), b.payments) for b in found]
+    installments = [Point(str(b.cycle.month), b.installments) for b in found]
+    return Chart(
+        f"Faturas: {card.name}",
+        "BRL",
+        [Series("Total da fatura", total), Series("Pago", paid), Series("Parcelas", installments, hidden=True)],
+        ["Mês de vencimento."],
+    )
+
+
+def loan_chart(ledger: Ledger, plan_id: UUID) -> Chart:
+    """Outstanding balance and the interest × amortization split of each installment."""
+    from opesvault.domain.loans import STATE_LABELS, plan_schedule, plans, state_of
+
+    plan = plans(ledger)[plan_id]
+    today = date.today()
+    balance, interest, amortization, payment = [], [], [], []
+    for item in plan_schedule(ledger, plan_id):
+        info = {"parcela": str(item.number), "situação": STATE_LABELS[state_of(ledger, plan_id, item, today)]}
+        if item.prepaid_after:
+            info["amortização antecipada"] = format(item.prepaid_after, "f")
+        balance.append(Point(item.due, item.balance_after, info))
+        interest.append(Point(item.due, item.interest, info))
+        amortization.append(Point(item.due, item.amortization, info))
+        payment.append(Point(item.due, item.payment, info))
+    return Chart(
+        f"Financiamento: {plan.name}",
+        "BRL",
+        [
+            Series("Saldo devedor", balance, style="line"),
+            Series("Juros", interest, style="line", summable=True),
+            Series("Amortização", amortization, style="line", summable=True),
+            Series("Parcela", payment, hidden=True, summable=True),
+        ],
+        ["Calculado pelo contrato informado; o saldo da conta no livro é a referência."],
+    )
+
+
+def tag_chart(ledger: Ledger, tag: str) -> Chart:
+    from opesvault.domain.tags import summary
+
+    found = summary(ledger, tag)
+    ordered = sorted(found.by_category.items(), key=lambda kv: kv[1], reverse=True)
+    points = [Point(ledger.account(cid).name, value) for cid, value in ordered if value]
+    span = ""
+    if found.first and found.last:
+        span = f"De {found.first:%d/%m/%Y} a {found.last:%d/%m/%Y}. "
+    return Chart(
+        f"Marcador: {tag}",
+        "BRL",
+        [Series("Despesas", points)],
+        [span + "Despesas líquidas de estornos, em qualquer mês."],
+    )
+
+
+def tags_overview(ledger: Ledger) -> Chart:
+    from opesvault.domain.tags import summaries
+
+    rows = summaries(ledger)
+    return Chart(
+        "Marcadores",
+        "BRL",
+        [
+            Series("Despesas", [Point(s.tag, s.expense, {"lançamentos": str(len(s.operations))}) for s in rows]),
+            Series("Receitas", [Point(s.tag, s.income) for s in rows], hidden=True),
+        ],
+        ["Cada marcador soma seus lançamentos em qualquer mês, com várias categorias."],
+    )

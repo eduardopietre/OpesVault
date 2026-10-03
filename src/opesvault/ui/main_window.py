@@ -35,6 +35,7 @@ from opesvault.ui.common import run_guarded
 from opesvault.ui.components import confirm, decide
 from opesvault.ui.idle_lock import IdleWatcher, LockPanel, lock_minutes
 from opesvault.ui.pages.accounts_page import AccountsPage
+from opesvault.ui.pages.agenda_page import AgendaPage
 from opesvault.ui.pages.base import Page
 from opesvault.ui.pages.budget_page import BudgetPage
 from opesvault.ui.pages.documents_page import DocumentsPage
@@ -45,6 +46,7 @@ from opesvault.ui.pages.overview_page import OverviewPage
 from opesvault.ui.pages.recurrences_page import RecurrencesPage
 from opesvault.ui.pages.reports_page import ReportsPage
 from opesvault.ui.pages.settings_page import SettingsPage
+from opesvault.ui.pages.sharing_page import SharingPage
 from opesvault.ui.theme import NAV_ROW_HEIGHT, SPACE_M, SPACE_S, SPACE_XS, restyle
 from opesvault.vault.client import VaultClient
 from opesvault.vault.errors import ErrorCode, VaultError
@@ -455,12 +457,14 @@ class MainWindow(QMainWindow):
         return [
             OverviewPage(self.on_changed),
             BudgetPage(self.on_changed),
+            AgendaPage(self.on_changed),
             LedgerPage(self.on_changed),
             ImportPage(self.on_changed),
             AccountsPage(self.on_changed),
             RecurrencesPage(self.on_changed),
             InvestmentsPage(self.on_changed),
             ReportsPage(self.on_changed),
+            SharingPage(self.on_changed),
             DocumentsPage(self.on_changed),
             SettingsPage(self.on_changed),
         ]
@@ -884,6 +888,8 @@ class MainWindow(QMainWindow):
         "recurrences": "RecurrencesPage",
         "reports": "ReportsPage",
         "investments": "InvestmentsPage",
+        "agenda": "AgendaPage",
+        "sharing": "SharingPage",
     }
 
     def navigate(self, target: str, ref: object = None, *, act: bool = False) -> None:

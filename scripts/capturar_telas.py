@@ -81,8 +81,58 @@ def demo_session(path: Path):  # type: ignore[no-untyped-def]
     ledger.record_expense(f.bank, category(ledger, "Transporte"), "145.00", date.today(), "Posto Shell")
     ledger.record_expense(f.bank, category(ledger, "Alimentação"), "560.00", date.today(), "Mercado do mês")
     rules.add_rule(ledger, "padaria", category(ledger, "Alimentação"))
+    _demo_planning(f, ledger)
     _ = AccountType
     return session
+
+
+def _demo_planning(f, ledger) -> None:  # type: ignore[no-untyped-def]
+    """Loans, tags, reimbursements, bank checks, deductibles and a subscription (review of 03/10/2026)."""
+    from opesvault.domain import balance_checks, deductibles, loans, sharing, tags
+    from opesvault.domain.model import AccountSubtype, AccountType, LedgerAccount
+    from tests.domain_fixtures import category
+
+    debt = ledger.add_account(
+        LedgerAccount(name="Financiamento do carro", type=AccountType.LIABILITY, subtype=AccountSubtype.LOAN)
+    )
+    plan = loans.create_loan(
+        ledger,
+        loans.LoanPlan(
+            name="Financiamento do carro",
+            liability_account_id=debt.id,
+            payment_account_id=f.bank,
+            interest_category_id=category(ledger, "Juros e encargos"),
+            principal=Decimal("38000.00"),
+            monthly_rate=Decimal("0.0149"),
+            term=36,
+            system=loans.AmortizationSystem.PRICE,
+            first_due=date(2026, 1, 20),
+        ),
+        loans.Opening.OPENING_BALANCE,
+        on=date(2025, 12, 20),
+    )
+    for number, day in ((1, date(2026, 1, 20)), (2, date(2026, 2, 20))):
+        loans.pay_installment(ledger, plan.id, number, day)
+    for month in range(1, 4):
+        ledger.record_card_purchase(
+            f.card, category(ledger, "Serviços e assinaturas"), "55.90", date(2026, month, 12), "NETFLIX.COM"
+        )
+    trip = [
+        ledger.record_card_purchase(f.card, category(ledger, "Lazer"), "1380.00", date(2026, 2, 2), "Pousada Serra"),
+        ledger.record_card_purchase(f.card, category(ledger, "Alimentação"), "412.30", date(2026, 2, 3), "Restaurante"),
+        ledger.record_card_purchase(
+            f.card, category(ledger, "Transporte"), "260.00", date(2026, 2, 4), "Pedágio e posto"
+        ),
+    ]
+    tags.add_tag(ledger, [op.id for op in trip], "Viagem Serra 2026")
+    consult = ledger.record_expense(
+        f.bank, category(ledger, "Saúde"), "450.00", date(2026, 3, 6), "Consulta pediatra", member_id=f.bruno
+    )
+    reimbursement = sharing.request(ledger, consult.id, "Plano de saúde", "300.00", date(2026, 3, 7))
+    sharing.receive(ledger, reimbursement.id, f.bank, "150.00", date(2026, 3, 25))
+    deductibles.mark(ledger, category(ledger, "Saúde"), deductibles.DeductibleKind.HEALTH)
+    deductibles.mark(ledger, category(ledger, "Educação"), deductibles.DeductibleKind.EDUCATION)
+    balance_checks.record(ledger, f.bank, date(2026, 3, 31), "9000.00", "extrato do aplicativo")
 
 
 def main() -> int:

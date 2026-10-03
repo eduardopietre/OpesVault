@@ -31,6 +31,23 @@ Um cofre tem identificador, versão de formato, revisão e moeda de apresentaç�
 | Imposto/taxa | Evento, natureza, base, valor, data e estado real/simulado |
 | Regra tributária | Nome, versão, vigência, fonte e parâmetros manuais |
 | Histórico | Entidade, versões, operador declarado, motivo e instante |
+| Financiamento | Contrato (saldo devedor, taxa mensal, prazo, SAC ou Price, primeiro vencimento, seguros por parcela), conta de dívida, conta de pagamento e categorias de juros e encargos. O cronograma é calculado, nunca guardado |
+| Pagamento de parcela / amortização antecipada | Financiamento, número da parcela (ou "depois da parcela n"), operação, data e efeito (reduzir prazo ou parcela) |
+| Marcadores | Operação e lista de marcadores ("Viagem 2026"). Classificação, não fato financeiro: fica ao lado da operação e pode mudar em mês fechado |
+| Reembolso | Despesa original, quem reembolsa, valor esperado, recebimentos (estornos) e negativa |
+| Acerto entre integrantes | Quem pagou, para quem, valor e data; não movimenta dinheiro |
+| Conferência de saldo | Conta, data e saldo informado pelo banco; a diferença é calculada na hora |
+| Categoria dedutível | Categoria de despesa e tipo de dedução (saúde, educação, PGBL, pensão, doações, outras) |
+
+Os tipos da revisão de 03/10/2026 são novos tipos persistidos, sem mudar os existentes: o esquema do domínio continua 2, e versões anteriores do aplicativo recusam o cofre com a mensagem de versão mais nova.
+
+### 1.1 Regras das funcionalidades de 03/10/2026
+
+- **Parcela de financiamento**: uma operação com a amortização a débito da dívida, os juros e os seguros a débito das categorias e o total a crédito da conta de pagamento. Pagar mais que a parcela (multa, juros de atraso) soma a diferença aos juros; pagar menos não é registrado como parcela. Juros de cada parcela = saldo × taxa, arredondado em centavos com empate para longe de zero; a última parcela leva o resíduo.
+- **Amortização antecipada**: o valor inteiro abate a dívida, sem juros, depois da última parcela paga. Reduzir o prazo mantém a parcela (Price) ou a amortização (SAC); reduzir a parcela recalcula com as parcelas restantes.
+- **Reembolso recebido**: estorno (`REFUND`) das categorias da despesa original, em proporção, no mês do recebimento. Nunca é receita.
+- **Quem pagou** (acertos): o único titular da conta de onde saiu o dinheiro, ou o titular do cartão. Conta conjunta pagou por todos e não cria dívida entre integrantes. A parte de cada um vem do rateio da partida ou, sem rateio, do integrante da operação.
+- **Dedutíveis**: por ano de pagamento (ou da compra no cartão), por pessoa, líquidos de estornos e reembolsos. Material de apoio, sem limites legais.
 
 ## 2. Invariantes
 

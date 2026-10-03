@@ -17,6 +17,7 @@ ACTION_LABELS = {
     "recurrences": "Ver previsão",
     "import": "Revisar",
     "budget": "Ver no orçamento",
+    "reports": "Ver projeção",
 }
 # Alerts whose fix is one command open it directly, with the object already chosen.
 ACT_LABELS = {"accounts": "Pagar…", "recurrences": "Vincular…"}
@@ -84,11 +85,13 @@ class AlertsPanel(QWidget):
             lines.addWidget(text(alert.title, wrap=True))
             lines.addWidget(text(alert.detail, "caption", wrap=True))
             target = alert.target.value
-            # A bill can be paid before or after it is due; a forecast is linked only once it is late.
+            # A bill or installment can be paid before or after it is due; a forecast is linked only once
+            # it is late. A balance that differs from the bank opens the account, there is no one-step fix.
+            check = isinstance(alert.ref, tuple) and bool(alert.ref) and alert.ref[0] == "check"
             direct = alert.ref is not None and (
-                target == "accounts" or (target == "recurrences" and alert.severity is Severity.URGENT)
+                (target == "accounts" and not check) or (target == "recurrences" and alert.severity is Severity.URGENT)
             )
-            label = ACT_LABELS[target] if direct else ACTION_LABELS.get(target, "Ver")
+            label = ACT_LABELS[target] if direct else "Ver conta" if check else ACTION_LABELS.get(target, "Ver")
             act = button(label, lambda t=target, r=alert.ref, d=direct: self._navigate(t, r, act=d))
             act.setProperty("role", "plain")
             act.setAccessibleName(f"{label}: {alert.title}")

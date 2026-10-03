@@ -11,6 +11,7 @@ As **fases 0 a 6** estão implementadas e testadas (`docs/13`). Das fases 7 a 10
 - **Interface:** passou por duas revisões, a visual e a de fluxos (`docs/16` §2–§5). Avisos levam ao objeto e à ação. Faturas são pagas na aba Faturas. Configurações não têm botão Aplicar. "Salvar…" retoma a ação interrompida. Visão geral, Orçamento, Livro e Relatórios compartilham o mês.
 - **Esquema do domínio 2:** integrantes têm papel. Cofres do esquema 1 são migrados ao abrir (`domain/migrations.py`).
 - **Faturas:** pagamento atrasado quita primeiro a fatura vencida (`docs/04` §5).
+- **Revisão de 03/10/2026** (`docs/09` §1.3 E, `docs/13` §2.3): gráfico e tabela de valores juntos e recolhíveis (sem abas para o mesmo dado), saldo projetado, comparações, financiamentos, marcadores, reembolsos e acertos, assinaturas, calendário, indicadores, conferência de saldo e despesas dedutíveis.
 - **Ainda sintético:** os layouts de faturas e extratos, até haver documentos reais.
 - **Fase 7 em andamento** (`docs/17`): G4 e G5 aprovados em modo Python, escalas 150/200% verificadas, todos os controles com nome acessível. Faltam o build (G1), G3, G6, G7, o teste com leitor de tela, as notas de terceiros e o corpus de documentos reais. As funcionalidades das fases 11 a 14 estão em `docs/09` §1.3 e dependem das decisões do §4. A dívida técnica está no §1.5.
 
@@ -96,6 +97,8 @@ Se dois documentos entrarem em conflito, vale o `docs/00` §2. Conflitos de segu
 - **Qt e enums:** `QComboBox.currentData()` devolve um `StrEnum` como `str` simples, e `model_copy` não revalida. Converta (`MemberRole(...)`) antes de copiar uma entidade.
 - **Tabelas:** `resizeColumnsToContents` desfaz o esticamento de colunas. O `common.set_rows` reaplica esse esticamento; quem redimensionar fora dele precisa reaplicar também.
 - **Testes de UI e o registro do Windows:** `MainWindow.app_settings()` usa `QSettings`, que no Windows grava no registro do usuário. Testes que mexem em preferências devem redirecionar para um arquivo temporário, como no fixture `settings_file` de `tests/test_flows.py`.
+- **Gráfico e tabela:** valores ao longo do tempo aparecem com `ChartPanel` (gráfico e tabela do mesmo `Chart`, em `Collapsible`), nunca em abas separadas; abas só separam objetos diferentes. Toda tabela ou gráfico novo precisa ser limpo no ramo sem sessão do `refresh` (`clear()`/`setRowCount(0)`), ou o TA-31 falha.
+- **Classificação não é fato financeiro:** marcadores, reembolsos, acertos, conferências e dedutíveis ficam em tipos próprios ao lado da operação; não mude `Operation` para eles (mudaria o esquema e esbarraria no mês fechado).
 - **Exceções:** mensagens de `DomainError` são para o usuário e podem citar dados; por isso o registro técnico (`diagnostics.record`) guarda só código, tipo e local. Nunca registre `str(exc)`.
 
 ## Dados de teste

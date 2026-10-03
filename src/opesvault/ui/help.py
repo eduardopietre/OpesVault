@@ -29,7 +29,27 @@ estourados e importações aguardando revisão. Aparece sempre que o cofre é ab
 Clique numa conta ou categoria para ver os lançamentos daquele mês no Livro financeiro.</p>
 <p>O mês escolhido aqui vale também no Orçamento e na opção de mês do Livro financeiro.
 <b>Antes de fechar o mês</b> lista o que impede o fechamento.</p>
+<p><b>Indicadores</b>: taxa de poupança do mês e de 12 meses, parte fixa das despesas, renda comprometida com
+parcelas e quantos meses de despesa a reserva cobre. Cada um diz como é calculado; sem dados, aparece “—”.</p>
+<p><b>Comparado aos meses anteriores</b>: o mês contra a média dos 3 meses anteriores e contra o mesmo mês do ano
+anterior, com as categorias que mais subiram. <b>Mês a mês</b> mostra o gráfico e, abaixo, a tabela com os mesmos
+valores. Cada seção pode ser recolhida clicando no título; a escolha fica neste computador.</p>
 <p>Valores desconhecidos aparecem como “—”, nunca como zero.</p>
+""",
+    "Calendário": """
+<p>Faturas de cartão, contas recorrentes e parcelas de financiamento do mês, dia a dia. Dias com vencimento ficam
+em negrito; os atrasados, em destaque, com a situação escrita na lista.</p>
+<p>Clique num dia para ver só os seus vencimentos (<b>Mês inteiro</b> volta à lista do mês). <b>Abrir…</b> (ou
+duplo clique) leva à tela onde se paga a fatura ou a parcela, ou se vincula a conta ao lançamento.</p>
+<p>Compras parceladas no cartão aparecem dentro da fatura. Previsões nunca alteram saldos.</p>
+""",
+    "Reembolsos e acertos": """
+<p><b>Reembolsos</b>: despesas que o plano de saúde, a empresa ou outra pessoa vai devolver. Marque no Livro
+financeiro (Ações › Reembolso a receber). Ao receber, o valor entra como estorno das mesmas categorias, no mês do
+recebimento, e a despesa líquida fica certa.</p>
+<p><b>Acertos entre integrantes</b>: numa despesa com rateio, quem pagou adiantou a parte dos outros. Paga quem é o
+único titular da conta de onde saiu o dinheiro, ou o titular do cartão; conta conjunta não gera dívida. Registrar o
+acerto só anota que a dívida foi paga; a transferência, se houver, é um lançamento normal.</p>
 """,
     "Orçamento": """
 <p>Quanto você planeja gastar por categoria em cada mês, quanto já gastou e quanto resta.</p>
@@ -40,6 +60,8 @@ repete a despesa; estornos do lojista reduzem o gasto.</li>
 <li><b>Copiar do mês anterior</b> repete o plano sem apagar o que já foi definido.</li>
 <li>Ao passar de 90% a categoria aparece como “perto do limite”; acima de 100%, “estourado”. O aviso aparece
 também ao abrir o cofre e na barra de status quando um lançamento estoura o plano.</li>
+<li><b>Planejado e realizado mês a mês</b>: o gráfico e a tabela dos últimos meses, da categoria selecionada ou
+de todo o orçamento. Meses sem orçamento ficam vazios, não zerados.</li>
 </ul>
 """,
     "Livro financeiro": """
@@ -57,6 +79,10 @@ O indicador mostra se débitos e créditos fecham.</li>
 Selecione com Shift ou Ctrl. Rateios com mais de uma categoria não são alterados.</li>
 <li><b>Estornar</b> cria uma operação oposta; <b>Cancelar</b> tira o lançamento das contas.
 Toda correção exige um motivo e fica no histórico.</li>
+<li><b>Marcadores</b> (Ações › Marcadores…): agrupam lançamentos de várias categorias, como uma viagem ou uma
+reforma. Não mudam valores e valem também em meses fechados; uma compra parcelada é marcada inteira. Filtre por
+marcador e veja o total em Relatórios › Marcadores.</li>
+<li><b>Reembolso a receber</b>: marca uma despesa que alguém vai devolver (Reembolsos e acertos).</li>
 <li>Meses fechados não aceitam alterações até serem reabertos com motivo.</li>
 </ul>
 """,
@@ -85,21 +111,40 @@ classificou. Enquanto isso você pode seguir revisando; a sua escolha sempre pre
 """,
     "Contas e cartões": """
 <p>Cadastro de contas, cartões, adicionais e categorias. Faturas são calculadas pelos dias de fechamento e vencimento
-e comparadas ao total do documento importado.</p>
+e comparadas ao total do documento importado; o gráfico acima da tabela mostra as faturas mês a mês.</p>
+<p><b>Contas</b>: abaixo da lista, o saldo da conta selecionada no fim de cada mês (gráfico e tabela) e as
+<b>conferências com o banco</b>. Em <b>Conferir saldo…</b> você digita o saldo do extrato numa data; o aplicativo
+compara com o seu saldo na mesma data. Diferença indica lançamento faltando ou errado: nada é ajustado sozinho.</p>
+<p><b>Financiamentos</b>: o contrato (saldo devedor, taxa, prazo, SAC ou Price e vencimento), o cronograma
+calculado, o saldo devedor e os juros que faltam. <b>Pagar parcela…</b> separa amortização, juros e seguros.
+A amortização antecipada é simulada enquanto você digita (reduzir prazo ou parcela) e só é registrada quando
+você confirma. O saldo da conta no livro é a referência; diferenças de centavos com o banco são normais.</p>
+<p><b>Categorias</b>: <b>Dedutível no IR…</b> marca categorias de saúde, educação, previdência (PGBL) e outras.
+O total por pessoa aparece em Relatórios › Despesas dedutíveis, como apoio à declaração.</p>
 <p>O fechamento mensal bloqueia alterações no mês; a reabertura exige motivo.</p>
 """,
     "Recorrências": """
 <p>Regras de contas fixas e receitas previstas. Previsões nunca alteram saldos: elas só viram lançamento quando
 você confirma o vínculo com o realizado.</p>
+<p><b>Assinaturas e contas fixas</b>: o custo de cada uma por ano e a última cobrança; “Valor mudou” quando o
+cobrado difere do previsto ou da cobrança anterior. <b>Parecem recorrentes</b>: cobranças com a mesma descrição em
+meses seguidos, sem recorrência; <b>Criar recorrência…</b> já vem preenchido.</p>
 """,
     "Investimentos": """
 <p>Posições por valor ou por quantidade, avaliações, aportes, resgates, proventos e notas de corretagem.</p>
 <p>Avaliação não é fluxo e aporte não é rendimento. Quando faltam dados, o resultado aparece como indisponível,
 com o motivo. TWR, XIRR e Dietz só são calculados quando os dados permitem.</p>
+<p>O investimento selecionado aparece numa página só: evolução, avaliações, resultado, movimentos, lotes e
+rentabilidade, cada um numa seção que se recolhe clicando no título.</p>
 """,
     "Relatórios": """
-<p>Fluxo de caixa, resultado por competência, despesas por categoria e patrimônio. Cada valor dos gráficos pode
-ser inspecionado até os lançamentos que o compõem.</p>
+<p>Fluxo de caixa, resultado por competência, despesas por categoria, patrimônio, saldo projetado, comparação com
+a média, marcadores e despesas dedutíveis. Cada gráfico tem abaixo a tabela com os mesmos valores (com total e
+média nos fluxos mensais), que pode ser exportada em CSV. Gráfico e tabela se recolhem pelo título.</p>
+<p>Clique num ponto ou numa linha da tabela para ver de onde vem o valor e abrir os lançamentos.</p>
+<p><b>Saldo projetado</b>: o saldo de hoje de cada conta mais o que já está registrado para vir (recorrências,
+faturas e parcelas). É previsão: não altera saldos e não adivinha compras que ainda não existem.</p>
+<p><b>Despesas dedutíveis</b> é material de apoio: não aplica limites legais nem substitui a declaração.</p>
 """,
     "Documentos": """
 <p>Arquivos guardados no cofre e os lançamentos ligados a cada um.

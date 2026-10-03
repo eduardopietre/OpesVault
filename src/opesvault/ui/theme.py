@@ -282,6 +282,13 @@ QToolButton#Stepper:hover {{ background: {t.hover}; }}
 QToolButton#Stepper:pressed {{ background: {t.selection_inactive}; }}
 QToolButton#Stepper:focus {{ border: 2px solid {t.accent}; }}
 QToolButton#Stepper:disabled {{ color: {t.tertiary}; }}
+/* A collapsible section's heading: the title itself is the toggle, with an arrow before it. */
+QToolButton#SectionToggle {{
+    background: transparent; border: none; color: {t.text}; font-size: {HEADLINE_PX}px; font-weight: 600;
+    padding: 2px {SPACE_XS}px 2px 0;
+}}
+QToolButton#SectionToggle:hover {{ color: {t.accent}; }}
+QToolButton#SectionToggle:focus {{ color: {t.accent}; }}
 QFrame#FilterChip {{ background: {t.hover}; border-radius: {RADIUS}px; }}
 QLabel#SaveDot[state="dirty"] {{ color: {t.warning}; }}
 QLabel#SaveDot[state="clean"] {{ color: {t.positive}; }}

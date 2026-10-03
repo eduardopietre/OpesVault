@@ -4,7 +4,7 @@ Versão 1.0 • 01/10/2026. Especificação de experiência, sem mockup executá
 
 ## 1. Estrutura de navegação
 
-Janela principal com navegação lateral: Visão geral; Livro financeiro; Importar e revisar; Contas e cartões; Recorrências; Investimentos; Relatórios; Documentos; Configurações. Nome do cofre, período, regime e estado de salvamento sempre visíveis.
+Janela principal com navegação lateral: Visão geral; Orçamento; Calendário; Livro financeiro; Importar e revisar; Contas e cartões; Recorrências; Investimentos; Relatórios; Reembolsos e acertos; Documentos; Configurações. Nome do cofre, período, regime e estado de salvamento sempre visíveis.
 
 Tela inicial apresenta criar/abrir/restaurar. Lista de recentes é opcional e guarda apenas caminhos consentidos; não exibe saldos com cofre fechado. Nome da família pode ficar oculto até desbloqueio.
 
@@ -20,6 +20,9 @@ Tela inicial apresenta criar/abrir/restaurar. Lista de recentes é opcional e gu
 | Recorrências | Regras, previsões e exceções | Confirmar padrão, pausar, editar e vincular realizado |
 | Investimento | Posição, custo, avaliações, movimentos e gráfico | Nova avaliação, aporte, distribuição, resgate e simulação |
 | Backup | Revisão salva, cópias e integridade | Criar cópia e restaurar em destino separado |
+| Calendário | Faturas, recorrências e parcelas de financiamento do mês, por dia, com situação | Abrir o ponto onde se paga ou vincula |
+| Reembolsos e acertos | Reembolsos a receber; quem deve a quem na família e as despesas que formam o saldo | Registrar recebimento, negativa e acerto |
+| Financiamentos (Contas e cartões) | Contrato, cronograma, saldo devedor, juros a pagar | Pagar parcela, simular e registrar amortização antecipada |
 
 ## 3. Adicionar avaliação
 
@@ -41,6 +44,13 @@ Se já existir avaliação naquela data, apresentar “corrigir observação” 
 | Rentabilidade | Percentual com método indicado | TWR/XIRR/Dietz só quando calculáveis |
 | Composição da carteira | Valor por ativo/classe | Data-base, cobertura de preços e caixa indicados |
 | Projeção de compromissos | Parcelas e recorrências futuras | Aparência de previsão, separada do realizado |
+| Saldo projetado | Saldo de cada conta líquida dia a dia, a partir de hoje | Previsão com o que já está registrado; atrasados contam hoje |
+| Comparação com a média | Mês, média dos meses anteriores e mesmo mês do ano anterior, por categoria | Meses antes dos registros não entram na média |
+| Marcadores | Despesa total por marcador, ou por categoria dentro de um marcador | Soma em qualquer mês |
+| Despesas dedutíveis | Por categoria marcada e por pessoa, no ano | Material de apoio, sem limites legais |
+| Mês a mês (Visão geral), saldo da conta, faturas, orçamento, financiamento | Séries mensais ou por parcela | Sempre com a tabela dos mesmos valores abaixo |
+
+Todo gráfico com valores ao longo do tempo tem, na mesma tela e logo abaixo, a tabela com os mesmos números, gerada do mesmo conjunto de dados (`charts.data.table_rows`). Gráfico e tabela ficam em seções recolhíveis, nunca em abas separadas (`16` §4, regra 9).
 
 ## 5. Interação e leitura
 

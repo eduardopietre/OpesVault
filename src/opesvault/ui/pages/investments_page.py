@@ -11,7 +11,6 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QMessageBox,
     QStackedWidget,
-    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -36,9 +35,7 @@ from opesvault.ui.common import (
     fit_to_rows,
     fmt,
     fmt_date,
-    frameless,
     from_qdate,
-    make_table,
     money_edit,
     read_money,
     run_guarded,
@@ -47,10 +44,19 @@ from opesvault.ui.common import (
     stretch_column,
     summary_table,
 )
-from opesvault.ui.components import EmptyState, button, hbox, menu_button, separator, text
+from opesvault.ui.components import (
+    Collapsible,
+    EmptyState,
+    button,
+    flow_row,
+    menu_button,
+    scroll_body,
+    separator,
+    text,
+)
 from opesvault.ui.dialogs import FormDialog, asset_accounts
 from opesvault.ui.pages.base import Page
-from opesvault.ui.theme import SPACE_M, SPACE_S, SPACE_XL, SPACE_XS
+from opesvault.ui.theme import SPACE_L, SPACE_S, SPACE_XL, SPACE_XS
 
 EVENT_LABELS = {
     EventKind.CONTRIBUTION: "Aporte",
@@ -175,36 +181,32 @@ class InvestmentsPage(Page):
         self.header.add(record, trade, more, SPACE_S, new)
         self.position_actions = (record, trade)
 
-        self.valuations = frameless(
-            make_table(["Data", "Valor", "Natureza", "Fonte", "Usada", "Quantidade", "Observação"])
+        # The charts and the tables they come from sit on one page, in collapsible sections:
+        # the evolution next to the valuations it draws, the result next to the movements.
+        self.valuations = summary_table(
+            ["Data", "Valor", "Natureza", "Fonte", "Usada", "Quantidade", "Observação"], max_rows=10
         )
-        self.events = frameless(
-            make_table(["Data", "Evento", "Bruto", "Custo atribuído", "Imposto", "Taxas", "Líquido", "Qualidade"])
+        self.events = summary_table(
+            ["Data", "Evento", "Bruto", "Custo atribuído", "Imposto", "Taxas", "Líquido", "Qualidade"], max_rows=10
         )
+        self.lots = summary_table(
+            ["Aquisição", "Origem", "Quantidade", "Custo", "Qtd. restante", "Custo restante"], max_rows=8
+        )
+        self.returns_table = summary_table(["Método", "Resultado", "Qualidade", "Observações"], max_rows=6)
+        for table in (self.valuations, self.events, self.lots, self.returns_table):
+            table.setSortingEnabled(False)
+        stretch_column(self.valuations, 6)
+        stretch_column(self.returns_table, 3)
         self.evolution = ChartWidget()
         self.result_chart = ChartWidget()
-        valuation_actions = hbox(
-            button("Usar esta observação", self.use_valuation),
-            button("Corrigir observação…", self.fix_valuation),
-            None,
-        )
-        valuation_box = QWidget()
-        vb = QVBoxLayout(valuation_box)
-        vb.setContentsMargins(0, SPACE_M, 0, 0)
-        vb.setSpacing(SPACE_M)
-        vb.addLayout(valuation_actions)
-        vb.addWidget(self.valuations)
-        tabs = QTabWidget()
-        tabs.addTab(self.evolution, "Evolução")
-        tabs.addTab(self.result_chart, "Resultado")
-        tabs.addTab(valuation_box, "Avaliações")
-        tabs.addTab(self.events, "Movimentos")
-        self.lots = frameless(
-            make_table(["Aquisição", "Origem", "Quantidade", "Custo", "Qtd. restante", "Custo restante"])
-        )
-        tabs.addTab(self.lots, "Lotes")
         self.returns_chart = ChartWidget()
-        self.returns_table = frameless(make_table(["Método", "Resultado", "Qualidade", "Observações"]))
+        for chart, name in (
+            (self.evolution, "Gráfico da evolução"),
+            (self.result_chart, "Gráfico do resultado acumulado"),
+            (self.returns_chart, "Gráfico da rentabilidade"),
+        ):
+            chart.setFixedHeight(280)
+            chart.setAccessibleName(name)
         self.period_start = QComboBox()
         self.period_end = QComboBox()
         self.benchmark = QComboBox()
@@ -219,50 +221,65 @@ class InvestmentsPage(Page):
         ):
             widget.setAccessibleName(name)
         compute = button("Calcular", self._show_returns)
-        returns_box = QWidget()
-        rb = QVBoxLayout(returns_box)
-        rb.setContentsMargins(0, SPACE_M, 0, 0)
-        rb.setSpacing(SPACE_M)
-        period = hbox(
+
+        evolution = Collapsible(
+            "Evolução", "investimentos/evolucao", caption="Valores observados, com aportes, resgates e proventos."
+        )
+        evolution.add(self.evolution)
+        valuations = Collapsible("Avaliações", "investimentos/avaliacoes", caption="Os pontos do gráfico de evolução.")
+        valuations.add_actions(
+            button("Usar esta observação", self.use_valuation),
+            button("Corrigir observação…", self.fix_valuation),
+        )
+        valuations.add(self.valuations)
+        result = Collapsible("Resultado acumulado", "investimentos/resultado")
+        result.add(self.result_chart)
+        events = Collapsible(
+            "Movimentos", "investimentos/movimentos", caption="Aportes, resgates, proventos e impostos."
+        )
+        events.add(self.events)
+        self.lots_section = Collapsible(
+            "Lotes", "investimentos/lotes", caption="Custo por aquisição (modo por quantidade)."
+        )
+        self.lots_section.add(self.lots)
+        returns = Collapsible("Rentabilidade", "investimentos/rentabilidade")
+        returns.add_actions(compute)
+        period = flow_row(
             text("De", "secondary"),
             self.period_start,
             text("até", "secondary"),
             self.period_end,
-            SPACE_S,
             text("Índice", "secondary"),
             self.benchmark,
-            compute,
-            None,
         )
-        rb.addLayout(period)
-        rb.addWidget(self.returns_table)
-        rb.addWidget(self.returns_chart)
-        tabs.addTab(returns_box, "Rentabilidade")
+        returns.add(period)
+        returns.add(self.returns_table)
+        returns.add(self.returns_chart)
         self.summary = text("", "caption", wrap=True)
         self.summary.setMinimumWidth(160)
         self.detail_title = text("", "headline")
-        detail = QWidget()
-        dl = QVBoxLayout(detail)
+        self.detail = QWidget()
+        dl = QVBoxLayout(self.detail)
         dl.setContentsMargins(0, 0, 0, 0)
-        dl.setSpacing(SPACE_XS)
-        dl.addWidget(self.detail_title)
-        dl.addWidget(self.summary)
-        dl.addSpacing(SPACE_S)
-        dl.addWidget(tabs, 1)
+        dl.setSpacing(SPACE_L)
+        heading = QVBoxLayout()
+        heading.setSpacing(SPACE_XS)
+        heading.addWidget(self.detail_title)
+        heading.addWidget(self.summary)
+        dl.addLayout(heading)
+        for section in (evolution, valuations, result, events, self.lots_section, returns):
+            dl.addWidget(section)
         self.empty = EmptyState(
             "Nenhum investimento",
             "Cadastre um investimento para acompanhar avaliações, aportes, resgates e rentabilidade.",
             [button("Novo investimento…", self.new_position)],
         )
-        # The portfolio is as tall as its rows; the selected investment takes the rest.
-        portfolio = QWidget()
-        pl = QVBoxLayout(portfolio)
-        pl.setContentsMargins(0, SPACE_S, 0, 0)
-        pl.setSpacing(SPACE_XL)
+        # One scrolling page: the portfolio, then the selected investment's sections.
+        scroll, content = scroll_body()
+        content.setSpacing(SPACE_XL)
         holdings = QVBoxLayout()
         holdings.setSpacing(SPACE_S)
         holdings.addWidget(self.positions)
-        pl.addLayout(holdings)
         # The table speaks the language of the calculation; one line says what each figure means.
         holdings.addWidget(
             text(
@@ -273,10 +290,12 @@ class InvestmentsPage(Page):
                 wrap=True,
             )
         )
-        pl.addWidget(separator())
-        pl.addWidget(detail, 1)
+        content.addLayout(holdings)
+        content.addWidget(separator())
+        content.addWidget(self.detail)
+        content.addStretch(1)
         self.views = QStackedWidget()
-        self.views.addWidget(portfolio)
+        self.views.addWidget(scroll)
         self.views.addWidget(self.empty)
         layout = self.page_layout()
         layout.addWidget(self.views, 1)
@@ -286,6 +305,7 @@ class InvestmentsPage(Page):
     def refresh(self) -> None:
         if self.session is None:
             self.positions.setRowCount(0)
+            self._show_detail()
             return
         ledger = self.session.ledger
         today = date.today()
@@ -329,9 +349,12 @@ class InvestmentsPage(Page):
         pos_id = self._position_id()
         for action in self.position_actions:
             action.setEnabled(pos_id is not None)
+        self.detail.setVisible(self.session is not None and pos_id is not None)
         if self.session is None or pos_id is None:
-            self.valuations.setRowCount(0)
-            self.events.setRowCount(0)
+            for table in (self.valuations, self.events, self.lots, self.returns_table):
+                table.setRowCount(0)
+            for chart in (self.evolution, self.result_chart, self.returns_chart):
+                chart.clear()
             self.detail_title.setText("")
             self.summary.setText("Selecione um investimento.")
             return
@@ -405,6 +428,9 @@ class InvestmentsPage(Page):
                 for lot in lots_of(ledger, pos_id)
             ],
         )
+        for table in (self.valuations, self.events, self.lots):
+            fit_to_rows(table)
+        self.lots_section.setVisible(self.lots.rowCount() > 0 or position.mode is TrackingMode.QUANTITY)
         dates = sorted({v.on for v in inv.valuations_of(ledger, pos_id) if v.selected})
         for combo, default in ((self.period_start, 0), (self.period_end, len(dates) - 1)):
             combo.clear()
@@ -439,6 +465,7 @@ class InvestmentsPage(Page):
             self.returns_table,
             [([r.method, pct(r.value), r.quality.value, "; ".join(r.notes)], None) for r in results],
         )
+        fit_to_rows(self.returns_table)
         self.returns_chart.show_chart(returns_chart(ledger, pos_id, start, end))
 
     # ── commands ────────────────────────────────────

@@ -25,10 +25,10 @@ Os caminhos são relativos a `tests/`.
 | TA-15 | automatizado | `test_domain_ledger::test_card_purchase_and_bill_payment_ta15` | — |
 | TA-16 | automatizado | `test_domain_ledger::test_own_transfer_ta16` | — |
 | TA-17 | automatizado | `test_finance::test_realized_salary_is_linked_and_not_counted_twice_ta17` | — |
-| TA-18 | parcial | `test_domain_ledger::test_joint_account_counts_once_ta18`, `test_domain_ledger::test_rateio_by_member` | Comparação explícita entre visão por integrante e consolidada |
+| TA-18 | parcial | `test_domain_ledger::test_joint_account_counts_once_ta18`, `test_domain_ledger::test_rateio_by_member` | Comparação explícita entre visão por integrante e consolidada: depende de uma visão de patrimônio por integrante, que ainda não existe (`17` §1) |
 | TA-19 | automatizado | `test_finance::test_closed_month_blocks_changes_until_reopened_ta19`, `test_edits::test_reclassify_respects_closed_months_and_needs_reason` | — |
 | TA-20 a TA-23 | automatizado | `test_investments::test_example_a…d_*` | — |
-| TA-24 | parcial | `test_investments::test_example_e_external_distribution_ta24` | Mudança de perímetro (posição entrando ou saindo de uma visão) |
+| TA-24 | parcial | `test_investments::test_example_e_external_distribution_ta24` | Mudança de perímetro (posição entrando ou saindo de uma visão): depende da mesma visão por integrante (`17` §1) |
 | TA-25 | automatizado | `test_investments::test_example_f_unknown_cost_ta25` | — |
 | TA-26 | automatizado | `test_investments::test_disagreeing_sources_same_date_ta26` | — |
 | TA-27 | automatizado | `test_portfolio::test_twr_unavailable_without_valuation_at_flow_ta27` | — |

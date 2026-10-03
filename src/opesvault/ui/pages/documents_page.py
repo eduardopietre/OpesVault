@@ -109,7 +109,10 @@ class PdfView(QWidget):
             return
         from opesvault.pdf_render import render_document
 
-        scale = 1.5
+        # Rendered at the screen's real density (150%, 200%…) so text stays sharp, then shown at
+        # the same logical size; the highlight box is drawn in the same pixel space.
+        ratio = self.devicePixelRatioF()
+        scale = 1.5 * ratio
         try:
             image = render_document(self._pdf, self.page.value() - 1, scale)
         except Exception:
@@ -126,6 +129,7 @@ class PdfView(QWidget):
             )
             painter.drawRect(int(x0) - 2, int(top) - 2, int(x1 - x0) + 4, int(bottom - top) + 4)
             painter.end()
+        image.setDevicePixelRatio(ratio)
         self.image.setPixmap(QPixmap.fromImage(image))
 
 

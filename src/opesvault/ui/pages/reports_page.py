@@ -73,6 +73,7 @@ class ReportsPage(Page):
         self.months.setCurrentIndex(1)
         # Only the filter that has a defined meaning for the chart shown (see SCOPES).
         self.scope = QComboBox()
+        self.scope.setAccessibleName("Filtro do relatório")
         self.scope.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToContents)
         self._end = YearMonth.of(date.today())  # follows the month chosen in the Overview
         self._inspected: tuple[str, Point] | None = None

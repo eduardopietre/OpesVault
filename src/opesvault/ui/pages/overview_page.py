@@ -114,6 +114,8 @@ class OverviewPage(Page):
         self.balances = summary_table(["Conta", "Saldo"])
         self.categories = summary_table(["Categoria", "Despesa", "% do total"])
         self.categories.setItemDelegateForColumn(2, ShareBarDelegate(self.categories))
+        self.balances.setAccessibleName("Saldos das contas")
+        self.categories.setAccessibleName("Despesas por categoria")
         for table in (self.balances, self.categories):
             stretch_column(table)
             # Each line opens its operations in the Ledger, for this month.

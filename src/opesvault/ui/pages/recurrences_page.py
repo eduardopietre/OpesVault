@@ -130,6 +130,8 @@ class RecurrencesPage(Page):
         super().__init__(changed)
         self.rules = summary_table(["Descrição", "Valor", "Frequência", "Dia", "Situação"], max_rows=8)
         self.forecast_table = summary_table(["Data", "Descrição", "Valor", "Situação"], max_rows=12)
+        self.rules.setAccessibleName("Regras de recorrência")
+        self.forecast_table.setAccessibleName("Previsões")
         stretch_column(self.rules, 0)
         stretch_column(self.forecast_table, 1)
         self._forecasts: list[Forecast] = []

@@ -83,7 +83,9 @@ Windows 10 Pro 22H2 (19045), Python 3.12.4 oficial, 32 CPUs, 31,8 GiB. Sem build
 | G0 | 311 passam, 19 pulados (fixtures de terceiros ainda ausentes); os 5 testes `windows` passam. ruff e pyright limpos. Fuzzing longo (3000 variações) passa |
 | G1 (parcial) | `all_ok: true`; SQLCipher 4.12.0 com `openssl` (OpenSSL 3.6.0); `worker_relaunch` em 0,23 s; `new_temp_entries` vazio. Falta repetir no executável |
 | G2 | Tabela abaixo |
-| G3–G7 | Pendentes: exigem desligamento forçado, Defender com 20 salvamentos, janela de senha interativa e outra máquina |
+| G4 (modo Python) | Aprovado em 03/10/2026 (`scripts/fase7_gates.py disco`): nenhum arquivo novo em `%TEMP%` nem em `%LOCALAPPDATA%`; na pasta, só o cofre e o `.lock`. Falta no executável |
+| G5 (modo Python) | Aprovado em 03/10/2026 (`scripts/fase7_gates.py antivirus`): 20 salvamentos de 250 MiB com o Defender ativo, nenhuma falha, 1,8 s em média |
+| G3, G6, G7 | Pendentes: desligamento forçado, janela de senha interativa e outra máquina (`17` §2) |
 
 Medição com 50 mil lançamentos (`fase0-ram.json`):
 

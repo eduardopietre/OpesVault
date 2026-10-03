@@ -490,6 +490,7 @@ class ImportPage(Page):
                 ItemKind.CARD_PAYMENT: balance,
             }.get(item.kind, expense)
             combo = QComboBox()
+            combo.setAccessibleName(f"Categoria ou conta de {item.description}")
             fill_combo(combo, options, empty="(padrão)")
             index = combo.findData(item.target_account_id)
             combo.setCurrentIndex(max(index, 0))

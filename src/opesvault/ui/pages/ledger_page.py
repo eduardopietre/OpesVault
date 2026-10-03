@@ -336,6 +336,8 @@ class LedgerPage(Page):
         self._label_month()
         self.filter_start = OptionalDate(None)
         self.filter_end = OptionalDate(None)
+        self.filter_start.edit.setAccessibleName("Data inicial")
+        self.filter_end.edit.setAccessibleName("Data final")
         for optional in (self.filter_start, self.filter_end):
             optional.known.setChecked(True)
             optional.known.hide()

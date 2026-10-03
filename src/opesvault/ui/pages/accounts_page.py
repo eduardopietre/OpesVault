@@ -28,6 +28,13 @@ class AccountsPage(Page):
         self.accounts = make_table(["Conta", "Tipo", "Instituição", "Titulares", "Saldo"])
         self.cards = make_table(["Cartão", "Portador", "Final", "Fechamento", "Vencimento", "Fatura em aberto"])
         self.categories = make_table(["Categoria", "Tipo", "Dentro de"])
+        for table, name in (
+            (self.members, "Integrantes"),
+            (self.accounts, "Contas"),
+            (self.cards, "Cartões"),
+            (self.categories, "Categorias"),
+        ):
+            table.setAccessibleName(name)
         self.accounts.doubleClicked.connect(lambda _: self.edit_account())
         self.cards.doubleClicked.connect(lambda _: self.edit_card())
         self.bill_card = QComboBox()
@@ -58,6 +65,7 @@ class AccountsPage(Page):
         tabs.addTab(
             self._with_buttons(self.cards, [("Novo cartão…", self.add_card), ("Editar…", self.edit_card)]), "Cartões"
         )
+        self.bills.setAccessibleName("Faturas do cartão")
         self.pay_button = button(
             "Pagar…", self.pay_bill, role="primary", tip="Registra o pagamento da fatura selecionada"
         )

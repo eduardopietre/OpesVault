@@ -109,3 +109,17 @@ def test_dark_and_light_tokens(app: QApplication) -> None:
     light = theme.apply_theme(app, dark=False)
     assert app.palette().window().color().name() == light.window
     assert dark.text != light.text
+
+
+def test_every_control_has_an_accessible_name(window: MainWindow) -> None:
+    """What scripts/auditar_acessibilidade.py checks, on every page: a screen reader can name each control."""
+    import sys
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+    import importlib
+
+    unnamed = importlib.import_module("auditar_acessibilidade").unnamed
+
+    problems = [f"{page.title} › {p}" for page in window.pages for p in unnamed(page)]
+    problems += unnamed(window.toolbar)
+    assert problems == []

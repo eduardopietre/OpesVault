@@ -71,6 +71,7 @@ class BudgetGridDialog(QDialog):
         self.categories = category_items(ledger, AccountType.EXPENSE)
         self.table = QTableWidget(len(self.categories), len(self.COLUMNS))
         self.table.setHorizontalHeaderLabels(list(self.COLUMNS))
+        self.table.setAccessibleName("Orçamento por categoria")
         style_table(self.table)
         self.table.setAlternatingRowColors(False)
         self.edits: list[QLineEdit] = []

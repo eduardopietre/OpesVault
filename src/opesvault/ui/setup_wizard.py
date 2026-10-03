@@ -63,6 +63,7 @@ class MembersPage(QWizardPage):
             "por exemplo) podem ser marcados depois em Contas e cartões › Integrantes."
         )
         self.names = QPlainTextEdit()
+        self.names.setAccessibleName("Nomes dos integrantes, um por linha")
         existing = [m.name for m in ledger.members.values()]
         if existing:
             self.names.setPlaceholderText("Já cadastrados: " + ", ".join(existing))
@@ -118,6 +119,7 @@ class AccountsPage(QWizardPage):
         form.addRow("Data do saldo:", self.when)
         self.add_button = button("Adicionar conta", self.add_current, tip="Guarda esta conta e limpa o formulário")
         self.table = summary_table(["Conta", "Tipo", "Titulares", "Saldo de abertura"], max_rows=5)
+        self.table.setAccessibleName("Contas adicionadas")
         self.remove_button = button("Remover da lista", self.remove_selected, role="plain")
         self.added = text("Contas adicionadas", "headline")
         layout = QVBoxLayout(self)
@@ -236,6 +238,7 @@ class CardsPage(QWizardPage):
         self.setTitle("Cartões de crédito")
         self.setSubTitle("Fechamento e vencimento definem as faturas. Adicionais podem ser cadastrados depois.")
         self.table = _table(self.HEADERS)
+        self.table.setAccessibleName("Cartões")
         layout = QVBoxLayout(self)
         layout.addWidget(self.table)
         layout.addLayout(_row_buttons(self.table, self.add_row))

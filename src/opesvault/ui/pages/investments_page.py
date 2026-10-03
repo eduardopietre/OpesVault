@@ -208,6 +208,16 @@ class InvestmentsPage(Page):
         self.period_start = QComboBox()
         self.period_end = QComboBox()
         self.benchmark = QComboBox()
+        for widget, name in (
+            (self.period_start, "Início do período"),
+            (self.period_end, "Fim do período"),
+            (self.benchmark, "Índice de referência"),
+            (self.valuations, "Avaliações"),
+            (self.events, "Movimentos"),
+            (self.lots, "Lotes"),
+            (self.returns_table, "Rentabilidade por método"),
+        ):
+            widget.setAccessibleName(name)
         compute = button("Calcular", self._show_returns)
         returns_box = QWidget()
         rb = QVBoxLayout(returns_box)

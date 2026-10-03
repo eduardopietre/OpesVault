@@ -12,7 +12,7 @@ As **fases 0 a 6** estão implementadas e testadas (`docs/13`). Das fases 7 a 10
 - **Esquema do domínio 2:** integrantes têm papel. Cofres do esquema 1 são migrados ao abrir (`domain/migrations.py`).
 - **Faturas:** pagamento atrasado quita primeiro a fatura vencida (`docs/04` §5).
 - **Ainda sintético:** os layouts de faturas e extratos, até haver documentos reais.
-- **Próximo:** a **fase 7, validação real** (`docs/09` §1.2). As funcionalidades das fases 11 a 14 estão em `docs/09` §1.3 e dependem das decisões do §4. A dívida técnica está no §1.5.
+- **Fase 7 em andamento** (`docs/17`): G4 e G5 aprovados em modo Python, escalas 150/200% verificadas, todos os controles com nome acessível. Faltam o build (G1), G3, G6, G7, o teste com leitor de tela, as notas de terceiros e o corpus de documentos reais. As funcionalidades das fases 11 a 14 estão em `docs/09` §1.3 e dependem das decisões do §4. A dívida técnica está no §1.5.
 
 ## Comandos
 
@@ -29,6 +29,8 @@ uv run python scripts/inventario_licencas.py [--check]       # licenças + SBOM 
 uv run python scripts/validar_layouts.py PASTA_DO_CORPUS     # documentos reais, fora do git (docs/15 §2)
 uv run python scripts/capturar_telas.py [--dark] [--size 900x640]  # capturas de todas as telas (build/telas)
 uv run python scripts/avaliar_modelos.py [MODELO ...]       # compara modelos do Ollama local (build/ia)
+uv run python scripts/fase7_gates.py disco|antivirus        # G4 e G5 em modo Python (build/fase7)
+uv run python scripts/auditar_acessibilidade.py             # controles sem nome para leitor de tela
 ```
 
 Desenvolva e teste direto em Python. O build Nuitka é **opcional**: só rode quando o usuário pedir ou quando a mudança afetar empacotamento (dependências nativas, plugins Qt, relançamento do worker).
@@ -66,6 +68,7 @@ No Windows, se o `uv sync` falhar com "arquivo em uso" (os error 32, antivírus)
 | Fuzzing, registro técnico, licenças, SBOM, OpenSSL | `docs/14` |
 | Qual teste cobre cada TA; validação de layouts reais | `docs/15` |
 | Arquitetura da janela, tokens, componentes e regras de interface | `docs/16` |
+| Situação da fase 7 e o que falta fazer com o usuário | `docs/17` |
 
 Se dois documentos entrarem em conflito, vale o `docs/00` §2. Conflitos de segurança ou cálculo devem ser levados ao usuário, nunca resolvidos pela interpretação mais simples. Mudar de stack, adicionar cloud, reter chave para autosave ou permitir edição simultânea exige nova decisão do usuário.
 

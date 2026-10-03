@@ -42,7 +42,7 @@ from opesvault.ui.pages.recurrences_page import RecurrencesPage
 from opesvault.ui.pages.reports_page import ReportsPage
 from opesvault.ui.pages.settings_page import SettingsPage
 from opesvault.ui.pages.sharing_page import SharingPage
-from opesvault.ui.pages.tax_page import TaxPage
+from opesvault.ui.pages.tax import TaxPage
 from opesvault.ui.shell.backups import BackupCommands
 from opesvault.ui.shell.jobs import VaultJob
 from opesvault.ui.shell.recents import RecentVaults

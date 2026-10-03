@@ -5,6 +5,7 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -351,6 +352,21 @@ class InvestmentsPage(Page):
     def _position_id(self) -> UUID | None:
         return selected_id(self.positions)
 
+    def _select_position(self, position_id: object) -> None:
+        for row in range(self.positions.rowCount()):
+            item = self.positions.item(row, 0)
+            if item is not None and item.data(Qt.ItemDataRole.UserRole) == position_id:
+                self.positions.selectRow(row)
+                self.positions.scrollToItem(item)
+                return
+
+    def reveal(self, ref: object, *, act: bool = False) -> None:
+        """A maturity alert or calendar event: select the position; ``act`` opens its characteristics."""
+        self._select_position(ref)
+        self._show_detail()
+        if act and self._position_id() == ref:
+            self.edit_profile()
+
     def edit_profile(self) -> None:
         from opesvault.ui.bank_dialogs import InvestmentDialog
 
@@ -531,8 +547,10 @@ class InvestmentsPage(Page):
             if form.money("cost", optional=True) is None and form.money("reference", optional=True) is None:
                 raise DomainError("Informe o custo inicial ou um valor de referência.")
 
+        created: list[UUID] = []
+
         def apply(form: Form) -> None:
-            inv.create_position(
+            position = inv.create_position(
                 ledger,
                 form.value("name"),
                 form.value("class"),
@@ -544,8 +562,12 @@ class InvestmentsPage(Page):
                 from_account=form.value("from"),
                 reference_value=form.money("reference", optional=True),
             )
+            created.append(position.id)
 
         self._run_form(Form(self, "Novo investimento", fields, check), apply)
+        if created:
+            self._select_position(created[0])
+            self.notify("Investimento criado. Descreva tipo, taxa e vencimento em Mais › Características.")
 
     def new_valuation(self) -> None:
         pos_id = self._need_position()

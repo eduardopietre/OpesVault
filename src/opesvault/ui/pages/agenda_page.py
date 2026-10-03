@@ -18,7 +18,12 @@ from opesvault.ui.pages.base import Page
 from opesvault.ui.theme import SPACE_L, tokens
 
 WEEKDAYS = ("Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb")
-KIND_LABELS = {"fatura": "Fatura", "recorrência": "Recorrência", "financiamento": "Financiamento"}
+KIND_LABELS = {
+    "fatura": "Fatura",
+    "recorrência": "Recorrência",
+    "financiamento": "Financiamento",
+    "vencimento": "Investimento",
+}
 DAY_ROLE = Qt.ItemDataRole.UserRole + 1
 
 

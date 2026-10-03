@@ -34,6 +34,7 @@ class Target(StrEnum):
     LEDGER = "ledger"
     SETTINGS = "settings"
     TAX = "tax"
+    INVESTMENTS = "investments"
 
 
 @dataclass(frozen=True)
@@ -279,6 +280,28 @@ def suspicion_alerts(ledger: Ledger, today: date) -> list[Alert]:
     ]
 
 
+def maturity_alerts(ledger: Ledger, today: date, horizon: int = HORIZON_DAYS) -> list[Alert]:
+    """An investment reaching its maturity date: register the redemption or the renewal."""
+    from opesvault.domain.agenda import EventState, _maturities
+
+    out = []
+    for event in _maturities(ledger, today - timedelta(days=LOOKBACK_DAYS), today + timedelta(days=horizon), today):
+        if event.state is EventState.DONE:
+            continue
+        late = event.on < today
+        out.append(
+            Alert(
+                Severity.SOON if not late else Severity.INFO,
+                event.title.replace("Vencimento — ", "Investimento vence: " if not late else "Investimento venceu: "),
+                f"{_when(event.on, today)} · registre o resgate ou a renovação",
+                Target.INVESTMENTS,
+                event.on,
+                event.ref,
+            )
+        )
+    return out
+
+
 def tax_alerts(ledger: Ledger, today: date, horizon: int = HORIZON_DAYS) -> list[Alert]:
     """DARFs of the month (renda variável, Carnê-Leão) and, in the return's season, what is pending."""
     from opesvault.tax.issues import reminders
@@ -332,5 +355,6 @@ def alerts(ledger: Ledger, today: date | None = None, horizon: int = HORIZON_DAY
         *suspicion_alerts(ledger, today),
         *import_alerts(ledger),
         *tax_alerts(ledger, today, horizon),
+        *maturity_alerts(ledger, today, horizon),
     ]
     return sorted(found, key=lambda a: (ORDER[a.severity], a.due_on or date.max, a.title))

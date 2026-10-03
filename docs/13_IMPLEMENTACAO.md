@@ -204,6 +204,19 @@ Pedido do usuário: contas bancárias com banco, código, agência e conta; titu
 - **Imposto de renda**: corrente 06.01 e poupança 04.01 com a discriminação "agência e conta"; investimentos com o tipo e a discriminação montados das características, CNPJ do banco da lista; a natureza e o código do rendimento vêm do código escolhido.
 - Testes: `test_banking` (domínio, 7) e `test_banking_ui` (interface, 4).
 
+### 2.6 Refinamentos de 03/10/2026 (revisão de telas e diálogos)
+
+Revisão de todas as telas, abas e diálogos em 1920×1080, 1280×800, 900×640 e no escuro.
+
+- **Vencimento de investimentos**: a data de vencimento das características aparece no Calendário ("Vencimento — CDB…", com o valor esperado de volta) e nos avisos ("Investimento vence: …", "Investimento venceu: … registre o resgate ou a renovação"); o aviso leva ao investimento (`InvestmentsPage.reveal`). Novo investimento fica selecionado e lembra onde descrever tipo, taxa e vencimento.
+- **Largura mínima**: a janela voltou a caber em 900 px (a aba Contas bancárias exigia 926): ações do cabeçalho quebram linha, a barra da aba usa `flow_row`, os painéis de Importar ficaram mais estreitos e a barra lateral mostra os nomes inteiros.
+- **Tabelas**: ordem inicial correta (antes de Z para A pela primeira coluna), barras de rolagem do tema, contador da barra lateral sem sobrepor o nome, competência "out/2026" no Livro, colunas de Importar que repartem a largura.
+- **Seleção automática**: documento, fatura em aberto mais antiga e investimento ficam escolhidos ao abrir a aba, sem área de detalhe vazia.
+- **Avisos**: em largura estreita a ação desce para baixo do texto; valores "R$ 1.000,00" não quebram linha.
+- **Diálogos**: o formulário rola quando não cabe na tela; listas editáveis só com "Fechar"; transferência e acerto já propõem destino e credor diferentes da origem; instituição com sugestões da lista de bancos; tabela do ano com colunas que repartem a largura.
+- **Outros**: Recorrências lado a lado em telas largas, Configurações com largura de leitura, saldo zero exibido como "R$ 0,00" e aba "Todas as contas".
+- Testes: `test_banking` (vencimento no calendário e nos avisos) e `test_banking_ui` (o aviso abre o investimento).
+
 ## 3. Cobertura de importação
 
 O catálogo fica em Configurações e em `importing/parsers/__init__.py`.

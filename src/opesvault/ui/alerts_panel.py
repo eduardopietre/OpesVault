@@ -22,6 +22,7 @@ ACTION_LABELS = {
     "ledger": "Ver lançamentos",
     "settings": "Abrir Configurações",
     "tax": "Ver pendências",
+    "investments": "Ver investimento",
 }
 # Alerts whose fix is one command open it directly, with the object already chosen.
 ACT_LABELS = {"accounts": "Pagar…", "recurrences": "Vincular…", "tax": "Registrar DARF…"}

@@ -152,7 +152,7 @@ class ImportPage(Page):
         self.batches = make_table(["Documento", "Situação", "Itens"])
         self.batches.setAccessibleName("Documentos importados")
         self.batches.itemSelectionChanged.connect(self._select_batch)
-        self.batches.setMinimumWidth(160)
+        self.batches.setMinimumWidth(130)
         stretch_column(self.batches)  # a long file name is cut, the item count stays in view
         self.import_button = button(
             "Importar arquivos…", self.import_files, role="primary", tip="PDF, CSV ou OFX (Ctrl+I); ou arraste para cá"
@@ -164,7 +164,7 @@ class ImportPage(Page):
         # ── review (center): document facts, target, actions, items
         self.batch_title = text("", "headline")
         self.batch_info = text("", "caption", wrap=True)
-        self.batch_info.setMinimumWidth(160)
+        self.batch_info.setMinimumWidth(130)
         self.batch_info.setTextFormat(Qt.TextFormat.RichText)
         self.target = QComboBox()
         self.target.setAccessibleName("Conta ou cartão do documento")
@@ -273,7 +273,7 @@ class ImportPage(Page):
 
         # ── original document (right): the evidence of the selected item
         self.viewer = PdfView()
-        self.viewer.setMinimumWidth(200)
+        self.viewer.setMinimumWidth(150)
         splitter = QSplitter(Qt.Orientation.Horizontal)
         splitter.setChildrenCollapsible(False)
         splitter.addWidget(self.batches)

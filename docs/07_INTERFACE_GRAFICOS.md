@@ -4,7 +4,7 @@ Versão 1.0 • 01/10/2026. Especificação de experiência, sem mockup executá
 
 ## 1. Estrutura de navegação
 
-Janela principal com navegação lateral: Visão geral; Orçamento; Calendário; Livro financeiro; Importar e revisar; Contas e cartões; Recorrências; Investimentos; Relatórios; Metas; Reembolsos e acertos; Documentos; Configurações. Arquivos soltos em qualquer tela vão para a importação. Nome do cofre, período, regime e estado de salvamento sempre visíveis.
+Janela principal com navegação lateral: Visão geral; Orçamento; Calendário; Livro financeiro; Importar e revisar; Contas e cartões; Recorrências; Investimentos; Relatórios; Metas; Reembolsos e acertos; Imposto de renda; Documentos; Configurações. Arquivos soltos em qualquer tela vão para a importação. Nome do cofre, período, regime e estado de salvamento sempre visíveis.
 
 Tela inicial apresenta criar/abrir/restaurar. Lista de recentes é opcional e guarda apenas caminhos consentidos; não exibe saldos com cofre fechado. Nome da família pode ficar oculto até desbloqueio.
 
@@ -20,7 +20,7 @@ Tela inicial apresenta criar/abrir/restaurar. Lista de recentes é opcional e gu
 | Recorrências | Regras, previsões e exceções | Confirmar padrão, pausar, editar e vincular realizado |
 | Investimento | Posição, custo, avaliações, movimentos e gráfico | Nova avaliação, aporte, distribuição, resgate e simulação |
 | Backup | Revisão salva, cópias e integridade | Criar cópia e restaurar em destino separado |
-| Calendário | Faturas, recorrências e parcelas de financiamento do mês, por dia, com situação | Abrir o ponto onde se paga ou vincula |
+| Calendário | Faturas, recorrências, parcelas de financiamento e vencimentos de investimentos do mês, por dia, com situação | Abrir o ponto onde se paga ou vincula |
 | Reembolsos e acertos | Reembolsos a receber; quem deve a quem na família e as despesas que formam o saldo | Registrar recebimento, negativa e acerto |
 | Metas | Metas, progresso, quanto falta por mês, ritmo recente; gráfico e tabela da meta | Criar, editar, arquivar |
 | Financiamentos (Contas e cartões) | Contrato, cronograma, saldo devedor, juros a pagar | Pagar parcela, simular e registrar amortização antecipada |

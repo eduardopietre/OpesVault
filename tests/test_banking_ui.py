@@ -156,3 +156,20 @@ def test_closing_the_vault_clears_the_tab(setup: tuple[MainWindow, Family]) -> N
     page.set_session(None)
     for table in tab.findChildren(QTableWidget):
         assert table.rowCount() == 0
+
+
+def test_maturity_alert_opens_the_investment(setup: tuple[MainWindow, Family]) -> None:
+    from opesvault.investments import service as inv
+    from opesvault.investments.model import AssetClass
+
+    window, f = setup
+    ledger = f.ledger
+    first = inv.create_position(ledger, "Fundo A", AssetClass.FUND, date(2025, 1, 1), reference_value="500")
+    second = inv.create_position(ledger, "CDB B", AssetClass.FIXED_INCOME, date(2025, 1, 1), reference_value="900")
+    assert first.id != second.id
+    window._refresh()
+    window.navigate("investments", second.id)
+    QApplication.processEvents()
+    page: Any = next(p for p in window.pages if type(p).__name__ == "InvestmentsPage")
+    assert page._position_id() == second.id
+    assert page.detail.isVisibleTo(page)

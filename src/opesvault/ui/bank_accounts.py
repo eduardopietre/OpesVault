@@ -24,7 +24,7 @@ from opesvault.ui.common import (
     stretch_column,
     summary_table,
 )
-from opesvault.ui.components import Collapsible, button, confirm, hbox, menu_button, scroll_body, text
+from opesvault.ui.components import Collapsible, button, confirm, flow_row, menu_button, scroll_body, text
 from opesvault.ui.theme import SPACE_L, SPACE_M
 
 
@@ -75,14 +75,13 @@ class BankAccountsTab(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, SPACE_L, 0, 0)
         layout.setSpacing(SPACE_M)
-        layout.addLayout(
-            hbox(
+        layout.addWidget(
+            flow_row(
                 button("Nova conta bancária…", self.add, role="primary"),
                 button("Editar…", self.edit),
                 button("Valores em uma data…", self.record_values),
                 button("Novo investimento…", self.add_investment),
                 menu_button("Mais", [("Encerrar conta bancária…", self.archive)]),
-                None,
             )
         )
         scroll, content = scroll_body()

@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any, ClassVar
 
 from PySide6.QtCore import QObject, QRunnable, QSettings, Qt, QThreadPool, QTimer, Signal
-from PySide6.QtGui import QAction, QCloseEvent, QColor, QKeySequence, QPainter
+from PySide6.QtGui import QAction, QCloseEvent, QColor, QFont, QFontMetrics, QKeySequence, QPainter
 from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
@@ -209,9 +209,9 @@ class MainWindow(QMainWindow):
         self.splitter.addWidget(self.sidebar)
         self.splitter.addWidget(self.stack)
         self.splitter.setStretchFactor(1, 1)
-        self.sidebar.setMinimumWidth(170)
+        self.sidebar.setMinimumWidth(self._sidebar_width())
         self.sidebar.setMaximumWidth(300)
-        self.splitter.setSizes([200, 1080])
+        self.splitter.setSizes([self._sidebar_width(), 1080])
         self.content = QWidget()
         self.content.setObjectName("Content")
         layout = QHBoxLayout(self.content)
@@ -1019,6 +1019,19 @@ class MainWindow(QMainWindow):
         "documents": "DocumentsPage",
         "tax": "TaxPage",
     }
+
+    def _sidebar_width(self) -> int:
+        """Wide enough for the longest destination in bold (the selected weight), its badge and the scrollbar."""
+        font = QFont(self.nav.font())
+        font.setWeight(QFont.Weight.DemiBold)
+        metrics = QFontMetrics(font)
+        badge = metrics.horizontalAdvance("88") + 12 + SPACE_S
+        label = max(  # only Visão geral and Importar e revisar carry a count
+            metrics.horizontalAdvance(page.title) + (badge if isinstance(page, (OverviewPage, ImportPage)) else 0)
+            for page in self.pages
+        )
+        scrollbar = 12
+        return min(300, label + 4 * SPACE_S + scrollbar + 2 * self.nav.frameWidth())
 
     def navigate(self, target: str, ref: object = None, *, act: bool = False) -> None:
         name = self.TARGETS.get(target)

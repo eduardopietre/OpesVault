@@ -58,7 +58,7 @@ Configurações (rodapé)
 
 | Componente | Uso |
 |---|---|
-| `PageHeader` | Título, contexto e ações de cada página. Sem largura para os dois, as ações descem para baixo do título |
+| `PageHeader` | Título, contexto e ações de cada página. As ações ficam numa linha ao lado do título quando cabem; sem largura, descem para baixo dele e quebram linha (`FlowLayout`), e a largura mínima é a da maior ação |
 | `EmptyState` | O que é a área, por que está vazia e o que fazer |
 | `Figures` / `Section` | Números-chave e grupos titulados, sem caixas. Grupos lado a lado usam uma grade de colunas iguais, com título, descrição e números nas mesmas linhas |
 | `summary_table` / `fit_to_rows` | Tabelas curtas de resumo (Visão geral, Orçamento, Recorrências, carteira de Investimentos): sem moldura nem zebra, divisórias entre linhas, altura igual ao conteúdo até um limite (depois rola). A coluna do nome ocupa a sobra; colunas numéricas à direita, cabeçalho incluído |
@@ -79,7 +79,7 @@ Configurações (rodapé)
 | `Collapsible` | Seção que se recolhe: o título é o botão (seta ▸/▾), as ações ficam na linha do título e somem quando recolhida. Com uma chave, a escolha do usuário (só o clique, não a mudança feita pelo código) fica neste computador |
 | `ChartPanel` (`ui/chart_panel.py`) | Gráfico e tabela de valores do mesmo `Chart`, cada um num `Collapsible`. Clicar numa linha aponta o valor no gráfico; clicar no gráfico seleciona a linha. Fluxos mensais ganham linhas "Total" e "Média"; posições (saldos) não somam. "Exportar valores…" grava CSV com o aviso de arquivo sem cifra. `clear()` ao fechar o cofre |
 
-Formulários (`FormDialog`) usam rótulos alinhados e um botão com verbo ("Registrar", "Salvar correção"). O erro aparece **dentro** do formulário, sem segundo diálogo. A senha é conferida enquanto o usuário digita: o botão só se habilita quando as senhas coincidem.
+Formulários (`FormDialog`) usam rótulos alinhados e um botão com verbo ("Registrar", "Salvar correção"). O formulário rola dentro do diálogo, que nunca passa de 85% da altura da tela; listas que se editam ali mesmo (pessoas, operações) têm só "Fechar" (`close_only`). O erro aparece **dentro** do formulário, sem segundo diálogo. A senha é conferida enquanto o usuário digita: o botão só se habilita quando as senhas coincidem.
 
 ## 4. Regras
 
@@ -117,6 +117,8 @@ Formulários (`FormDialog`) usam rótulos alinhados e um botão com verbo ("Regi
 
 9. **Gráfico e tabela juntos, abas só para objetos diferentes** (revisão de 03/10/2026). Os números de um gráfico ao longo do tempo aparecem na mesma tela, logo abaixo, numa tabela que pode ser recolhida (`ChartPanel`); nunca numa aba separada. Abas separam coisas diferentes (Contas, Cartões, Faturas, Financiamentos, Categorias; as seções de Configurações). Investimentos trocou as seis abas (Evolução, Resultado, Avaliações, Movimentos, Lotes, Rentabilidade) por seções recolhíveis numa página só.
 10. Toda tabela ou gráfico novo é limpo quando o cofre fecha (TA-31): `ChartPanel.clear()`, `ChartWidget.clear()` e `setRowCount(0)` no ramo sem sessão de `refresh`.
+11. Largura mínima (revisão de 03/10/2026): nenhuma página pode exigir mais que ~630 px de conteúdo, para caber em 900 px com a barra lateral. Barras de ação de abas usam `flow_row`, nunca `hbox`; a barra lateral se mede pelo nome mais longo em negrito, com o contador, sem cortar nomes. Conferir com `minimumSizeHint` da janela, não só pela captura.
+12. Tabelas que ordenam começam na ordem em que os dados chegam (sem indicador de ordenação), não na primeira coluna de trás para frente. Barras de rolagem são finas e seguem o tema. Listas com um item a examinar (documentos, faturas, investimentos) já abrem com um selecionado: a fatura em aberto mais antiga, o primeiro documento.
 
 ## 5. Fluxos: ver, ir ao ponto e concluir
 

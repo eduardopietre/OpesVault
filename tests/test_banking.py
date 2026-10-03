@@ -196,3 +196,40 @@ def test_bank_records_survive_save() -> None:
     item = _bank(f)
     restored = Ledger.from_records(f.ledger.to_records())
     assert banking.bank_accounts(restored)[item.id].number == "45678-X"
+
+
+def test_maturity_shows_in_the_calendar_and_alerts() -> None:
+    from opesvault.domain import agenda, alerts
+
+    f = family()
+    ledger = f.ledger
+    item = _bank(f)
+    pos = inv.create_position(
+        ledger,
+        "CDB Banco X",
+        AssetClass.FIXED_INCOME,
+        date(2025, 2, 1),
+        initial_cost="1000",
+        from_account=item.checking_id,
+    )
+    prof.save_profile(ledger, prof.InvestmentProfile(position_id=pos.id, maturity=date(2026, 10, 20)))
+
+    found = [
+        e
+        for e in agenda.events(ledger, date(2026, 10, 1), date(2026, 10, 31), date(2026, 10, 3))
+        if e.kind == "vencimento"
+    ]
+    assert len(found) == 1
+    assert found[0].ref == pos.id and found[0].target == "investments"
+    assert found[0].amount == Decimal("1000")
+    assert found[0].state is agenda.EventState.PENDING
+
+    soon = [a for a in alerts.alerts(ledger, date(2026, 10, 15)) if a.target is alerts.Target.INVESTMENTS]
+    assert [a.severity for a in soon] == [alerts.Severity.SOON]
+    assert soon[0].ref == pos.id and "CDB Banco X" in soon[0].title
+
+    late = [a for a in alerts.alerts(ledger, date(2026, 10, 25)) if a.target is alerts.Target.INVESTMENTS]
+    assert [a.severity for a in late] == [alerts.Severity.INFO]
+    assert "venceu" in late[0].title
+    after = agenda.events(ledger, date(2026, 10, 1), date(2026, 10, 31), date(2026, 10, 25))
+    assert [e.state for e in after if e.kind == "vencimento"] == [agenda.EventState.LATE]

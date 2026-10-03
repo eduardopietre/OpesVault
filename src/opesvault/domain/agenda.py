@@ -1,4 +1,4 @@
-"""Due-date calendar: card bills, recurrences and loan installments by day (docs/09 §1.3 E).
+"""Due-date calendar: card bills, recurrences, loan installments and investment maturities by day.
 
 Read-only: each event says what it is, how much, and whether it is paid, pending or late,
 with a reference the screen uses to open the place where it is resolved.
@@ -28,7 +28,7 @@ class AgendaEvent:
     on: date
     title: str
     amount: Decimal  # positive: money in; negative: money out
-    kind: str  # "fatura", "recorrência", "financiamento"
+    kind: str  # "fatura", "recorrência", "financiamento", "vencimento"
     state: EventState
     target: str  # page key that resolves it ("accounts", "recurrences")
     ref: object = None
@@ -105,7 +105,39 @@ def events(ledger: Ledger, start: date, end: date, today: date | None = None) ->
                     ("loan", plan.id, item.number),
                 )
             )
+    out += _maturities(ledger, start, end, today)
     return sorted(out, key=lambda e: (e.on, e.title))
+
+
+def _maturities(ledger: Ledger, start: date, end: date, today: date) -> list[AgendaEvent]:
+    """Investments that mature in the period (from their characteristics): the money comes back."""
+    from opesvault.investments.performance import value_at
+    from opesvault.investments.profile import profiles
+    from opesvault.investments.service import assets, positions, remaining_cost
+
+    out = []
+    for profile in profiles(ledger).values():
+        if profile.maturity is None or not (start <= profile.maturity <= end):
+            continue
+        pos = positions(ledger).get(profile.position_id)
+        if pos is None:
+            continue
+        observed = value_at(ledger, pos.id, profile.maturity)
+        value = observed.valuation.value if observed else remaining_cost(ledger, pos.id, profile.maturity)
+        late = profile.maturity < today
+        state = EventState.DONE if pos.closed else EventState.LATE if late else EventState.PENDING
+        out.append(
+            AgendaEvent(
+                profile.maturity,
+                f"Vencimento — {assets(ledger)[pos.asset_id].name}",
+                value,
+                "vencimento",
+                state,
+                "investments",
+                pos.id,
+            )
+        )
+    return out
 
 
 def by_day(found: list[AgendaEvent]) -> dict[date, list[AgendaEvent]]:

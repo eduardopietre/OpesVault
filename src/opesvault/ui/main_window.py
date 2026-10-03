@@ -32,7 +32,7 @@ from PySide6.QtWidgets import (
 from opesvault.domain.ledger import DomainError
 from opesvault.session import FrozenSnapshot, Session
 from opesvault.ui.common import run_guarded
-from opesvault.ui.components import confirm, decide
+from opesvault.ui.components import ElidedLabel, confirm, decide
 from opesvault.ui.idle_lock import IdleWatcher, LockPanel, lock_minutes
 from opesvault.ui.pages.accounts_page import AccountsPage
 from opesvault.ui.pages.agenda_page import AgendaPage
@@ -298,9 +298,9 @@ class MainWindow(QMainWindow):
         self.sidebar_button.setAccessibleName("Barra lateral")
         bar.addWidget(self.sidebar_button)
         # The vault's name leads; the file name is secondary context (full path in the tooltip).
-        self.context_label = text("", "strong")
+        self.context_label = ElidedLabel("", "strong")
         self.context_label.setAccessibleName("Cofre aberto")
-        self.file_label = text("", "secondary")
+        self.file_label = ElidedLabel("", "secondary")
         self.file_label.setAccessibleName("Arquivo do cofre")
         bar.addWidget(hbox_widget(self.context_label, self.file_label, spacing=SPACE_S))
         spacer = QWidget()

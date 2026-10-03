@@ -8,7 +8,6 @@ from PySide6.QtWidgets import (
     QComboBox,
     QInputDialog,
     QLineEdit,
-    QMessageBox,
     QSpinBox,
     QStackedWidget,
 )
@@ -41,6 +40,7 @@ from opesvault.ui.common import (
     money_edit,
     read_money,
     run_guarded,
+    select_id,
     selected_id,
     set_rows,
     stretch_column,
@@ -361,7 +361,7 @@ class RecurrencesPage(Page):
         start, end = self._window()
         pairs = auto_suggestions(ledger, start, end)
         if not pairs:
-            QMessageBox.information(self, "Recorrências", "Nenhuma previsão com um único lançamento compatível.")
+            self.notify("Nenhuma previsão com um único lançamento compatível.")
             return
         summary = "\n".join(
             f"{fmt_date(f.due_on)} {f.description} ← {op.description} {fmt_date(op.cash_date)}" for f, op in pairs
@@ -380,10 +380,7 @@ class RecurrencesPage(Page):
         if isinstance(ref, tuple) and len(ref) == 2 and ref[0] == "rule":
             self.commitments_section.set_expanded(True)
             for table in (self.rules, self.commitments):
-                for row in range(table.rowCount()):
-                    item = table.item(row, 0)
-                    if item is not None and item.data(Qt.ItemDataRole.UserRole) == ref[1]:
-                        table.selectRow(row)
+                select_id(table, ref[1])
             return
         if not (isinstance(ref, tuple) and len(ref) == 2):
             return
@@ -406,7 +403,7 @@ class RecurrencesPage(Page):
         ledger = self.session.ledger
         found = candidates(ledger, forecast)
         if not found:
-            QMessageBox.information(self, "Recorrências", "Nenhum lançamento compatível (conta, valor e data).")
+            self.notify("Nenhum lançamento compatível (conta, valor e data).")
             return
         labels = [f"{fmt_date(o.cash_date)} {o.description}" for o in found]
         choice, ok = QInputDialog.getItem(self, "Vincular", "Lançamento realizado:", labels, 0, False)

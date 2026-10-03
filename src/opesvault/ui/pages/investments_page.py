@@ -5,7 +5,6 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
-from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -40,6 +39,7 @@ from opesvault.ui.common import (
     money_edit,
     read_money,
     run_guarded,
+    select_id,
     selected_id,
     set_rows,
     stretch_column,
@@ -47,7 +47,9 @@ from opesvault.ui.common import (
 )
 from opesvault.ui.components import (
     Collapsible,
+    ElidedLabel,
     EmptyState,
+    Figures,
     adaptive,
     button,
     flow_row,
@@ -259,9 +261,13 @@ class InvestmentsPage(Page):
         returns.add(period)
         returns.add(self.returns_table)
         returns.add(self.returns_chart)
-        self.summary = text("", "caption", wrap=True)
+        # what it is (characteristics), the figures that matter, then how the result was obtained
+        self.summary = text("", "secondary", wrap=True)
         self.summary.setMinimumWidth(160)
-        self.detail_title = text("", "headline")
+        self.figures = Figures(FIGURE_LABELS)
+        self.method_note = text("", "caption", wrap=True)
+        self.method_note.setMinimumWidth(160)
+        self.detail_title = ElidedLabel("", "headline")
         self.detail = QWidget()
         dl = QVBoxLayout(self.detail)
         dl.setContentsMargins(0, 0, 0, 0)
@@ -270,6 +276,9 @@ class InvestmentsPage(Page):
         heading.setSpacing(SPACE_XS)
         heading.addWidget(self.detail_title)
         heading.addWidget(self.summary)
+        heading.addSpacing(SPACE_S)
+        heading.addWidget(self.figures)
+        heading.addWidget(self.method_note)
         dl.addLayout(heading)
         # wide: each chart beside the table it comes from (evolution and its observations, the
         # result and the movements behind it); narrow: one below the other
@@ -352,17 +361,9 @@ class InvestmentsPage(Page):
     def _position_id(self) -> UUID | None:
         return selected_id(self.positions)
 
-    def _select_position(self, position_id: object) -> None:
-        for row in range(self.positions.rowCount()):
-            item = self.positions.item(row, 0)
-            if item is not None and item.data(Qt.ItemDataRole.UserRole) == position_id:
-                self.positions.selectRow(row)
-                self.positions.scrollToItem(item)
-                return
-
     def reveal(self, ref: object, *, act: bool = False) -> None:
         """A maturity alert or calendar event: select the position; ``act`` opens its characteristics."""
-        self._select_position(ref)
+        select_id(self.positions, ref)
         self._show_detail()
         if act and self._position_id() == ref:
             self.edit_profile()
@@ -391,6 +392,9 @@ class InvestmentsPage(Page):
                 chart.clear()
             self.detail_title.setText("")
             self.summary.setText("Selecione um investimento.")
+            for label in FIGURE_LABELS:
+                self.figures.set(label, "—")
+            self.method_note.setText("")
             return
         position = inv.positions(self.session.ledger)[pos_id]
         self.detail_title.setText(inv.assets(self.session.ledger)[position.asset_id].name)
@@ -399,16 +403,10 @@ class InvestmentsPage(Page):
         ledger = self.session.ledger
         today = date.today()
         gain = unrealized(ledger, pos_id, today)
-        self.summary.setText(
-            " · ".join(
-                [
-                    *_profile_summary(ledger, pos_id),
-                    f"Não realizado: {fmt(gain.value) if gain.available else 'indisponível'}",
-                    gain.method,
-                    *gain.notes,
-                ]
-            )
-        )
+        self.summary.setText(" · ".join(_profile_summary(ledger, pos_id)))
+        for label, value, tone in _figures(ledger, pos_id, today, gain):
+            self.figures.set(label, value, tone)
+        self.method_note.setText(" · ".join([gain.method, *gain.notes]))
         set_rows(
             self.valuations,
             [
@@ -516,7 +514,7 @@ class InvestmentsPage(Page):
     def _need_position(self) -> UUID | None:
         pos_id = self._position_id()
         if pos_id is None:
-            QMessageBox.information(self, "Investimentos", "Selecione um investimento.")
+            self.notify("Selecione um investimento.")
         return pos_id
 
     def new_position(self) -> None:
@@ -566,7 +564,7 @@ class InvestmentsPage(Page):
 
         self._run_form(Form(self, "Novo investimento", fields, check), apply)
         if created:
-            self._select_position(created[0])
+            select_id(self.positions, created[0])
             self.notify("Investimento criado. Descreva tipo, taxa e vencimento em Mais › Características.")
 
     def new_valuation(self) -> None:
@@ -711,7 +709,7 @@ class InvestmentsPage(Page):
     def complete(self) -> None:
         event_id = selected_id(self.events)
         if self.session is None or event_id is None:
-            QMessageBox.information(self, "Investimentos", "Selecione o resgate incompleto na aba Movimentos.")
+            self.notify("Selecione o resgate incompleto em Movimentos.")
             return
         ledger = self.session.ledger
         fields: list[tuple[str, str, QWidget]] = [
@@ -741,7 +739,7 @@ class InvestmentsPage(Page):
         ledger = self.session.ledger
         rules = [(r.name, r) for r in ledger.entities("tax_rule").values()]
         if not rules:
-            QMessageBox.information(self, "Simulador", "Cadastre uma regra de imposto (botão 'Regra de imposto').")
+            self.notify("Cadastre antes uma regra de imposto (Mais › Regra de imposto…).")
             return
         fields: list[tuple[str, str, QWidget]] = [
             ("on", "Data:", date_edit()),
@@ -993,6 +991,46 @@ class InvestmentsPage(Page):
             self.changed()
 
 
+FIGURE_LABELS = ("Último valor", "Custo remanescente", "Não realizado", "Vencimento")
+
+
+def _figures(ledger: Ledger, position_id: UUID, today: date, gain: Any) -> list[tuple[str, str, str | None]]:
+    """The investment's key figures; a missing one says so instead of showing zero."""
+    from opesvault.investments import profile as prof
+
+    position = inv.position(ledger, position_id)
+    observed = value_at(ledger, position_id, today)
+    found = prof.profile_of(ledger, position_id)
+    maturity = found.maturity if found is not None else None
+    if maturity is None:
+        due, due_tone = "—", None
+    else:
+        days = (maturity - today).days
+        due = fmt_date(maturity) + ("" if position.closed else f" ({_days_text(days)})")
+        due_tone = "warning" if not position.closed and days <= 30 else None
+    gain_tone = None
+    if gain.available:
+        gain_tone = "positive" if gain.value > 0 else "negative" if gain.value < 0 else None
+    return [
+        ("Último valor", fmt(observed.valuation.value) if observed else "sem avaliação", None),
+        (
+            "Custo remanescente",
+            fmt(inv.remaining_cost(ledger, position_id)) if position.cost_known else "desconhecido",
+            None,
+        ),
+        ("Não realizado", fmt(gain.value) if gain.available else "indisponível", gain_tone),
+        ("Vencimento", due, due_tone),
+    ]
+
+
+def _days_text(days: int) -> str:
+    if days == 0:
+        return "hoje"
+    if days > 0:
+        return f"em {days} dia{'s' if days != 1 else ''}"
+    return f"há {-days} dia{'s' if days != -1 else ''}"
+
+
 def _profile_summary(ledger: Ledger, position_id: UUID) -> list[str]:
     """Type, where it is held, yield and maturity, from the investment's characteristics."""
     from opesvault.catalogs.irpf import asset_label
@@ -1008,8 +1046,6 @@ def _profile_summary(ledger: Ledger, position_id: UUID) -> list[str]:
         out.append(bank.where)
     if found.indexer is not None:
         out.append(prof.yield_text(found))
-    if found.maturity is not None:
-        out.append(f"vence em {fmt_date(found.maturity)}")
     if found.tax is not None:
         out.append(prof.TAX_LABELS[found.tax])
     return out

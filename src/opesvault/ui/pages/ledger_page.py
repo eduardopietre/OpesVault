@@ -624,9 +624,7 @@ class LedgerPage(Page):
         from opesvault.domain.saved_filters import SavedFilter, save_filter
 
         if self.period.currentData() == "custom":
-            QMessageBox.information(
-                self, "Filtros salvos", "Período personalizado não é salvo. Escolha um período com nome."
-            )
+            self.notify("Período personalizado não é salvo. Escolha um período com nome.")
             return
         name, ok = QInputDialog.getText(self, "Salvar filtro", "Nome (ex.: Cartão da Ana este mês):")
         if not ok or not name.strip():
@@ -824,7 +822,7 @@ class LedgerPage(Page):
         if op is None or self.session is None:
             return
         if not op.active:
-            QMessageBox.information(self, "Corrigir", "Lançamento cancelado não pode ser corrigido.")
+            self.notify("Lançamento cancelado não pode ser corrigido.")
             return
         ledger = self.session.ledger
         if is_simple(ledger, op):
@@ -844,7 +842,7 @@ class LedgerPage(Page):
         if op is None or self.session is None:
             return
         if not op.active:
-            QMessageBox.information(self, "Corrigir", "Lançamento cancelado não pode ser corrigido.")
+            self.notify("Lançamento cancelado não pode ser corrigido.")
             return
         dialog = OperationEditDialog(self, self.session.ledger, op)
         if dialog.exec() and run_guarded(self, dialog.apply):

@@ -74,7 +74,7 @@ def test_window_fits_a_small_desktop(window: MainWindow) -> None:
     for index in range(len(window.pages)):
         window.show_page(index)
         QApplication.processEvents()
-        assert window.minimumSizeHint().width() <= 1000, window.pages[index].title
+        assert window.minimumSizeHint().width() <= 900, window.pages[index].title
 
 
 def test_ledger_filters_show_how_to_clear_them(window: MainWindow) -> None:
@@ -131,7 +131,7 @@ def test_window_without_a_vault_fits_a_small_desktop(app: QApplication) -> None:
     window.resize(900, 640)
     window.show()
     QApplication.processEvents()
-    assert window.minimumSizeHint().width() <= 1000
+    assert window.minimumSizeHint().width() <= 900
 
 
 def test_adaptive_sits_side_by_side_only_when_there_is_room(app: QApplication) -> None:

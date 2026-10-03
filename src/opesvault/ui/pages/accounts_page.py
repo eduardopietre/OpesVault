@@ -7,7 +7,6 @@ tab, a chart and the table of its values sit together in collapsible sections.
 from datetime import date
 from typing import Any
 
-from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QComboBox, QTabWidget, QVBoxLayout, QWidget
 
 from opesvault.domain import queries
@@ -20,12 +19,13 @@ from opesvault.ui.common import (
     frameless,
     make_table,
     run_guarded,
+    select_id,
     selected_id,
     set_rows,
     stretch_column,
     summary_table,
 )
-from opesvault.ui.components import Collapsible, Figures, button, hbox, menu_button, scroll_body, text
+from opesvault.ui.components import Collapsible, ElidedLabel, Figures, button, hbox, menu_button, scroll_body, text
 from opesvault.ui.dialogs import ROLE_LABELS, SUBTYPE_LABELS, AccountDialog, CardDialog, CategoryDialog
 from opesvault.ui.pages.base import Page
 from opesvault.ui.theme import SPACE_L, SPACE_M
@@ -161,7 +161,7 @@ class AccountsPage(Page):
             button("Ver lançamentos", self._open_account_ledger, role="plain"),
         )
         self.checks_section.add(self.checks)
-        self.history_title = text("", "headline")
+        self.history_title = ElidedLabel("", "headline")
         box = QWidget()
         layout = QVBoxLayout(box)
         layout.setContentsMargins(0, SPACE_L, 0, 0)
@@ -307,7 +307,7 @@ class AccountsPage(Page):
             ],
         )
         fit_to_rows(self.accounts)
-        self._select_row(self.accounts, selected_account)
+        select_id(self.accounts, selected_account)
         if selected_id(self.accounts) is None and self.accounts.rowCount():
             self.accounts.selectRow(0)
         self._account_selected()
@@ -461,15 +461,15 @@ class AccountsPage(Page):
         """
         if isinstance(ref, tuple) and len(ref) == 3 and ref[0] == "loan":
             self.tabs.setCurrentIndex(self.loans_tab)
-            self._select_row(self.loans, ref[1])
+            select_id(self.loans, ref[1])
             self._refresh_loan_detail()
-            self._select_row(self.schedule, ref[2])
+            select_id(self.schedule, ref[2])
             if act:
                 self.pay_installment()
             return
         if isinstance(ref, tuple) and len(ref) == 2 and ref[0] == "check":
             self.tabs.setCurrentIndex(0)
-            self._select_row(self.accounts, ref[1])
+            select_id(self.accounts, ref[1])
             self.checks_section.set_expanded(True)
             return
         if not (isinstance(ref, tuple) and len(ref) == 2):
@@ -481,11 +481,7 @@ class AccountsPage(Page):
                 self.bill_card.setCurrentIndex(index)
                 break
         self._refresh_bills()
-        for row in range(self.bills.rowCount()):
-            item = self.bills.item(row, 0)
-            if item is not None and item.data(Qt.ItemDataRole.UserRole) == month:
-                self.bills.selectRow(row)
-                break
+        select_id(self.bills, month)
         if act:
             self.pay_bill()
 
@@ -636,16 +632,6 @@ class AccountsPage(Page):
 
     # ── account history and bank checks ─────────────
 
-    @staticmethod
-    def _select_row(table: Any, value: object) -> None:
-        if value is None:
-            return
-        for row in range(table.rowCount()):
-            item = table.item(row, 0)
-            if item is not None and item.data(Qt.ItemDataRole.UserRole) == value:
-                table.selectRow(row)
-                return
-
     def _account_selected(self) -> None:
         account_id = selected_id(self.accounts)
         visible = self.session is not None and account_id is not None
@@ -737,7 +723,7 @@ class AccountsPage(Page):
         fit_to_rows(self.loans)
         self.loans.setVisible(bool(rows))
         self.loan_empty.setVisible(not rows)
-        self._select_row(self.loans, selected)
+        select_id(self.loans, selected)
         if rows and selected_id(self.loans) is None:
             self.loans.selectRow(0)
         self._refresh_loan_detail()
@@ -785,14 +771,14 @@ class AccountsPage(Page):
             )
         set_rows(self.schedule, rows)
         fit_to_rows(self.schedule)
-        self._select_row(self.schedule, selected)
+        select_id(self.schedule, selected)
         if selected_id(self.schedule) is None:
             following = next(
                 (i for i in current.installments if state_of(ledger, plan_id, i, today) is not InstallmentState.PAID),
                 None,
             )
             if following is not None:
-                self._select_row(self.schedule, following.number)
+                select_id(self.schedule, following.number)
                 current = self.schedule.item(self.schedule.currentRow(), 0)
                 if current is not None:
                     self.schedule.scrollToItem(current)

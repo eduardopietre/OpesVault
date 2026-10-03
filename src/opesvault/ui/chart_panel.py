@@ -15,7 +15,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QFileDialog, QHeaderView, QTableWidgetItem, QVBoxLayout, QWidget
 
 from opesvault.charts.data import Chart, Point, TableRow, table_rows
-from opesvault.ui.common import fit_to_rows, fmt, summary_table
+from opesvault.ui.common import fit_columns, fit_to_rows, fmt, summary_table
 from opesvault.ui.components import Adaptive, Collapsible, button, confirm
 from opesvault.ui.theme import SPACE_L, SPACE_XL, tokens
 
@@ -129,7 +129,7 @@ class ChartPanel(QWidget):
                 item = QTableWidgetItem(value_label(value, chart.unit))
                 item.setTextAlignment(right)
                 table.setItem(r, c, item)
-        table.resizeColumnsToContents()
+        fit_columns(table)
         header = table.horizontalHeader()
         header.setStretchLastSection(False)
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)

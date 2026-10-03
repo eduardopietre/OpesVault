@@ -5,7 +5,6 @@ from datetime import date
 from typing import Any
 from uuid import UUID
 
-from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QVBoxLayout, QWidget
 
 from opesvault.catalogs.irpf import CHECKING, SAVINGS, asset_label
@@ -19,6 +18,7 @@ from opesvault.ui.common import (
     frameless,
     make_table,
     run_guarded,
+    select_id,
     selected_id,
     set_rows,
     stretch_column,
@@ -137,14 +137,8 @@ class BankAccountsTab(QWidget):
         fit_to_rows(self.table)
         self.empty.setVisible(not rows)
         self.table.setVisible(bool(rows))
-        if rows:
-            for row in range(self.table.rowCount()):
-                cell = self.table.item(row, 0)
-                if cell is not None and cell.data(Qt.ItemDataRole.UserRole) == current:
-                    self.table.selectRow(row)
-                    break
-            else:
-                self.table.selectRow(0)
+        if rows and not select_id(self.table, current):
+            self.table.selectRow(0)
         self._show_detail()
 
     def _selected(self) -> banking.BankAccount | None:

@@ -24,8 +24,10 @@ from PySide6.QtWidgets import QVBoxLayout, QWidget
 from opesvault.charts.data import Chart, Point
 from opesvault.domain.money import format_brl
 
+FOOTER_GID = "footer"  # the notes under the plot; `layout` wraps them to the chart's width
+MAX_LEVEL_TICKS = 8  # more month labels than this lean at 45°
+TITLE_PAD = 12
 # Muted, distinguishable hues: charts inform, they do not compete with the figures around them.
-TIGHT_RECT = (0, 0.04, 1, 1)  # room for the footer notes
 PALETTE = ["#3b6ea8", "#c0605a", "#4f8a5b", "#c49a3e", "#7d6b9e", "#3f8f99"]
 
 
@@ -70,7 +72,7 @@ def draw(figure: Figure, chart: Chart) -> list[tuple[Any, list[Point], str]]:
     figure.set_facecolor(t.content)
     ax = figure.add_subplot(111)
     ax.set_facecolor(t.content)
-    ax.set_title(chart.title, loc="left", fontsize=11, fontweight="semibold", color=t.text, pad=12)
+    ax.set_title(chart.title, loc="left", fontsize=11, fontweight="semibold", color=t.text, pad=TITLE_PAD)
     for side in ("top", "right", "left"):
         ax.spines[side].set_visible(False)
     ax.spines["bottom"].set_color(t.separator)
@@ -86,8 +88,15 @@ def draw(figure: Figure, chart: Chart) -> list[tuple[Any, list[Point], str]]:
             for p in s.points:
                 if str(p.x) not in labels:
                     labels.append(str(p.x))
+    right = None
+    if any(s.axis == "right" for s in drawn) and any(s.axis != "right" for s in drawn):
+        right = ax.twinx()  # a second scale only when both sides have series
+        right.spines[["top", "left", "bottom"]].set_visible(False)
+        right.spines["right"].set_visible(False)
+        right.tick_params(colors=t.secondary, labelsize=9, length=0)
     for index, s in enumerate(drawn):
         color = PALETTE[index % len(PALETTE)]
+        target = right if right is not None and s.axis == "right" else ax
         known = [p for p in s.points if p.y is not None]  # missing data is a gap, never zero
         if not known:
             continue
@@ -96,7 +105,7 @@ def draw(figure: Figure, chart: Chart) -> list[tuple[Any, list[Point], str]]:
         if s.style in ("bar", "forecast"):
             offset = bar_series.index(s) * width - 0.4 + width / 2
             xs = [x + offset for x in xs_all] if categorical else xs_all
-            artist = ax.bar(
+            artist = target.bar(
                 xs,
                 ys,
                 width=width if categorical else 5,
@@ -106,36 +115,122 @@ def draw(figure: Figure, chart: Chart) -> list[tuple[Any, list[Point], str]]:
                 hatch="//" if s.style == "forecast" else None,
             )
         elif s.style == "scatter":
-            artist = ax.scatter(xs_all, ys, label=s.name, color=color, marker="v", zorder=3)
+            artist = target.scatter(xs_all, ys, label=s.name, color=color, marker="v", zorder=3)
         elif s.style == "step":  # a balance holds until the next movement
-            (artist,) = ax.step(xs_all, ys, where="post", label=s.name, color=color)
-            ax.plot(xs_all, ys, linestyle="none", marker="o", markersize=3, color=color)
+            (artist,) = target.step(xs_all, ys, where="post", label=s.name, color=color)
+            target.plot(xs_all, ys, linestyle="none", marker="o", markersize=3, color=color)
         else:
-            (artist,) = ax.plot(xs_all, ys, label=s.name, color=color, marker="o" if s.marker_points else None)
+            (artist,) = target.plot(xs_all, ys, label=s.name, color=color, marker="o" if s.marker_points else None)
         hover.append((artist, known, s.name))
     if categorical:
         ax.set_xticks(range(len(labels)))
-        ax.set_xticklabels([_month_tick(label) for label in labels], rotation=45, ha="right")
+        # short month labels stay level while they fit; many of them lean to keep apart
+        lean = len(labels) > MAX_LEVEL_TICKS
+        ax.set_xticklabels(
+            [_month_tick(label) for label in labels], rotation=45 if lean else 0, ha="right" if lean else "center"
+        )
     else:
-        from matplotlib.dates import DateFormatter
+        from matplotlib.dates import AutoDateLocator, DateFormatter
 
+        ax.xaxis.set_major_locator(AutoDateLocator(minticks=3, maxticks=7))
         ax.xaxis.set_major_formatter(DateFormatter("%d/%m/%y"))
-        figure.autofmt_xdate()
     unit = chart.unit
-    ax.yaxis.set_major_formatter(
-        FuncFormatter(lambda v, _pos: f"{v * 100:.0f}%" if unit == "%" else format_brl(Decimal(str(round(v, 2)))))
+    formatter = FuncFormatter(
+        lambda v, _pos: f"{v * 100:.0f}%" if unit == "%" else format_brl(Decimal(str(round(v, 2))))
     )
+    ax.yaxis.set_major_formatter(formatter)
+    if right is not None:
+        right.yaxis.set_major_formatter(formatter)
     ax.grid(axis="y", color=t.separator, linewidth=0.8)
     ax.set_axisbelow(True)
     if len(hover) > 1:
-        legend = ax.legend(loc="best", fontsize=9, frameon=False)
+        handles = [artist for artist, _points, _name in hover]
+        names = [name for _artist, _points, name in hover]
+        # on the title's line, at the right: the legend never covers the data
+        legend = ax.legend(
+            handles,
+            names,
+            loc="lower right",
+            bbox_to_anchor=(1, 1.0),
+            ncol=min(len(handles), 3),
+            fontsize=9,
+            frameon=False,
+            borderaxespad=0.2,
+            handlelength=1.4,
+            columnspacing=1.2,
+        )
         for item in legend.get_texts():
             item.set_color(t.text)
     footer = " · ".join(chart.notes)
     if footer:
-        figure.text(0.01, 0.01, footer, fontsize=8, color=t.secondary)
-    figure.tight_layout(rect=TIGHT_RECT)
+        note = figure.text(0.01, 0.01, footer, fontsize=8, color=t.secondary, gid=FOOTER_GID, va="bottom")
+        note.set_label(footer)  # the unwrapped text: each resize wraps it again
+    layout(figure)
     return hover
+
+
+def layout(figure: Figure) -> None:
+    """Margins for the current size, with the legend on the title's line when both fit.
+
+    On a narrow chart the legend would run over the title; it then gets its own line below the
+    title instead. Called again on every resize.
+    """
+    if not figure.axes:
+        return
+    ax = figure.axes[0]
+    legend = ax.get_legend()
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")  # a size too small for the labels: keep the last layout
+        rect = _plot_rect(figure)
+        if legend is None:
+            figure.tight_layout(rect=rect)
+            return
+        legend.set_loc("lower right")
+        legend.set_bbox_to_anchor((1, 1.0), transform=ax.transAxes)
+        _title_pad(ax, TITLE_PAD)
+        figure.tight_layout(rect=rect)
+        renderer = figure.canvas.get_renderer()  # type: ignore[attr-defined]
+        title = getattr(ax, "_left_title", ax.title)  # set_title(loc="left") draws this one
+        if legend.get_window_extent(renderer).x0 > title.get_window_extent(renderer).x1 + 12:
+            return
+        # a line of its own, below the title, starting at the left edge of the plot
+        legend.set_loc("lower left")
+        legend.set_bbox_to_anchor((0, 1.0), transform=ax.transAxes)
+        height = legend.get_window_extent(renderer).height
+        _title_pad(ax, TITLE_PAD + height * 72 / figure.dpi)
+        figure.tight_layout(rect=rect)
+
+
+def _title_pad(ax: Any, pad: float) -> None:
+    """Moves the title up or down; set_title alone would also reset its size, weight and color."""
+    title = getattr(ax, "_left_title", ax.title)
+    ax.set_title(
+        title.get_text(),
+        loc="left",
+        pad=pad,
+        fontsize=title.get_fontsize(),
+        fontweight=title.get_fontweight(),
+        color=title.get_color(),
+    )
+
+
+def _plot_rect(figure: Figure) -> tuple[float, float, float, float]:
+    """The area left for the plot: above the footer notes, wrapped to the chart's width."""
+    import textwrap
+
+    footer = next((text for text in figure.texts if text.get_gid() == FOOTER_GID), None)
+    if footer is None:
+        return (0, 0.02, 1, 1)
+    renderer = figure.canvas.get_renderer()  # type: ignore[attr-defined]
+    whole = str(footer.get_label())
+    footer.set_text(whole)
+    one_line = footer.get_window_extent(renderer)
+    available = figure.bbox.width * 0.98
+    if one_line.width > available and whole:
+        columns = max(20, int(len(whole) * available / one_line.width))
+        footer.set_text(textwrap.fill(whole, columns))
+    height = footer.get_window_extent(renderer).height + 0.02 * figure.bbox.height
+    return (0, min(0.3, height / figure.bbox.height), 1, 1)
 
 
 class ChartWidget(QWidget):
@@ -170,14 +265,12 @@ class ChartWidget(QWidget):
         """Margins follow the new size: axis labels drawn for another size would be cut off."""
         if self.chart is None:
             return
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")  # a size too small for the labels: keep the last layout
-            self.figure.tight_layout(rect=TIGHT_RECT)
+        layout(self.figure)
 
     def show_chart(self, chart: Chart) -> None:
         self.chart = chart
         self._hover = draw(self.figure, chart)
-        ax = self.figure.axes[0]
+        ax = self.figure.axes[-1]  # the topmost: with a second scale, the box stays above its lines
         self._annotation = ax.annotate(
             "",
             xy=(0, 0),
@@ -195,7 +288,8 @@ class ChartWidget(QWidget):
             if hasattr(artist, "patches"):  # bar container
                 for patch, point in zip(artist.patches, points, strict=False):
                     if patch.contains(event)[0]:
-                        return name, point, (patch.get_x() + patch.get_width() / 2, patch.get_height())
+                        xy = (patch.get_x() + patch.get_width() / 2, patch.get_height())
+                        return name, point, self._to_top(patch, xy)
             else:
                 hit, details = artist.contains(event)
                 if hit and details.get("ind") is not None and len(details["ind"]):
@@ -205,8 +299,16 @@ class ChartWidget(QWidget):
                         x, y = artist.get_xydata()[index]
                     else:
                         x, y = artist.get_offsets()[index]
-                    return name, point, (x, y)
+                    return name, point, self._to_top(artist, (x, y))
         return None
+
+    def _to_top(self, artist: Any, xy: tuple[float, float]) -> tuple[float, float]:
+        """`xy` in the data coordinates of the annotation's axes (a series may use the second scale)."""
+        top = self.figure.axes[-1]
+        if artist.axes is top:
+            return xy
+        x, y = top.transData.inverted().transform(artist.axes.transData.transform(xy))
+        return float(x), float(y)
 
     def tooltip_text(self, name: str, point: Point) -> str:
         assert self.chart is not None
@@ -256,11 +358,11 @@ class ChartWidget(QWidget):
                     continue
                 if hasattr(artist, "patches"):
                     patch = artist.patches[index]
-                    xy = (patch.get_x() + patch.get_width() / 2, patch.get_height())
+                    xy = self._to_top(patch, (patch.get_x() + patch.get_width() / 2, patch.get_height()))
                 elif hasattr(artist, "get_xydata"):
-                    xy = tuple(artist.get_xydata()[index])
+                    xy = self._to_top(artist, tuple(artist.get_xydata()[index]))
                 else:
-                    xy = tuple(artist.get_offsets()[index])
+                    xy = self._to_top(artist, tuple(artist.get_offsets()[index]))
                 self._annotation.xy = xy
                 self._annotation.set_text(self.tooltip_text(name, point))
                 self._annotation.set_visible(True)

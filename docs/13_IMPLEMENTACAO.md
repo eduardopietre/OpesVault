@@ -217,6 +217,16 @@ Revisão de todas as telas, abas e diálogos em 1920×1080, 1280×800, 900×640 
 - **Outros**: Recorrências lado a lado em telas largas, Configurações com largura de leitura, saldo zero exibido como "R$ 0,00" e aba "Todas as contas".
 - Testes: `test_banking` (vencimento no calendário e nos avisos) e `test_banking_ui` (o aviso abre o investimento).
 
+### 2.7 Segunda rodada de refinamentos (03/10/2026)
+
+- **Nomes longos**: `ElidedLabel` no nome do projeto e do arquivo na barra, no documento em revisão, no investimento e na conta selecionados e no título do visualizador de PDF. Um nome de arquivo longo alargava a janela inteira.
+- **Investimento selecionado**: características numa linha, números principais (último valor, custo remanescente, não realizado com sinal de cor e texto, vencimento com dias que faltam, em destaque a menos de 30 dias) e, abaixo, como o resultado foi calculado.
+- **Gráficos**: legenda na linha do título ou numa linha própria quando falta largura, notas que quebram linha, meses na horizontal, segunda escala para séries pequenas (financiamento: saldo à esquerda, juros e amortização à direita); a dica de um ponto fica sobre a série certa.
+- **Tabelas**: a seta de ordenação deixou de reservar ~22 px em cada coluna; a tabela de faturas cabe em 1280 px sem rolagem lateral.
+- **Mensagens**: orientações curtas foram para a barra de status em vez de caixas de diálogo.
+- **Refatoração**: `select_id` substituiu onze cópias do laço que procurava a linha de um objeto; `fit_columns` mede as colunas em todas as tabelas.
+- Testes: `test_ui_refinements` (nome cortado, cabeçalho que quebra linha, colunas, janela de 900 px com nome longo, segunda escala, legenda e notas, `select_id`, aviso em vez de diálogo), `test_banking_ui` (novo investimento selecionado, números do investimento) e `test_ui_design` (a janela cabe em 900 px, não mais 1000).
+
 ## 3. Cobertura de importação
 
 O catálogo fica em Configurações e em `importing/parsers/__init__.py`.

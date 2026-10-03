@@ -8,7 +8,7 @@ from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import QLabel, QScrollArea, QSpinBox, QVBoxLayout, QWidget
 
 from opesvault.importing.model import ImportBatch
-from opesvault.ui.common import file_size, frameless, make_table, selected_id, set_rows
+from opesvault.ui.common import file_size, frameless, make_table, select_id, selected_id, set_rows
 from opesvault.ui.components import button
 from opesvault.ui.pages.base import Page
 
@@ -44,15 +44,14 @@ class PdfView(QWidget):
         self._refit.setInterval(120)
         self._refit.timeout.connect(self._render)
         self._fitted_width = 0
-        from opesvault.ui.components import hbox, text
+        from opesvault.ui.components import ElidedLabel, hbox, text
 
         self.image.setProperty("textStyle", "secondary")
         self.image.setWordWrap(True)
         self.page.setAccessibleName("Página")
         self.unlock_button = button("Informar senha…", self.ask_password, tip="A senha não é guardada")
         self.unlock_button.hide()
-        self.heading = text("Documento original", "headline")
-        self.heading.setMinimumWidth(60)  # the title gives way to the page number on a narrow pane
+        self.heading = ElidedLabel("Documento original", "headline")  # gives way to the page number
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addLayout(hbox(self.heading, None, text("Página", "secondary"), self.page))
@@ -275,8 +274,4 @@ class DocumentsPage(Page):
 
     def reveal(self, ref: object, *, act: bool = False) -> None:
         """A receipt opened from the Ledger: select its document."""
-        for row in range(self.table.rowCount()):
-            item = self.table.item(row, 0)
-            if item is not None and item.data(Qt.ItemDataRole.UserRole) == ref:
-                self.table.selectRow(row)
-                return
+        select_id(self.table, ref)

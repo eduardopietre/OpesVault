@@ -23,6 +23,7 @@ from opesvault.ui.common import (
     read_money,
     run_guarded,
     select_combo,
+    select_id,
     selected_id,
     set_rows,
     stretch_column,
@@ -203,11 +204,7 @@ class GoalsPage(Page):
         self.views.setCurrentIndex(0 if rows else 1)
         active = sum(1 for g in found if not g.archived)
         self.header.set_subtitle(f"{active} meta(s) ativa(s)" if found else "")
-        for row in range(self.table.rowCount()):
-            item = self.table.item(row, 0)
-            if item is not None and item.data(Qt.ItemDataRole.UserRole) == selected:
-                self.table.selectRow(row)
-        if rows and selected_id(self.table) is None:
+        if not select_id(self.table, selected) and rows and selected_id(self.table) is None:
             self.table.selectRow(0)
         self._show_selected()
 

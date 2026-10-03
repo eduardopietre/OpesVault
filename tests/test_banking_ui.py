@@ -173,3 +173,64 @@ def test_maturity_alert_opens_the_investment(setup: tuple[MainWindow, Family]) -
     page: Any = next(p for p in window.pages if type(p).__name__ == "InvestmentsPage")
     assert page._position_id() == second.id
     assert page.detail.isVisibleTo(page)
+
+
+def _investments(window: MainWindow) -> Any:
+    page: Any = next(p for p in window.pages if type(p).__name__ == "InvestmentsPage")
+    window.show_page(window.pages.index(page))
+    QApplication.processEvents()
+    return page
+
+
+def test_new_investment_is_selected_and_points_to_its_characteristics(
+    setup: tuple[MainWindow, Family], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from opesvault.investments import service as inv
+    from opesvault.investments.model import AssetClass
+    from opesvault.ui.pages import investments_page
+
+    window, f = setup
+    existing = inv.create_position(f.ledger, "Fundo A", AssetClass.FUND, date(2025, 1, 1), reference_value="500")
+    window._refresh()
+    page = _investments(window)
+    assert page._position_id() == existing.id
+
+    def fill(self: Any) -> int:
+        self.fields["name"].setText("Tesouro IPCA 2035")
+        self.fields["reference"].setText("1.000,00")
+        return 1
+
+    monkeypatch.setattr(investments_page.Form, "exec", fill)
+    messages: list[str] = []
+    monkeypatch.setattr(page, "notify", messages.append)
+    page.new_position()
+    created = next(p for p in inv.positions(f.ledger).values() if p.id != existing.id)
+    assert page._position_id() == created.id
+    assert messages and "Características" in messages[-1]
+
+
+def test_investment_figures_say_what_is_missing(setup: tuple[MainWindow, Family]) -> None:
+    from opesvault.investments import service as inv
+    from opesvault.investments.model import AssetClass
+    from opesvault.investments.performance import unrealized
+    from opesvault.ui.pages.investments_page import _days_text, _figures
+
+    _window, f = setup
+    ledger = f.ledger
+    pos = inv.create_position(ledger, "CDB", AssetClass.FIXED_INCOME, date(2026, 1, 2), reference_value="1000")
+    today = date(2026, 10, 3)
+    figures = {
+        label: (value, tone)
+        for label, value, tone in _figures(ledger, pos.id, today, unrealized(ledger, pos.id, today))
+    }
+    assert figures["Custo remanescente"][0] == "desconhecido"  # unknown, never zero
+    assert figures["Vencimento"] == ("—", None)
+    assert figures["Não realizado"][0] == "indisponível"
+
+    prof.save_profile(ledger, prof.InvestmentProfile(position_id=pos.id, maturity=date(2026, 10, 20)))
+    figures = {
+        label: (value, tone)
+        for label, value, tone in _figures(ledger, pos.id, today, unrealized(ledger, pos.id, today))
+    }
+    assert figures["Vencimento"] == ("20/10/2026 (em 17 dias)", "warning")  # within a month: stands out
+    assert [_days_text(n) for n in (0, 1, -1, -3)] == ["hoje", "em 1 dia", "há 1 dia", "há 3 dias"]

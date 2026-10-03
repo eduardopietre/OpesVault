@@ -59,6 +59,7 @@ Configurações (rodapé)
 | Componente | Uso |
 |---|---|
 | `PageHeader` | Título, contexto e ações de cada página. As ações ficam numa linha ao lado do título quando cabem; sem largura, descem para baixo dele e quebram linha (`FlowLayout`), e a largura mínima é a da maior ação |
+| `ElidedLabel` | Uma linha com nome do usuário (projeto, arquivo, documento, investimento): corta com "…" e mostra o texto inteiro na dica; `text()` devolve o texto inteiro. Nunca alarga a janela |
 | `EmptyState` | O que é a área, por que está vazia e o que fazer |
 | `Figures` / `Section` | Números-chave e grupos titulados, sem caixas. Grupos lado a lado usam uma grade de colunas iguais, com título, descrição e números nas mesmas linhas |
 | `summary_table` / `fit_to_rows` | Tabelas curtas de resumo (Visão geral, Orçamento, Recorrências, carteira de Investimentos): sem moldura nem zebra, divisórias entre linhas, altura igual ao conteúdo até um limite (depois rola). A coluna do nome ocupa a sobra; colunas numéricas à direita, cabeçalho incluído |
@@ -73,6 +74,7 @@ Configurações (rodapé)
 | `ui/catalog_widgets.py` | Listas com busca (digitar código ou parte do nome): bancos pelo COMPE, grupos e códigos de Bens e Direitos, tipos de investimento |
 | `ui/bank_accounts.py`, `ui/bank_dialogs.py` | Aba Contas bancárias e diálogos de conta bancária, valores em uma data (tabela por item, com "Ajustar o saldo") e investimento (novo ou características) |
 | `ui/tax_dialogs.py` | Diálogos do Imposto de renda: CPF/CNPJ, declarantes, natureza dos rendimentos (grade), contracheque, comprovantes, bem, informe (revisão linha a linha), tabela do ano, regras de renda variável, DARF |
+| `select_id`, `fit_columns` (`ui/common.py`) | Selecionar a linha de um objeto pelo id (`reveal`, manter a seleção ao atualizar). Colunas do tamanho do conteúdo sem reservar a seta de ordenação em todas (só na ordenada) |
 | `share_width` (`ui/common.py`) | Tabelas de trabalho (Livro): larguras base para todas as colunas; numa janela larga a sobra vai para as colunas de texto, em vez de virar uma faixa vazia. Uma coluna arrastada pelo usuário encerra a divisão automática |
 | `MonthPicker` | Mês por extenso, com botões ‹ › do mesmo tamanho e moldura do seletor, e Alt+← / Alt+→ |
 | `style_table`, `install_column_chooser` | Tabelas sem grade, zebradas, colunas escolhidas pelo botão direito e lembradas |
@@ -119,6 +121,8 @@ Formulários (`FormDialog`) usam rótulos alinhados e um botão com verbo ("Regi
 10. Toda tabela ou gráfico novo é limpo quando o cofre fecha (TA-31): `ChartPanel.clear()`, `ChartWidget.clear()` e `setRowCount(0)` no ramo sem sessão de `refresh`.
 11. Largura mínima (revisão de 03/10/2026): nenhuma página pode exigir mais que ~630 px de conteúdo, para caber em 900 px com a barra lateral. Barras de ação de abas usam `flow_row`, nunca `hbox`; a barra lateral se mede pelo nome mais longo em negrito, com o contador, sem cortar nomes. Conferir com `minimumSizeHint` da janela, não só pela captura.
 12. Tabelas que ordenam começam na ordem em que os dados chegam (sem indicador de ordenação), não na primeira coluna de trás para frente. Barras de rolagem são finas e seguem o tema. Listas com um item a examinar (documentos, faturas, investimentos) já abrem com um selecionado: a fatura em aberto mais antiga, o primeiro documento.
+13. Gráficos: a legenda fica na linha do título, à direita, e desce para uma linha própria quando os dois não cabem; as notas abaixo quebram linha conforme a largura. Rótulos de mês ficam na horizontal até 8 meses. Uma série de outra ordem de grandeza (juros e amortização da parcela ao lado do saldo devedor) usa a escala da direita (`Series.axis = "right"`), e a nota diz qual escala é qual.
+14. Orientação curta ("Selecione um investimento.", "Nada a copiar…", o resultado de uma aprovação) vai para a barra de status com `Page.notify`; `QMessageBox` fica para erros e relatórios que precisam ser lidos.
 
 ## 5. Fluxos: ver, ir ao ponto e concluir
 

@@ -31,6 +31,9 @@ class Series:
     hidden: bool = False  # only in the table of values, not drawn (keeps the chart readable)
     # Whether a total over the rows means something: flows (bars) add up, positions (lines) do not.
     summable: bool | None = None
+    # "right": drawn against a second scale (a loan's installment beside its balance), so a small
+    # series is not flattened by a large one
+    axis: str = "left"
 
     @property
     def adds_up(self) -> bool:
@@ -557,11 +560,14 @@ def loan_chart(ledger: Ledger, plan_id: UUID) -> Chart:
         "BRL",
         [
             Series("Saldo devedor", balance, style="line"),
-            Series("Juros", interest, style="line", summable=True),
-            Series("Amortização", amortization, style="line", summable=True),
+            Series("Juros", interest, style="line", summable=True, axis="right"),
+            Series("Amortização", amortization, style="line", summable=True, axis="right"),
             Series("Parcela", payment, hidden=True, summable=True),
         ],
-        ["Calculado pelo contrato informado; o saldo da conta no livro é a referência."],
+        [
+            "Saldo devedor na escala da esquerda; juros e amortização de cada parcela na da direita.",
+            "Calculado pelo contrato informado; o saldo da conta no livro é a referência.",
+        ],
     )
 
 

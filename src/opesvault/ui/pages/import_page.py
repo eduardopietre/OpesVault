@@ -38,11 +38,12 @@ from opesvault.ui.common import (
     make_table,
     read_money,
     run_guarded,
+    select_id,
     selected_id,
     set_rows,
     stretch_column,
 )
-from opesvault.ui.components import EmptyState, button, flow_row, hbox, hbox_widget, menu_button, text
+from opesvault.ui.components import ElidedLabel, EmptyState, button, flow_row, hbox, hbox_widget, menu_button, text
 from opesvault.ui.dialogs import FormDialog, ask_reason
 from opesvault.ui.pages.base import Page
 from opesvault.ui.pages.documents_page import PdfView
@@ -162,7 +163,7 @@ class ImportPage(Page):
         self.setAcceptDrops(True)  # dropping the files on the page is the natural gesture here
 
         # ── review (center): document facts, target, actions, items
-        self.batch_title = text("", "headline")
+        self.batch_title = ElidedLabel("", "headline")
         self.batch_info = text("", "caption", wrap=True)
         self.batch_info.setMinimumWidth(130)
         self.batch_info.setTextFormat(Qt.TextFormat.RichText)
@@ -346,13 +347,9 @@ class ImportPage(Page):
         self._show_batch()
 
     def _reselect_batch(self) -> None:
-        for row in range(self.batches.rowCount()):
-            cell = self.batches.item(row, 0)
-            if cell is not None and cell.data(Qt.ItemDataRole.UserRole) == self.batch_id:
-                self.batches.blockSignals(True)
-                self.batches.selectRow(row)
-                self.batches.blockSignals(False)
-                return
+        self.batches.blockSignals(True)  # the same document again: nothing to reload
+        select_id(self.batches, self.batch_id)
+        self.batches.blockSignals(False)
 
     def _batch(self) -> ImportBatch | None:
         if self.session is None or self.batch_id is None:
@@ -361,12 +358,8 @@ class ImportPage(Page):
 
     def reveal(self, ref: object, *, act: bool = False) -> None:
         """An import alert: open the document waiting for review."""
-        for row in range(self.batches.rowCount()):
-            item = self.batches.item(row, 0)
-            if item is not None and item.data(Qt.ItemDataRole.UserRole) == ref:
-                self.batches.selectRow(row)
-                self.items.setFocus()  # ready for Ctrl+Enter
-                return
+        if select_id(self.batches, ref):
+            self.items.setFocus()  # ready for Ctrl+Enter
 
     def _primary(self, reviewing: bool) -> None:
         """One primary action at a time: approving while a document is open, importing otherwise."""
@@ -603,7 +596,7 @@ class ImportPage(Page):
         item_id = item_id or selected_id(self.items)
         item = pipeline.items(ledger).get(item_id) if item_id else None
         if item is None:
-            QMessageBox.information(self, "Regra", "Selecione um item para criar a regra a partir dele.")
+            self.notify("Selecione um item para criar a regra a partir dele.")
             return
         batch = pipeline.batches(ledger).get(item.batch_id)
         dialog = RuleDialog(
@@ -780,11 +773,7 @@ class ImportPage(Page):
         if result is None:
             return False
         if item_ids is None:
-            QMessageBox.information(
-                self,
-                "Aprovação",
-                f"{result.created} operação(ões) criada(s), {result.linked} evidência(s) vinculada(s).",
-            )
+            self.notify(f"{result.created} operação(ões) criada(s), {result.linked} evidência(s) vinculada(s).")
             self.changed()
         return True
 
@@ -888,9 +877,7 @@ class ImportPage(Page):
         if batch is None or self.session is None or self._jobs or self._ai_job is not None:
             return
         if self._ai_client() is None:
-            QMessageBox.information(
-                self, "IA local", "A assistência por IA está desligada ou sem modelo escolhido (Configurações)."
-            )
+            self.notify("A assistência por IA está desligada ou sem modelo escolhido (Configurações).")
             return
         self._start_ai([batch.id], quiet=False)
 

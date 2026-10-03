@@ -11,7 +11,6 @@ from PySide6.QtWidgets import (
     QDialogButtonBox,
     QHBoxLayout,
     QLineEdit,
-    QMessageBox,
     QStackedWidget,
     QTableWidget,
     QTableWidgetItem,
@@ -25,6 +24,7 @@ from opesvault.domain.ledger import DomainError, Ledger
 from opesvault.domain.model import AccountType, YearMonth
 from opesvault.ui.common import (
     fill_combo,
+    fit_columns,
     fit_to_rows,
     fmt,
     money_edit,
@@ -32,6 +32,7 @@ from opesvault.ui.common import (
     read_money,
     run_guarded,
     select_combo,
+    select_id,
     stretch_column,
     style_table,
     summary_table,
@@ -96,7 +97,7 @@ class BudgetGridDialog(QDialog):
             header = self.table.horizontalHeaderItem(column)
             if header is not None:
                 header.setTextAlignment(right)
-        self.table.resizeColumnsToContents()
+        fit_columns(self.table)
         self.table.setColumnWidth(1, 140)
         stretch_column(self.table)
         self.error = text("", wrap=True)
@@ -276,11 +277,7 @@ class BudgetPage(Page):
             return
         category_id, month = ref
         self.month.set_month(month)
-        for row in range(self.table.rowCount()):
-            item = self.table.item(row, 0)
-            if item is not None and item.data(Qt.ItemDataRole.UserRole) == category_id:
-                self.table.selectRow(row)
-                return
+        select_id(self.table, category_id)
 
     def _selected_category(self) -> UUID | None:
         row = self.table.currentRow()
@@ -404,9 +401,7 @@ class BudgetPage(Page):
             self.notify(f"{copied} categoria(s) copiada(s) de {month_label(month.add(-1))}.")
             self.changed()
         elif copied == 0:
-            QMessageBox.information(
-                self,
-                "Orçamento",
+            self.notify(
                 f"Nada a copiar: {month_label(month.add(-1))} não tem orçamento, "
-                "ou estas categorias já estão definidas neste mês.",
+                "ou estas categorias já estão definidas neste mês."
             )

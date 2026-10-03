@@ -44,6 +44,64 @@ def text(value: str = "", style: str | None = None, *, wrap: bool = False) -> QL
     return label
 
 
+class ElidedLabel(QLabel):
+    """One line that gives way with "…" on a narrow pane; a cut text shows whole in the tooltip.
+
+    Its minimum width is a few characters, so a long name (a file, a project) never sets the
+    window's width. `text()` and `setText()` work on the whole text; a screen reader gets it as the
+    accessible description, next to any accessible name the caller sets.
+    """
+
+    def __init__(self, value: str = "", style: str | None = None, minimum_chars: int = 6) -> None:
+        super().__init__()
+        self._full = ""
+        self._own_tip = ""
+        self._minimum_chars = minimum_chars
+        if style:
+            self.setProperty("textStyle", style)
+        self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+        self.setText(value)
+
+    def text(self) -> str:  # the whole text; what is painted may be cut
+        return self._full
+
+    def setText(self, value: str) -> None:  # noqa: N802 - Qt override
+        self._full = value
+        self.setAccessibleDescription(value)
+        self._elide()
+        self.updateGeometry()
+
+    def clear(self) -> None:
+        self.setText("")
+
+    def setToolTip(self, value: str) -> None:  # noqa: N802 - Qt override
+        """A tooltip of the caller's (a full path) wins over the automatic one."""
+        self._own_tip = value
+        self._elide()
+
+    def _elide(self) -> None:
+        shown = self.fontMetrics().elidedText(self._full, Qt.TextElideMode.ElideRight, max(0, self.width()))
+        super().setText(shown)
+        super().setToolTip(self._own_tip or (self._full if shown != self._full else ""))
+
+    def minimumSizeHint(self) -> QSize:  # noqa: N802 - Qt override
+        metrics = self.fontMetrics()
+        width = min(metrics.horizontalAdvance("M" * self._minimum_chars), metrics.horizontalAdvance(self._full))
+        return QSize(width, super().minimumSizeHint().height())
+
+    def sizeHint(self) -> QSize:  # noqa: N802 - Qt override
+        return QSize(self.fontMetrics().horizontalAdvance(self._full) + 2, super().sizeHint().height())
+
+    def resizeEvent(self, event: object) -> None:  # noqa: N802 - Qt override
+        super().resizeEvent(event)  # type: ignore[arg-type]
+        self._elide()
+
+    def changeEvent(self, event: QEvent) -> None:  # noqa: N802 - Qt override
+        super().changeEvent(event)
+        if event.type() in (QEvent.Type.FontChange, QEvent.Type.StyleChange):
+            self._elide()  # the theme's text style changes the font after construction
+
+
 def set_tone(label: QLabel, tone: str | None) -> None:
     """positive / negative / warning, always paired with text or a sign, never color alone."""
     label.setProperty("tone", tone or "")

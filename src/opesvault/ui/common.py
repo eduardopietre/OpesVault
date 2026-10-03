@@ -233,6 +233,7 @@ def make_table(headers: list[str]) -> QTableWidget:
     # clicks a header; Qt's default indicator would sort by the first column, descending.
     table.horizontalHeader().setSortIndicator(-1, Qt.SortOrder.AscendingOrder)
     table.setSortingEnabled(True)
+    table.horizontalHeader().sortIndicatorChanged.connect(lambda column, _order: _room_for_arrow(table, column))
     return table
 
 
@@ -304,12 +305,57 @@ def set_rows(table: QTableWidget, rows: list[tuple[list[Any], Any]]) -> None:
     table.setSortingEnabled(sortable)
     header = table.horizontalHeader()
     stretched = [c for c in range(table.columnCount()) if header.sectionResizeMode(c) == QHeaderView.ResizeMode.Stretch]
-    table.resizeColumnsToContents()
+    fit_columns(table)
     for column in stretched:  # resizing to contents leaves a Stretch column at its content width
         header.setSectionResizeMode(column, QHeaderView.ResizeMode.Stretch)
     if header.stretchLastSection():  # same for the last section, until the flag is set again
         header.setStretchLastSection(False)
         header.setStretchLastSection(True)
+
+
+def select_id(table: QTableWidget, value: object) -> bool:
+    """Selects and shows the row whose id (stored by `set_rows` in column 0) is `value`.
+
+    False when there is no such row, so a caller can fall back to the first one.
+    """
+    if value is None:
+        return False
+    for row in range(table.rowCount()):
+        item = table.item(row, 0)
+        if item is not None and item.data(Qt.ItemDataRole.UserRole) == value:
+            table.selectRow(row)
+            table.scrollToItem(item)
+            return True
+    return False
+
+
+def fit_columns(table: QTableView) -> None:
+    """Columns as wide as their contents, like `resizeColumnsToContents`.
+
+    A sortable header asks for the sort arrow's room on every column, about 22 px each, which
+    pushed a ten-column table past the window; here only the sorted column keeps that room.
+    """
+    table.resizeColumnsToContents()
+    header = table.horizontalHeader()
+    if not header.isSortIndicatorShown():
+        return
+    with_arrow = [header.sectionSizeHint(c) for c in range(header.count())]
+    header.setSortIndicatorShown(False)
+    without_arrow = [header.sectionSizeHint(c) for c in range(header.count())]
+    header.setSortIndicatorShown(True)
+    sorted_column = header.sortIndicatorSection()
+    for column in range(header.count()):
+        if header.isSectionHidden(column) or column == sorted_column:
+            continue
+        if with_arrow[column] > without_arrow[column] and header.sectionSize(column) == with_arrow[column]:
+            table.setColumnWidth(column, max(without_arrow[column], table.sizeHintForColumn(column)))
+
+
+def _room_for_arrow(table: QTableView, column: int) -> None:
+    """The column the user just sorted gets the arrow's room back."""
+    header = table.horizontalHeader()
+    if 0 <= column < header.count() and header.sectionResizeMode(column) == QHeaderView.ResizeMode.Interactive:
+        table.setColumnWidth(column, max(header.sectionSize(column), header.sectionSizeHint(column)))
 
 
 def selected_id(table: QTableWidget) -> Any:

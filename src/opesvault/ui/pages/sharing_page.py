@@ -4,7 +4,6 @@
 from typing import Any
 from uuid import UUID
 
-from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QStackedWidget
 
 from opesvault.domain import sharing
@@ -14,6 +13,7 @@ from opesvault.ui.common import (
     fmt,
     fmt_date,
     run_guarded,
+    select_id,
     selected_id,
     set_rows,
     stretch_column,
@@ -151,10 +151,7 @@ class SharingPage(Page):
         )
         fit_to_rows(self.balances)
         if selected is not None:
-            for row in range(self.balances.rowCount()):
-                cell = self.balances.item(row, 0)
-                if cell is not None and cell.data(Qt.ItemDataRole.UserRole) == selected:
-                    self.balances.selectRow(row)
+            select_id(self.balances, selected)
         elif self._balances:
             self.balances.selectRow(0)
         self._show_shares()

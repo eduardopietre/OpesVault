@@ -132,9 +132,9 @@ class SettingsPage(Page):
         self.ai_enabled.toggled.connect(self._show_ai_model)
 
         self.tabs = QTabWidget()
-        self.tabs.addTab(backup, "Backup e salvamento")
-        self.privacy_tab = self.tabs.addTab(privacy, "Privacidade deste computador")
-        self.tabs.addTab(ai, "IA local")
+        self.tabs.addTab(_readable(backup), "Backup e salvamento")
+        self.privacy_tab = self.tabs.addTab(_readable(privacy), "Privacidade deste computador")
+        self.tabs.addTab(_readable(ai), "IA local")
         layout = self.page_layout()
         layout.addWidget(self.tabs, 1)
         self.header.set_subtitle("Backup e IA ficam no cofre; privacidade vale para este computador")
@@ -337,3 +337,19 @@ def _form() -> QFormLayout:
     form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
     form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.DontWrapRows)
     return form
+
+
+READABLE_WIDTH = 880  # px: forms and their notes keep a line length that reads well on 1920x1080
+
+
+def _readable(widget: QWidget) -> QWidget:
+    """The form at a comfortable width, aligned left, instead of fields as long as the screen."""
+    from PySide6.QtWidgets import QHBoxLayout
+
+    widget.setMaximumWidth(READABLE_WIDTH)
+    holder = QWidget()
+    row = QHBoxLayout(holder)
+    row.setContentsMargins(0, 0, 0, 0)
+    row.addWidget(widget, 1)
+    row.addStretch(0)
+    return holder

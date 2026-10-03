@@ -51,9 +51,11 @@ class PdfView(QWidget):
         self.page.setAccessibleName("Página")
         self.unlock_button = button("Informar senha…", self.ask_password, tip="A senha não é guardada")
         self.unlock_button.hide()
+        self.heading = text("Documento original", "headline")
+        self.heading.setMinimumWidth(60)  # the title gives way to the page number on a narrow pane
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.addLayout(hbox(text("Documento original", "headline"), None, text("Página", "secondary"), self.page))
+        layout.addLayout(hbox(self.heading, None, text("Página", "secondary"), self.page))
         layout.addWidget(scroll)
         layout.addWidget(self.unlock_button, 0, Qt.AlignmentFlag.AlignHCenter)
 
@@ -244,6 +246,8 @@ class DocumentsPage(Page):
             if item is not None:
                 item.setToolTip(f"{file_size(d.meta.size)} · SHA-256 {d.meta.sha256}")
         documents = self.session.documents
+        if documents and not self.table.selectedItems():
+            self.table.selectRow(0)  # the viewer shows something instead of an empty pane
         self.views.setCurrentIndex(0 if documents else 1)
         size = file_size(sum(d.meta.size for d in documents))
         self.header.set_subtitle(f"{len(documents)} arquivo(s) · {size}" if documents else "")

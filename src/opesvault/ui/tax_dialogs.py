@@ -187,7 +187,7 @@ class PeopleDialog(FormDialog):
     """Who files a return and who is a dependent: one line per member, edited one at a time."""
 
     def __init__(self, parent: QWidget | None, ledger: Ledger) -> None:
-        super().__init__(parent, "Declarantes e dependentes", "Fechar")
+        super().__init__(parent, "Declarantes e dependentes", "Fechar", close_only=True)
         self.ledger = ledger
         self.edited = False
         self.table = summary_table(["Integrante", "CPF", "Nascimento", "Declaração"], max_rows=12)
@@ -342,7 +342,7 @@ class OperationsDialog(FormDialog):
     """The operations behind a line: detail payslips ("detail") or attach receipts ("receipts")."""
 
     def __init__(self, parent: QWidget | None, session: Any, operation_ids: tuple[UUID, ...], mode: str) -> None:
-        super().__init__(parent, "Contracheques" if mode == "detail" else "Comprovantes", "Fechar")
+        super().__init__(parent, "Contracheques" if mode == "detail" else "Comprovantes", "Fechar", close_only=True)
         self.session, self.ids, self.mode = session, operation_ids, mode
         self.edited = False
         last = "Bruto / IR / INSS" if mode == "detail" else "Comprovante"
@@ -691,7 +691,9 @@ class ParametersDialog(FormDialog):
         self.table.verticalHeader().setVisible(False)
         self.table.setAccessibleName("Faixas da tabela anual")
         self.table.setMinimumHeight(200)
-        stretch_column(self.table, 0)
+        from PySide6.QtWidgets import QHeaderView
+
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)  # three equal columns
         for bracket in current.brackets or (None,) * 5:
             self._add(bracket)
         from opesvault.ui.components import hbox_widget
@@ -794,6 +796,7 @@ class VariableRulesDialog(FormDialog):
     def __init__(self, parent: QWidget | None, ledger: Ledger) -> None:
         super().__init__(parent, "Regras de renda variável", "Salvar")
         self.ledger = ledger
+        self.setMinimumWidth(600)
         current = records.variable_rules(ledger)
         self.valid_from = date_edit(current.valid_from if current else date(date.today().year, 1, 1))
         self.valid_from.setAccessibleName("Vale a partir de")

@@ -12,6 +12,7 @@ from PySide6.QtGui import QDragEnterEvent, QDropEvent, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QComboBox,
     QFileDialog,
+    QHeaderView,
     QInputDialog,
     QLineEdit,
     QMessageBox,
@@ -178,6 +179,10 @@ class ImportPage(Page):
 
         self.items = make_table(["Situação", "Data", "Descrição", "Tipo", "Valor", "Categoria", "Observações"])
         self.items.setAccessibleName("Itens extraídos")
+        # Description and notes share the room, so the table never scrolls sideways on a wide window.
+        for column in (2, 6):
+            self.items.horizontalHeader().setSectionResizeMode(column, QHeaderView.ResizeMode.Stretch)
+        self.items.horizontalHeader().setStretchLastSection(False)
         self.items.itemSelectionChanged.connect(self._select_item)
         approve_all = button(
             "Aprovar prontos",

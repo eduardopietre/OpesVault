@@ -12,6 +12,7 @@ from PySide6.QtWidgets import QComboBox, QTabWidget, QVBoxLayout, QWidget
 
 from opesvault.domain import queries
 from opesvault.domain.model import AccountType, YearMonth
+from opesvault.domain.money import ZERO
 from opesvault.ui.common import (
     fit_to_rows,
     fmt,
@@ -80,7 +81,7 @@ class AccountsPage(Page):
 
         self.bank_tab = BankAccountsTab(self.changed, self.notify)
         tabs.addTab(self.bank_tab, "Contas bancárias")
-        tabs.addTab(self._accounts_tab(), "Contas")
+        tabs.addTab(self._accounts_tab(), "Todas as contas")
         tabs.addTab(
             self._with_buttons(self.cards, [("Novo cartão…", self.add_card), ("Editar…", self.edit_card)]), "Cartões"
         )
@@ -296,7 +297,7 @@ class AccountsPage(Page):
                         SUBTYPE_LABELS.get(a.subtype, a.subtype.value),
                         a.institution or "",
                         ", ".join(names.get(h, "?") for h in a.holders),
-                        fmt(balances.get(a.id)),
+                        fmt(balances.get(a.id, ZERO)),
                         check_label(a.id),
                     ],
                     a.id,
@@ -320,7 +321,7 @@ class AccountsPage(Page):
                         c.last4,
                         str(c.closing_day),
                         str(c.due_day),
-                        fmt(balances.get(c.liability_account_id)),
+                        fmt(balances.get(c.liability_account_id, ZERO)),
                     ],
                     c.id,
                 )
@@ -417,6 +418,11 @@ class AccountsPage(Page):
                 )
             )
         set_rows(self.bills, rows)
+        if rows and not self.bills.selectedItems():
+            # the oldest bill still open is the one to pay: "Pagar…" is ready without a click
+            states = [self.bills.item(r, 9) for r in range(self.bills.rowCount())]
+            open_rows = [r for r, cell in enumerate(states) if cell is not None and cell.text() != "Paga"]
+            self.bills.selectRow(open_rows[-1] if open_rows else 0)
         self._bill_selected()
         from opesvault.charts.data import card_bills_history
 

@@ -61,3 +61,18 @@ def _searchable(combo: QComboBox) -> None:
         completer.setFilterMode(Qt.MatchFlag.MatchContains)
         completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
         completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+
+
+def institution_edit(value: str | None):  # type: ignore[no-untyped-def]
+    """Free text for the institution, with the COMPE list as suggestions while typing."""
+    from PySide6.QtWidgets import QLineEdit
+
+    edit = QLineEdit(value or "")
+    edit.setAccessibleName("Instituição")
+    edit.setPlaceholderText("digite para escolher na lista de bancos")
+    names = sorted({b.name for b in banks()}, key=str.casefold)
+    completer = QCompleter(names, edit)
+    completer.setFilterMode(Qt.MatchFlag.MatchContains)
+    completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+    edit.setCompleter(completer)
+    return edit

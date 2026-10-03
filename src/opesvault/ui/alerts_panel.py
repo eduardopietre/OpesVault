@@ -10,6 +10,7 @@ from opesvault.ui.components import button, text
 from opesvault.ui.theme import SPACE_M, SPACE_S, SPACE_XS
 
 MAX_VISIBLE = 6
+COMPACT_BELOW = 640  # px: below this width the action button sits under the alert's text
 SEVERITY_WORDS = {Severity.URGENT: "Atrasado", Severity.SOON: "Em breve", Severity.INFO: "Aguardando"}
 SEVERITY_TONES = {Severity.URGENT: "negative", Severity.SOON: "warning", Severity.INFO: None}
 ACTION_LABELS = {
@@ -53,7 +54,15 @@ class AlertsPanel(QWidget):
         layout.addLayout(top)
         layout.addLayout(self.grid)
         self._alerts: list[Alert] = []
+        self._compact = False
         self.setAccessibleName("Avisos")
+
+    def resizeEvent(self, event: object) -> None:  # noqa: N802 - Qt override
+        compact = self.width() < COMPACT_BELOW
+        if compact != self._compact:
+            self._compact = compact
+            self._render()
+        super().resizeEvent(event)  # type: ignore[arg-type]
 
     def set_alerts(self, alerts: list[Alert]) -> None:
         self._alerts = alerts
@@ -85,8 +94,8 @@ class AlertsPanel(QWidget):
             lines = QVBoxLayout(body)
             lines.setContentsMargins(0, 0, 0, 0)
             lines.setSpacing(0)
-            lines.addWidget(text(alert.title, wrap=True))
-            lines.addWidget(text(alert.detail, "caption", wrap=True))
+            lines.addWidget(text(_keep_together(alert.title), wrap=True))
+            lines.addWidget(text(_keep_together(alert.detail), "caption", wrap=True))
             target = alert.target.value
             # A bill or installment can be paid before or after it is due; a forecast is linked only once
             # it is late. A balance that differs from the bank opens the account, there is no one-step fix.
@@ -105,9 +114,17 @@ class AlertsPanel(QWidget):
             act.setAccessibleName(f"{label}: {alert.title}")
             self.grid.addWidget(word, row, 0, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
             self.grid.addWidget(body, row, 1)
-            self.grid.addWidget(act, row, 2, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            if self._compact:  # a narrow column (the overview's rail): the action goes under the text
+                lines.addWidget(act, 0, Qt.AlignmentFlag.AlignLeft)
+            else:
+                self.grid.addWidget(act, row, 2, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         hidden = len(self._alerts) - MAX_VISIBLE
         self.toggle.setVisible(hidden > 0)
         self.toggle.setText("Mostrar menos" if self._expanded else f"Mostrar todos ({len(self._alerts)})")
         self.heading.setText(f"Atenção · {len(self._alerts)}")
         self.setVisible(bool(self._alerts) and not self.dismissed)
+
+
+def _keep_together(value: str) -> str:
+    """'R$ 1.371,50' never breaks between the symbol and the number."""
+    return value.replace("R$ ", "R$\u00a0")

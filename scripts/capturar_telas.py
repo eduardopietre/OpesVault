@@ -243,6 +243,7 @@ def main() -> int:
     parser.add_argument("--out", type=Path, default=ROOT / "build" / "telas")
     parser.add_argument("--size", default="1280x800")
     parser.add_argument("--dark", action="store_true")
+    parser.add_argument("--tabs", action="store_true", help="também cada aba das páginas com abas")
     args = parser.parse_args()
     width, height = (int(v) for v in args.size.split("x"))
 
@@ -273,6 +274,15 @@ def main() -> int:
             app.processEvents()
         slug = page.title.lower().replace(" ", "-")
         window.grab().save(str(args.out / f"{index + 1:02d}-{slug}.png"))
+        tabs = getattr(page, "tabs", None)
+        if args.tabs and tabs is not None:
+            for tab in range(1, tabs.count()):
+                tabs.setCurrentIndex(tab)
+                for _ in range(3):
+                    app.processEvents()
+                name = tabs.tabText(tab).lower().replace(" ", "-")
+                window.grab().save(str(args.out / f"{index + 1:02d}{chr(96 + tab)}-{slug}-{name}.png"))
+            tabs.setCurrentIndex(0)
     window.lock_screen()
     app.processEvents()
     window.grab().save(str(args.out / "99-bloqueado.png"))

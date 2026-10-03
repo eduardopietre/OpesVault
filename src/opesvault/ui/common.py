@@ -229,6 +229,9 @@ def make_table(headers: list[str]) -> QTableWidget:
     table.setHorizontalHeaderLabels(headers)
     style_table(table)
     table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+    # Rows keep the order the page gave them (dates, severity, largest first) until the user
+    # clicks a header; Qt's default indicator would sort by the first column, descending.
+    table.horizontalHeader().setSortIndicator(-1, Qt.SortOrder.AscendingOrder)
     table.setSortingEnabled(True)
     return table
 

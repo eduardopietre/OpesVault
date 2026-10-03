@@ -215,6 +215,8 @@ class SettlementDialog(FormDialog):
         fill_combo(self.creditor, members)
         select_combo(self.debtor, debtor)
         select_combo(self.creditor, creditor)
+        if creditor is None and self.creditor.count() > 1 and combo_value(self.creditor) == combo_value(self.debtor):
+            self.creditor.setCurrentIndex(1 if self.debtor.currentIndex() == 0 else 0)  # someone else, by default
         self.amount = money_edit()
         self.amount.setAccessibleName("Valor")
         if amount is not None:

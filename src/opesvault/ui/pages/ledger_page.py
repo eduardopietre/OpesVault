@@ -183,7 +183,7 @@ class OperationsModel(QAbstractTableModel):
             case self.AMOUNT:
                 return operation_amount(op)
             case self.COMPETENCE:
-                return str(op.competence) if op.competence else "—"
+                return _short_month(op.competence) if op.competence else "—"
             case self.KIND:
                 return KIND_LABELS.get(op.kind, op.kind.value)
             case self.ORIGIN:
@@ -256,7 +256,7 @@ class OperationInspector(QScrollArea):
             ("Lançamento", fmt_date(op.booked_on)),
             ("Liquidação", fmt_date(op.settled_on)),
             ("Vencimento", fmt_date(op.due_on)),
-            ("Competência", str(op.competence) if op.competence else "—"),
+            ("Competência", month_label(op.competence) if op.competence else "—"),
             ("Responsável", member.name if member else "Projeto"),
         ):
             add(_pair(label, value))
@@ -1003,3 +1003,10 @@ class LedgerPage(Page):
             for h in self.session.ledger.history_of(op.id)
         ]
         QMessageBox.information(self, "Histórico", "\n".join(lines) or "Sem histórico.")
+
+
+def _short_month(month: Any) -> str:
+    """'out/2026' (how the charts and tables read months), not '2026-10'."""
+    from opesvault.ui.chart_panel import MONTHS
+
+    return f"{MONTHS[month.month - 1]}/{month.year}"

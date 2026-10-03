@@ -232,6 +232,14 @@ QListWidget::item:selected {{ background: {t.selection_inactive}; color: {t.text
 QListWidget::item:selected:active {{ background: {t.selection}; color: {t.accent_text}; }}
 /* Selection already shows where focus is; the dotted current-cell box only adds noise. */
 QTableView, QTableWidget {{ outline: 0; }}
+/* Thin, quiet scroll bars with the theme's colors (tables without a frame had black Fusion bars). */
+QScrollBar:vertical {{ background: transparent; width: 12px; margin: 0; border: none; }}
+QScrollBar:horizontal {{ background: transparent; height: 12px; margin: 0; border: none; }}
+QScrollBar::handle:vertical {{ background: {t.tertiary}; min-height: 28px; border-radius: 4px; margin: 2px 3px; }}
+QScrollBar::handle:horizontal {{ background: {t.tertiary}; min-width: 28px; border-radius: 4px; margin: 3px 2px; }}
+QScrollBar::handle:hover {{ background: {t.secondary}; }}
+QScrollBar::add-line, QScrollBar::sub-line {{ width: 0; height: 0; border: none; background: none; }}
+QScrollBar::add-page, QScrollBar::sub-page {{ background: none; }}
 /* A quiet source list (Relatórios): like the sidebar, neutral selection and stronger text. */
 QListWidget[variant="plain"] {{ border: none; background: transparent; outline: 0; }}
 QListWidget[variant="plain"]::item {{ min-height: {NAV_ROW_HEIGHT}px; border-radius: {RADIUS}px; }}

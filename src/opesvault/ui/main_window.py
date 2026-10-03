@@ -112,6 +112,23 @@ BADGE_ROLE = Qt.ItemDataRole.UserRole + 1
 class SidebarDelegate(QStyledItemDelegate):
     """Draws an attention count at the right edge of a sidebar row."""
 
+    @staticmethod
+    def _badge_width(option: QStyleOptionViewItem, count: int) -> int:
+        label = str(count) if count < 1000 else "999+"
+        return max(22, option.fontMetrics.horizontalAdvance(label) + 12)  # type: ignore[attr-defined]
+
+    def initStyleOption(self, option: QStyleOptionViewItem, index: Any) -> None:  # noqa: N802 - Qt override
+        """A name never runs under the count: it is cut with "…" before the badge."""
+        super().initStyleOption(option, index)
+        count = index.data(BADGE_ROLE)
+        if count:
+            room = option.rect.width() - self._badge_width(option, count) - 28  # type: ignore[attr-defined]
+            option.text = option.fontMetrics.elidedText(  # type: ignore[attr-defined]
+                option.text,
+                Qt.TextElideMode.ElideRight,
+                max(room, 20),  # type: ignore[attr-defined]
+            )
+
     def paint(self, painter: QPainter, option: QStyleOptionViewItem, index: Any) -> None:
         super().paint(painter, option, index)
         count = index.data(BADGE_ROLE)

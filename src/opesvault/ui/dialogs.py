@@ -61,32 +61,61 @@ class FormDialog(QDialog):
     them without losing context.
     """
 
-    def __init__(self, parent: QWidget | None, title: str, confirm: str = "Salvar") -> None:
+    def __init__(
+        self, parent: QWidget | None, title: str, confirm: str = "Salvar", *, close_only: bool = False
+    ) -> None:
+        from PySide6.QtWidgets import QScrollArea
+
         from opesvault.ui.components import text
 
         super().__init__(parent)
         self.setWindowTitle(title)
         self.setMinimumWidth(420)
-        self.form = QFormLayout()
+        # The fields scroll when the form is taller than the screen (long forms, small displays);
+        # the error line and the buttons stay in view.
+        content = QWidget()
+        content.setObjectName("FormContent")
+        self.form = QFormLayout(content)
+        self.form.setContentsMargins(0, 0, 0, 0)
         self.form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
         self.form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
         self.form.setVerticalSpacing(8)
+        self._scroll = QScrollArea()
+        self._scroll.setWidgetResizable(True)
+        self._scroll.setFrameShape(QScrollArea.Shape.NoFrame)
+        self._scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self._scroll.setWidget(content)
+        self._scroll.setStyleSheet("QScrollArea, QScrollArea > QWidget > QWidget { background: transparent; }")
+        self._content = content
         self.error = text("", wrap=True)
         self.error.setProperty("tone", "negative")
         self.error.setAccessibleName("Erro no formulário")
         self.error.hide()
         layout = QVBoxLayout(self)
         layout.setSpacing(12)
-        layout.addLayout(self.form)
+        layout.addWidget(self._scroll, 1)
         layout.addWidget(self.error)
-        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        # A dialog that only lists and edits things in place closes with one button, no "Cancelar".
+        standard = QDialogButtonBox.StandardButton.Ok
+        if not close_only:
+            standard |= QDialogButtonBox.StandardButton.Cancel
+        buttons = QDialogButtonBox(standard)
         self.confirm_button = buttons.button(QDialogButtonBox.StandardButton.Ok)
         self.confirm_button.setText(confirm)
         self.confirm_button.setProperty("role", "primary")
-        buttons.button(QDialogButtonBox.StandardButton.Cancel).setText("Cancelar")
+        if not close_only:
+            buttons.button(QDialogButtonBox.StandardButton.Cancel).setText("Cancelar")
         buttons.accepted.connect(self._try_accept)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
+
+    def showEvent(self, event: object) -> None:  # noqa: N802 - Qt override
+        """As tall as the form, up to most of the screen; beyond that the fields scroll."""
+        screen = self.screen()
+        room = int(screen.availableGeometry().height() * 0.85) - 140 if screen is not None else 600
+        needed = self._content.sizeHint().height() + 4
+        self._scroll.setMinimumHeight(max(min(needed, room), 120))
+        super().showEvent(event)  # type: ignore[arg-type]
 
     def _try_accept(self) -> None:
         try:
@@ -142,7 +171,9 @@ class AccountDialog(FormDialog):
         self.name = QLineEdit(account.name if account else "")
         self.subtype = QComboBox()
         fill_combo(self.subtype, [(SUBTYPE_LABELS[s], s) for s in (*ASSET_SUBTYPES, *LIABILITY_SUBTYPES)])
-        self.institution = QLineEdit(account.institution or "" if account else "")
+        from opesvault.ui.catalog_widgets import institution_edit
+
+        self.institution = institution_edit(account.institution if account else None)
         self.masked = QLineEdit(account.masked_number or "" if account else "")
         self.masked.setPlaceholderText("ex.: final 1234")
         # One holder, or a joint account with a first and a second holder (the order is kept).
@@ -221,7 +252,9 @@ class CardDialog(FormDialog):
         self.due.setRange(1, 31)
         self.settlement = QComboBox()
         fill_combo(self.settlement, liquid_accounts(ledger), empty="(não definida)")
-        self.institution = QLineEdit()
+        from opesvault.ui.catalog_widgets import institution_edit
+
+        self.institution = institution_edit(None)
         self.form.addRow("Nome:", self.name)
         self.form.addRow("Instituição:", self.institution)
         self.form.addRow("Portador:", self.holder)
@@ -340,6 +373,8 @@ class OperationDialog(FormDialog):
             fill_combo(self.target, balance_accounts(ledger))
             self.form.addRow("De:", self.source)
             self.form.addRow("Para:", self.target)
+            if self.target.count() > 1 and combo_value(self.target) == combo_value(self.source):
+                self.target.setCurrentIndex(1)  # a transfer goes somewhere else
         elif kind == "card_purchase":
             fill_combo(self.source, [(c.name, c.id) for c in ledger.cards.values()])
             fill_combo(self.target, category_items(ledger, AccountType.EXPENSE))

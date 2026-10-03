@@ -202,8 +202,8 @@ class RecurrencesPage(Page):
         self.candidates_section.add_actions(button("Criar recorrência…", self.create_from_candidate))
         self.candidates_section.add(self.candidates)
         scroll, body = scroll_body()
-        body.addWidget(rules_section)
-        body.addWidget(forecasts_section)
+        # wide: the rules beside the forecasts they generate; narrow: one below the other
+        body.addWidget(adaptive(1300, (rules_section, 1), (forecasts_section, 1)))
         # wide: what is already recurring beside what looks recurring but is not registered
         body.addWidget(adaptive(1400, (self.commitments_section, 3), (self.candidates_section, 2)))
         body.addStretch(1)

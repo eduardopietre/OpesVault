@@ -182,7 +182,7 @@ def test_missing_selection_is_a_notice_not_a_dialog(
 ) -> None:
     from PySide6.QtWidgets import QMessageBox
 
-    from opesvault.ui.pages.investments_page import InvestmentsPage
+    from opesvault.ui.pages.investments import InvestmentsPage
 
     def no_dialog(*_args: object, **_kwargs: object) -> None:
         raise AssertionError("a dialog is only for decisions")

@@ -128,7 +128,7 @@ def test_phase4_investments_and_reports(window: MainWindow) -> None:
     from opesvault.domain.model import YearMonth
     from opesvault.investments import service as inv
     from opesvault.investments.model import AssetClass, ValueNature
-    from opesvault.ui.pages.investments_page import InvestmentsPage
+    from opesvault.ui.pages.investments import InvestmentsPage
     from opesvault.ui.pages.reports_page import CHARTS, ReportsPage
 
     assert window.session is not None
@@ -143,10 +143,10 @@ def test_phase4_investments_and_reports(window: MainWindow) -> None:
     window.show_page(window.pages.index(page))
     page.positions.selectRow(0)
     page._show_detail()
-    assert page.valuations.rowCount() == 3
+    assert page.detail.valuations.rowCount() == 3
     evolution = charts.investment_evolution(ledger, pos.id)
     assert {s.name for s in evolution.series} >= {"Valor bruto", "Valor líquido informado", "Aporte"}
-    tooltip = page.evolution.tooltip_text("Valor bruto", evolution.series[0].points[0])
+    tooltip = page.detail.evolution.tooltip_text("Valor bruto", evolution.series[0].points[0])
     assert "R$" in tooltip and "natureza" in tooltip
     reports = next(p for p in window.pages if isinstance(p, ReportsPage))
     for index in range(len(CHARTS)):
@@ -160,7 +160,7 @@ def test_phase5_returns_tab(window: MainWindow) -> None:
     from opesvault.investments import service as inv
     from opesvault.investments.model import AssetClass, TrackingMode, ValueNature
     from opesvault.investments.trades import buy
-    from opesvault.ui.pages.investments_page import InvestmentsPage
+    from opesvault.ui.pages.investments import InvestmentsPage
 
     assert window.session is not None
     ledger = window.session.ledger
@@ -175,15 +175,15 @@ def test_phase5_returns_tab(window: MainWindow) -> None:
     window.show_page(window.pages.index(page))
     page.positions.selectRow(0)
     page._show_detail()
-    assert page.lots.rowCount() == 1
-    assert page.returns_table.rowCount() == 4
+    assert page.detail.lots.rowCount() == 1
+    assert page.detail.returns_table.rowCount() == 4
 
     def cell(row: int, column: int) -> str:
-        item = page.returns_table.item(row, column)
+        item = page.detail.returns_table.item(row, column)
         assert item is not None
         return item.text()
 
-    by_method = {cell(r, 0).split(" ")[0]: cell(r, 1) for r in range(page.returns_table.rowCount())}
+    by_method = {cell(r, 0).split(" ")[0]: cell(r, 1) for r in range(page.detail.returns_table.rowCount())}
     assert by_method["TWR"] == "10,00%"
     assert by_method["XIRR"] != "indisponível"  # annualized, labeled as such
 

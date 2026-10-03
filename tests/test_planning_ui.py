@@ -99,7 +99,7 @@ def test_investments_have_no_tabs_and_show_sections(setup: tuple[MainWindow, Fam
     window._refresh()
     page = _page(window, "InvestmentsPage")
     assert not page.findChildren(QTabWidget)
-    assert page.valuations.rowCount() == 2 and page.evolution.chart is not None
+    assert page.detail.valuations.rowCount() == 2 and page.detail.evolution.chart is not None
     assert not page.detail.isHidden()
 
 

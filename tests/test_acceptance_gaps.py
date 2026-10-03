@@ -185,7 +185,7 @@ def test_ta35_approved_but_unsaved_work_is_not_masked(
         asked.append(title)
         return "cancel"
 
-    monkeypatch.setattr("opesvault.ui.main_window.decide", decide)
+    monkeypatch.setattr("opesvault.ui.shell.vault.decide", decide)
     assert not window._confirm_discard()  # closing is not silent
     assert asked
 

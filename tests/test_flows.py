@@ -6,13 +6,13 @@ from decimal import Decimal
 from pathlib import Path
 
 import pytest
-from PySide6.QtCore import QDate, QSettings
+from PySide6.QtCore import QDate
 from PySide6.QtWidgets import QApplication
 
 from opesvault.domain.alerts import Target, alerts
 from opesvault.domain.model import YearMonth
 from opesvault.session import Session
-from opesvault.ui import theme
+from opesvault.ui import preferences, theme
 from opesvault.ui.main_window import MainWindow
 from opesvault.ui.pages.accounts_page import AccountsPage
 from opesvault.ui.pages.base import Page
@@ -32,16 +32,6 @@ def app() -> QApplication:
     app = instance if isinstance(instance, QApplication) else QApplication([])
     theme.apply_theme(app, dark=False)
     return app
-
-
-@pytest.fixture
-def settings_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """Computer preferences go to a temporary file, never to the real user profile."""
-    path = tmp_path / "prefs.ini"
-    monkeypatch.setattr(
-        MainWindow, "app_settings", staticmethod(lambda: QSettings(str(path), QSettings.Format.IniFormat))
-    )
-    return path
 
 
 @pytest.fixture
@@ -152,7 +142,7 @@ def test_save_choice_resumes_the_interrupted_action(
     window, _ = setup
     assert window.session is not None and window.session.dirty
     resumed: list[Callable[[], object] | None] = []
-    monkeypatch.setattr("opesvault.ui.main_window.decide", lambda *_a: "save")
+    monkeypatch.setattr("opesvault.ui.shell.vault.decide", lambda *_a: "save")
     monkeypatch.setattr(window, "save_vault", lambda then=None: resumed.append(then))
     assert not window._confirm_discard("fechar o cofre", window.close_vault)
     assert resumed == [window.close_vault]
@@ -183,13 +173,13 @@ def test_welcome_lists_recent_vaults_only_with_consent(app: QApplication, tmp_pa
     vault.write_bytes(b"")
     window = MainWindow()
     assert window.shell.currentWidget() is window.welcome
-    assert window.recent_list.isHidden() and not window.remember_recents.isHidden()
-    settings = MainWindow.app_settings()
+    assert window.welcome.recent_list.isHidden() and not window.welcome.remember_recents.isHidden()
+    settings = preferences.app_settings()
     settings.setValue("recentes/ativo", True)
     settings.setValue("recentes/lista", [str(vault)])
     window._refresh()
-    assert window.recent_list.count() == 1 and window.remember_recents.isHidden()
-    assert window.welcome_restore.text() == "Restaurar backup…"
+    assert window.welcome.recent_list.count() == 1 and window.welcome.remember_recents.isHidden()
+    assert window.welcome.restore_button.text() == "Restaurar backup…"
 
 
 def test_operator_shows_only_with_several_members(setup: tuple[MainWindow, Family]) -> None:

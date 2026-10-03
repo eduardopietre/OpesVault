@@ -48,28 +48,19 @@ def _page(window: MainWindow, name: str) -> Any:
     return page
 
 
-def test_collapsible_remembers_only_the_users_choice(app: QApplication, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_collapsible_remembers_only_the_users_choice(app: QApplication) -> None:
+    from opesvault.ui import preferences
     from opesvault.ui.components import Collapsible
 
-    stored: dict[str, object] = {}
+    def stored() -> object:
+        return preferences.app_settings().value("secoes/teste/valores")
 
-    class Fake:
-        def __init__(self, *_: object) -> None:
-            pass
-
-        def value(self, key: str, default: object = None) -> object:
-            return stored.get(key, default)
-
-        def setValue(self, key: str, value: object) -> None:  # noqa: N802 - Qt API
-            stored[key] = value
-
-    monkeypatch.setattr("PySide6.QtCore.QSettings", Fake)
     section = Collapsible("Valores", "teste/valores")
     assert section.expanded and not section.content.isHidden()
     section.set_expanded(False)  # programmatic: not a preference
-    assert section.content.isHidden() and stored == {}
+    assert section.content.isHidden() and stored() is None
     section.toggle.click()  # the user's click is remembered on this computer
-    assert section.expanded and stored == {"secoes/teste/valores": True}
+    assert section.expanded and str(stored()).lower() == "true"
     section.toggle.click()
     assert Collapsible("Valores", "teste/valores").expanded is False
 
@@ -319,7 +310,7 @@ def test_goals_page(setup: tuple[MainWindow, Family]) -> None:
 
 
 def test_backup_report_compares_with_the_open_vault(tmp_path: Path) -> None:
-    from opesvault.ui.main_window import backup_report
+    from opesvault.ui.shell.backups import backup_report
     from opesvault.vault.model import RevisionInfo
 
     f = family()

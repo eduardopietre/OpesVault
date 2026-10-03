@@ -55,6 +55,21 @@ def dev_worker_command() -> list[str]:
 
 
 @pytest.fixture(autouse=True)
+def settings_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Preferences of this computer go to a temporary file, never to the real user profile.
+
+    On Windows QSettings writes to the user's registry; every test gets its own empty file.
+    """
+    from PySide6.QtCore import QSettings
+
+    path = tmp_path / "prefs.ini"
+    monkeypatch.setattr(
+        "opesvault.ui.preferences.app_settings", lambda: QSettings(str(path), QSettings.Format.IniFormat)
+    )
+    return path
+
+
+@pytest.fixture(autouse=True)
 def _dispose_windows() -> Iterator[None]:
     """Each UI test starts without windows left by the previous one.
 

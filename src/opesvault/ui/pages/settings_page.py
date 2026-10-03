@@ -193,12 +193,9 @@ class SettingsPage(Page):
             idle.minutes = minutes
 
     def _toggle_recents(self, enabled: bool) -> None:
-        from opesvault.ui.main_window import MainWindow
+        from opesvault.ui import preferences
 
-        settings = MainWindow.app_settings()
-        settings.setValue("recentes/ativo", enabled)
-        if not enabled:
-            settings.remove("recentes/lista")
+        preferences.set_recents_enabled(enabled)
 
     def show_privacy(self) -> None:
         self.tabs.setCurrentIndex(self.privacy_tab)
@@ -208,14 +205,14 @@ class SettingsPage(Page):
     def refresh(self) -> None:
         for form in self._vault_forms:
             form.setEnabled(self.session is not None)
+        from opesvault.ui import preferences
         from opesvault.ui.idle_lock import lock_minutes
-        from opesvault.ui.main_window import MainWindow
 
         self.lock_minutes.blockSignals(True)
         self.lock_minutes.setValue(lock_minutes())
         self.lock_minutes.blockSignals(False)
         self.recents.blockSignals(True)
-        self.recents.setChecked(bool(MainWindow.app_settings().value("recentes/ativo", False, type=bool)))
+        self.recents.setChecked(preferences.recents_enabled())
         self.recents.blockSignals(False)
         if self.session is None:
             return

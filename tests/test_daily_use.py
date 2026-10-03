@@ -115,7 +115,7 @@ def test_saved_vault_unlock_goes_through_the_worker(window: MainWindow, monkeypa
         vault_id=window.session.vault_id, format_version=1, revision=1, revision_id=uuid4(), saved_at=datetime.now(UTC)
     )
     window.session.revision = revision
-    monkeypatch.setattr("opesvault.ui.main_window.QMessageBox.warning", lambda *a, **k: None)
+    monkeypatch.setattr("opesvault.ui.shell.errors.QMessageBox.warning", lambda *a, **k: None)
 
     window.lock_screen()
     window.client = FakeClient(ErrorCode.WRONG_PASSWORD)  # type: ignore[assignment]

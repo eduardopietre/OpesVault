@@ -9,7 +9,8 @@ from PySide6.QtWidgets import QApplication
 
 from opesvault.session import Session
 from opesvault.ui import theme
-from opesvault.ui.main_window import BADGE_ROLE, MainWindow
+from opesvault.ui.main_window import MainWindow
+from opesvault.ui.shell.sidebar import BADGE_ROLE
 
 from .domain_fixtures import family
 
@@ -62,7 +63,7 @@ def test_sidebar_groups_and_badge(window: MainWindow) -> None:
     pipeline.import_document(window.session, ImportRequest("nu.pdf", docs.nubank_card_pdf()))
     window._refresh()
     index = next(i for i, p in enumerate(window.pages) if isinstance(p, ImportPage))
-    item = window.nav.item(window._nav_rows[index])
+    item = window.sidebar.item(index)
     assert item.data(BADGE_ROLE) and item.data(BADGE_ROLE) > 0
     window.show_page(index)
     assert window.stack.currentWidget() is window.pages[index]

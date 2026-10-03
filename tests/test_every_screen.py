@@ -116,19 +116,12 @@ def window(app: QApplication, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
 
     for name in ("open_raw", "save_frozen", "unlock", "change_password"):
         monkeypatch.setattr(VaultClient, name, refused)
-    monkeypatch.setattr(MainWindow, "app_settings", staticmethod(lambda: _settings(tmp_path)))
     win = MainWindow()
     win.resize(1280, 800)
     win.session = demo_session(tmp_path / "demo.opesvault")
     win._refresh()
     win.session.undo_stack().seal()  # the demo data is the starting point, not an action
     return win
-
-
-def _settings(folder: Path) -> Any:
-    from PySide6.QtCore import QSettings
-
-    return QSettings(str(folder / "prefs.ini"), QSettings.Format.IniFormat)
 
 
 def _settle() -> None:
@@ -326,3 +319,16 @@ def test_every_button_runs_on_a_new_empty_vault(
     window._refresh()
     window.session.undo_stack().seal()
     assert _press_everything(window, errors, select=False) == []
+
+
+def test_preferences_of_this_computer_have_one_entry_point() -> None:
+    """Only `ui/preferences.py` builds a QSettings, so tests redirect every preference at once."""
+    root = Path(__file__).resolve().parents[1] / "src" / "opesvault"
+    found = [
+        f"{path.relative_to(root)}:{number}"
+        for path in sorted(root.rglob("*.py"))
+        if path.name != "preferences.py"
+        for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1)
+        if "QSettings(" in line
+    ]
+    assert found == []

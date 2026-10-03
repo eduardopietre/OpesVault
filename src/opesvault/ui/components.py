@@ -451,9 +451,9 @@ class Collapsible(QWidget):
     def _stored(self) -> bool | None:
         if self._key is None:
             return None
-        from PySide6.QtCore import QSettings
+        from opesvault.ui import preferences
 
-        value = QSettings("OpesVault", "OpesVault").value(f"secoes/{self._key}")
+        value = preferences.app_settings().value(f"secoes/{self._key}")
         if value is None:
             return None
         return str(value).lower() in ("true", "1")
@@ -471,9 +471,9 @@ class Collapsible(QWidget):
 
     def _remember(self, expanded: bool) -> None:
         if self._key is not None:
-            from PySide6.QtCore import QSettings
+            from opesvault.ui import preferences
 
-            QSettings("OpesVault", "OpesVault").setValue(f"secoes/{self._key}", expanded)
+            preferences.app_settings().setValue(f"secoes/{self._key}", expanded)
 
     @property
     def expanded(self) -> bool:

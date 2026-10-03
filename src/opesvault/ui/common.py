@@ -379,13 +379,14 @@ def run_guarded(parent: QWidget, action: Callable[[], Any]) -> Any:
 
 def install_column_chooser(view: QTableView, settings_key: str, required: set[int] | None = None) -> None:
     """Right-click on the header shows/hides columns; the choice is remembered per computer."""
-    from PySide6.QtCore import QSettings
     from PySide6.QtWidgets import QMenu
+
+    from opesvault.ui import preferences
 
     header = view.horizontalHeader()
     model = view.model()
     required = required or {0}
-    settings = QSettings("OpesVault", "OpesVault")
+    settings = preferences.app_settings()
     stored = settings.value(f"{settings_key}/colunas_ocultas", [], type=list)
     hidden = [str(c) for c in stored] if isinstance(stored, list) else []
     for column in range(model.columnCount()):

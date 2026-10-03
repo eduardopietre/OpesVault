@@ -8,7 +8,7 @@ import hashlib
 import re
 from collections import Counter
 from dataclasses import dataclass
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from uuid import UUID
 
@@ -25,7 +25,7 @@ from opesvault.domain.model import (
     Posting,
 )
 from opesvault.domain.money import ZERO
-from opesvault.importing import rules
+from opesvault.importing import learning, rules
 from opesvault.importing.model import (
     BatchStatus,
     Correction,
@@ -486,24 +486,21 @@ def _match_existing_operation(
 
 
 def _suggest(ledger: Ledger, item: ExtractedItem) -> tuple[UUID | None, str | None]:
+    """Order of trust: the user's rule, then what the family chose before, then the keyword rules."""
     if item.kind in (ItemKind.TRADE, ItemKind.FEE, ItemKind.CARD_PAYMENT):
         return None, None
     wanted = AccountType.INCOME if item.kind in (ItemKind.CREDIT,) else AccountType.EXPENSE
     if item.kind is ItemKind.CARD_CREDIT:
         wanted = AccountType.EXPENSE  # a refund reduces the original expense category
     batch = batches(ledger).get(item.batch_id)
-    rule = rules.match(ledger, item.description, batch.account_id if batch else None, wanted)
+    account_id = batch.account_id if batch else None
+    rule = rules.match(ledger, item.description, account_id, wanted)
     if rule is not None:
         return rule.target_account_id, f"user_rule:{rule.id}"
+    learned = learning.suggest(ledger, item.description, wanted, account_id)
+    if learned is not None:
+        return learned.category_id, learned.source
     key = normalize(item.description)
-    history = [
-        i
-        for i in items(ledger).values()
-        if i.status is ItemStatus.APPROVED and i.target_account_id and normalize(i.description) == key
-    ]
-    if history:
-        latest = max(history, key=lambda i: i.occurred_on or date.min)
-        return latest.target_account_id, "history"
     for pattern, category_name in KEYWORD_RULES:
         if re.search(pattern, key):
             for account in ledger.categories(wanted):

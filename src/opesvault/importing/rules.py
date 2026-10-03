@@ -44,13 +44,16 @@ def rules(ledger: Ledger) -> dict[UUID, CategoryRule]:
 def suggest_pattern(description: str) -> str:
     """A starting pattern from one description: drops installments, numbers and card ids.
 
-    'UBER *TRIP 8812 PARCELA 2/3' → 'UBER *TRIP'. The user can still edit it.
+    'UBER *TRIP 8812 PARCELA 2/3' → 'UBER *TRIP'; 'LOJA TV (6x)' → 'LOJA TV'. The user can still edit it.
     """
     text = normalize(description)
     text = re.sub(r"\bPARC(ELA)?\.?\s*\d+\s*/\s*\d+\b", " ", text)
+    text = re.sub(r"\(\s*\d+\s*X\s*\)|\b\d+\s*X\b", " ", text)  # "(6x)", "10X": installments
     text = re.sub(r"\b\d+\s*/\s*\d+\b", " ", text)
     text = re.sub(r"[\d#]+", " ", text)
-    text = re.sub(r"\s*[-–]\s*$", "", re.sub(r"\s+", " ", text)).strip(" -*.")
+    # what is left of a removed number: "( )", a lone "-", "*" or "."
+    words = [w for w in text.split() if any(c.isalpha() for c in w)]
+    text = " ".join(words).strip(" -*.")
     return text or normalize(description)
 
 

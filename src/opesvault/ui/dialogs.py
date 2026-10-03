@@ -400,6 +400,38 @@ class OperationDialog(FormDialog):
         if kind in ("income", "expense", "card_purchase"):
             self.form.addRow("Competência:", self.competence)
             self.form.addRow("Responsável:", self.member)
+            self._learn_category()
+
+    def _learn_category(self) -> None:
+        """While the person has not picked a category, the description suggests the usual one."""
+        from opesvault.ui.components import text
+
+        self.category = self.source if self.kind == "income" else self.target
+        self.category_hint = text("", "caption", wrap=True)
+        self.category_hint.hide()
+        position: Any = self.form.getWidgetPosition(self.category)  # (row, role)
+        self.form.insertRow(position[0] + 1, "", self.category_hint)
+        self._category_chosen = False
+        self.category.activated.connect(self._category_picked)  # only a person's choice, not ours
+        self.description.textChanged.connect(self._suggest_category)
+
+    def _category_picked(self) -> None:
+        self._category_chosen = True
+        self.category_hint.hide()
+
+    def _suggest_category(self) -> None:
+        from opesvault.importing import learning
+
+        if self._category_chosen:
+            return
+        wanted = AccountType.INCOME if self.kind == "income" else AccountType.EXPENSE
+        found = learning.suggest(self.ledger, self.description.text(), wanted)
+        if found is None or not select_combo(self.category, found.category_id):
+            self.category_hint.hide()
+            return
+        detail = learning.describe_source(found.source)
+        self.category_hint.setText(f"Categoria sugerida pelo uso ({detail}). Escolha outra se não for.")
+        self.category_hint.show()
 
     def _competence(self) -> YearMonth | None:
         return self.competence.value()

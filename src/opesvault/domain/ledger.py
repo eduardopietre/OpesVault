@@ -185,6 +185,8 @@ class Ledger:
         # (kind, id) → change_count of its last change since the last save; drives incremental saves.
         self.dirty: dict[tuple[str, UUID], int] = {}
         self.change_count = 0
+        # kind → changes to that kind of entity: caches that read only some kinds key on these.
+        self.kind_changes: dict[str, int] = {}
         self._meta = meta or LedgerMeta()
         self._store: dict[str, dict[UUID, Any]] = {kind: _TrackedDict(self, kind) for kind in self.KINDS}
         self.history: list[HistoryEntry] = _TrackedList(self)
@@ -207,6 +209,12 @@ class Ledger:
     def _touch(self, kind: str, key: UUID) -> None:
         self.change_count += 1
         self.dirty[(kind, key)] = self.change_count
+        self.kind_changes[kind] = self.kind_changes.get(kind, 0) + 1
+
+    def changes_of(self, *kinds: str) -> tuple[int, ...]:
+        """How many times each kind changed: a cache of what only reads `kinds` keys on this,
+        so it survives changes elsewhere (a review item marked during an import)."""
+        return tuple(self.kind_changes.get(kind, 0) for kind in kinds)
 
     # ── change journal (undo of unsaved edits, see opesvault.undo) ──────────
 

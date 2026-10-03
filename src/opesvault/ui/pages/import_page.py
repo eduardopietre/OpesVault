@@ -25,7 +25,7 @@ from PySide6.QtWidgets import (
 
 from opesvault.domain.ledger import DomainError
 from opesvault.domain.model import AccountSubtype, AccountType
-from opesvault.importing import pipeline, rules
+from opesvault.importing import learning, pipeline, rules
 from opesvault.importing.model import BatchStatus, ExtractedItem, ImportBatch, ItemKind, ItemStatus
 from opesvault.importing.parsers import PARSERS
 from opesvault.importing.pipeline import ImportRequest
@@ -78,10 +78,14 @@ KIND_LABELS = {
     ItemKind.TRADE: "Negócio",
     ItemKind.FEE: "Custo",
 }
+# "history" was written by versions before the learned suggestions; old items still carry it.
 SOURCE_LABELS = {"history": "sugestão (histórico)", "rule": "sugestão (regra padrão)"}
 
 
 def source_label(source: str) -> str:
+    learned = learning.describe_source(source)
+    if learned is not None:
+        return f"sugestão ({learned})"
     if source.startswith("user_rule:"):
         return "sugestão (sua regra)"
     if source.startswith("ollama:"):

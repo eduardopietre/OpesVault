@@ -18,7 +18,8 @@ def editable(value: Decimal | None) -> str:
 
 
 def percent_text(rate: Decimal | None) -> str:
-    return "" if rate is None else format_decimal_br(rate * 100)
+    """0.075 → "7,5" as typed, not "7,500" (the stored fraction carries extra places)."""
+    return "" if rate is None else format_decimal_br((rate * 100).normalize())
 
 
 def read_percent(edit: QLineEdit, label: str) -> Decimal | None:

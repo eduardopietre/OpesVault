@@ -198,6 +198,17 @@ faturas e parcelas). É previsão: não altera saldos e não adivinha compras qu
 (PDF)</b> com receitas por categoria, proventos, imposto retido, ganhos realizados e dedutíveis por pessoa. Também
 é material de apoio: não classifica rendimentos como isentos ou tributáveis.</p>
 """,
+    "Assistente": """
+<p>Pergunte sobre o projeto em português (“quanto gastei com mercado em março?”) ou peça uma mudança
+(“reclassifique os Uber para Transporte”). O assistente é a IA local (Ollama) com as ferramentas do OpesVault:
+ele consulta lançamentos, contas, categorias, orçamento, marcadores, regras e itens importados.</p>
+<p><b>Toda alteração pede a sua aprovação</b>: a janela “Aprovar alteração” diz exatamente o que muda; recusar não
+muda nada. O que você aprova vira um passo de desfazer (Ctrl+Z), e reclassificações guardam no histórico que vieram do
+assistente. Respostas inválidas do modelo voltam para ele como erro; depois de três seguidas, a pergunta é
+interrompida.</p>
+<p>Requer a IA local ligada em Configurações e um modelo que aceite ferramentas. CPF e CNPJ ficam fora do alcance do
+assistente, e a conversa não é gravada: some ao fechar o cofre.</p>
+""",
     "Documentos": """
 <p>Arquivos guardados no cofre e os lançamentos ligados a cada um: documentos importados e comprovantes anexados
 no Livro financeiro (PDF e fotos). Os documentos nunca são gravados em disco sem cifra.</p>

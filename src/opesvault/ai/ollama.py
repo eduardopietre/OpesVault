@@ -6,7 +6,9 @@
 - Text from documents is data, never instructions; every answer is validated against what was
   asked (known indexes, allowed categories, names made of the description's own words) and is a
   suggestion the user must approve.
-- No tools, no streaming, no prompt logging.
+- No streaming, no prompt logging. The suggestion tasks send no tools. The assistant
+  (`chat_tools`) offers the app's own tools: the model only asks for them; the app runs
+  reads itself and every change only after the user approves it (`opesvault/assistant`).
 - Thinking is turned off: classifying a short description gains little from it and costs
   many seconds per batch on reasoning models (Gemma 4, Qwen 3.5).
 - A bad answer costs one batch, not the whole run: it is asked once more, then skipped,
@@ -14,8 +16,9 @@
 - Ollama keeps the last prompt cached while a model is loaded, so the app unloads the
   models it used when the vault is closed (`unload`).
 
-Two tasks: a category per description (`suggest_categories`) and a readable merchant name
-per description (`suggest_names`). Their instructions live in `ai/prompts.py`.
+Two suggestion tasks, a category per description (`suggest_categories`) and a readable
+merchant name per description (`suggest_names`), and one conversation with tools (`chat_tools`).
+Their instructions live in `ai/prompts.py`.
 """
 
 import contextlib
@@ -27,6 +30,7 @@ import urllib.error
 import urllib.request
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
+from decimal import Decimal
 from urllib.parse import urlparse
 
 from pydantic import BaseModel, ConfigDict, ValidationError
@@ -43,6 +47,7 @@ BATCH_SIZE = 40  # descriptions per request: keeps the prompt small and the answ
 MAX_EXAMPLES = 24  # past classifications sent with each batch
 MAX_NAME = 60  # the longest merchant name the ledger keeps
 CONTEXT_TOKENS = 8192
+ASSISTANT_CONTEXT_TOKENS = 16384  # a conversation carries tool results, longer than a batch
 KEEP_ALIVE = "10m"  # unloaded from RAM/VRAM after a while; nothing is promised about clearing it
 _LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
 _NONE = {"NENHUMA", "NENHUM"}
@@ -208,8 +213,14 @@ class OllamaClient:
         self._think_supported = True  # turned off for servers or models that reject the option
 
     def _request(
-        self, path: str, payload: dict[str, object] | None = None, timeout: float = TIMEOUT_S
+        self,
+        path: str,
+        payload: dict[str, object] | None = None,
+        timeout: float = TIMEOUT_S,
+        *,
+        exact: bool = False,
     ) -> dict[str, object]:
+        """`exact`: numbers in the answer become Decimal, never float (tool arguments carry money)."""
         request = urllib.request.Request(  # noqa: S310 - the constructor only accepts loopback http
             self.base_url + path,
             data=json.dumps(payload).encode("utf-8") if payload is not None else None,
@@ -220,7 +231,8 @@ class OllamaClient:
         opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
         try:
             with opener.open(request, timeout=timeout) as response:
-                return json.loads(response.read().decode("utf-8"))
+                text = response.read().decode("utf-8")
+                return json.loads(text, parse_float=Decimal) if exact else json.loads(text)
         except urllib.error.HTTPError as exc:
             detail = exc.read().decode("utf-8", "replace")[:300]
             if exc.code == 404 and "not found" in detail:
@@ -374,6 +386,46 @@ class OllamaClient:
         run.suggestions = [out[i] for i in sorted(out)]
         return run
 
+    def supports_tools(self) -> bool | None:
+        """Whether the model declares tool calling (Ollama /api/show); None when the server does not say."""
+        try:
+            shown = self._request("/api/show", {"model": self.model}, timeout=INFO_TIMEOUT_S)
+        except _HttpError:
+            return None
+        capabilities = shown.get("capabilities")
+        return "tools" in capabilities if isinstance(capabilities, list) else None
+
+    def chat_tools(
+        self, system: str, messages: Sequence[dict[str, object]], tools: Sequence[dict[str, object]]
+    ) -> "ModelTurn":
+        """One step of a conversation with tools. The model only asks; the caller decides what runs.
+
+        Numbers in tool arguments arrive as Decimal (`exact`), so money never passes through float.
+        """
+        payload: dict[str, object] = {
+            "model": self.model,
+            "stream": False,
+            "keep_alive": KEEP_ALIVE,
+            "options": {"temperature": 0, "num_ctx": ASSISTANT_CONTEXT_TOKENS},
+            "messages": [{"role": "system", "content": system}, *messages],
+            "tools": list(tools),
+        }
+        if self._think_supported:
+            payload["think"] = False
+        try:
+            body = self._request("/api/chat", payload, exact=True)
+        except _HttpError as exc:
+            if self._think_supported and "think" in exc.detail.lower():
+                self._think_supported = False
+                return self.chat_tools(system, messages, tools)
+            if "tools" in exc.detail.lower():
+                raise AiUnavailable(
+                    f"O modelo {self.model} não aceita ferramentas. Escolha outro em Configurações › IA local.",
+                    fatal=True,
+                ) from exc
+            raise AiUnavailable(f"Ollama recusou o pedido ({exc.code}).") from exc
+        return _turn(body)
+
     def suggest_categories(
         self,
         descriptions: Sequence[str],
@@ -438,6 +490,37 @@ class OllamaClient:
             return found
 
         return self._batched(len(descriptions), ask_batch, on_progress, cancelled)
+
+
+@dataclass(frozen=True)
+class ToolCall:
+    name: str
+    arguments: object  # as the model sent it: usually an object, sometimes a JSON string
+
+
+@dataclass(frozen=True)
+class ModelTurn:
+    """One answer of the model in a conversation: text, tool calls, or (wrongly) neither."""
+
+    content: str
+    tool_calls: tuple[ToolCall, ...]
+    raw: dict[str, object]  # the assistant message, sent back as it came in the next request
+
+
+def _turn(body: dict[str, object]) -> ModelTurn:
+    message = body.get("message")
+    if not isinstance(message, dict):
+        raise AiUnavailable("Resposta do Ollama sem mensagem.")
+    content = message.get("content")
+    calls: list[ToolCall] = []
+    for entry in message.get("tool_calls") or ():
+        function = entry.get("function") if isinstance(entry, dict) else None
+        if isinstance(function, dict):
+            calls.append(ToolCall(str(function.get("name") or ""), function.get("arguments")))
+        else:
+            calls.append(ToolCall("", entry))  # malformed: the conversation answers with an error
+    raw = {k: v for k, v in message.items() if k in ("role", "content", "tool_calls")}
+    return ModelTurn(content if isinstance(content, str) else "", tuple(calls), raw)
 
 
 class _HttpError(Exception):

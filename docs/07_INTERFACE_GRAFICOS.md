@@ -26,6 +26,7 @@ Tela inicial apresenta criar/abrir/restaurar. Lista de recentes é opcional e gu
 | Financiamentos (Contas e cartões) | Contrato, cronograma, saldo devedor, juros a pagar | Pagar parcela, simular e registrar amortização antecipada |
 | Contas bancárias (Contas e cartões) | Banco, agência, conta, titulares, corrente, poupança, investimentos e total; composição com tipo no IRPF, rentabilidade, vencimento, tributação, valor hoje e último valor informado | Nova conta bancária, editar, valores em uma data, novo investimento, características, encerrar |
 | Imposto de renda | Ano e declarante; pendências, documentos do ano, rendimentos, pagamentos efetuados, bens e dívidas, renda variável, simplificada × completa e informes | Resolver pendência, CPF/CNPJ, natureza, contracheques, comprovantes, classificar bem, importar informe, registrar DARF, relatório em PDF |
+| Assistente | Conversa com a IA local, que consulta o projeto com as ferramentas do aplicativo; atividade de cada ferramenta; atalhos para o Livro filtrado | Perguntar, aprovar ou recusar cada alteração proposta, nova conversa |
 
 ## 3. Adicionar avaliação
 

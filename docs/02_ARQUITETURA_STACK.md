@@ -20,7 +20,7 @@ O arquivo persistente é SQLCipher. A sessão editável é mantida em memória e
 | Domínio financeiro | Registros, partidas, competência e previsões | Depender de interface ou modelo de IA |
 | Investimentos | Posições, custos, avaliações, resgates e retornos | Inventar cotações ou regras fiscais |
 | Relatórios | Agregações e conjuntos de dados de gráficos | Somar moedas distintas sem conversão explícita |
-| Adaptador Ollama | Sugestões estruturadas locais | Executar instruções vindas de PDFs ou acessar ferramentas |
+| Adaptador Ollama | Sugestões estruturadas locais; no Assistente, pedir as ferramentas do próprio aplicativo (decisão do usuário de 04/10/2026, `05` §5) | Executar instruções vindas de PDFs, acessar ferramentas de fora do aplicativo (busca, arquivos, rede) ou mudar dados sem a aprovação do usuário |
 
 ## 3. Tecnologias aprovadas e função
 
@@ -58,7 +58,7 @@ Datas financeiras são datas locais; eventos técnicos usam instantes com fuso e
 
 Instalador com componentes necessários, sem downloads silenciosos no primeiro uso. Ollama e modelos são pré-requisitos opcionais separados; ausência deles desativa apenas a assistência. Nenhum logotipo, fonte, gráfico ou ajuda depende de CDN.
 
-Somente o adaptador Ollama usa a interface local de rede; negar modelos cloud, URLs remotas e ferramentas de busca. A aplicação não modifica a instalação global do Ollama sem consentimento. Verificar modo local e testar bloqueio de tráfego externo no ambiente de validação.
+Somente o adaptador Ollama usa a interface local de rede; negar modelos cloud, URLs remotas e ferramentas de busca. As ferramentas do Assistente são do próprio aplicativo, sem servidor MCP nem porta aberta: nenhum outro programa alcança o cofre por elas. A aplicação não modifica a instalação global do Ollama sem consentimento. Verificar modo local e testar bloqueio de tráfego externo no ambiente de validação.
 
 ## 8. Gates técnicos
 

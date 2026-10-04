@@ -17,6 +17,7 @@ from collections.abc import Callable
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QAbstractItemView,
+    QDialogButtonBox,
     QHeaderView,
     QProgressBar,
     QTableWidgetItem,
@@ -83,6 +84,11 @@ class AiRunRow(QWidget):
             self._cancel.set()
             self.label.setText("Cancelando ao fim do lote atual…")
 
+    @property
+    def cancelled(self) -> bool:
+        """Cancelar was pressed during the last run (a conversation checks it between steps)."""
+        return self._cancel.is_set()
+
     def stop(self) -> None:
         """The vault closed: what is still being asked is no longer wanted."""
         self._cancel.set()
@@ -94,8 +100,14 @@ class AiRunRow(QWidget):
         total: int,
         unit: str,
         done: Callable[[object], None],
+        *,
+        check: bool = True,
     ) -> bool:
-        """Runs `work(report, cancel)` in the background after checking the model. False if busy."""
+        """Runs `work(report, cancel)` in the background after checking the model. False if busy.
+
+        `total` 0 shows a busy bar and `unit` alone ("pensando…"); `check` False skips the model
+        check (the next step of a conversation already made it).
+        """
         from opesvault.importing.ai_suggestions import remember_used
 
         if self._job is not None:
@@ -105,7 +117,8 @@ class AiRunRow(QWidget):
 
         def run(report: Callable[[int, int], None]) -> object:
             try:
-                client.check_model()  # fails fast, saying what to install, before any batch
+                if check:
+                    client.check_model()  # fails fast, saying what to install, before any batch
                 return work(report, cancel)
             except AiUnavailable as exc:  # expected: Ollama off, model missing, odd answers
                 return exc
@@ -113,9 +126,9 @@ class AiRunRow(QWidget):
         prefix = f"IA local ({client.model})"
         job = BackgroundJob(run)
         self._job = job
-        self.progress.setRange(0, max(total, 1))
+        self.progress.setRange(0, total if total > 0 else 0)
         self.progress.setValue(0)
-        self.label.setText(f"{prefix}: 0 de {total} {unit}")
+        self.label.setText(f"{prefix}: 0 de {total} {unit}" if total > 0 else f"{prefix}: {unit}")
         self.show()
 
         def progress(handled: int, of: int) -> None:
@@ -239,3 +252,25 @@ class AiReviewDialog(FormDialog):
 
 def plural(count: int, one: str, many: str) -> str:
     return f"{count} {one if count == 1 else many}"
+
+
+class ApprovalDialog(FormDialog):
+    """One change the assistant wants to make. Aprovar runs it; Recusar tells the model it was refused."""
+
+    def __init__(self, parent: QWidget | None, summary: str, details: tuple[str, ...], model: str) -> None:
+        super().__init__(parent, "Aprovar alteração", "Aprovar")
+        self.setMinimumWidth(560)
+        self.form.addRow(text(summary, "strong", wrap=True))
+        for line in details:
+            self.form.addRow(text(line, "secondary", wrap=True))
+        self.form.addRow(
+            text(
+                f"Proposta pelo assistente (IA local, {model}). Nada muda se você recusar; "
+                "ao aprovar, a alteração pode ser desfeita com Ctrl+Z.",
+                "caption",
+                wrap=True,
+            )
+        )
+        self.refuse_button = self.findChildren(QDialogButtonBox)[0].button(QDialogButtonBox.StandardButton.Cancel)
+        if self.refuse_button is not None:
+            self.refuse_button.setText("Recusar")

@@ -14,6 +14,8 @@ class FakeOllama(BaseHTTPRequestHandler):
     reject_think = False
     missing_model = False
     gpu_share = 100  # percent of the loaded model in the GPU, reported by /api/ps
+    messages: list[dict] = []  # noqa: RUF012 - assistant messages (tool calls) consumed in order by /api/chat
+    capabilities: list[str] | None = ["completion", "tools"]  # noqa: RUF012 - what /api/show declares
 
     def _send(self, code: int, payload: dict) -> None:
         data = json.dumps(payload).encode()
@@ -38,6 +40,11 @@ class FakeOllama(BaseHTTPRequestHandler):
         FakeOllama.received.append(body)
         if FakeOllama.missing_model:
             self._send(404, {"error": f"model '{body['model']}' not found"})
+        elif self.path == "/api/show":
+            shown = {} if FakeOllama.capabilities is None else {"capabilities": FakeOllama.capabilities}
+            self._send(200, shown)
+        elif self.path == "/api/chat" and "tools" in body and FakeOllama.messages:
+            self._send(200, {"message": {"role": "assistant", **FakeOllama.messages.pop(0)}})
         elif self.path == "/api/generate":  # load or unload a model: no answer is consumed
             self._send(200, {"model": body["model"], "done": True})
         elif FakeOllama.reject_think and "think" in body:
@@ -61,6 +68,8 @@ def serve() -> Iterator[str]:
     FakeOllama.reject_think = False
     FakeOllama.missing_model = False
     FakeOllama.gpu_share = 100
+    FakeOllama.messages = []
+    FakeOllama.capabilities = ["completion", "tools"]
     try:
         yield f"http://127.0.0.1:{server.server_port}"
     finally:

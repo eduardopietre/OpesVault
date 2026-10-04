@@ -11,7 +11,8 @@ Versão 1.1 • 02/10/2026. Registra o que foi construído em cada fase do roadm
 | `domain/` | Dinheiro exato (`money`), entidades (`model`), agregado `Ledger` com invariantes e coleções rastreadas (`tracking`), histórico e registro de alterações para a gravação incremental, consultas indexadas de caixa, competência e patrimônio (`queries`), filtros do livro (`search`), reclassificação em lote (`edits`), configuração inicial (`onboarding`), faturas e parcelas (`cards`), recorrências (`recurrence`), fechamento mensal (`periods`), configurações (`settings`), migrações de esquema |
 | `importing/` | Fonte em memória (PDF/CSV/OFX), parsers por layout, pipeline de importação (fluxo em `pipeline`, com `store`, `checks`, `suggestions` e `approval` por etapa), regras do usuário (`rules`), categorias aprendidas com o uso (`learning`), sugestões por IA local de categoria (`ai_suggestions`) e de nome de estabelecimento (`ai_merchants`) |
 | `investments/` | Posições, avaliações e fluxos (`service`), resultados (`performance`), simulador, lotes e negociações (`trades`), TWR/XIRR/Dietz (`returns`), notas de corretagem (`notes`), índices locais (`benchmarks`) |
-| `ai/` | Cliente do Ollama local (`ollama`: só loopback, lotes, validação, porta, GPU) e as instruções versionadas de cada tarefa (`prompts`) |
+| `ai/` | Cliente do Ollama local (`ollama`: só loopback, lotes, validação, porta, GPU, conversa com ferramentas) e as instruções versionadas de cada tarefa (`prompts`) |
+| `assistant/` | Assistente: ferramentas no formato do MCP (`tools`), leituras (`reads`), alterações preparadas para aprovação (`edits`) e a conversa passo a passo com o limite de respostas inválidas (`conversation`) |
 | `charts/` | Dados dos gráficos com proveniência (`data/`: modelo e tabela de valores, caixa, gastos, patrimônio, investimentos) e renderização Matplotlib com tooltip e inspeção (`render`) |
 | `vault/` | Cofre SQLCipher (gravação completa ou incremental), worker transitório, backup, troca de senha e desbloqueio da tela |
 | `ui/` | Janela principal (`main_window`, com as partes em `shell/`), preferências do computador (`preferences`) e uma página por seção do `07` (as grandes em pacotes: `pages/ledger`, `investments`, `tax`, `imports`, `accounts`); edição completa de lançamentos (`operation_edit`), assistente de primeiro uso (`setup_wizard`), ajuda F1 (`help`), bloqueio visual (`idle_lock`) |
@@ -285,6 +286,16 @@ Revisão de todas as telas, abas e diálogos em 1920×1080, 1280×800, 900×640 
 - **Melhorias na qualidade da resposta:** os exemplos vêm do livro como ele está (seguem correções, reclassificações e lançamentos manuais), as categorias vão com o pai (“Alimentação › Mercado”), e um nome sugerido só vale se for feito de palavras da própria descrição.
 - **Defeito corrigido:** os exemplos enviados ao modelo vinham da categoria escolhida na aprovação de cada item importado; depois de uma reclassificação, a IA continuava aprendendo a categoria antiga, e lançamentos manuais não ensinavam nada.
 - Testes novos: `test_ai_everywhere` (25 casos: validação de nomes, porta, GPU, exemplos, planejamento, Livro com lista de conferência, IA desligada, Ollama fora do ar, Novo lançamento e Configurações), além de `test_ai` e `test_flows` atualizados.
+
+### 2.11 Assistente com ferramentas (04/10/2026)
+
+Por decisão do usuário, a IA local ganhou as ferramentas do aplicativo (`05` §5): página **Assistente** (Acompanhamento), pacote `opesvault/assistant` e `OllamaClient.chat_tools`.
+
+- **14 ferramentas de leitura** (resumo, contas, categorias, integrantes, busca com filtros, detalhe, despesas por categoria e por estabelecimento, resumo do mês, orçamento, marcadores, regras, itens importados pendentes, mostrar no Livro) e **8 de alteração** (reclassificar, marcador, nome de estabelecimento, regra, orçamento, despesa, receita, categoria de item importado), descritas no formato do MCP, sem servidor.
+- **Toda alteração pede aprovação** na janela **Aprovar alteração**, que mostra o que muda; aprovada, vira um passo de desfazer. Recusada, nada muda.
+- **Respostas inválidas** voltam ao modelo como erro; três seguidas interrompem a pergunta; no máximo 12 passos por pergunta.
+- **Defeito evitado no caminho:** uma reclassificação aprovada depois de o lançamento ser cancelado dizia “aplicado” sem mudar nada; agora o modelo recebe o erro.
+- Testes: `test_assistant` (27 casos: formato das ferramentas, leituras sem efeito, CPF/CNPJ fora, cada alteração só depois da aprovação, recusa, argumentos inválidos, três erros seguidos, limite de passos, dinheiro como `Decimal`, modelo sem ferramentas, tela com aprovação e recusa, fechamento do cofre).
 
 ## 3. Cobertura de importação
 

@@ -30,6 +30,7 @@ from opesvault.ui.components import ElidedLabel
 from opesvault.ui.idle_lock import IdleWatcher, LockPanel, lock_minutes
 from opesvault.ui.pages.accounts import AccountsPage
 from opesvault.ui.pages.agenda_page import AgendaPage
+from opesvault.ui.pages.assistant_page import AssistantPage
 from opesvault.ui.pages.base import Page
 from opesvault.ui.pages.budget_page import BudgetPage
 from opesvault.ui.pages.documents_page import DocumentsPage
@@ -72,6 +73,7 @@ class MainWindow(VaultCommands, BackupCommands, ScreenLock, RecentVaults, QMainW
         "settings": SettingsPage,
         "documents": DocumentsPage,
         "tax": TaxPage,
+        "assistant": AssistantPage,
     }
     # Pages whose sidebar row shows a count of what needs attention.
     COUNTED: ClassVar[tuple[type[Page], ...]] = (OverviewPage, ImportPage)
@@ -167,6 +169,7 @@ class MainWindow(VaultCommands, BackupCommands, ScreenLock, RecentVaults, QMainW
             RecurrencesPage(self.on_changed),
             InvestmentsPage(self.on_changed),
             ReportsPage(self.on_changed),
+            AssistantPage(self.on_changed),
             GoalsPage(self.on_changed),
             SharingPage(self.on_changed),
             TaxPage(self.on_changed),

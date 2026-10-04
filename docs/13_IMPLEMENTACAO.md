@@ -8,10 +8,10 @@ Versão 1.1 • 02/10/2026. Registra o que foi construído em cada fase do roadm
 
 | Pacote | Conteúdo |
 |---|---|
-| `domain/` | Dinheiro exato (`money`), entidades (`model`), agregado `Ledger` com invariantes, histórico e registro de alterações para a gravação incremental, consultas indexadas de caixa, competência e patrimônio (`queries`), filtros do livro (`search`), reclassificação em lote (`edits`), configuração inicial (`onboarding`), faturas e parcelas (`cards`), recorrências (`recurrence`), fechamento mensal (`periods`), configurações (`settings`), migrações de esquema |
-| `importing/` | Fonte em memória (PDF/CSV/OFX), parsers por layout, pipeline de importação, regras do usuário (`rules`), categorias aprendidas com o uso (`learning`), sugestões por IA local |
+| `domain/` | Dinheiro exato (`money`), entidades (`model`), agregado `Ledger` com invariantes e coleções rastreadas (`tracking`), histórico e registro de alterações para a gravação incremental, consultas indexadas de caixa, competência e patrimônio (`queries`), filtros do livro (`search`), reclassificação em lote (`edits`), configuração inicial (`onboarding`), faturas e parcelas (`cards`), recorrências (`recurrence`), fechamento mensal (`periods`), configurações (`settings`), migrações de esquema |
+| `importing/` | Fonte em memória (PDF/CSV/OFX), parsers por layout, pipeline de importação (fluxo em `pipeline`, com `store`, `checks`, `suggestions` e `approval` por etapa), regras do usuário (`rules`), categorias aprendidas com o uso (`learning`), sugestões por IA local |
 | `investments/` | Posições, avaliações e fluxos (`service`), resultados (`performance`), simulador, lotes e negociações (`trades`), TWR/XIRR/Dietz (`returns`), notas de corretagem (`notes`), índices locais (`benchmarks`) |
-| `charts/` | Dados dos gráficos com proveniência (`data`) e renderização Matplotlib com tooltip e inspeção (`render`) |
+| `charts/` | Dados dos gráficos com proveniência (`data/`: modelo e tabela de valores, caixa, gastos, patrimônio, investimentos) e renderização Matplotlib com tooltip e inspeção (`render`) |
 | `vault/` | Cofre SQLCipher (gravação completa ou incremental), worker transitório, backup, troca de senha e desbloqueio da tela |
 | `ui/` | Janela principal (`main_window`, com as partes em `shell/`), preferências do computador (`preferences`) e uma página por seção do `07` (as grandes em pacotes: `pages/ledger`, `investments`, `tax`, `imports`, `accounts`); edição completa de lançamentos (`operation_edit`), assistente de primeiro uso (`setup_wizard`), ajuda F1 (`help`), bloqueio visual (`idle_lock`) |
 | `diagnostics.py` | Registro técnico só com códigos e ganchos globais de exceção (`14` §2) |
@@ -253,6 +253,26 @@ Revisão de todas as telas, abas e diálogos em 1920×1080, 1280×800, 900×640 
 - **Regras que aprendem com o uso** (`importing/learning.py`): a categoria de cada lançamento ativo, pela chave do estabelecimento, sugere a de um item novo (depois das regras do usuário, antes das palavras-chave), segue a mudança de ideia da família (as 5 escolhas mais recentes decidem) e prefere as escolhas da mesma conta. Também propõe regras (a mesma categoria 3 vezes) e aponta regras contrariadas. Nada novo no cofre; o cálculo é refeito só quando lançamentos ou contas mudam (`Ledger.changes_of`): ~0,3 s para 20 mil lançamentos, 30 ms para sugerir 200 itens. O lançamento manual sugere a categoria pela descrição. O texto sugerido para regra deixou de carregar restos de parcelas ("LOJA TV (6x)" → "LOJA TV").
 - **"Projeto" na tela**: os cofres de demonstração e de teste se chamavam "Família …" e apareciam na barra e nas capturas; agora "Projeto …". Um teste procura "família" em todo texto do programa (menos o prompt da IA local, que só o modelo lê) e em toda a tela aberta.
 - Testes novos: `test_every_screen`, `test_learning`, `test_learning_ui`, `test_tax_rows`, `test_selection`, `test_background`, além de casos em `test_ledger_view`, `test_daily_use` e `test_rules`.
+
+### 2.9 Terceira passada de organização e testes (04/10/2026)
+
+- **Divisão, sem mudar o comportamento:**
+
+  | Antes | Depois |
+  |---|---|
+  | `importing/pipeline.py` | fluxo de importação em `pipeline.py` (que reexporta os nomes públicos) e uma etapa por módulo: `store` (lotes, itens, evidências), `checks` (normalização, problemas, conferência, duplicatas), `suggestions` (palavras-chave e regras), `approval` (correção, rejeição, aprovação) |
+  | `domain/ledger.py` | `TrackedDict`, `TrackedList` e `MISSING` em `domain/tracking.py` |
+  | `charts/data.py` | `charts/data/`: `model` (pontos, séries, tabela de valores), `cash`, `spending`, `wealth`, `investments` |
+
+- **Testes de propriedade** (`test_ledger_properties`, `test_money_properties`): sequências aleatórias com semente fixa de lançamentos, parcelas, reclassificações, cancelamentos e marcadores mantêm o livro balanceado, desfazem e refazem até o mesmo estado, sobrevivem a `to_records`/`from_records` e à gravação incremental; dinheiro arredonda para longe de zero e nunca passa por `float`.
+- **Diálogos preenchidos como uma pessoa faz** (`test_planning_dialogs`, `test_tax_dialogs`, `test_ledger_commands`): cada comando de linha do Livro, os diálogos de planejamento e as fichas do imposto, com a validação do botão Confirmar, o resultado no livro e um único passo de desfazer.
+- **Menu Cofre de ponta a ponta** (`test_vault_commands`, com o worker de desenvolvimento): criar, salvar e reabrir; backup manual, verificação e restauração como arquivo novo; cópia a cada salvamento com poda; troca de senha; exportações; arquivo que não é cofre recusado sem alteração.
+- **Todos os gráficos** (`test_every_chart`): cada construtor público roda no cofre de demonstração e num vazio, só com `Decimal` ou desconhecido, e a tabela de valores diz o mesmo que as séries (uma linha por x, total só de fluxos). Um construtor novo precisa entrar no teste.
+- **Defeitos encontrados e corrigidos:**
+  - o Livro perdia a linha atual depois de uma alteração (marcador, estabelecimento), e o comando seguinte pedia "Selecione…";
+  - Configurações gravavam o formulário antigo por cima de uma configuração mais nova ao salvar (a cópia automática ligada por outro caminho era desligada); agora só o que foi digitado na página é gravado;
+  - taxas apareciam com zeros à direita ("7,500" em vez de "7,5") ao reabrir os valores do ano.
+- Cobertura de linhas em ~88%; 607 testes.
 
 ## 3. Cobertura de importação
 

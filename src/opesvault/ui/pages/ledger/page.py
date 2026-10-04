@@ -255,13 +255,17 @@ class LedgerPage(OperationActions, Page):
     # ── selection ───────────────────────────────────
 
     def _select(self, ids: set[UUID]) -> None:
+        """Selects these operations again after a refresh, and the first one becomes current:
+        commands on one row (Corrigir, Estornar…) act on the current row, not on the highlight."""
         selection = self.table.selectionModel()
+        current = None
         for row, op in enumerate(self.model.ops):
             if op.id in ids:
-                selection.select(
-                    self.model.index(row, 0),
-                    selection.SelectionFlag.Select | selection.SelectionFlag.Rows,
-                )
+                index = self.model.index(row, 0)
+                selection.select(index, selection.SelectionFlag.Select | selection.SelectionFlag.Rows)
+                current = current or index
+        if current is not None:
+            selection.setCurrentIndex(current, selection.SelectionFlag.NoUpdate)
 
     def selected_ids(self) -> list[UUID]:
         rows = sorted({index.row() for index in self.table.selectionModel().selectedRows()})

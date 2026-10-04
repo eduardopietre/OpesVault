@@ -245,10 +245,13 @@ Revisão de todas as telas, abas e diálogos em 1920×1080, 1280×800, 900×640 
   | `tax_page.py` (1074) | `pages/tax/`: página, `rows.py` (linhas das fichas sem Qt, com testes próprios), comandos, informes |
   | `import_page.py` (962) | `pages/imports/`: página, fila, revisão, IA local, rótulos; arquivo sumido antes da leitura vira aviso |
   | `accounts_page.py` (860) | `pages/accounts/`: página e abas sobre `PageTab` (contas bancárias, todas as contas, faturas, financiamentos, regras) |
+  | `tax_dialogs.py` (896) | `ui/tax_dialogs/`: um módulo por ficha (pessoas, rendimentos, bens, informes, valores do ano) e campos comuns |
+  | `components.py` (848) | `ui/components/`: básicos, layout, cabeçalho, seções, mês, decisões (`expanding`, sem uso, saiu) |
 
   Relatórios passaram a usar `select_id` (que agora também seleciona itens de lista).
 - **Livro em janela estreita**: filtros e comandos (Filtros salvos, Ações, Detalhes) quebram linha juntos; em 900 px os filtros ocupam três linhas em vez de seis.
 - **Regras que aprendem com o uso** (`importing/learning.py`): a categoria de cada lançamento ativo, pela chave do estabelecimento, sugere a de um item novo (depois das regras do usuário, antes das palavras-chave), segue a mudança de ideia da família (as 5 escolhas mais recentes decidem) e prefere as escolhas da mesma conta. Também propõe regras (a mesma categoria 3 vezes) e aponta regras contrariadas. Nada novo no cofre; o cálculo é refeito só quando lançamentos ou contas mudam (`Ledger.changes_of`): ~0,3 s para 20 mil lançamentos, 30 ms para sugerir 200 itens. O lançamento manual sugere a categoria pela descrição. O texto sugerido para regra deixou de carregar restos de parcelas ("LOJA TV (6x)" → "LOJA TV").
+- **"Projeto" na tela**: os cofres de demonstração e de teste se chamavam "Família …" e apareciam na barra e nas capturas; agora "Projeto …". Um teste procura "família" em todo texto do programa (menos o prompt da IA local, que só o modelo lê) e em toda a tela aberta.
 - Testes novos: `test_every_screen`, `test_learning`, `test_learning_ui`, `test_tax_rows`, `test_selection`, `test_background`, além de casos em `test_ledger_view`, `test_daily_use` e `test_rules`.
 
 ## 3. Cobertura de importação

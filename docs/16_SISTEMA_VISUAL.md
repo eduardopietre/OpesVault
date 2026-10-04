@@ -59,7 +59,9 @@ Configurações (rodapé)
 - **Estilo Qt:** Fusion, para métricas iguais em todos os sistemas. Combos e campos de número mantêm o desenho nativo do Fusion, para não perder as setas.
 - **Tradução:** os textos do próprio Qt (botões padrão, diálogos de arquivo) usam `qtbase_pt_BR`.
 
-## 3. Componentes (`src/opesvault/ui/components.py`)
+## 3. Componentes (`src/opesvault/ui/components/`)
+
+Importados de `opesvault.ui.components`; cada tipo de peça tem seu módulo: `basics` (texto, botões, menus, separadores, linhas), `layout` (`FlowLayout`, `flow_row`, `Adaptive`, `scroll_body`), `header` (`PageHeader`), `sections` (`EmptyState`, `Figures`, `Section`, `Collapsible`), `month` (`MonthPicker`) e `decisions` (`decide`, `confirm`).
 
 | Componente | Uso |
 |---|---|
@@ -78,7 +80,7 @@ Configurações (rodapé)
 | `Adaptive` / `adaptive` | Partes relacionadas lado a lado quando há largura e uma abaixo da outra quando não há. A largura mínima é sempre a da forma empilhada, para que o arranjo largo nunca obrigue a janela a ficar larga. Usa folga de 32 px para não alternar com a barra de rolagem. `first_right` põe a primeira parte em cima quando empilhado e à direita quando largo (coluna lateral) |
 | `ui/catalog_widgets.py` | Listas com busca (digitar código ou parte do nome): bancos pelo COMPE, grupos e códigos de Bens e Direitos, tipos de investimento |
 | `pages/accounts/bank.py`, `ui/bank_dialogs.py` | Aba Contas bancárias e diálogos de conta bancária, valores em uma data (tabela por item, com "Ajustar o saldo") e investimento (novo ou características) |
-| `ui/tax_dialogs.py` | Diálogos do Imposto de renda: CPF/CNPJ, declarantes, natureza dos rendimentos (grade), contracheque, comprovantes, bem, informe (revisão linha a linha), tabela do ano, regras de renda variável, DARF |
+| `ui/tax_dialogs/` | Diálogos do Imposto de renda, um módulo por ficha (`people`, `income`, `assets`, `reports`, `year`, com os campos comuns em `fields`): CPF/CNPJ, declarantes, natureza dos rendimentos (grade), contracheque, comprovantes, bem, informe (revisão linha a linha), tabela do ano, regras de renda variável, DARF |
 | `select_id`, `select_combo`, `fit_columns` (`ui/common.py`) | Selecionar a linha de uma tabela ou lista, ou a opção de um combo, pelo id, comparando valores (`reveal`, manter a seleção ao atualizar). Nunca `QComboBox.findData`, que compara objetos Python por identidade e não acha um id lido de volta do cofre. Colunas do tamanho do conteúdo sem reservar a seta de ordenação em todas (só na ordenada) |
 | `share_width` (`ui/common.py`) | Tabelas de trabalho (Livro): larguras base para todas as colunas; numa janela larga a sobra vai para as colunas de texto, em vez de virar uma faixa vazia. Uma coluna arrastada pelo usuário encerra a divisão automática |
 | `PageTab` (`pages/accounts/tab.py`) | Aba com estado próprio: lê a sessão da página e avisa por ela (`changed`, `notify`, `navigate`), então uma alteração na aba é um passo de desfazer como outro qualquer |

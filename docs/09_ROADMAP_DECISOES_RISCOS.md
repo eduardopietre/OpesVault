@@ -159,7 +159,7 @@ O piso da abertura é decifrar ~263 MB e interpretar 50 mil operações (~3,7 s 
 | Histórico cresce sem limite | Cofre maior com o tempo | Mitigado; compactação opcional na fase 12 |
 | Layouts de faturas e extratos são sintéticos | Podem falhar com documentos reais | Aberto; fase 7 |
 | Interface conferida só no Linux com fonte DejaVu | Métricas e quebras podem mudar com Segoe UI e escalas do Windows | Aberto; fase 7 |
-| Páginas com mais de 1000 linhas (`main_window`, Livro, Investimentos, Imposto de renda, Importar, Contas) | Difíceis de manter e de testar | Resolvido: pacotes por responsabilidade (`13` §2.8); `tax_dialogs.py` e `components.py` seguem como coleções de classes independentes |
+| Páginas com mais de 1000 linhas (`main_window`, Livro, Investimentos, Imposto de renda, Importar, Contas) | Difíceis de manter e de testar | Resolvido: pacotes por responsabilidade (`13` §2.8), inclusive `ui/tax_dialogs/` e `ui/components/` |
 | Itens resolvidos nesta rodada: salvar inteiro, tabelas cheias, consultas lineares, livro só com descrição, corrida importar/salvar | — | Resolvidos (ver `13` §2.1) |
 
 ## 2. Decisões arquiteturais

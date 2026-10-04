@@ -6,6 +6,7 @@ checks the ledger; the invalid cases show their message inside the form, never a
 
 from datetime import date
 from decimal import Decimal
+from typing import Any
 
 import pytest
 from PySide6.QtCore import QDate
@@ -80,7 +81,7 @@ def test_a_reimbursement_is_requested_and_received(f: Family) -> None:
     request.payer.setText("Plano de saúde")
     request.expected.setText("300,00")
     _confirm(request)
-    item = request.apply()
+    item: Any = request.apply()
     receive = dialogs.ReceiveDialog(None, f.ledger, item)
     assert receive.amount.text() == "300,00"  # what is still missing
     receive.amount.setText("120,00")
@@ -118,7 +119,7 @@ def test_a_loan_is_created_paid_and_prepaid_through_the_dialogs(f: Family) -> No
     _date(dialog.opened_on, date(2026, 1, 10))
     _confirm(dialog)
     assert Decimal("0.0098") < dialog.monthly_rate() < Decimal("0.0099")  # 12,5% a.a. ≈ 0,9864% a.m.
-    plan = dialog.apply()
+    plan: Any = dialog.apply()
     status = loans.status(f.ledger, plan.id)
     assert status.paid == 0 and len(status.installments) == 24 and status.outstanding == Decimal("12000.00")
 
@@ -158,7 +159,7 @@ def test_a_balance_check_compares_with_the_ledger(f: Family) -> None:
     dialog.informed.setText("9.950,00")
     dialog.note.setText("extrato")
     _confirm(dialog)
-    check = dialog.apply()
+    check: Any = dialog.apply()
     [result] = [r for r in balance_checks.results(f.ledger, f.bank) if r.check.id == check.id]
     assert result.difference == Decimal("-50.00") and not result.matches
 

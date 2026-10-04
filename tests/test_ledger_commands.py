@@ -180,7 +180,7 @@ def test_reverse_and_cancel_ask_for_a_reason(
     answers = iter([("", True), ("cobrado em dobro", True), ("lançado errado", True)])
     warned: list[str] = []
     monkeypatch.setattr(QInputDialog, "getText", staticmethod(lambda *a, **k: next(answers)))
-    monkeypatch.setattr(QMessageBox, "warning", staticmethod(lambda *a, **k: warned.append(a[2])))
+    monkeypatch.setattr(QMessageBox, "warning", staticmethod(lambda *a, **k: warned.append(str(a[2]))))
     _pick(page, op)
     page.reverse()  # an empty reason is refused, nothing happens
     assert warned == ["O motivo é obrigatório."] and len(f.ledger.operations) == 2
@@ -201,7 +201,7 @@ def test_history_and_reimbursement(
     health = category(f.ledger, "Saúde")
     op = f.ledger.record_expense(f.bank, health, "300.00", date(2026, 2, 1), "Exame")
     shown: list[str] = []
-    monkeypatch.setattr(QMessageBox, "information", staticmethod(lambda *a, **k: shown.append(a[2])))
+    monkeypatch.setattr(QMessageBox, "information", staticmethod(lambda *a, **k: shown.append(str(a[2]))))
     _pick(page, op)
     page.show_history()
     assert shown and "v1" in shown[0]
@@ -229,7 +229,7 @@ def test_a_receipt_is_attached_and_unreadable_files_are_reported(
     chosen = iter([(str(tmp_path / "sumiu.pdf"), ""), (str(receipt), "")])
     warned: list[str] = []
     monkeypatch.setattr(QFileDialog, "getOpenFileName", staticmethod(lambda *a, **k: next(chosen)))
-    monkeypatch.setattr(QMessageBox, "warning", staticmethod(lambda *a, **k: warned.append(a[2])))
+    monkeypatch.setattr(QMessageBox, "warning", staticmethod(lambda *a, **k: warned.append(str(a[2]))))
     _pick(page, op)
     page.attach_receipt()
     assert warned == ["Não foi possível ler o arquivo."]

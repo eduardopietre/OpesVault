@@ -41,6 +41,7 @@ class SettingsPage(Page):
         self._pending.setSingleShot(True)
         self._pending.setInterval(600)
         self._pending.timeout.connect(self.flush)
+        self._edits_pending = False  # only what was typed here is written; never a stale form
 
         # Backup and saving (stored in the vault)
         self.backup_dir = QLineEdit()
@@ -154,13 +155,19 @@ class SettingsPage(Page):
 
     def _edited(self, *_: object) -> None:
         if self.session is not None:
+            self._edits_pending = True
             self._pending.start()
 
     def flush(self) -> None:
-        """Applies pending vault settings now (also called before saving or closing)."""
+        """Applies pending vault settings now (also called before saving or closing).
+
+        Only edits made on this page are written: settings changed meanwhile by an undo or by
+        another part of the app are not overwritten with what the form showed before.
+        """
         self._pending.stop()
-        if self.session is None:
+        if self.session is None or not self._edits_pending:
             return
+        self._edits_pending = False
         ledger = self.session.ledger
         wanted = {
             "ai_enabled": self.ai_enabled.isChecked(),
@@ -214,9 +221,10 @@ class SettingsPage(Page):
         self.recents.blockSignals(True)
         self.recents.setChecked(preferences.recents_enabled())
         self.recents.blockSignals(False)
+        self._pending.stop()
+        self._edits_pending = False  # the form now shows the vault (or no vault): nothing to write
         if self.session is None:
             return
-        self._pending.stop()
         settings = get_settings(self.session.ledger)
         widgets = (self.ai_enabled, self.ai_model, self.backup_dir, self.backup_keep, self.auto_backup, self.reminder)
         for widget in widgets:
@@ -237,6 +245,7 @@ class SettingsPage(Page):
         folder = QFileDialog.getExistingDirectory(self, "Pasta de backups")
         if folder:
             self.backup_dir.setText(folder)
+            self._edits_pending = True
             self.flush()
 
     def _window_command(self, name: str) -> None:

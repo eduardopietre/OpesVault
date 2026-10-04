@@ -9,8 +9,9 @@ Versão 1.1 • 02/10/2026. Registra o que foi construído em cada fase do roadm
 | Pacote | Conteúdo |
 |---|---|
 | `domain/` | Dinheiro exato (`money`), entidades (`model`), agregado `Ledger` com invariantes e coleções rastreadas (`tracking`), histórico e registro de alterações para a gravação incremental, consultas indexadas de caixa, competência e patrimônio (`queries`), filtros do livro (`search`), reclassificação em lote (`edits`), configuração inicial (`onboarding`), faturas e parcelas (`cards`), recorrências (`recurrence`), fechamento mensal (`periods`), configurações (`settings`), migrações de esquema |
-| `importing/` | Fonte em memória (PDF/CSV/OFX), parsers por layout, pipeline de importação (fluxo em `pipeline`, com `store`, `checks`, `suggestions` e `approval` por etapa), regras do usuário (`rules`), categorias aprendidas com o uso (`learning`), sugestões por IA local |
+| `importing/` | Fonte em memória (PDF/CSV/OFX), parsers por layout, pipeline de importação (fluxo em `pipeline`, com `store`, `checks`, `suggestions` e `approval` por etapa), regras do usuário (`rules`), categorias aprendidas com o uso (`learning`), sugestões por IA local de categoria (`ai_suggestions`) e de nome de estabelecimento (`ai_merchants`) |
 | `investments/` | Posições, avaliações e fluxos (`service`), resultados (`performance`), simulador, lotes e negociações (`trades`), TWR/XIRR/Dietz (`returns`), notas de corretagem (`notes`), índices locais (`benchmarks`) |
+| `ai/` | Cliente do Ollama local (`ollama`: só loopback, lotes, validação, porta, GPU) e as instruções versionadas de cada tarefa (`prompts`) |
 | `charts/` | Dados dos gráficos com proveniência (`data/`: modelo e tabela de valores, caixa, gastos, patrimônio, investimentos) e renderização Matplotlib com tooltip e inspeção (`render`) |
 | `vault/` | Cofre SQLCipher (gravação completa ou incremental), worker transitório, backup, troca de senha e desbloqueio da tela |
 | `ui/` | Janela principal (`main_window`, com as partes em `shell/`), preferências do computador (`preferences`) e uma página por seção do `07` (as grandes em pacotes: `pages/ledger`, `investments`, `tax`, `imports`, `accounts`); edição completa de lançamentos (`operation_edit`), assistente de primeiro uso (`setup_wizard`), ajuda F1 (`help`), bloqueio visual (`idle_lock`) |
@@ -273,6 +274,17 @@ Revisão de todas as telas, abas e diálogos em 1920×1080, 1280×800, 900×640 
   - Configurações gravavam o formulário antigo por cima de uma configuração mais nova ao salvar (a cópia automática ligada por outro caminho era desligada); agora só o que foi digitado na página é gravado;
   - taxas apareciam com zeros à direita ("7,500" em vez de "7,5") ao reabrir os valores do ano.
 - Cobertura de linhas em ~88%; 607 testes.
+
+### 2.10 IA local em todas as telas (04/10/2026)
+
+- **Um núcleo para todas as tarefas** (`ai/ollama.py`): lotes, nova tentativa e cancelamento num executor só, usado por duas tarefas: categoria por descrição (`suggest_categories`) e nome legível de estabelecimento (`suggest_names`). As instruções ficam em `ai/prompts.py`, versionadas (`p4`, `m1`) e gravadas com cada sugestão.
+- **Um contrato na interface** (`ui/local_ai.py`): `client_for` (escolha do cofre e porta deste computador), `AiRunRow` (progresso e Cancelar em segundo plano, resposta descartada se o cofre fechar) e `AiReviewDialog` (lista de conferência). Importar passou a usar a mesma linha de progresso.
+- **Livro › IA local:** **Sugerir categorias…** e **Sugerir nomes de estabelecimentos…** para os selecionados (dois ou mais) ou todos os exibidos. A lista de conferência mostra uma linha por descrição (quantos lançamentos, categoria ou nome atual, sugestão); nada muda antes de aplicar, a aplicação é um passo de desfazer e a origem fica no histórico.
+- **Novo lançamento:** **Perguntar à IA local** quando o histórico não conhece a descrição; a escolha feita à mão durante a consulta prevalece.
+- **Configurações › IA local:** porta do Ollama (preferência deste computador) e **Verificar Ollama** dizendo quanto do modelo coube na GPU.
+- **Melhorias na qualidade da resposta:** os exemplos vêm do livro como ele está (seguem correções, reclassificações e lançamentos manuais), as categorias vão com o pai (“Alimentação › Mercado”), e um nome sugerido só vale se for feito de palavras da própria descrição.
+- **Defeito corrigido:** os exemplos enviados ao modelo vinham da categoria escolhida na aprovação de cada item importado; depois de uma reclassificação, a IA continuava aprendendo a categoria antiga, e lançamentos manuais não ensinavam nada.
+- Testes novos: `test_ai_everywhere` (25 casos: validação de nomes, porta, GPU, exemplos, planejamento, Livro com lista de conferência, IA desligada, Ollama fora do ar, Novo lançamento e Configurações), além de `test_ai` e `test_flows` atualizados.
 
 ## 3. Cobertura de importação
 

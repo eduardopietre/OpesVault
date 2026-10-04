@@ -65,8 +65,12 @@ def merchant_of(ledger: Ledger, description: str) -> str:
     return found.name if found is not None else clean(description)
 
 
-def name_merchant(ledger: Ledger, description: str, name: str) -> MerchantAlias:
-    """Approves a readable name for every operation whose description cleans to the same key."""
+def name_merchant(ledger: Ledger, description: str, name: str, origin: str | None = None) -> MerchantAlias:
+    """Approves a readable name for every operation whose description cleans to the same key.
+
+    `origin` goes to the history with the approval (a name the local AI suggested records the
+    model and prompt version that suggested it, docs/05 §5).
+    """
     display = " ".join(name.split())
     if not display:
         raise DomainError("Informe o nome do estabelecimento.")
@@ -75,10 +79,10 @@ def name_merchant(ledger: Ledger, description: str, name: str) -> MerchantAlias:
     key = key_of(description)
     current = next((a for a in aliases(ledger).values() if a.key == key), None)
     if current is None:
-        return ledger.put("merchant_alias", MerchantAlias(key=key, name=display))
+        return ledger.put("merchant_alias", MerchantAlias(key=key, name=display), reason=origin)
     if current.name == display:
         return current
-    return ledger.put("merchant_alias", current.model_copy(update={"name": display}), reason="nome alterado")
+    return ledger.put("merchant_alias", current.model_copy(update={"name": display}), reason=origin or "nome alterado")
 
 
 def remove_alias(ledger: Ledger, alias_id: UUID) -> None:

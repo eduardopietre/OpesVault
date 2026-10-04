@@ -403,35 +403,103 @@ class OperationDialog(FormDialog):
             self._learn_category()
 
     def _learn_category(self) -> None:
-        """While the person has not picked a category, the description suggests the usual one."""
-        from opesvault.ui.components import text
+        """While the person has not picked a category, the description suggests the usual one.
+
+        With the local AI on, a description the history does not know can be asked to the model
+        ("Perguntar à IA local"); its answer only selects the category, like the history's.
+        """
+        from opesvault.ui.components import button, hbox_widget, text
+        from opesvault.ui.local_ai import client_for
 
         self.category = self.source if self.kind == "income" else self.target
         self.category_hint = text("", "caption", wrap=True)
+        self.ai_client = client_for(self.ledger)
+        self.ai_button = button(
+            "Perguntar à IA local",
+            self.ask_ai,
+            role="plain",
+            tip="Sugere a categoria pela descrição; só a descrição vai ao Ollama deste computador",
+        )
+        self.ai_button.hide()
         self.category_hint.hide()
+        self._ai_job: object = None  # the question in progress (kept alive until it answers)
+        self.category_note = hbox_widget(self.category_hint, self.ai_button, None)
+        self.category_note.hide()
         position: Any = self.form.getWidgetPosition(self.category)  # (row, role)
-        self.form.insertRow(position[0] + 1, "", self.category_hint)
+        self.form.insertRow(position[0] + 1, "", self.category_note)
         self._category_chosen = False
         self.category.activated.connect(self._category_picked)  # only a person's choice, not ours
         self.description.textChanged.connect(self._suggest_category)
 
     def _category_picked(self) -> None:
         self._category_chosen = True
-        self.category_hint.hide()
+        self._note("", ask=False)
+
+    def _note(self, hint: str, *, ask: bool) -> None:
+        self.category_hint.setText(hint)
+        self.category_hint.setVisible(bool(hint))
+        self.ai_button.setVisible(ask and self.ai_client is not None)
+        self.category_note.setVisible(bool(hint) or self.ai_button.isVisibleTo(self.category_note))
+
+    def _wanted(self) -> AccountType:
+        return AccountType.INCOME if self.kind == "income" else AccountType.EXPENSE
 
     def _suggest_category(self) -> None:
         from opesvault.importing import learning
 
         if self._category_chosen:
             return
-        wanted = AccountType.INCOME if self.kind == "income" else AccountType.EXPENSE
-        found = learning.suggest(self.ledger, self.description.text(), wanted)
+        typed = self.description.text().strip()
+        found = learning.suggest(self.ledger, typed, self._wanted())
         if found is None or not select_combo(self.category, found.category_id):
-            self.category_hint.hide()
+            # Nothing learned: the model may help, if the person asks.
+            self._note("", ask=len(typed) >= 3 and self._ai_job is None)
             return
         detail = learning.describe_source(found.source)
-        self.category_hint.setText(f"Categoria sugerida pelo uso ({detail}). Escolha outra se não for.")
-        self.category_hint.show()
+        self._note(f"Categoria sugerida pelo uso ({detail}). Escolha outra se não for.", ask=False)
+
+    def ask_ai(self) -> None:
+        """Asks the local model in the background; the form stays usable and a choice made meanwhile wins."""
+        from opesvault.ai.ollama import AiUnavailable
+        from opesvault.importing.ai_suggestions import plan_description, remember_used
+        from opesvault.ui.background import BackgroundJob, while_alive
+        from opesvault.ui.local_ai import failure_text
+
+        client = self.ai_client
+        request = plan_description(self.ledger, self.description.text(), self._wanted())
+        if client is None or request is None or self._ai_job is not None:
+            return
+        remember_used(client)
+
+        def work(_report: object) -> object:
+            try:
+                client.check_model()
+                return client.suggest_categories(request.descriptions, sorted(request.categories), request.examples)
+            except AiUnavailable as exc:
+                return exc
+
+        def done(result: object) -> None:
+            from opesvault.ai.ollama import Run
+
+            self._ai_job = None
+            self.ai_button.setEnabled(True)
+            if self._category_chosen:
+                return
+            if not isinstance(result, Run):
+                self._note(f"IA local: {failure_text(result)}", ask=True)
+                return
+            category = request.categories.get(result.suggestions[0].category) if result.suggestions else None
+            if category is None or not select_combo(self.category, category):
+                self._note("A IA local não teve segurança para sugerir. Escolha a categoria.", ask=False)
+                return
+            self._note(f"Categoria sugerida pela IA local ({client.model}). Confira antes de registrar.", ask=False)
+
+        job = BackgroundJob(work)
+        self._ai_job = job
+        self.ai_button.setEnabled(False)
+        self._note("Perguntando à IA local…", ask=True)
+        while_alive(job.signals.done, self, done)
+        job.start()
 
     def _competence(self) -> YearMonth | None:
         return self.competence.value()

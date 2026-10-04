@@ -191,15 +191,10 @@ def evaluate(model: str, repeats: int, with_examples: bool = False) -> dict[str,
 
 def _memory(client: OllamaClient, model: str) -> dict[str, Any]:
     """How much of the loaded model sits in the GPU (Ollama /api/ps)."""
-    try:
-        loaded = client._request("/api/ps", timeout=5).get("models")
-    except AiUnavailable:
+    placed = client.placement()
+    if placed is None:
         return {}
-    for entry in loaded if isinstance(loaded, list) else []:
-        if isinstance(entry, dict) and entry.get("name") == model:
-            size, vram = int(entry.get("size", 0)), int(entry.get("size_vram", 0))
-            return {"size_gb": round(size / 2**30, 1), "gpu_share": round(vram / size, 2) if size else None}
-    return {}
+    return {"size_gb": round(placed.size / 2**30, 1), "gpu_share": round(placed.vram / placed.size, 2)}
 
 
 def main() -> None:

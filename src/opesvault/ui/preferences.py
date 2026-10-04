@@ -1,6 +1,6 @@
 """Preferences of this computer (QSettings), outside the vault: never financial data.
 
-Window geometry, collapsed sections, hidden columns, the idle lock and, only with consent,
+Window geometry, collapsed sections, hidden columns, the idle lock, the Ollama port and, only with consent,
 the paths of recent vaults (docs/07 §1). Everything goes through `app_settings()`, so tests
 redirect all of it to a temporary file (on Windows QSettings writes to the user's registry).
 """
@@ -14,6 +14,7 @@ APPLICATION = "OpesVault"
 RECENTS_ENABLED = "recentes/ativo"
 RECENTS_LIST = "recentes/lista"
 MAX_RECENTS = 8
+OLLAMA_PORT = "ia/porta"
 
 
 def app_settings() -> QSettings:
@@ -43,3 +44,15 @@ def remember_vault(path: Path) -> None:
         return
     others = [p for p in recent_paths() if p != str(path)]
     app_settings().setValue(RECENTS_LIST, [str(path), *others][:MAX_RECENTS])
+
+
+def ollama_port() -> int:
+    """The port of the Ollama on this computer (OLLAMA_HOST); the host is always 127.0.0.1."""
+    from opesvault.ai.ollama import DEFAULT_PORT
+
+    value = app_settings().value(OLLAMA_PORT, DEFAULT_PORT, type=int)
+    return value if isinstance(value, int) and 1 <= value <= 65535 else DEFAULT_PORT
+
+
+def set_ollama_port(port: int) -> None:
+    app_settings().setValue(OLLAMA_PORT, port)

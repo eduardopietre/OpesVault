@@ -20,8 +20,10 @@ from opesvault.domain.search import find_operations
 from opesvault.ui.common import install_column_chooser, month_label, run_guarded, share_width, style_table
 from opesvault.ui.components import EmptyState, button, fill_menu, menu_button
 from opesvault.ui.dialogs import OperationDialog
+from opesvault.ui.local_ai import AiRunRow, client_for
 from opesvault.ui.pages.base import Page
 from opesvault.ui.pages.ledger.actions import OperationActions
+from opesvault.ui.pages.ledger.ai import LedgerAi
 from opesvault.ui.pages.ledger.filters import LedgerFilters
 from opesvault.ui.pages.ledger.inspector import OperationInspector
 from opesvault.ui.pages.ledger.model import OperationsModel
@@ -30,7 +32,7 @@ from opesvault.ui.pages.ledger.model import OperationsModel
 INSPECTOR_MIN_PAGE_WIDTH = 900
 
 
-class LedgerPage(OperationActions, Page):
+class LedgerPage(OperationActions, LedgerAi, Page):
     title = "Livro financeiro"
     section = "Dia a dia"
 
@@ -68,13 +70,25 @@ class LedgerPage(OperationActions, Page):
         self.actions_button = menu_button(
             "Ações", self._row_commands, tip="Comandos para os lançamentos selecionados (também no botão direito)"
         )
+        # Shown only with the local AI on; works on the selection (two or more) or on what the filters show.
+        self.ai_button = menu_button(
+            "IA local",
+            [
+                ("Sugerir categorias…", self.suggest_categories_ai),
+                ("Sugerir nomes de estabelecimentos…", self.suggest_names_ai),
+            ],
+            tip="Com dois ou mais lançamentos selecionados, só eles; senão, todos os exibidos. "
+            "Nada muda antes de você conferir a lista.",
+        )
+        self.ai_button.setAccessibleName("IA local")
+        self.ai_button.hide()
         self.details_button = button("Detalhes", self.toggle_inspector, role="plain", tip="Mostrar ou ocultar detalhes")
         self.details_button.setCheckable(True)
         self.details_button.setChecked(True)
         self._inspector_chosen = False
         # One flow for filters and row commands: on a narrow window they share the lines, instead
         # of the commands keeping a column that leaves the filters one per line.
-        self.filters.add_to_row(self.saved_filters, self.actions_button, self.details_button)
+        self.filters.add_to_row(self.saved_filters, self.actions_button, self.ai_button, self.details_button)
 
         self.model = OperationsModel()
         self.table = QTableView()
@@ -122,6 +136,9 @@ class LedgerPage(OperationActions, Page):
         self.count = QLabel()  # kept for scripts and tests; the visible count is the header subtitle
         layout = self.page_layout()
         layout.addWidget(self.filters.row)
+        # The local AI answers in the background; the Livro stays usable meanwhile.
+        self.ai_row = AiRunRow(self)
+        layout.addWidget(self.ai_row)
         layout.addWidget(self.split, 1)
 
     # ── filters ─────────────────────────────────────
@@ -215,12 +232,15 @@ class LedgerPage(OperationActions, Page):
     def refresh(self) -> None:
         self.filters.fill(self.session.ledger if self.session else None)
         if self.session is None:
+            self.ai_row.stop()  # the vault closed: the answer is no longer wanted
+            self.ai_button.hide()
             self.model.reset(None, [])
             self.count.setText("")
             self.header.set_subtitle("")
             self.inspector.show_operation(None, None, 0)
             return
         ledger = self.session.ledger
+        self.ai_button.setVisible(client_for(ledger) is not None)
         selected = set(self.selected_ids())
         ops = find_operations(ledger, self.filters.current(ledger))
         self.model.reset(ledger, ops)

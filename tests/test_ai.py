@@ -178,7 +178,7 @@ def test_model_check_says_how_to_install_and_records_the_version(ollama: str) ->
         OllamaClient("llama9", ollama).check_model()
     client = OllamaClient("gemma4:12b", ollama)
     client.check_model()
-    assert client.source == "ollama:gemma4:12b:p3@0123456789ab"
+    assert client.source == "ollama:gemma4:12b:p4@0123456789ab"
     client.unload()  # best effort, never raises
     assert FakeOllama.received[-1]["keep_alive"] == 0
     OllamaClient("m", "http://127.0.0.1:9").unload()  # nothing listening: still quiet

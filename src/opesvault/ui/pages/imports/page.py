@@ -5,7 +5,6 @@ their categories) and the original file with the selected item's evidence. Readi
 `queue`, the review commands in `review` and the optional local AI in `ai`.
 """
 
-import threading
 from collections.abc import Callable
 from html import escape
 from pathlib import Path
@@ -13,13 +12,12 @@ from uuid import UUID
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QKeySequence, QShortcut
-from PySide6.QtWidgets import QComboBox, QHeaderView, QProgressBar, QSplitter, QStackedWidget, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QComboBox, QHeaderView, QSplitter, QStackedWidget, QVBoxLayout, QWidget
 
 from opesvault.domain.model import AccountType
 from opesvault.importing import pipeline
 from opesvault.importing.model import BatchStatus, ExtractedItem, ImportBatch, ItemKind, ItemStatus
 from opesvault.importing.parsers import PARSERS
-from opesvault.ui.background import BackgroundJob
 from opesvault.ui.common import (
     fill_combo,
     fmt,
@@ -32,6 +30,7 @@ from opesvault.ui.common import (
     stretch_column,
 )
 from opesvault.ui.components import ElidedLabel, EmptyState, button, flow_row, hbox, hbox_widget, menu_button, text
+from opesvault.ui.local_ai import AiRunRow
 from opesvault.ui.pages.base import Page
 from opesvault.ui.pages.documents_page import PdfView
 from opesvault.ui.pages.imports.ai import AiAssist
@@ -51,8 +50,6 @@ class ImportPage(ImportQueue, ReviewCommands, AiAssist, Page):
         self._jobs: set[ImportJob] = set()
         self._queue: list[Path] = []
         self._viewer_document: UUID | None = None
-        self._ai_job: BackgroundJob | None = None
-        self._ai_cancel = threading.Event()
         self._ai_waiting: list[UUID] = []  # imported batches the local AI looks at once the queue is done
 
         # ── documents (left)
@@ -131,19 +128,7 @@ class ImportPage(ImportQueue, ReviewCommands, AiAssist, Page):
         actions = flow_row(approve_all, approve_one, correct, self.ai_button, more)
 
         # While the model answers, the review stays usable; this row says how far it got.
-        self.ai_label = text("", "caption")
-        self.ai_progress = QProgressBar()
-        self.ai_progress.setTextVisible(False)
-        self.ai_progress.setAccessibleName("Progresso da IA local")
-        self.ai_row = QWidget()
-        self.ai_row.setLayout(
-            hbox(
-                self.ai_label,
-                self.ai_progress,
-                button("Cancelar", self.cancel_ai, role="plain", tip="Para ao fim do lote atual"),
-            )
-        )
-        self.ai_row.hide()
+        self.ai_row = AiRunRow(self)
 
         review = QWidget()
         review_layout = QVBoxLayout(review)
@@ -210,7 +195,7 @@ class ImportPage(ImportQueue, ReviewCommands, AiAssist, Page):
 
     def refresh(self) -> None:
         if self.session is None:
-            self._ai_cancel.set()  # the vault closed: what is still being asked is no longer wanted
+            self.ai_row.stop()  # the vault closed: what is still being asked is no longer wanted
             self._ai_waiting.clear()
             self.batches.setRowCount(0)
             self.items.setRowCount(0)

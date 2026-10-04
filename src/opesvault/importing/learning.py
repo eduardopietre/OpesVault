@@ -105,7 +105,7 @@ class Contradiction:
     usual_category_id: UUID  # what the family chose instead, most often
 
 
-def _category_of(ledger: Ledger, op: Operation) -> tuple[UUID, AccountType, UUID | None] | None:
+def category_of(ledger: Ledger, op: Operation) -> tuple[UUID, AccountType, UUID | None] | None:
     """The single income or expense category of an operation and the account the money moved in."""
     categories = []
     others = []
@@ -142,7 +142,7 @@ def knowledge(ledger: Ledger) -> dict[tuple[str, AccountType], Learned]:
         key = merchant_key(op.description)
         if len(key) < MIN_KEY_LENGTH:
             continue
-        category = _category_of(ledger, op)
+        category = category_of(ledger, op)
         if category is None:
             continue
         category_id, kind, account_id = category

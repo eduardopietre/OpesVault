@@ -364,7 +364,7 @@ def test_the_interface_says_projeto_never_familia(window: MainWindow) -> None:
     import tokenize
 
     root = Path(__file__).resolve().parents[1] / "src" / "opesvault"
-    model_only = {root / "ai" / "ollama.py"}
+    model_only = {root / "ai" / "prompts.py"}
     found = []
     for path in sorted(root.rglob("*.py")):
         if path in model_only:

@@ -259,15 +259,14 @@ def test_member_role_in_the_dialog(setup: tuple[MainWindow, Family]) -> None:
 
 def _local_ai(window: MainWindow, f: Family, url: str, monkeypatch: pytest.MonkeyPatch):  # type: ignore[no-untyped-def]
     import json
+    from urllib.parse import urlparse
 
-    from opesvault.ai.ollama import OllamaClient
     from opesvault.domain.settings import update_settings
+    from opesvault.ui import preferences
     from opesvault.ui.pages.imports import ImportPage
 
     update_settings(f.ledger, ai_enabled=True, ai_model="gemma4:12b")
-    monkeypatch.setattr(
-        "opesvault.importing.ai_suggestions.client_from_settings", lambda _ledger: OllamaClient("gemma4:12b", url)
-    )
+    preferences.set_ollama_port(urlparse(url).port or 0)  # the fake Ollama, as a person would set it
     FakeOllama.answer = json.dumps({"suggestions": [{"index": 0, "category": "Lazer"}]})
     return page_of(window, ImportPage)
 
@@ -325,12 +324,11 @@ def test_local_ai_runs_by_itself_after_an_import(
 def test_settings_check_runs_off_the_ui_thread(
     setup: tuple[MainWindow, Family], ollama: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from opesvault.ai import ollama as module
+    from urllib.parse import urlparse
 
     window, _ = setup
-    monkeypatch.setattr(module, "DEFAULT_URL", ollama)
-    monkeypatch.setattr(module.OllamaClient.__init__, "__defaults__", (ollama,))
     page = page_of(window, SettingsPage)
+    page.ai_port.setValue(urlparse(ollama).port or 0)
     page.ai_model.setCurrentText("llama9")
     page.test_ai()
     assert page.ai_status.text() == "Verificando o Ollama local…" and not page.ai_check.isEnabled()

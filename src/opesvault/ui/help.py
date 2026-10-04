@@ -123,6 +123,10 @@ marcador e veja o total em Relatórios › Marcadores.</li>
 Documentos. Vale para qualquer lançamento, inclusive de mês fechado.</li>
 <li><b>Nomear estabelecimento</b>: “IFD*IFOOD.COM AGENCIA” vira “iFood” em todos os lançamentos parecidos; a
 descrição do banco continua guardada. Relatórios › Despesas por estabelecimento usa esses nomes.</li>
+<li><b>Sugerir categorias com IA</b> e <b>Sugerir nomes de estabelecimentos com IA</b> (com a IA local ligada):
+olham os lançamentos selecionados (dois ou mais) ou, sem seleção, todos os exibidos pelos filtros. A resposta vem
+numa lista em que cada mudança pode ser desmarcada, e um nome pode ser ajustado com dois cliques; nada muda antes de
+você aplicar. A reclassificação guarda no histórico o motivo e o modelo que sugeriu.</li>
 <li><b>Está certo</b>: silencia os avisos de possível cobrança duplicada ou de valor fora do comum.</li>
 <li><b>Filtros salvos</b>: guarda a combinação atual de filtros com um nome (“Cartão da Ana este mês”), no
 cofre, para aplicar depois com um clique.</li>
@@ -150,7 +154,9 @@ Divergência de total bloqueia a aprovação, salvo com motivo.</p>
 mão sempre prevalece.</p>
 <p>A IA local (Ollama) é opcional e só sugere categorias; nada é aprovado sem você. Ligada em Configurações ›
 IA local, ela consulta sozinha os itens sem categoria depois de cada importação, usando como exemplo o que você já
-classificou. Enquanto isso você pode seguir revisando; a sua escolha sempre prevalece.</p>
+classificou. Enquanto isso você pode seguir revisando; a sua escolha sempre prevalece. A origem de cada sugestão
+aparece no item (“sugestão (IA local, modelo)”). A mesma IA também atende o Livro (outra categoria e nomes de
+estabelecimentos) e o Novo lançamento (<b>Perguntar à IA local</b>, quando o histórico não conhece a descrição).</p>
 """,
     "Contas e cartões": """
 <p>Cadastro de contas, cartões, adicionais e categorias. Faturas são calculadas pelos dias de fechamento e vencimento

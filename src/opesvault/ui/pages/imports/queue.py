@@ -20,14 +20,14 @@ from opesvault.importing.source import PROBLEM_MESSAGES, SourceError, SourceProb
 from opesvault.ui.background import while_alive
 
 if TYPE_CHECKING:
-    from opesvault.ui.background import BackgroundJob
+    from opesvault.ui.local_ai import AiRunRow
     from opesvault.ui.pages.base import Page
 
     class _Parts(Page):
         batch_id: UUID | None
         _jobs: set["ImportJob"]
         _queue: list[Path]
-        _ai_job: BackgroundJob | None
+        ai_row: AiRunRow
         _ai_waiting: list[UUID]
 
         def _warm_up_ai(self) -> None: ...
@@ -98,7 +98,7 @@ class ImportQueue(_Parts):
         self._next_import()
 
     def _next_import(self) -> None:
-        if self._jobs or self._ai_job is not None or self.session is None:
+        if self._jobs or self.ai_row.running or self.session is None:
             return
         if self._queue:
             self._import_one(self._queue.pop(0), None)

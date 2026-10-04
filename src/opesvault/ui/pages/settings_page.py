@@ -3,8 +3,11 @@
 One contract per kind, so nothing looks pending when it is not:
 - vault settings (backup, reminder, local AI) change the open vault at once, like any other
   edit, and are written by the toolbar's Salvar;
-- computer preferences (recent vaults, idle lock) are written immediately, outside the vault.
+- computer preferences (recent vaults, idle lock, the Ollama port) are written immediately,
+  outside the vault.
 """
+
+from collections.abc import Callable
 
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
@@ -19,7 +22,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from opesvault.ai.ollama import RECOMMENDED_MODELS
+from opesvault.ai.ollama import RECOMMENDED_MODELS, Placement
 from opesvault.domain.settings import get_settings, update_settings
 from opesvault.ui.common import run_guarded
 from opesvault.ui.components import button, hbox_widget, text
@@ -97,7 +100,7 @@ class SettingsPage(Page):
         )
 
         # Local AI (stored in the vault). Off by default; the model only matters once it is on.
-        self.ai_enabled = QCheckBox("Usar Ollama local para sugerir categorias")
+        self.ai_enabled = QCheckBox("Usar o Ollama local para sugestões")
         # The installed models, as Ollama lists them; still editable for one not pulled yet.
         self.ai_model = QComboBox()
         self.ai_model.setEditable(True)
@@ -110,16 +113,26 @@ class SettingsPage(Page):
         self.ai_check = button("Verificar Ollama", self.test_ai)
         self._ai_job: object = None  # the check in progress (kept alive until it answers)
         self.ai_model_row = hbox_widget(self.ai_model, self.ai_check, None)
+        # Where Ollama listens on this computer (OLLAMA_HOST); the host is always 127.0.0.1.
+        self.ai_port = QSpinBox()
+        self.ai_port.setRange(1024, 65535)
+        self.ai_port.setAccessibleName("Porta do Ollama")
+        self.ai_port.setToolTip("Mude só se o Ollama foi configurado em outra porta (OLLAMA_HOST=127.0.0.1:<porta>)")
+        self.ai_port_row = hbox_widget(self.ai_port, text("neste computador, gravada na hora", "caption"), None)
         ai, ai_form, _ = _tab(
             VAULT_NOTE,
-            "Sem IA, o aplicativo já sugere categorias pelas suas regras e pelo histórico. A IA local é opcional: "
-            "só o Ollama em 127.0.0.1 é usado; são enviados apenas descrições (as novas e, como exemplo, algumas que "
-            "você já classificou) e nomes de categorias; sugestões nunca aprovam lançamentos. Ao importar, a IA "
-            "sugere sozinha as categorias que faltarem, sem impedir a revisão.",
+            "Sem IA, o aplicativo já sugere categorias pelas suas regras e pelo histórico. A IA local é opcional e "
+            "só sugere: na importação, as categorias que faltarem (sozinha, sem impedir a revisão); no Livro, "
+            "outra categoria ou nomes legíveis de estabelecimentos para os lançamentos escolhidos, sempre "
+            "conferidos numa lista antes de mudar algo; e, num lançamento novo, a categoria pela descrição. "
+            "Só o Ollama em 127.0.0.1 é usado; vão apenas descrições (e, como exemplo, algumas que você já "
+            "classificou) e nomes de categorias, nunca valores, contas ou pessoas.",
         )
         ai_form.addRow("", self.ai_enabled)
         self.ai_model_label = QLabel("Modelo instalado:")
         ai_form.addRow(self.ai_model_label, self.ai_model_row)
+        self.ai_port_label = QLabel("Porta do Ollama:")
+        ai_form.addRow(self.ai_port_label, self.ai_port_row)
         self.ai_hint = text(
             "Indicado: "
             + ", ".join(RECOMMENDED_MODELS)
@@ -150,6 +163,10 @@ class SettingsPage(Page):
             spin.valueChanged.connect(self._edited)
         self._vault_forms = (backup, ai)
         self._show_ai_model(False)
+        from opesvault.ui import preferences
+
+        self.ai_port.setValue(preferences.ollama_port())
+        self.ai_port.valueChanged.connect(preferences.set_ollama_port)
 
     # ── vault settings: applied to the open vault, written by Salvar ──
 
@@ -185,7 +202,14 @@ class SettingsPage(Page):
             self.changed()
 
     def _show_ai_model(self, enabled: bool) -> None:
-        for widget in (self.ai_model_label, self.ai_model_row, self.ai_status, self.ai_hint):
+        for widget in (
+            self.ai_model_label,
+            self.ai_model_row,
+            self.ai_port_label,
+            self.ai_port_row,
+            self.ai_status,
+            self.ai_hint,
+        ):
             widget.setVisible(enabled)
 
     # ── computer preferences: written at once ──
@@ -255,40 +279,51 @@ class SettingsPage(Page):
             command()
 
     def test_ai(self) -> None:
-        """Lists the installed models (off the UI thread) and says whether the chosen one is among them."""
-        from opesvault.ai.ollama import AiUnavailable, OllamaClient
+        """Lists the installed models (off the UI thread), says whether the chosen one is among them
+        and, when it is, loads it to say whether it fits in the GPU (in the CPU each answer is slow).
+        """
+        from opesvault.ai.ollama import AiUnavailable, OllamaClient, local_url
         from opesvault.ui.background import BackgroundJob, while_alive
 
         if self._ai_job is not None:
             return
         chosen = self.ai_model.currentText().strip()
         try:
-            client = OllamaClient(chosen or RECOMMENDED_MODELS[0])
+            client = OllamaClient(chosen or RECOMMENDED_MODELS[0], local_url(self.ai_port.value()))
         except AiUnavailable as exc:
             self.ai_status.setText(str(exc))
             return
 
-        def work(_report: object) -> object:
+        def work(report: Callable[[int, int], None]) -> object:
             try:
-                return client.server_info()
+                info = client.server_info()
             except AiUnavailable as exc:
                 return exc
+            if not chosen or not info.installed(chosen):
+                return info, None
+            report(1, 2)
+            client.warm_up()
+            return info, client.placement()
 
         job = BackgroundJob(work)
         self._ai_job = job
         self.ai_check.setEnabled(False)
         self.ai_status.setText("Verificando o Ollama local…")
+        while_alive(
+            job.signals.progress,
+            self,
+            lambda *_: self.ai_status.setText(f"Carregando {chosen} para ver se cabe na GPU…"),
+        )
         while_alive(job.signals.done, self, lambda result: self._ai_checked(chosen, result))
         job.start()
 
-    def _ai_checked(self, chosen: str, info: object) -> None:
-        from opesvault.ai.ollama import ServerInfo
-
+    def _ai_checked(self, chosen: str, result: object) -> None:
         self._ai_job = None
         self.ai_check.setEnabled(True)
-        if not isinstance(info, ServerInfo):
-            self.ai_status.setText(f"{info} Abra o Ollama e tente de novo.")
+        if not isinstance(result, tuple):
+            self.ai_status.setText(f"{result} Abra o Ollama e tente de novo.")
             return
+        info, placed = result
         self.ai_model.blockSignals(True)
         self.ai_model.clear()
         self.ai_model.addItems(list(info.models))
@@ -305,8 +340,22 @@ class SettingsPage(Page):
             )
         else:
             state = f"{len(info.models)} modelo(s) instalado(s)."
-        self.ai_status.setText(f"Ollama {info.version} respondeu: {state}")
+        self.ai_status.setText(f"Ollama {info.version} respondeu: {state}{placement_text(placed)}")
         self.flush()
+
+
+def placement_text(placed: "Placement | None") -> str:
+    """Where the loaded model runs, in words; nothing when Ollama did not say."""
+    if placed is None:
+        return ""
+    if placed.gpu_percent >= 100:
+        return " O modelo roda inteiro na GPU."
+    if placed.gpu_percent == 0:
+        return " O modelo roda só na CPU: cada consulta leva muitas vezes mais. Um modelo menor pode caber na GPU."
+    return (
+        f" Só {placed.gpu_percent}% do modelo coube na GPU; o resto roda na CPU e deixa as consultas bem mais "
+        "lentas. Um modelo menor pode caber inteiro."
+    )
 
 
 def _note(value: str, *, strong: bool = False) -> QLabel:

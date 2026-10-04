@@ -13,6 +13,7 @@ class FakeOllama(BaseHTTPRequestHandler):
     received: list[dict] = []  # noqa: RUF012 - test double
     reject_think = False
     missing_model = False
+    gpu_share = 100  # percent of the loaded model in the GPU, reported by /api/ps
 
     def _send(self, code: int, payload: dict) -> None:
         data = json.dumps(payload).encode()
@@ -24,6 +25,10 @@ class FakeOllama(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         if self.path == "/api/version":
             self._send(200, {"version": "0.35.1"})
+        elif self.path == "/api/ps":
+            size = 8 * 2**30
+            vram = size * FakeOllama.gpu_share // 100
+            self._send(200, {"models": [{"name": "gemma4:12b", "size": size, "size_vram": vram}]})
         else:
             models = [{"name": "gemma4:12b", "digest": "sha256:0123456789abcdef"}, {"name": "gpt-oss:120b-cloud"}]
             self._send(200, {"models": [*models, {"name": "qwen3.5:9b"}]})
@@ -55,6 +60,7 @@ def serve() -> Iterator[str]:
     FakeOllama.answers = []
     FakeOllama.reject_think = False
     FakeOllama.missing_model = False
+    FakeOllama.gpu_share = 100
     try:
         yield f"http://127.0.0.1:{server.server_port}"
     finally:

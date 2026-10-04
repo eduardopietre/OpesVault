@@ -128,11 +128,11 @@ def recurrence_alerts(ledger: Ledger, today: date, horizon: int = HORIZON_DAYS) 
 
 
 def import_alerts(ledger: Ledger) -> list[Alert]:
-    from opesvault.importing import pipeline
+    from opesvault.importing import store
     from opesvault.importing.model import BatchStatus, ItemStatus
 
     out: list[Alert] = []
-    pending = [i for i in pipeline.items(ledger).values() if i.status in (ItemStatus.READY, ItemStatus.NEEDS_REVIEW)]
+    pending = [i for i in store.items(ledger).values() if i.status in (ItemStatus.READY, ItemStatus.NEEDS_REVIEW)]
     if pending:
         documents = len({i.batch_id for i in pending})
         out.append(
@@ -145,7 +145,7 @@ def import_alerts(ledger: Ledger) -> list[Alert]:
             )
         )
     undecided = [
-        b for b in pipeline.batches(ledger).values() if b.status in (BatchStatus.AMBIGUOUS, BatchStatus.UNSUPPORTED)
+        b for b in store.batches(ledger).values() if b.status in (BatchStatus.AMBIGUOUS, BatchStatus.UNSUPPORTED)
     ]
     if undecided:
         out.append(

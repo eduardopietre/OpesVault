@@ -343,7 +343,7 @@ def find_plan_for_installment(
     ledger: Ledger, card_id: UUID, description: str, number: int, count: int, amount: Decimal
 ) -> _ImportedPlanMatch | None:
     """An imported 'PARCELA n/N' line already covered by a registered plan is not a new expense."""
-    from opesvault.importing.pipeline import normalize
+    from opesvault.importing.rules import normalize
 
     key = normalize(description)
     for plan in plans(ledger).values():

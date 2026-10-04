@@ -133,6 +133,6 @@ def match(
 
 def usage(ledger: Ledger, rule_id: UUID) -> int:
     """How many review items this rule has categorized (approved or pending)."""
-    from opesvault.importing.pipeline import items
+    from opesvault.importing.store import items
 
     return sum(1 for i in items(ledger).values() if i.suggestion_source == f"user_rule:{rule_id}")

@@ -45,7 +45,7 @@ def position_for(ledger: Ledger, ticker: str | None, description: str, opened_on
 
 
 def approve_note(ledger: Ledger, batch: ImportBatch, selected: list[ExtractedItem]):  # type: ignore[no-untyped-def]
-    from opesvault.importing.pipeline import ApprovalResult, _update_batch_status
+    from opesvault.importing.approval import ApprovalResult, update_batch_status
 
     if batch.account_id is None:
         raise DomainError("Escolha a conta (saldo em corretora ou conta corrente) onde a nota liquida.")
@@ -112,5 +112,5 @@ def approve_note(ledger: Ledger, batch: ImportBatch, selected: list[ExtractedIte
             reason="custo rateado entre os negócios",
             action=HistoryAction.APPROVE_IMPORT,
         )
-    _update_batch_status(ledger, batch.id)
+    update_batch_status(ledger, batch.id)
     return result

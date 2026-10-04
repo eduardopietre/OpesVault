@@ -64,7 +64,7 @@ def attach(session: "Session", operation_id: UUID, original_name: str, data: byt
 
 def detach(session: "Session", attachment_id: UUID) -> None:
     """Removes the link; the file leaves the vault when nothing else uses it."""
-    from opesvault.importing.pipeline import batches
+    from opesvault.importing.store import batches
 
     ledger = session.ledger
     found = attachments(ledger).get(attachment_id)

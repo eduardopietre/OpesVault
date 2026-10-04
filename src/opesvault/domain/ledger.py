@@ -30,6 +30,7 @@ from opesvault.domain.model import (
     YearMonth,
 )
 from opesvault.domain.money import BRL, ZERO, is_cents, to_decimal
+from opesvault.domain.tracking import MISSING, TrackedDict, TrackedList
 
 SCHEMA_VERSION = 2  # 2: members have a role (domain/migrations.py)
 _META_NAMESPACE = UUID("6f1c3d2a-1b7e-4b8e-9f00-0c0ffee0a001")
@@ -70,104 +71,6 @@ def _now() -> datetime:
     return datetime.now(UTC)
 
 
-class _Missing:
-    """Marks 'no value' in the change journal (None is a valid stored value)."""
-
-    def __repr__(self) -> str:
-        return "MISSING"
-
-
-MISSING: Any = _Missing()
-
-
-class _TrackedDict(dict):  # type: ignore[type-arg]
-    """Entity collection that reports every change, so saves can be incremental and
-    caches can be invalidated even when a module writes to the collection directly."""
-
-    def __init__(self, ledger: "Ledger", kind: str) -> None:
-        super().__init__()
-        self._ledger = ledger
-        self._kind = kind
-
-    def __setitem__(self, key: UUID, value: Any) -> None:
-        before = dict.get(self, key, MISSING)
-        super().__setitem__(key, value)
-        self._ledger._touch(self._kind, key)
-        self._ledger._journal_add(("entity", self._kind, key, before, value))
-
-    def __delitem__(self, key: UUID) -> None:
-        before = dict.get(self, key, MISSING)
-        super().__delitem__(key)
-        self._ledger._touch(self._kind, key)
-        self._ledger._journal_add(("entity", self._kind, key, before, MISSING))
-
-    def pop(self, key: UUID, *default: Any) -> Any:  # type: ignore[override]
-        before = dict.get(self, key, MISSING)
-        value = super().pop(key, *default)
-        self._ledger._touch(self._kind, key)
-        if before is not MISSING:
-            self._ledger._journal_add(("entity", self._kind, key, before, MISSING))
-        return value
-
-    def load(self, key: UUID, value: Any) -> None:
-        """Insert while opening a vault: not a change."""
-        super().__setitem__(key, value)
-
-
-class _TrackedList(list):  # type: ignore[type-arg]
-    """History list. Entries loaded from a vault may stay as raw JSON until first read:
-    a session that never looks at old history never pays for parsing it."""
-
-    def __init__(self, ledger: "Ledger") -> None:
-        super().__init__()
-        self._ledger = ledger
-        self._raw: list[str] = []
-
-    def load_raw(self, payloads: list[str]) -> None:
-        self._raw = payloads
-
-    def _ensure(self) -> None:
-        if self._raw:
-            raw, self._raw = self._raw, []
-            parsed = [HistoryEntry.model_validate_json(p) for p in raw]
-            current = list(list.__iter__(self))
-            list.clear(self)
-            list.extend(self, parsed + current)
-
-    def append(self, entry: Any) -> None:
-        super().append(entry)
-        self._ledger._touch("history", entry.id)
-        self._ledger._journal_add(("history", entry))
-
-    def discard(self, entry: Any) -> None:
-        """Removes an entry appended in this session (undo of an unsaved change)."""
-        list.remove(self, entry)
-        self._ledger._touch("history", entry.id)
-
-    def recent(self) -> Iterator[Any]:
-        """Entries appended in this session, newest first, without parsing old ones."""
-        return reversed(list(list.__iter__(self))) if self._raw else reversed(self)
-
-    def __len__(self) -> int:
-        return list.__len__(self) + len(self._raw)
-
-    def __iter__(self) -> Iterator[Any]:
-        self._ensure()
-        return list.__iter__(self)
-
-    def __reversed__(self) -> Iterator[Any]:
-        self._ensure()
-        return list.__reversed__(self)
-
-    def __getitem__(self, index: Any) -> Any:
-        self._ensure()
-        return list.__getitem__(self, index)
-
-    def sort(self, *args: Any, **kwargs: Any) -> None:
-        self._ensure()
-        list.sort(self, *args, **kwargs)
-
-
 class Ledger:
     """In-memory family ledger. Collections are keyed by entity kind."""
 
@@ -188,8 +91,8 @@ class Ledger:
         # kind → changes to that kind of entity: caches that read only some kinds key on these.
         self.kind_changes: dict[str, int] = {}
         self._meta = meta or LedgerMeta()
-        self._store: dict[str, dict[UUID, Any]] = {kind: _TrackedDict(self, kind) for kind in self.KINDS}
-        self.history: list[HistoryEntry] = _TrackedList(self)
+        self._store: dict[str, dict[UUID, Any]] = {kind: TrackedDict(self, kind) for kind in self.KINDS}
+        self.history: list[HistoryEntry] = TrackedList(self)
         self.operator: str | None = None
         self.migrated_from: int | None = None  # schema version before an in-memory migration
         # Raw changes since the session started journaling; None while not recording.
@@ -255,7 +158,7 @@ class Ledger:
             history = self.history
             if forward:
                 history.append(entry[1])
-            elif isinstance(history, _TrackedList):
+            elif isinstance(history, TrackedList):
                 history.discard(entry[1])
             else:  # pragma: no cover - history is always tracked
                 history.remove(entry[1])
@@ -290,7 +193,7 @@ class Ledger:
 
     def _collection(self, kind: str) -> dict[UUID, Any]:
         if kind not in self._store:
-            self._store[kind] = _TrackedDict(self, kind)
+            self._store[kind] = TrackedDict(self, kind)
         return self._store[kind]
 
     # ── typed accessors ─────────────────────────────────
@@ -758,7 +661,7 @@ class Ledger:
                 list.append(ledger.history, entity)
             else:
                 collection = ledger._collection(kind)
-                assert isinstance(collection, _TrackedDict)
+                assert isinstance(collection, TrackedDict)
                 collection.load(getattr(entity, "id"), entity)  # noqa: B009
         ledger.history.sort(key=lambda h: h.at)
         ledger.change_count = 0
@@ -795,9 +698,9 @@ class Ledger:
                 raise DomainError("Cofre contém dados de uma versão mais nova do OpesVault.")
             entity = model.model_validate_json(payload)
             collection = ledger._collection(kind)
-            assert isinstance(collection, _TrackedDict)
+            assert isinstance(collection, TrackedDict)
             collection.load(getattr(entity, "id"), entity)  # noqa: B009
-        assert isinstance(ledger.history, _TrackedList)
+        assert isinstance(ledger.history, TrackedList)
         ledger.history.load_raw(raw_history)
         ledger.change_count = 0
         ledger.dirty = {}
@@ -809,7 +712,7 @@ class Ledger:
             return self.meta.model_dump(mode="json")
         if kind == "history":
             history = self.history
-            recent = history.recent() if isinstance(history, _TrackedList) else reversed(history)
+            recent = history.recent() if isinstance(history, TrackedList) else reversed(history)
             entry = next((h for h in recent if h.id == key), None)
             if entry is None:
                 entry = next((h for h in reversed(history) if h.id == key), None)

@@ -149,8 +149,8 @@ const TAX_COMMANDS: CommandTable = {
   save_profile: (l, [fields]) => prof.saveProfile(l, prof.InvestmentProfileSchema.parse(fields)),
 };
 
-function sortedPeople(people: ReadonlySet<Id> | null): unknown {
-  return people === null ? null : [...people].sort();
+function sortedPeople(people: ReadonlySet<Id> | null, known: ReadonlySet<string>): unknown {
+  return people === null ? null : [...people].map((p) => norm(p, known) as string).sort();
 }
 
 function yearSheets(ledger: Ledger, year: number, declarant: Id | null, known: ReadonlySet<string>): unknown {
@@ -161,8 +161,8 @@ function yearSheets(ledger: Ledger, year: number, declarant: Id | null, known: R
   const bestModel = simulation.best(comparison);
   return {
     year,
-    declarant,
-    people: sortedPeople(people),
+    declarant: norm(declarant, known),
+    people: sortedPeople(people, known),
     income: norm(j(income), known),
     unclassified: declaration.unclassified(income).length,
     assets: norm(

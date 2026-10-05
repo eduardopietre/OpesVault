@@ -1,8 +1,13 @@
 /** The investment commands of scripts/golden/cases_investments.py (`INVESTMENT_COMMANDS`), shared by the W5 golden tests. */
-import type { AssetClass, ValueNature } from "../src/investments/model.ts";
+import { type AssetClass, type TaxRule, TaxRuleSchema, type ValueNature } from "../src/investments/model.ts";
 import * as service from "../src/investments/service.ts";
+import * as simulation from "../src/investments/simulation.ts";
 import * as trades from "../src/investments/trades.ts";
-import { asDate, type CommandTable } from "./w5_golden.ts";
+import { golden, j } from "./golden.ts";
+import { asDate, type CommandTable, Raw } from "./w5_golden.ts";
+
+/** The simulation rules of cases_investments.py (`RULES`). */
+export const RULES: TaxRule[] = golden<{ rules: unknown[] }>("investments").rules.map((r) => TaxRuleSchema.parse(r));
 
 const s = (v: unknown) => v as string;
 
@@ -28,4 +33,6 @@ export const INVESTMENT_COMMANDS: CommandTable = {
   split: (l, [pos, on, factor]) => trades.split(l, s(pos), asDate(on), factor),
   bonus: (l, [pos, on, qty, cost]) => trades.bonus(l, s(pos), asDate(on), qty, cost === undefined ? "0" : cost),
   opening_lot: (l, [pos, on, qty, cost]) => trades.openingLot(l, s(pos), asDate(on), qty, cost),
+  simulate: (l, [pos, on, gross, rule], o) =>
+    new Raw(j(simulation.simulate(l, s(pos), asDate(on), gross, RULES[rule as number]!, o))),
 };

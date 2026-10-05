@@ -10,14 +10,14 @@ import { addDays, type IsoDate } from "../src/lib/dates.ts";
 import { Dec } from "../src/lib/dec.ts";
 import type { Id } from "../src/lib/ids.ts";
 import { sortedBy } from "../src/lib/text.ts";
-import { realizedGain, type TaxRule, TaxRuleSchema, ValueNature as Nature } from "../src/investments/model.ts";
+import { realizedGain, type TaxRule, ValueNature as Nature } from "../src/investments/model.ts";
 import * as performance from "../src/investments/performance.ts";
 import * as returns from "../src/investments/returns.ts";
 import * as service from "../src/investments/service.ts";
 import * as simulation from "../src/investments/simulation.ts";
 import * as trades from "../src/investments/trades.ts";
 import { golden, j, outcome } from "./golden.ts";
-import { INVESTMENT_COMMANDS } from "./investment_commands.ts";
+import { INVESTMENT_COMMANDS, RULES } from "./investment_commands.ts";
 import { dumpOrNull, knownIds, norm, runCommands, type Scenario } from "./w5_golden.ts";
 
 interface File {
@@ -28,7 +28,6 @@ interface File {
 }
 
 const data = golden<File>("investments");
-const RULES: TaxRule[] = data.rules.map((r) => TaxRuleSchema.parse(r));
 
 function observed(o: performance.Observed | null, known: ReadonlySet<string>): unknown {
   return o === null ? null : { valuation: norm(dumpOrNull(o.valuation), known), age_days: o.age_days };

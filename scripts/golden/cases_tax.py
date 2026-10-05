@@ -149,8 +149,8 @@ TAX_COMMANDS: dict[str, Any] = {
 # ── snapshot ──────────
 
 
-def _sorted_people(people: set[UUID] | None) -> Any:
-    return None if people is None else sorted(str(p) for p in people)
+def _sorted_people(people: set[UUID] | None, known: set[str]) -> Any:
+    return None if people is None else sorted(norm(str(p), known) for p in people)
 
 
 def _year_sheets(ledger: Ledger, year: int, declarant: UUID | None, known: set[str]) -> dict[str, Any]:
@@ -160,8 +160,8 @@ def _year_sheets(ledger: Ledger, year: int, declarant: UUID | None, known: set[s
     rows = variable_income.months(ledger, year, people)
     return {
         "year": year,
-        "declarant": j(declarant),
-        "people": _sorted_people(people),
+        "declarant": norm(j(declarant), known),
+        "people": _sorted_people(people, known),
         "income": norm(j(income), known),
         "unclassified": len(income.unclassified),
         "assets": norm(
@@ -439,6 +439,18 @@ def _salary() -> list[dict[str, Any]]:
                 }
             ],
         },
+    ]
+
+
+def _salary_more() -> list[dict[str, Any]]:
+    """Appended to the salary scenario: removals and members (no index shifts)."""
+    return [
+        {"cmd": "remove_report", "args": ["$22"]},
+        {"cmd": "remove_report", "args": ["$22"]},
+        {"cmd": "member", "args": ["  Davi "]},
+        {"cmd": "member", "args": ["ana"]},
+        {"cmd": "set_member_info", "args": ["@carla", None, None, "@ana", "Cônjuge"]},
+        {"cmd": "set_income_detail", "args": ["$4", "salary", None, None, None]},
     ]
 
 
@@ -864,7 +876,7 @@ def generate() -> dict[str, Any]:
     return {
         "investment_codes": [list(c) for c in investment_codes()],
         "scenarios": [
-            scenario("salary", _salary()),
+            scenario("salary", _salary() + _salary_more()),
             scenario("carne-leão and identities", _carne_leao()),
             scenario("goods, filings and debts", _goods()),
             scenario("investments and renda variável", _investments()),

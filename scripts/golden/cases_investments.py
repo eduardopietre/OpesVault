@@ -121,6 +121,8 @@ INVESTMENT_COMMANDS: dict[str, Any] = {
     "split": lambda led, pos, on, factor: trades.split(led, pos, _d(on), factor),
     "bonus": lambda led, pos, on, qty, cost="0": trades.bonus(led, pos, _d(on), qty, cost),
     "opening_lot": lambda led, pos, on, qty, cost: trades.opening_lot(led, pos, _d(on), qty, cost),
+    # a simulation writes nothing; its outcome is compared like any command's (RULES by index)
+    "simulate": lambda led, pos, on, gross, rule, **o: simulation.simulate(led, pos, _d(on), gross, RULES[rule], **o),
 }
 
 
@@ -387,6 +389,7 @@ def _examples() -> dict[str, list[dict[str, Any]]]:
         "C": [
             cdb,
             val("2026-06-30", "12000"),
+            {"cmd": "simulate", "args": ["$0", "2026-06-30", "12000", 0], "opts": {"fees": "20"}},
             {
                 "cmd": "redeem",
                 "args": ["$0", "2026-06-30", "12000", "@bank"],
@@ -396,6 +399,12 @@ def _examples() -> dict[str, list[dict[str, Any]]]:
         "D": [
             cdb,
             val("2026-06-30", "12000"),
+            {
+                "cmd": "simulate",
+                "args": ["$0", "2026-06-30", "3000", 0],
+                "opts": {"fees": "10", "current_value": "12000"},
+            },
+            {"cmd": "simulate", "args": ["$0", "2027-06-30", "3000", 3]},
             {
                 "cmd": "redeem",
                 "args": ["$0", "2026-06-30", "3000", "@bank"],
@@ -414,6 +423,7 @@ def _examples() -> dict[str, list[dict[str, Any]]]:
                 "opts": {"reference_value": "50000.00"},
             },
             val("2026-07-01", "50500"),
+            {"cmd": "simulate", "args": ["$0", "2026-07-01", "1000", 0]},
         ],
         "TA-26": [
             cdb,

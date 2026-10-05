@@ -64,6 +64,7 @@ export type CommandTable = Record<string, (ledger: Ledger, args: unknown[], opts
 
 /** Python's `isinstance(result, BaseModel) and hasattr(result, "id")`: entities have a string id. */
 function entityId(result: unknown): string | null {
+  if (result instanceof Raw) return null;
   if (result && typeof result === "object" && !Array.isArray(result) && !(result instanceof Map)) {
     const id = (result as { id?: unknown }).id;
     if (typeof id === "string") return id;
@@ -109,8 +110,17 @@ export function runCommands(
   return out;
 }
 
+/** A command result already in the golden JSON form (Python's `j()` of a dataclass). */
+export class Raw {
+  readonly json: unknown;
+  constructor(json: unknown) {
+    this.json = json;
+  }
+}
+
 /** Python's `j()` of an entity: its persisted JSON (decimals as text). */
 export function entityJson(value: unknown): unknown {
+  if (value instanceof Raw) return value.json;
   return value === null || value === undefined ? null : dump(value);
 }
 

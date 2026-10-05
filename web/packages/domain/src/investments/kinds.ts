@@ -5,4 +5,5 @@
 import "./model.ts";
 import "./trades.ts";
 import "./profile.ts";
+import "./benchmarks.ts";
 import "../domain/banking.ts";

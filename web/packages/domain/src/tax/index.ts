@@ -6,3 +6,4 @@ export * as declaration from "./declaration.ts";
 export * as checklist from "./checklist.ts";
 export * as simulation from "./simulation.ts";
 export * as variableIncome from "./variable_income.ts";
+export * as statements from "./statements.ts";

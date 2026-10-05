@@ -24,7 +24,6 @@ interface Scenario {
   results: { outcome: { ok?: unknown; error?: string; message?: string }; snapshot: unknown }[];
 }
 
-const NOTES_NOT_AVAILABLE = "A aprovação de notas de corretagem ainda não está disponível.";
 const { scenarios } = golden<{ scenarios: Record<string, Scenario> }>("import");
 
 function newSession(): Session {
@@ -300,10 +299,7 @@ describe("review flows replayed from the desktop", () => {
         } catch (error) {
           if (expected.outcome.error === undefined) throw error;
           expect((error as Error).name, label).toBe(expected.outcome.error);
-          // TODO(W6-integration): brokerage notes are approved by investments/notes (W5); until it
-          // registers `registerNoteApprover`, the approval is refused with another DomainError.
-          const pendingNotes = (error as Error).message === NOTES_NOT_AVAILABLE;
-          if (error instanceof DomainError && !pendingNotes)
+          if (error instanceof DomainError)
             expect((error as Error).message, label).toBe(expected.outcome.message);
         }
         if (expected.snapshot !== null) expect(snapshot(session), label).toEqual(expected.snapshot);

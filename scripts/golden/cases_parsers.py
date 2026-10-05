@@ -33,7 +33,55 @@ FUZZ_TEXT_ITERATIONS = 20
 FUZZ_BYTES_ITERATIONS = 30
 PASSWORD = "12345678900"
 
+def positioned_pdf(runs: list[tuple[float, float, str]]) -> bytes:
+    """One page with text runs placed one by one (columns, runs that touch, fake bold), so line
+    and word grouping are compared too, not only one run per line as in synthetic_pdf."""
+    import re as _re
+
+    def esc(text: str) -> str:
+        return text.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
+
+    page = make_pdf(["placeholder"])
+    ops = ["BT", "/F1 10 Tf"] + [f"1 0 0 1 {x} {y} Tm ({esc(t)}) Tj" for x, y, t in runs] + ["ET"]
+    content = "\n".join(ops).encode("cp1252")
+    old = _re.search(rb"<< /Length \d+ >>\nstream\n.*?\nendstream", page, _re.S)
+    assert old is not None
+    body = b"<< /Length %d >>\nstream\n" % len(content) + content + b"\nendstream"
+    # Rebuild the file so the xref offsets stay right.
+    objects = _re.findall(rb"\d+ 0 obj\n(.*?)\nendobj\n", page, _re.S)
+    objects = [body if o == old.group(0) else o for o in objects]
+    out = bytearray(b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n")
+    offsets = []
+    for number, obj in enumerate(objects, start=1):
+        offsets.append(len(out))
+        out += b"%d 0 obj\n" % number + obj + b"\nendobj\n"
+    xref = len(out)
+    out += b"xref\n0 %d\n0000000000 65535 f \n" % (len(objects) + 1)
+    for offset in offsets:
+        out += b"%010d 00000 n \n" % offset
+    out += b"trailer\n<< /Size %d /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n" % (len(objects) + 1, xref)
+    return bytes(out)
+
+
+POSITIONED = [
+    (40, 800, "Resumo dos Negócios"),
+    (300, 800, "Resumo Financeiro"),  # a second column on the same line
+    (40, 787, "Compras à vista 3.105,00"),
+    (300, 787.8, "Taxa de liquidação 1,65 D"),  # a baseline 0.8 pt off: still one line
+    (40, 774, "Emolu"),
+    (66.7, 774, "mentos 0,30 D"),  # touching runs: one word
+    (40, 761, "Líquido "),
+    (78, 761, "para 04/03/2026 106,95 D"),  # a space at the end of a run
+    (40, 748, "Nota em negrito"),
+    (40.4, 748.3, "Nota em negrito"),  # fake bold: the same run printed again 0.4 pt away
+    (40, 735, "Linha"),
+    (40, 730, "logo abaixo"),  # 5 pt below: another line
+    (120, 722, "  espaços   no   meio  "),
+]
+
+
 DOCUMENTS: list[tuple[str, Any]] = [
+    ("positioned.pdf", lambda: positioned_pdf(POSITIONED)),
     ("nubank_card.pdf", docs.nubank_card_pdf),
     ("nubank_card_divergent.pdf", lambda: docs.nubank_card_pdf(total="999,99")),
     ("itau_card.pdf", docs.itau_card_pdf),

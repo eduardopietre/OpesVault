@@ -12,7 +12,8 @@ import {
 } from "../src/domain/model.ts";
 import * as queries from "../src/domain/queries.ts";
 import { Dec } from "../src/lib/dec.ts";
-import { ym } from "../src/lib/dates.ts";
+import { makeDate, ym } from "../src/lib/dates.ts";
+import { registerInstallmentPlanFinder } from "../src/importing/checks.ts";
 import { BatchStatus, DocType, ItemKind, ItemStatus } from "../src/importing/model.ts";
 import { noteComputedNet } from "../src/importing/parsers/brokerage.ts";
 import { PARSERS, parserById } from "../src/importing/parsers/index.ts";
@@ -349,5 +350,29 @@ describe("pipeline", () => {
     expect(pipeline.batches(reopened.ledger).get(batch.id)!.status).toBe(BatchStatus.APPROVED);
     expect(pipeline.evidence(reopened.ledger).size).toBe(pipeline.evidence(session.ledger).size);
     expect(reopened.documents[0]!.data).toEqual(doc("nubank_card.pdf"));
+  });
+});
+
+describe("installment plans (tests/test_finance.py, hook for domain/cards)", () => {
+  it("an imported installment of a registered plan is linked, not a new expense", async () => {
+    // domain/cards.find_plan_for_installment (W4) registers here; a stand-in answers for one plan.
+    const card = [...session.ledger.cards.values()][0]!;
+    const groceries = session.ledger.categories(AccountType.EXPENSE).find((a) => a.name === "Alimentação")!;
+    const op = session.ledger.recordCardPurchase(card.id, groceries.id, "30.00", makeDate(2026, 1, 20), "Loja Z");
+    const asked: unknown[] = [];
+    registerInstallmentPlanFinder((_l, cardId, description, number, count, amount) => {
+      asked.push([cardId, description, number, count, amount.toFixed()]);
+      return description === "Loja Z" ? { plan_id: op.id, operation_id: op.id } : null;
+    });
+    try {
+      const csv = enc("date,title,amount\n2026-01-20,Loja Z - Parcela 2/5,30.00\n2026-02-25,Uber,10.00\n");
+      const batch = await imp(session, "c.csv", csv, { card_id: card.id });
+      const statuses = new Map(pipeline.itemsOf(session.ledger, batch.id).map((i) => [i.description, i.status]));
+      expect(statuses.get("Loja Z")).toBe(ItemStatus.DUPLICATE);
+      expect(statuses.get("Uber")).toBe(ItemStatus.READY);
+      expect(asked).toEqual([[card.id, "Loja Z", 2, 5, "30.00"]]); // only items with an installment
+    } finally {
+      registerInstallmentPlanFinder(null);
+    }
   });
 });

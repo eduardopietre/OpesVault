@@ -3,7 +3,9 @@
  * pdfplumber gave, line by line and exactly, with boxes within `BOX_TOLERANCE` points, and the
  * parsers on that text the same results as on Python's.
  *
- * Measured on the synthetic documents: every box matches within 1e-12 pt (the floating-point
+ * Measured on the synthetic documents, including `positioned.pdf` (two columns on a line, runs that
+ * touch, a run ending in a space, fake bold, baselines 0.8 pt apart, runs with edge spaces): every
+ * line has pdfplumber's text and every box matches within 1e-12 pt (the floating-point
  * noise of the two computations); the tolerance documents what a real document may need, since
  * pdf.js reports runs of text while pdfplumber measures each character.
  *

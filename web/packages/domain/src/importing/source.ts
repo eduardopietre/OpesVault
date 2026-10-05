@@ -490,6 +490,9 @@ interface Box {
   x1: number;
   top: number;
   bottom: number;
+  /** The run had whitespace at its start or end (trimmed from `text` and the box). */
+  lead?: boolean;
+  trail?: boolean;
 }
 
 /**
@@ -505,18 +508,23 @@ interface Box {
  * proportion to the characters removed (pdfplumber strips those characters exactly).
  */
 export function linesFromItems(page: number, items: readonly Box[]): Line[] {
-  const kept: Box[] = [];
-  for (const item of items) {
-    const dup = kept.some(
-      (k) =>
+  // Of copies of a run (same text and font within 1 pt), the one highest on the page, then
+  // leftmost, survives at its own place in the reading order, as `dedupe_chars` keeps per character.
+  const kept: { b: Box; i: number }[] = [];
+  items.forEach((item, i) => {
+    const at = kept.findIndex(
+      ({ b: k }) =>
         k.text === item.text &&
         k.font === item.font &&
         Math.abs(k.x0 - item.x0) <= DEDUPE_TOLERANCE &&
         Math.abs(k.top - item.top) <= DEDUPE_TOLERANCE,
     );
-    if (!dup) kept.push(item);
-  }
-  const sorted = kept.map((b, i) => ({ b, i })).sort((a, z) => a.b.top - z.b.top || a.i - z.i);
+    if (at < 0) kept.push({ b: item, i });
+    else if (item.top < kept[at]!.b.top || (item.top === kept[at]!.b.top && item.x0 < kept[at]!.b.x0))
+      kept[at] = { b: item, i };
+  });
+  kept.sort((a, z) => a.i - z.i);
+  const sorted = kept.map(({ b }, i) => ({ b, i })).sort((a, z) => a.b.top - z.b.top || a.i - z.i);
   const clusters: Box[][] = [];
   let last: number | null = null;
   for (const { b } of sorted) {
@@ -531,9 +539,10 @@ export function linesFromItems(page: number, items: readonly Box[]): Line[] {
     let prev: Box | null = null;
     for (const { b } of ordered) {
       if (prev !== null) {
+        // A new word: a gap wider than the tolerance, or whitespace where the runs meet.
         const gap = b.x0 > prev.x1 + X_TOLERANCE;
-        const spaced = TRAILING_WS.test(prev.text) || LEADING_WS.test(b.text);
-        if (gap && !spaced) text += " ";
+        const spaced = prev.trail === true || b.lead === true || TRAILING_WS.test(prev.text) || LEADING_WS.test(b.text);
+        if (gap || spaced) text += " ";
       }
       text += b.text;
       prev = b;
@@ -564,7 +573,7 @@ function boxOf(item: TextItem, view: number[], descent: number): Box | null {
   const x1 = e - (view[0] ?? 0) + item.width - trail * perChar;
   const y0 = f + descent * size;
   const top = (view[3] ?? 0) - (y0 + size);
-  return { text: trimmedText, font: item.fontName, x0, x1, top, bottom: top + size };
+  return { text: trimmedText, font: item.fontName, x0, x1, top, bottom: top + size, lead: lead > 0, trail: trail > 0 };
 }
 
 function passwordProblem(error: unknown, password: string | null): SourceError | null {

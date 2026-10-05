@@ -1,6 +1,6 @@
 # Migração para a web: arquitetura e roadmap
 
-Versão 1.0 • 05/10/2026. Registra as decisões do usuário que levam o OpesVault do desktop para a web e o caminho completo até o lançamento hospedado pelo próprio usuário e, depois, ao Firebase. O trabalho acontece na branch `web`. Enquanto durar a migração, este documento prevalece sobre os outros no que tratar da web; no restante, os `docs/` continuam valendo (domínio, cálculos, importação, interface).
+Versão 1.1 • 05/10/2026. Registra as decisões do usuário que levam o OpesVault do desktop para a web e o caminho completo até o lançamento hospedado pelo próprio usuário e, depois, ao Firebase. O trabalho acontece na branch `web`. Enquanto durar a migração, este documento prevalece sobre os outros no que tratar da web; no restante, os `docs/` continuam valendo (domínio, cálculos, importação, interface).
 
 ## 1. Decisões (05/10/2026)
 
@@ -15,6 +15,9 @@ Versão 1.0 • 05/10/2026. Registra as decisões do usuário que levam o OpesVa
 | Servidor | Hospedado pelo usuário (Docker); depois Firebase, sem tocar no domínio nem na interface (porta `SyncBackend`, §3.4) | `00` (sem cloud) |
 | Cofres existentes | **Sem migração** de cofres do desktop. Projetos começam na web | — |
 | Base da branch | `web` parte da `claude/kind-einstein-koj3tq` (inclui IA local em todas as telas e Assistente) | — |
+| CI | **Sem CI.** As verificações (`pnpm check`) rodam localmente, como hoje | — |
+| Recuperação | **Chave de recuperação** gerada na criação do projeto: também abre o envelope da chave do projeto; mostrada uma vez para o usuário guardar, nunca enviada ao servidor em claro | — |
+| Senha do projeto | **Senha compartilhada** por todos os integrantes, como no desktop. Senha compartilhada não isola integrantes (`03` §1) | — |
 | Paridade | Todas as telas e diálogos atuais funcionam na web **da mesma forma**, agora responsivos e com animações (§5) | — |
 
 ## 2. O que muda e o que continua
@@ -62,7 +65,8 @@ O domínio não importa nada de `ui`, `vault` ou rede, e uma regra de lint garan
 - **Registro:** `{id opaco, revisão, texto cifrado}`. Tipo, id real, datas e valores ficam **dentro** da cifra. AES-256-GCM com nonce aleatório e dados associados `(projeto, id opaco, revisão)`, para que um registro não possa ser trocado de lugar nem reaproveitado.
 - **Anexo:** blob cifrado com chave própria, embrulhada pela chave do projeto. Só é baixado e aberto quando exibido.
 - **O servidor vê:** quantidade, tamanho e horário dos registros e das contas. Nada além disso. Isso é limitação conhecida e documentada, como as do `03` §1.
-- **Sem senha, sem dados:** não há recuperação pelo servidor. A chave de recuperação opcional está em §8.
+- **Recuperação:** a chave de recuperação (aleatória, exibida uma vez em grupos legíveis) deriva uma segunda chave de envelope, que embrulha a mesma chave do projeto. Com ela, o usuário define uma senha nova sem o servidor participar. Sem senha e sem chave de recuperação, não há recuperação.
+- **Senha compartilhada:** uma senha por projeto, a mesma para todos os integrantes. O login no servidor é por conta; abrir o projeto é pela senha do projeto.
 
 ### 3.3 Sessão, bloqueio e sincronização
 
@@ -216,7 +220,7 @@ Cada fase tem critério de saída verificável. Nenhuma tela entra antes de o do
 - **Saída:** `pnpm check` (formatação, lint, tipos e testes) passa limpo; o primeiro JSON de referência foi gerado.
 
 ### W1 — Criptografia e cofre
-- `packages/crypto`: Argon2id, HKDF, AES-GCM, envelope, troca de senha, chave de recuperação (se aprovada, §8).
+- `packages/crypto`: Argon2id, HKDF, AES-GCM, envelope, troca de senha, chave de recuperação (gerar, exibir uma vez, recuperar e gerar outra, invalidando a anterior).
 - `packages/vault`: registro cifrado, cache IndexedDB, fila offline, bloqueio.
 - Documento normativo `19_SEGURANCA_WEB.md`, sucessor do `03` para a web: modelo de ameaça, parâmetros, formato, o que o servidor vê, o que não se promete.
 - **Saída:**
@@ -307,11 +311,8 @@ Cada fase tem critério de saída verificável. Nenhuma tela entra antes de o do
 
 | Assunto | Opções | Precisa até |
 |---|---|---|
-| Chave de recuperação | Gerar uma chave impressa que também abre o envelope, ou nada (esqueceu a senha, perdeu tudo) | W1 |
-| Senha por integrante | Cada integrante com a própria senha embrulhando a mesma chave do projeto, ou uma senha compartilhada como hoje | W1 (o formato já permite) |
 | Parâmetros do Argon2id | Proposta: 64 MiB, 3 passadas, 1 via; medir no celular mais fraco que for usado | W1 |
 | Histórico no servidor | Guardar versões antigas dos registros cifrados por N dias, ou só a atual | W2 |
-| CI | O repositório segue sem CI (CLAUDE.md); com a web, GitHub Actions rodando `pnpm check` faria sentido | W0 |
 | IA fora do navegador | Manter só o Ollama local da máquina (padrão) ou permitir um Ollama no servidor, sabendo que o texto passa em claro por ele | W6 |
 | Domínio e hospedagem | Onde o servidor próprio roda (casa, VPS) e com qual domínio | W13 |
 
@@ -321,7 +322,8 @@ Cada fase tem critério de saída verificável. Nenhuma tela entra antes de o do
 |---|---|---|
 | Reescrita calcula diferente | Valor errado na tela | Paridade por JSON de referência sem tolerância (§4), módulo a módulo |
 | Script injetado na aba | Leitura de tudo enquanto desbloqueado | CSP estrita, Trusted Types, nenhum terceiro, auditoria de dependências (§3.7) |
-| Senha esquecida | Perda total do projeto | Aviso claro na criação; chave de recuperação (§8) |
+| Senha esquecida | Perda total do projeto | Chave de recuperação; aviso claro na criação; lembrete se ela nunca foi confirmada |
+| Chave de recuperação perdida ou exposta | Perda ou acesso indevido | Exibida uma vez, confirmação de que foi guardada, gerar outra invalida a anterior |
 | Navegador apaga o IndexedDB | Perda de alterações não enviadas | `storage.persist()`, sincronização frequente, aviso de pendências |
 | pdf.js extrai diferente do pdfplumber | Parsers quebram | Comparar a geometria nos sintéticos antes de portar cada parser |
 | Memória do navegador | Aba lenta ou encerrada | Anexos sob demanda, tabelas virtualizadas, metas de W12 |

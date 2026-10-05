@@ -1,10 +1,10 @@
 /**
  * Loads every module that registers persisted entity kinds or ledger guards. Port of `registry.py`.
  *
- * Opening a project must know all kinds; the list is explicit and tested, so no tool can drop an
- * import that only exists for its side effects.
+ * Opening a project must know all kinds. Each area keeps its own explicit list (`kinds.ts`) so
+ * the areas can grow independently; `test/registry.test.ts` checks the expected kinds exist.
  */
-export const MODULES = [] as const;
-
-// Each module registers its kinds and guards when imported; the imports are below, in the order
-// of MODULES. Add a module to both lists.
+import "./domain/kinds.ts";
+import "./importing/kinds.ts";
+import "./investments/kinds.ts";
+import "./tax/kinds.ts";

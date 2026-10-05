@@ -85,3 +85,4 @@ sbom.cdx.json
 THIRD_PARTY_LICENSES.*
 fase0-*.json
 opesvault-selftest.json
+.claude/worktrees/

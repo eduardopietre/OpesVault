@@ -18,16 +18,14 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / "web" / "packages" / "domain" / "golden"
 
-# name → module in scripts.golden with a `generate() -> Any` function.
-GENERATORS: dict[str, str] = {
-    "dec": "scripts.golden.cases_dec",
-    "money": "scripts.golden.cases_money",
-    "ledger": "scripts.golden.cases_ledger",
-}
+
+def _discover() -> dict[str, str]:
+    """Every scripts/golden/cases_<name>.py is a generator named <name>."""
+    here = Path(__file__).resolve().parent
+    return {p.stem.removeprefix("cases_"): f"scripts.golden.{p.stem}" for p in sorted(here.glob("cases_*.py"))}
 
 
-def register(name: str, module: str) -> None:
-    GENERATORS[name] = module
+GENERATORS: dict[str, str] = _discover()
 
 
 def _load(name: str) -> Callable[[], Any]:

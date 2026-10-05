@@ -197,3 +197,87 @@ Regra: quem vê um problema chega ao objeto e ao comando que o resolve, sem proc
 
 - **Liquid Glass e materiais translúcidos:** não se aplicam a Qt Widgets no Windows.
 - **Teste com leitor de tela real** (NVDA/Narrador), a fazer junto com os gates do Windows. Os controles principais já têm nome acessível.
+
+## 8. Web (docs/18)
+
+Fase W7 da migração. O sistema visual acima foi portado para `web/packages/ui` (tokens, componentes e animações) e a janela para `web/apps/app` (shell, rotas, início). As regras do §4 e os fluxos do §5 continuam valendo; o que muda na web está abaixo.
+
+### 8.1 Tokens
+
+- **Onde:** `packages/ui/src/styles/tokens.css` (variáveis CSS `--ov-*`) e `src/tokens.ts` (o que o código precisa: espaçamento, faixas, durações, curvas, molas, cores de série).
+- **Cores:** as mesmas de `ui/theme.py`, com acréscimos para a web: `sunken` (poços e esqueletos), `separator-strong` (borda de controles), `accent-fill` (fundo do botão primário, separado de `accent` para que o texto branco tenha contraste AA também no escuro), versões suaves de destaque, positivo, negativo e alerta, `scrim` e três sombras. O alerta claro ficou um pouco mais escuro (`#8a5a00`) para manter AA sobre o fundo suave; a seleção inativa do escuro ficou `#323238` para o vermelho de valores negativos manter 4,5:1 numa linha selecionada.
+- **Tema:** claro por padrão; o escuro segue o sistema (`prefers-color-scheme`) a menos que o usuário escolha. A escolha fica em `data-theme` no `<html>` e é uma preferência deste aparelho (`apps/app/src/preferences.ts`, o único módulo que usa `localStorage`).
+- **Tailwind CSS v4:** `packages/ui/src/styles/index.css` mapeia os tokens em `@theme inline` (`bg-content`, `text-secondary`, `text-title`, `rounded-md`, `shadow-lg`…). A paleta padrão do Tailwind foi removida: não existe classe de cor fora dos tokens. Faixas como variantes: `tablet:` (640), `medium:` (1024), `wide:` (1440).
+- **Tipografia:** Inter variável embutida (`@fontsource-variable/inter`, sem fonte remota), corpo de 14 px, legenda 12, seção 16, título 22, número-chave 28, dois pesos e algarismos tabulares em toda a aplicação.
+- **Gráficos:** seis cores de série em ordem fixa (paleta validada para claro e escuro), lidas dos tokens em tempo de execução.
+
+### 8.2 Movimento
+
+- Durações de 120, 200 e 320 ms; curvas `standard`, `enter` e `exit`; molas para diálogo, folha, painel e indicador (`tokens.ts`, `motion.tsx`).
+- Só `transform` e `opacity` animam. Animam: troca de página (deslize curto e fade), diálogos e folhas (mola), avisos, inspetor, indicador da aba e da barra lateral, conteúdo de seções recolhíveis, números da Visão geral (`NumberTicker`, contado com inteiros exatos: o último quadro é o valor exato) e gráficos (entrada e troca de dados).
+- `prefers-reduced-motion`: o `MotionProvider` (`MotionConfig reducedMotion="user"`) tira deslocamentos e escalas; os componentes usam `useMotionPreset()`, que devolve só fades de 120 ms; o CSS limita transições a opacidade e cor e para o brilho dos esqueletos; os gráficos desenham sem animação.
+- A troca de página anima só a entrada: o `Outlet` do roteador já mostra a página nova durante uma saída. `AnimatePresence` cuida de diálogos, folhas, avisos, inspetor e etapas do assistente inicial.
+
+### 8.3 Componentes (`packages/ui/src/components`)
+
+Com o mesmo nome dos do desktop sempre que existem, para as regras do CLAUDE.md continuarem valendo.
+
+| Componente | Na web |
+|---|---|
+| `PageHeader` | Título, contexto e ações; a ação primária tem um espaço próprio (`primary`), então uma tela não consegue ter duas. As ações quebram linha abaixo do título por container query |
+| `EmptyState`, `Section`, `Figure` | Como no desktop |
+| `Collapsible` | O título é o botão; ações somem quando recolhida; `prefKey` lembra só o clique do usuário |
+| `ChartPanel` | Gráfico (ECharts carregado sob demanda, canvas, tema dos tokens, tooltip, eixo secundário, "Exportar imagem") e tabela dos mesmos valores, cada um num `Collapsible`, lado a lado a partir de 1000 px do painel. Fluxos ganham "Total" e "Média" calculados com inteiros exatos. Desconhecido aparece como "—" e não é desenhado como zero |
+| `Adaptive` | Grade com container query: empilhada por padrão, lado a lado a partir de 720, 1000, 1200, 1300 ou 1400 px do contêiner; `firstRight` |
+| `ElidedText` | Uma linha com "…" e o texto inteiro na dica |
+| `DataTable` | TanStack Table v9 (ordenação, visibilidade) e TanStack Virtual (linhas). Cabeçalho fixo, prioridade de colunas (2 a partir de 720 px, 3 a partir de 960), seleção pelo id, setas, Home/End, Page Up/Down e Enter; vira lista de cartões abaixo de 640 px de contêiner. Começa na ordem dos dados |
+| `Button`, `IconButton` | `primary`, `secondary`, `ghost`, `danger`; `tone`; `busy`. O botão de ícone tem nome acessível e dica |
+| `Dialog`, `Sheet`, `Overlay` | `<dialog>` nativo (camada superior, página inerte, Esc) com o painel animado; abaixo de 640 px o diálogo vira folha de baixo. Não usa o Radix Dialog porque o bloqueio de rolagem dele injeta `<style>`, que a CSP recusa |
+| `decide` / `confirm` | Promessas; o título é a pergunta, cada botão diz o que faz, Cancelar devolve `null`; numa decisão destrutiva o foco começa em Cancelar. Precisa de `<DecisionHost />` |
+| `notify` / `Toaster` | Avisos curtos numa região `polite`, com uma ação opcional ("Desfazer"); param enquanto o ponteiro ou o foco estão neles |
+| `MenuButton` / `menuButton` | Radix DropdownMenu não modal; itens, separadores, rótulos e grupos de rádio |
+| `Tabs` | Radix Tabs com indicador animado; só para objetos diferentes |
+| `Select`, `Combobox` | Valor é sempre o id (texto); `optionById` compara valores. Popover do Radix com `listbox` ARIA |
+| `TextField`, `MoneyField`, `DateField`, `Checkbox`, `Switch`, `RadioGroup` | Rótulo visível, dica e erro em texto. `MoneyField` aceita "1.234,56", guarda o texto como digitado e entrega o decimal canônico ("1234.56") para a página converter em `Dec`; `DateField` lê dd/mm/aaaa |
+| `MonthPicker` | Mês por extenso, ‹ › e Alt+←/→; o mês abre um ano com os doze meses |
+| `Badge`, `Skeleton`, `NumberTicker`, `StatusPill` | Contagens com texto para leitor de tela; esqueleto sem brilho com movimento reduzido; estado de sincronização com ponto, forma e texto (sincronizado, pendente, sincronizando, sem conexão, conflito, somente leitura, bloqueado) |
+| `Inspector` | Coluna lateral em ≥ 1440 px, folha deslizante entre 1024 e 1439, oculto abaixo |
+| `Sidebar`, `BottomNav`, `CommandPalette`, `LockScreen` | Navegação por links reais (abrem em outra aba), contagens no nome acessível; paleta com busca sem acento |
+
+Os textos de dinheiro e datas passam por `format.ts`: nada de `float` para dinheiro; somas, médias (`ROUND_HALF_UP`) e a contagem do `NumberTicker` usam inteiros escalados.
+
+### 8.4 Janela e faixas (`apps/app`)
+
+- **Barra superior:** marca, nome do projeto (e "Operando como…" quando há mais de um integrante), busca (Ctrl+K), estado de sincronização, desfazer e refazer, ajuda, Bloquear e o menu da conta (operador, aparência, atalhos, trocar de projeto, sair).
+- **Barra lateral:** os grupos e a ordem do `main_window.py` (Dia a dia, Cadastros, Acompanhamento, Arquivo), Configurações fixa no rodapé, contagens em Visão geral e Importar e revisar.
+
+  | Faixa | Largura | Navegação |
+  |---|---|---|
+  | Larga | ≥ 1440 | Barra lateral fixa (Ctrl+Shift+B a recolhe em trilho de ícones), inspetor ao lado |
+  | Média | 1024–1439 | Barra lateral recolhível em trilho de ícones; inspetor em folha |
+  | Tablet | 640–1023 | Gaveta lateral |
+  | Celular | < 640 | Barra inferior com Visão geral, Livro, Importar e Contas, mais "Mais" numa folha com todas as seções |
+
+- **Teclado:** Alt+1…9 (as nove primeiras seções), `g` + letra para qualquer seção (v, o, c, l, i, a, r, n, e, s, m, b, p, d, f), Ctrl+K ou ⌘K, F1, Ctrl+Z / Ctrl+Shift+Z (ou Ctrl+Y) ligados a um contexto de desfazer que por enquanto diz "Nada a desfazer.", Ctrl+Shift+B e Ctrl+Shift+L (bloquear). Atalhos de uma tecla não disparam enquanto se digita nem com um diálogo aberto; dentro de um campo, Ctrl+Z é o desfazer do próprio texto. Um link "Pular para o conteúdo" abre a ordem de tabulação, e uma navegação pelo teclado leva o foco ao conteúdo da página nova.
+- **Arquivos soltos** em qualquer tela vão para Importar e revisar.
+- **Antes do projeto:** boas-vindas, entrar, criar conta, projetos (abrir com a senha do projeto), novo projeto (senha compartilhada e a chave de recuperação mostrada uma vez, com confirmação de que foi guardada) e o assistente inicial (integrantes, contas, cartões, conclusão; o formulário preenchido conta sem "Adicionar"). As telas chamam `AppServices` (`src/services/types.ts`); por enquanto responde uma implementação em memória (`fake.ts`), trocada pelo cofre e pelo servidor nas fases W1/W2. `?demo` abre o projeto de demonstração direto (só com a implementação em memória).
+- Cada destino do `18` §6 tem uma rota com `PageHeader` e `EmptyState` até a fase que o constrói; `/catalogo` (desenvolvimento e build de teste) mostra todos os componentes em todos os estados.
+
+### 8.5 Segurança no navegador e PWA
+
+- CSP de produção em `src/security.ts`: `script-src 'self'`, `style-src 'self'`, nenhuma origem de terceiros, `object-src 'none'`, `base-uri 'none'`, `require-trusted-types-for 'script'` com uma única política (`default`) que aceita só o script do service worker e o HTML vazio (o ECharts limpa o contêiner com `innerHTML = ""`). O servidor enviará o cabeçalho (com `frame-ancestors 'none'`); o build leva a mesma política num `<meta>` para o `vite preview`. Por isso diálogos, selects e menus não usam as partes do Radix que injetam `<style>`, e o tooltip dos gráficos é texto no canvas.
+- PWA (`vite-plugin-pwa`): instalável (manifesto em português, ícones gerados por `pnpm --filter @opesvault/app icons`), o shell abre sem conexão, versão nova é avisada ("Atualizar") e nunca aplicada em silêncio. O service worker não guarda respostas da API.
+
+### 8.6 Verificação
+
+```
+cd web
+pnpm check                                   # formatação, lint, tipos e testes (inclui packages/ui e apps/app)
+pnpm --filter @opesvault/app e2e             # Playwright no build de produção (CSP e service worker reais)
+pnpm --filter @opesvault/app screens         # capturas em web/build/telas
+pnpm dev                                     # o app; /catalogo para os componentes
+```
+
+- **Vitest** (happy-dom): comportamento de diálogos e decisões, avisos, `MoneyField`, seleção por id na `DataTable` (inclusive com linhas relidas como objetos novos), ordenação exata, `Select` por id, movimento reduzido, formatação exata e as telas de entrada, conta, shell e bloqueio contra os serviços em memória.
+- **Playwright** (Chromium em `/opt/pw-browsers`, nunca `playwright install`): cada destino, o catálogo e as telas de entrada sem erro no console (CSP e Trusted Types incluídos) e sem rolagem lateral em 1920×1080, 1280×800, 900×640, 768×1024 e 390×844, claro e escuro; axe sem violações (WCAG 2.2 AA) em páginas, catálogo, paleta, ajuda, menu, "Mais", bloqueio e telas de entrada; teclado no shell; fluxos de conta, projeto, assistente, bloqueio, troca de projeto e saída; movimento com e sem redução; manifesto e abertura sem conexão.
+- **Capturas:** `catalogo-*`, `shell-visao-geral-*`, `shell-livro-*`, `shell-paleta-*`, `shell-gaveta-*` (tablet), `shell-mais-*` (celular), `shell-bloqueio-*` e `inicio-*`, cada uma em `LARGURAxALTURA-claro|escuro`. Revise antes e depois de mudar a interface, como as capturas do desktop.

@@ -1,2 +1,3 @@
 /** Public modules of this area, one namespace per module. */
-export {};
+export * as ollama from "./ollama.ts";
+export * as prompts from "./prompts.ts";

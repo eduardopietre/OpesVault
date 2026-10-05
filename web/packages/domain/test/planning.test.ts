@@ -2,13 +2,12 @@
  * Port of `tests/test_planning.py` (review of 03/10/2026): loans, tags, reimbursements, settling
  * up, bank checks, deductible expenses, subscriptions, indicators, comparisons and projection.
  *
- * Skipped (modules ported later): `test_calendar_lists_bills_recurrences_and_installments_with_state`
- * (agenda), `test_table_rows_total_flows_but_not_positions` (charts/data), and the `alerts.*` and
- * `charts.*` asserts inside the bank check, commitments and projection cases. `Ledger.from_raw`
- * (JSON lines) is covered by `fromRecords` over JSON-parsed records.
+ * `Ledger.from_raw` (JSON lines) is covered by `fromRecords` over JSON-parsed records.
  */
 import { describe, expect, it } from "vitest";
 
+import * as agenda from "../src/domain/agenda.ts";
+import * as alerts from "../src/domain/alerts.ts";
 import * as balanceChecks from "../src/domain/balance_checks.ts";
 import { CompetencePolicy, recordInstallmentPurchase } from "../src/domain/cards.ts";
 import * as comparisons from "../src/domain/comparisons.ts";
@@ -25,6 +24,7 @@ import { findOperations, operationFilter } from "../src/domain/search.ts";
 import * as sharing from "../src/domain/sharing.ts";
 import * as subscriptions from "../src/domain/subscriptions.ts";
 import * as tags from "../src/domain/tags.ts";
+import { cashFlowBalance, monthlySummary, projectedBalance, tableRows } from "../src/charts/data/index.ts";
 import { type IsoDate, ym } from "../src/lib/dates.ts";
 import { Dec } from "../src/lib/dec.ts";
 import { j } from "./golden.ts";
@@ -290,8 +290,10 @@ describe("bank checks", () => {
     expect(fx(result!.difference)).toBe("-120.00");
     expect(result!.matches).toBe(false);
     expect(balanceChecks.divergent(f.ledger).length).toBe(1);
+    expect(alerts.balanceCheckAlerts(f.ledger).map((a) => a.title)).toEqual(["Saldo diferente do banco: Banco A"]);
     f.ledger.recordExpense(f.bank, f.groceries, "120.00", d("2026-01-20"), "Compra esquecida");
     expect(balanceChecks.divergent(f.ledger)).toEqual([]);
+    expect(alerts.balanceCheckAlerts(f.ledger)).toEqual([]);
     f.ledger.recordExpense(f.bank, f.groceries, "10.00", d("2026-02-01"), "Depois da conferência");
     expect(balanceChecks.divergent(f.ledger)).toEqual([]); // the check compares on its own date
     balanceChecks.remove(f.ledger, check.id);
@@ -373,6 +375,7 @@ describe("subscriptions", () => {
     const changed = subscriptions.commitments(f.ledger).find((c) => c.rule.id === streaming.id)!;
     expect(changed.priceChanged).toBe(true);
     expect([fx(changed.lastPaid!), fx(changed.previousPaid!)]).toEqual(["44.90", "39.90"]);
+    expect(alerts.priceAlerts(f.ledger).map((a) => a.title)).toEqual(["Valor mudou: Streaming"]);
   });
 
   it("recurring charges without a rule are suggested", () => {
@@ -474,9 +477,16 @@ describe("projection", () => {
     expect(j(bank!.lowest)).toEqual(["2026-03-15", { $dec: "-200.00" }]);
     expect(fx(bank!.balanceOn(d("2026-04-01")))).toBe("2800.00");
     expect(projection.negativeAhead(f.ledger, today).map((p) => p.accountId)).toEqual([f.bank]);
+    const projected = alerts.projectionAlerts(f.ledger, today);
+    expect(projected).toHaveLength(1);
+    expect(projected[0]!.title).toBe("Saldo previsto negativo: Banco A");
+    expect(projected[0]!.detail).toContain("15/03");
     expect(fx(queries.balance(f.ledger, f.bank))).toBe("1000.00"); // a projection never changes balances
     const daily = bank!.daily(d("2026-04-10"));
     expect(daily.every(([, v]) => v !== null)).toBe(true);
+    const [headers, rows] = tableRows(projectedBalance(f.ledger, today, 40));
+    expect(headers).toContain("Banco A");
+    expect(rows.every((r) => r.values.every((v) => v !== null))).toBe(true); // every account known every day
   });
 
   it("a card without a payment account is left out with a note", () => {
@@ -487,6 +497,60 @@ describe("projection", () => {
     const [found, notes] = projection.events(f.ledger, d("2026-03-01"), d("2026-04-01"));
     expect(found).toEqual([]);
     expect(notes).toEqual(["Fatura de Cartão X sem conta de pagamento: fora da projeção."]);
+  });
+});
+
+describe("calendar", () => {
+  it("lists bills, recurrences and installments with their state", () => {
+    const f = family();
+    f.ledger.recordCardPurchase(f.card, f.groceries, "300.00", d("2026-02-20"), "Mercado"); // due 10/03
+    const aluguel = addRule(
+      f.ledger,
+      RecurrenceRuleSchema.parse({
+        description: "Aluguel",
+        account_id: f.bank,
+        counterpart_id: category(f.ledger, "Moradia"),
+        amount: "2000",
+        day: 5,
+        start: "2026-01-01",
+      }),
+    );
+    const plan = loans.createLoan(
+      f.ledger,
+      loan(f, loans.AmortizationSystem.PRICE, { first_due: "2026-03-15" }),
+      loans.Opening.OPENING_BALANCE,
+    );
+    let events = agenda.monthEvents(f.ledger, ym(2026, 3), d("2026-03-12"));
+    const states = new Map(events.map((e) => [e.title, [e.on, e.state, fx(e.amount)]]));
+    expect(states.get("Aluguel")).toEqual(["2026-03-05", agenda.EventState.LATE, "-2000"]);
+    expect(states.get("Fatura Cartão X")).toEqual(["2026-03-10", agenda.EventState.LATE, "-300.00"]);
+    expect(states.get("Parcela 1 — Carro")![1]).toBe(agenda.EventState.PENDING);
+    f.ledger.recordCardPayment(f.card, f.bank, "300.00", d("2026-03-10"));
+    loans.payInstallment(f.ledger, plan.id, 1, d("2026-03-15"));
+    const op = f.ledger.recordExpense(f.bank, category(f.ledger, "Moradia"), "2000.00", d("2026-03-05"), "Aluguel");
+    realize(f.ledger, aluguel.id, d("2026-03-05"), op.id);
+    events = agenda.monthEvents(f.ledger, ym(2026, 3), d("2026-03-20"));
+    expect(new Set(events.map((e) => e.state))).toEqual(new Set([agenda.EventState.DONE]));
+    expect([...agenda.byDay(events).keys()]).toEqual([...new Set(events.map((e) => e.on))].sort());
+  });
+});
+
+describe("the table of values behind a chart", () => {
+  it("totals flows but not positions", () => {
+    const f = family();
+    f.ledger.recordOpeningBalance(f.bank, "1000.00", d("2026-01-01"));
+    f.ledger.recordIncome(f.bank, f.salary, "500.00", d("2026-02-05"), "Salário");
+    f.ledger.recordExpense(f.bank, f.groceries, "200.00", d("2026-03-05"), "Feira");
+    const chart = cashFlowBalance(f.ledger, ym(2026, 1), ym(2026, 3));
+    const [headers, rows] = tableRows(chart);
+    expect(headers).toEqual(["Entradas", "Saídas", "Saldo das contas"]);
+    expect(rows.map((r) => r.label)).toEqual(["2026-01", "2026-02", "2026-03", "Total", "Média"]);
+    expect(j(rows.at(-2)!.values)).toEqual([{ $dec: "500.00" }, { $dec: "200.00" }, null]); // a balance never adds up
+    expect(fx(rows.at(-1)!.values[0]!)).toBe("166.67");
+    const summary = monthlySummary(f.ledger, ym(2026, 1), ym(2026, 3));
+    const hidden = summary.series.filter((x) => x.hidden).map((x) => x.name);
+    expect(hidden).toContain("Patrimônio líquido");
+    expect(tableRows(summary)[0]).toContain("Patrimônio líquido");
   });
 });
 

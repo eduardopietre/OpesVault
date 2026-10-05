@@ -6,9 +6,9 @@ bank accounts, investment characteristics, trades) and, after them, a snapshot o
 the year for the whole project and for each declarant. Nothing here is a real tax table: every
 rate and limit is typed by the scenario (docs/00 §5).
 
-Not covered: `declaration.payments` with deductible categories (`domain/deductibles` belongs to
-another area; without it the TS side has no deductible source) and `banking.record_values` for
-accounts (it records a conferência in `domain/balance_checks`).
+Also covered: `declaration.payments` over deductible categories with reimbursements
+(`domain/deductibles`, `domain/sharing`), `banking.record_values` for accounts (a conferência of
+`domain/balance_checks`), and `tax/issues` (pendências and reminders) for every sheet.
 """
 
 import random
@@ -18,12 +18,12 @@ from typing import Any
 from uuid import UUID
 
 from opesvault.catalogs.irpf import investment_codes
-from opesvault.domain import banking, queries
+from opesvault.domain import balance_checks, banking, deductibles, queries, sharing
 from opesvault.domain.ledger import DomainError, Ledger
 from opesvault.domain.model import AccountSubtype, AccountType, LedgerAccount, YearMonth
 from opesvault.investments import profile as prof
 from opesvault.investments.service import positions
-from opesvault.tax import checklist, declaration, records, simulation, variable_income
+from opesvault.tax import checklist, declaration, issues, records, simulation, variable_income
 from opesvault.tax.model import (
     BucketRule,
     DeclaredAsset,
@@ -143,7 +143,20 @@ TAX_COMMANDS: dict[str, Any] = {
         led, bank_id, _d(on), {UUID(str(k)): v for k, v in values}, adjust=set(adjust), note=note
     ),
     "save_profile": _profile,
+    "mark_deductible": lambda led, category, kind: deductibles.mark(
+        led, category, deductibles.DeductibleKind(kind) if kind else None
+    ),
+    "request_reimbursement": lambda led, op, payer, expected, on=None: sharing.request(
+        led, op, payer, expected, _maybe_date(on)
+    ),
+    "receive_reimbursement": lambda led, item, account, amount, on: sharing.receive(led, item, account, amount, _d(on)),
+    "balance_check": lambda led, account, on, value, note=None: balance_checks.record(
+        led, account, _d(on), value, note
+    ),
 }
+
+ISSUE_DAYS = [date(Y + 1, 3, 1), date(Y, 4, 10)]
+REMINDER_DAYS = [date(Y, 5, 25), date(Y, 7, 10), date(Y + 1, 3, 15), date(Y + 1, 4, 30)]
 
 
 # ── snapshot ──────────
@@ -184,6 +197,7 @@ def _year_sheets(ledger: Ledger, year: int, declarant: UUID | None, known: set[s
         "carried_loss": j({b.value: v for b, v in variable_income.carried_loss(ledger, year, people).items()}),
         "exempt_total": j(variable_income.exempt_total(rows)),
         "due_by_month": [[str(m), j(v[0]), j(v[1]), j(v[2])] for m, v in variable_income.due_by_month(rows).items()],
+        "issues": [norm(j(issues.issues(ledger, year, declarant, today)), known) for today in ISSUE_DAYS],
     }
 
 
@@ -210,9 +224,14 @@ def snapshot(ledger: Ledger, known: set[str]) -> dict[str, Any]:
         "tax_checklist_mark",
         "bank_account",
         "investment_profile",
+        "balance_check",
+        "deductible_category",
+        "reimbursement",
     ):
         out[kind] = [norm(dump(e), known) for e in ledger.entities(kind).values()]
     out["declarants"] = norm([str(m) for m in records.declarants(ledger)], known)
+    out["reminders"] = [norm(j(issues.reminders(ledger, today, 7)), known) for today in REMINDER_DAYS]
+    out["engaged"] = issues.engaged(ledger)
     natures = []
     for account in ledger.accounts.values():
         if account.type is AccountType.INCOME:
@@ -772,6 +791,86 @@ def _banking() -> list[dict[str, Any]]:
     ]
 
 
+def _deductibles() -> list[dict[str, Any]]:
+    """Payments over deductible categories: payees, reimbursements (receipts), identities and a limit."""
+    return [
+        {"cmd": "mark_deductible", "args": ["@health", "health"]},
+        {"cmd": "mark_deductible", "args": ["@food", "education"]},
+        {"cmd": "expense", "args": ["@bank", "@health", "800.00", f"{Y}-05-02", "CLINICA SORRISO LTDA", "@bruno"]},
+        {"cmd": "expense", "args": ["@bank", "@health", "200.00", f"{Y}-06-02", "CLINICA SORRISO LTDA", "@bruno"]},
+        {"cmd": "expense", "args": ["@joint", "@health", "150.00", f"{Y}-07-02", "Farmácia São João 123", "@ana"]},
+        {"cmd": "expense", "args": ["@bank", "@health", "90.00", f"{Y}-08-02", "Hospital Central"]},
+        {"cmd": "expense", "args": ["@bank", "@food", "400.00", f"{Y}-03-02", "Escola Alfa 77", "@bruno"]},
+        {"cmd": "expense", "args": ["@bank", "@food", "400.00", f"{Y}-04-02", "Escola Alfa 78", "@bruno"]},
+        {"cmd": "expense", "args": ["@bank", "@food", "60.00", f"{Y + 1}-01-02", "Mercado"]},
+        {"cmd": "request_reimbursement", "args": ["$2", "Plano de saúde", "300.00", f"{Y}-05-10"]},
+        {"cmd": "request_reimbursement", "args": ["$2", "Outro plano", "100.00"]},
+        {"cmd": "receive_reimbursement", "args": ["$9", "@bank", "300.00", f"{Y}-05-20"]},
+        {"cmd": "request_reimbursement", "args": ["$4", "Plano de saúde", "100.00"]},
+        {"cmd": "receive_reimbursement", "args": ["$12", "@joint", "40.00", f"{Y}-07-20"]},
+        {"cmd": "receive_reimbursement", "args": ["$12", "@joint", "70.00", f"{Y}-07-21"]},
+        {"cmd": "set_identity", "args": ["merchant", "CLINICA SORRISO", "11.222.333/0001-81", "Clínica Sorriso Ltda"]},
+        {"cmd": "set_identity", "args": ["merchant", "ESCOLA ALFA", "529.982.247-25"]},
+        {"cmd": "set_member_info", "args": ["@ana", CPF_ANA, "1985-01-01", None]},
+        {"cmd": "set_member_info", "args": ["@bruno", CPF_BRUNO, "2015-01-01", "@ana", "Filho(a)"]},
+        {"cmd": "set_mark", "args": [Y, "recibos", True, None]},
+        {
+            "cmd": "set_parameters",
+            "args": [
+                {
+                    "year": Y,
+                    "brackets": [
+                        {"up_to": "5000.00", "rate": "0", "deduction": "0"},
+                        {"up_to": None, "rate": "0.10", "deduction": "500.00"},
+                    ],
+                    "simplified_rate": "0.20",
+                    "simplified_cap": "1000.00",
+                    "education_cap": "600.00",
+                    "dependent_deduction": "2275.08",
+                }
+            ],
+        },
+        {"cmd": "classify", "args": ["category", "@salary", "taxable_pj"]},
+        {"cmd": "income", "args": ["@bank", "@salary", "9000.00", f"{Y}-02-05", "Salário", "@ana"]},
+        {"cmd": "mark_deductible", "args": ["@bank", "health"]},
+    ]
+
+
+def _values() -> list[dict[str, Any]]:
+    """Values at a date for accounts (a conferência each, an adjustment on request) and conferências alone."""
+    itau = {
+        "name": "Banco A completo",
+        "bank_code": "341",
+        "bank_name": None,
+        "branch": "0123",
+        "number": "45678-X",
+        "holder_id": "@ana",
+        "co_holder_id": None,
+    }
+    return [
+        {"cmd": "bank_create", "args": [itau, "@bank", "@savings", {}]},
+        {"cmd": "income", "args": ["@bank", "@salary", "1000.00", f"{Y}-06-10", "Depósito", "@ana"]},
+        {
+            "cmd": "record_values",
+            "args": ["$0", f"{Y}-06-30", [["@bank", "32000.00"], ["@savings", "300.00"]]],
+            "opts": {"adjust": ["@savings"], "note": " extrato "},
+        },
+        {"cmd": "record_values", "args": ["$0", f"{Y}-06-30", [["@bank", "31000.00"]]]},
+        {"cmd": "record_values", "args": ["$0", f"{Y}-06-30", [["@bank", "31000.00"]]], "opts": {"adjust": ["@bank"]}},
+        {"cmd": "record_values", "args": ["$0", f"{Y}-12-31", [["@bank", "1.001"]]]},
+        {"cmd": "record_values", "args": ["$0", f"{Y}-12-31", [["@loan", "1.00"]]]},
+        {"cmd": "record_values", "args": ["$0", "2999-01-01", [["@bank", "1.00"]]]},
+        {"cmd": "expense", "args": ["@bank", "@food", "120.00", f"{Y}-07-05", "Mercado"]},
+        {"cmd": "balance_check", "args": ["@bank", f"{Y}-09-30", "30000.00", "  "]},
+        {"cmd": "balance_check", "args": ["@bank", f"{Y}-08-31", "30880.00", "agosto"]},
+        {"cmd": "balance_check", "args": ["@food", f"{Y}-09-30", "1.00"]},
+        {"cmd": "balance_check", "args": ["@bank", f"{Y}-09-30", "1.001"]},
+        {"cmd": "balance_check", "args": ["@loan", f"{Y}-09-30", "20000.00"]},
+        {"cmd": "adjust_balance", "args": ["@bank", f"{Y}-10-31", "30500.00"]},
+        {"cmd": "balance_check", "args": ["@bank", f"{Y}-10-31", "30500.00"]},
+    ]
+
+
 def _random(seed: int) -> list[dict[str, Any]]:
     """A seeded year of income, expenses, classifications and payslips."""
     rng = random.Random(seed)
@@ -881,6 +980,8 @@ def generate() -> dict[str, Any]:
             scenario("goods, filings and debts", _goods()),
             scenario("investments and renda variável", _investments()),
             scenario("bank accounts", _banking()),
+            scenario("deductible payments and reimbursements", _deductibles()),
+            scenario("values at a date and conferências", _values()),
             scenario("random 21", _random(21)),
             scenario("random 22", _random(22)),
             scenario("together", everything),

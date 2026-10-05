@@ -126,7 +126,16 @@ def snapshot(session: Session) -> dict[str, Any]:
                     "member": item.member_id is not None,
                     "duplicate_of": op_label(ledger, item.duplicate_of),
                     "operation": op_label(ledger, item.operation_id),
-                    "corrections": [[c.field, c.before if c.field != "target_account_id" else None, c.after if c.field != "target_account_id" else None, c.operator, c.reason] for c in item.corrections],
+                    "corrections": [
+                        [
+                            c.field,
+                            c.before if c.field != "target_account_id" else None,
+                            c.after if c.field != "target_account_id" else None,
+                            c.operator,
+                            c.reason,
+                        ]
+                        for c in item.corrections
+                    ],
                     "suggestion_source": source_label(ledger, item.suggestion_source),
                     "evidence": [
                         [evidence[e].page, box(evidence[e].bbox), evidence[e].line, evidence[e].text]
@@ -227,7 +236,9 @@ def run_step(session: Session, step: dict[str, Any]) -> Any:
             return list(pipeline.batches(ledger)).index(batch.id)
         case "approve":
             batch = batch_at(session, step["batch"])
-            ids = None if step.get("items") is None else [item_at(session, [step["batch"], i]).id for i in step["items"]]
+            ids = (
+                None if step.get("items") is None else [item_at(session, [step["batch"], i]).id for i in step["items"]]
+            )
             result = pipeline.approve(
                 ledger, batch.id, ids, accept_divergence=step.get("accept"), partial_reason=step.get("partial")
             )
@@ -248,10 +259,14 @@ def run_step(session: Session, step: dict[str, Any]) -> Any:
         case "set_target":
             card = step.get("card")
             card_id = next((c.id for c in ledger.cards.values() if c.name == card), None) if card else None
-            pipeline.set_batch_target(ledger, batch_at(session, step["batch"]).id, account_id(ledger, step.get("account")), card_id)
+            pipeline.set_batch_target(
+                ledger, batch_at(session, step["batch"]).id, account_id(ledger, step.get("account")), card_id
+            )
             return None
         case "add_rule":
-            rules.add_rule(ledger, step["pattern"], account_id(ledger, step["category"]), account_id(ledger, step.get("account")))
+            rules.add_rule(
+                ledger, step["pattern"], account_id(ledger, step["category"]), account_id(ledger, step.get("account"))
+            )
             return None
         case "apply_rules":
             batch = None if step.get("batch") is None else batch_at(session, step["batch"]).id
@@ -349,8 +364,22 @@ SCENARIOS: dict[str, list[dict[str, Any]]] = {
         {"op": "apply_rules"},
     ],
     "rules_and_keywords": [
-        {"op": "expense", "account": "Itaú CC", "category": "Lazer", "amount": "30.00", "on": "2025-12-01", "description": "MERCADO BOM PRECO"},
-        {"op": "expense", "account": "Itaú CC", "category": "Lazer", "amount": "30.00", "on": "2025-12-02", "description": "MERCADO BOM PRECO"},
+        {
+            "op": "expense",
+            "account": "Itaú CC",
+            "category": "Lazer",
+            "amount": "30.00",
+            "on": "2025-12-01",
+            "description": "MERCADO BOM PRECO",
+        },
+        {
+            "op": "expense",
+            "account": "Itaú CC",
+            "category": "Lazer",
+            "amount": "30.00",
+            "on": "2025-12-02",
+            "description": "MERCADO BOM PRECO",
+        },
         imp("nubank_card.pdf", "nu.pdf"),
         {"op": "add_rule", "pattern": "mercado bom", "category": "Saúde"},
         {"op": "apply_rules", "batch": 0},
@@ -389,7 +418,7 @@ def fuzz_scenarios() -> dict[str, list[dict[str, Any]]]:
     """Mutated CSV and OFX files through the whole pipeline, like test_pipeline_survives_mutated_csv_and_ofx."""
     out: dict[str, list[dict[str, Any]]] = {}
     for name in ("nubank_account.csv", "nubank_card.csv", "bank.ofx"):
-        rng = random.Random(f"golden-import-{name}")  # noqa: S311 - reproducible fuzzing
+        rng = random.Random(f"golden-import-{name}")
         original = DOCS[name].decode("utf-8")
         steps = []
         for i in range(25):

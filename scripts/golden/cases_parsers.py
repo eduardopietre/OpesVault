@@ -33,6 +33,7 @@ FUZZ_TEXT_ITERATIONS = 20
 FUZZ_BYTES_ITERATIONS = 30
 PASSWORD = "12345678900"
 
+
 def positioned_pdf(runs: list[tuple[float, float, str]]) -> bytes:
     """One page with text runs placed one by one (columns, runs that touch, fake bold), so line
     and word grouping are compared too, not only one run per line as in synthetic_pdf."""
@@ -96,11 +97,16 @@ DOCUMENTS: list[tuple[str, Any]] = [
     ("bank.ofx", docs.ofx_bank),
     (
         "card.ofx",
-        lambda: docs.ofx_bank("C")
-        .replace(b"<BANKMSGSRSV1><STMTTRNRS><STMTRS>", b"<CREDITCARDMSGSRSV1><CCSTMTTRNRS><CCSTMTRS>")
-        .replace(b"</STMTRS></STMTTRNRS></BANKMSGSRSV1>", b"</CCSTMTRS></CCSTMTTRNRS></CREDITCARDMSGSRSV1>"),
+        lambda: (
+            docs.ofx_bank("C")
+            .replace(b"<BANKMSGSRSV1><STMTTRNRS><STMTRS>", b"<CREDITCARDMSGSRSV1><CCSTMTTRNRS><CCSTMTRS>")
+            .replace(b"</STMTRS></STMTTRNRS></BANKMSGSRSV1>", b"</CCSTMTRS></CCSTMTTRNRS></CREDITCARDMSGSRSV1>")
+        ),
     ),
-    ("card_payment.csv", lambda: b"date,title,amount\n2026-01-20,Pagamento recebido,-1680.00\n2026-01-22,Uber *Trip,10.00\n"),
+    (
+        "card_payment.csv",
+        lambda: b"date,title,amount\n2026-01-20,Pagamento recebido,-1680.00\n2026-01-22,Uber *Trip,10.00\n",
+    ),
     ("savings.csv", lambda: "Data,Valor,Identificador,Descrição\n15/01/2026,500.00,x1,TED recebida\n".encode()),
     ("cp1252.csv", lambda: "Data;Valor;Identificador;Descrição\n01/02/2026;-12.00;z;Pão de Açúcar\n".encode("cp1252")),
     ("quoted.csv", lambda: b'date,title,amount\n2026-02-03,"Loja ""X"", centro",23.45\r\n2026-02-30,Bad date,1.00\n'),
@@ -131,7 +137,9 @@ def source_json(source: Source) -> dict[str, Any]:
             "ledger_balance_date": ofx.ledger_balance_date,
             "start": ofx.start,
             "end": ofx.end,
-            "transactions": [{"line": t.line, "fields": [[k, v] for k, v in t.fields.items()]} for t in ofx.transactions],
+            "transactions": [
+                {"line": t.line, "fields": [[k, v] for k, v in t.fields.items()]} for t in ofx.transactions
+            ],
         },
     }
 
@@ -214,7 +222,7 @@ def text_fuzz() -> list[dict[str, Any]]:
     pdfs = {name: build() for name, build in DOCUMENTS if name.endswith(".pdf") and name != "scanned.pdf"}
     for name, data in pdfs.items():
         base = load_source(name, data)
-        rng = random.Random(f"golden-pdf-text-{name}")  # noqa: S311 - reproducible fuzzing
+        rng = random.Random(f"golden-pdf-text-{name}")
         for _ in range(FUZZ_TEXT_ITERATIONS):
             text = _mutate_text(rng, base.text)
             lines = [Line(page=1, text=t, number=n) for n, t in enumerate(text.splitlines(), 1)]
@@ -235,8 +243,10 @@ def bytes_fuzz() -> list[dict[str, Any]]:
     for name, build in DOCUMENTS:
         if name.endswith(".pdf"):
             continue
-        original = build().decode("utf-8", errors="replace") if not name.startswith("cp1252") else build().decode("cp1252")
-        rng = random.Random(f"golden-text-{name}")  # noqa: S311 - reproducible fuzzing
+        original = (
+            build().decode("utf-8", errors="replace") if not name.startswith("cp1252") else build().decode("cp1252")
+        )
+        rng = random.Random(f"golden-text-{name}")
         for i in range(FUZZ_BYTES_ITERATIONS):
             mutated = _mutate_text(rng, original)
             data = mutated.encode("utf-8" if i % 3 else "cp1252", errors="replace")
@@ -251,7 +261,7 @@ def bytes_fuzz() -> list[dict[str, Any]]:
         "Data,Valor,Identificador,Descrição\n".encode() + b"x,y,z,w\n" * 10,
         b"\x00" * 64,
         b"\x81\x8d\x8f",
-        b"a,b\r\nc,\"d\ne\"\rf",
+        b'a,b\r\nc,"d\ne"\rf',
         b"x" * 131073,
     ]
     for data in degenerate:
@@ -262,12 +272,22 @@ def bytes_fuzz() -> list[dict[str, Any]]:
 
 
 def encrypted() -> list[dict[str, Any]]:
+    """The keys, salts and IVs pypdf draws come from a seeded generator, so the file is reproducible."""
+    import secrets
+    from unittest import mock
+
+    rng = random.Random("golden-encryption")
+    with mock.patch.object(secrets, "token_bytes", lambda n=32: rng.randbytes(n)):
+        return _encrypted()
+
+
+def _encrypted() -> list[dict[str, Any]]:
     from pypdf import PdfReader, PdfWriter
 
     out = []
     for algorithm, user in (("AES-256", PASSWORD), ("AES-128", PASSWORD), ("RC4-128", PASSWORD), ("AES-256", "")):
         writer = PdfWriter(clone_from=PdfReader(io.BytesIO(docs.nubank_card_pdf())))
-        writer.encrypt(user_password=user, owner_password="proprietario", algorithm=algorithm)
+        writer.encrypt(user_password=user, owner_password="proprietario", algorithm=algorithm)  # noqa: S106
         buffer = io.BytesIO()
         writer.write(buffer)
         data = buffer.getvalue()

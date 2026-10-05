@@ -257,16 +257,34 @@ export async function reparseWith(
   password: string | null,
   extractor: PdfTextExtractor,
 ): Promise<ImportBatch> {
-  const ledger = session.ledger;
-  const batch = batches(ledger).get(batchId);
-  if (batch === undefined) throw new BatchNotFound(batchId);
-  if (batch.status !== BatchStatus.AMBIGUOUS && batch.status !== BatchStatus.UNSUPPORTED)
-    throw new DomainError("Só lotes sem layout definido podem ser reprocessados.");
-  const document = session.document(batch.document_id);
+  checkReparsable(session, batchId);
+  const document = session.document(batches(session.ledger).get(batchId)!.document_id);
   const src = await loadSource(document.meta.original_name, document.data, password, extractor);
   const parser = parserById(parserId);
   const result = runParser(parser, src); // fails before the old batch is touched
   return storeReparsed(session, batchId, src, parser, result);
+}
+
+/** `reparseWith`'s check, before the document goes to the worker. */
+export function checkReparsable(session: Session, batchId: Id): void {
+  const batch = batches(session.ledger).get(batchId);
+  if (batch === undefined) throw new BatchNotFound(batchId);
+  if (batch.status !== BatchStatus.AMBIGUOUS && batch.status !== BatchStatus.UNSUPPORTED)
+    throw new DomainError("Só lotes sem layout definido podem ser reprocessados.");
+}
+
+/** `reparseWith` for an analysis made in the worker with the chosen `parser_id`. */
+export function storeReparseAnalysis(session: Session, batchId: Id, analysis: Analysis): ImportBatch {
+  checkReparsable(session, batchId);
+  if (analysis.kind === "problem") throw new SourceError(analysis.problem);
+  const { choice } = analysis;
+  if (choice.kind === "none") throw new DomainError("Escolha um layout.");
+  if (choice.kind === "unknown_parser") {
+    parserById(choice.parser_id);
+    throw new Error("unreachable");
+  }
+  if (choice.kind === "failed") throw new ParseFailed(choice.message);
+  return storeReparsed(session, batchId, analysis.source, parserById(choice.parser_id), choice.result);
 }
 
 /** The synchronous half of `reparseWith`, for a result parsed in the worker. */

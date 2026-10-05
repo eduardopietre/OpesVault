@@ -7,7 +7,7 @@
 import { describe, expect, it } from "vitest";
 
 import { DomainError } from "../src/domain/ledger.ts";
-import { AccountSubtype, AccountType, dump, LedgerAccountSchema } from "../src/domain/model.ts";
+import { AccountType, dump, LedgerAccountSchema } from "../src/domain/model.ts";
 import * as queries from "../src/domain/queries.ts";
 import { type IsoDate } from "../src/lib/dates.ts";
 import type { Id } from "../src/lib/ids.ts";

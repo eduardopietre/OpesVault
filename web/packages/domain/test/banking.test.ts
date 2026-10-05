@@ -1,15 +1,14 @@
 /**
  * Bank accounts (bank, branch, number, holders, parts), values at a date and investment
  * characteristics, with the embedded lists (COMPE banks, IRPF codes). Port of `tests/test_banking.py`.
- *
- * Not ported here: `test_maturity_shows_in_the_calendar_and_alerts` (needs `domain/agenda` and
- * `domain/alerts`). The conferência of `record_values` is checked through a test recorder until
- * `domain/balance_checks` is wired (TODO(W5-integration)).
  */
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { bank, banks, search } from "../src/catalogs/catalogs.ts";
 import { ASSET_CODES, CHECKING, investmentCodes, isAssetCode, SAVINGS } from "../src/catalogs/irpf.ts";
+import * as agenda from "../src/domain/agenda.ts";
+import * as alerts from "../src/domain/alerts.ts";
+import * as balanceChecks from "../src/domain/balance_checks.ts";
 import * as banking from "../src/domain/banking.ts";
 import { DomainError, Ledger } from "../src/domain/ledger.ts";
 import { AccountSubtype } from "../src/domain/model.ts";
@@ -28,8 +27,6 @@ import { family, type Family } from "./fixtures.ts";
 
 const d = (s: string) => s as IsoDate;
 const TODAY = d("2026-10-05");
-
-afterEach(() => banking.setBalanceCheckRecorder(null));
 
 describe("embedded lists", () => {
   it("the bank list is complete and consistent", () => {
@@ -123,8 +120,6 @@ describe("bank accounts", () => {
   it("values at a date: check, adjust and value investments", () => {
     const f = family();
     const ledger = f.ledger;
-    const checks: { account: Id; informed: Dec }[] = [];
-    banking.setBalanceCheckRecorder((_l, account, _on, informed) => checks.push({ account, informed }));
     const item = makeBank(f);
     const pos = inv.createPosition(ledger, "CDB Itaú", AssetClass.FIXED_INCOME, d("2025-02-01"), {
       initial_cost: "5000",
@@ -163,8 +158,8 @@ describe("bank accounts", () => {
     expect(after.get(savings)!.eq("300.00")).toBe(true); // adjusted: reports and net worth follow
     expect(after.get(checking)!.eq("-4000.00")).toBe(true); // only checked: the difference stays visible
     expect(after.get(pos.id)!.eq("5210.00")).toBe(true);
-    const check = checks.find((c) => c.account === checking)!;
-    expect(check.informed.sub(queries.balance(ledger, checking, on)).eq("6500.00")).toBe(true);
+    const [check] = balanceChecks.results(ledger, item.checking_id);
+    expect(check!.difference.eq("6500.00")).toBe(true);
     banking.recordValues(ledger, item.id, on, new Map([[pos.id, "5300.00"]]), TODAY); // corrected, not duplicated
     expect(values().get(pos.id)!.eq("5300.00")).toBe(true);
     expect(() => banking.recordValues(ledger, item.id, d("2999-01-01"), new Map([[pos.id, "1"]]), TODAY)).toThrow(
@@ -214,6 +209,37 @@ describe("bank accounts", () => {
     expect(() => prof.saveProfile(ledger, { ...saved, income_code: "isento:99" })).toThrow(DomainError);
     expect(prof.classFor("07", "03")).toBe(AssetClass.REIT);
     expect(prof.classFor("03", "01")).toBe(AssetClass.STOCK);
+  });
+
+  it("maturity shows in the calendar and alerts", () => {
+    const f = family();
+    const ledger = f.ledger;
+    const item = makeBank(f);
+    const pos = inv.createPosition(ledger, "CDB Banco X", AssetClass.FIXED_INCOME, d("2025-02-01"), {
+      initial_cost: "1000",
+      from_account: item.checking_id,
+    });
+    prof.saveProfile(ledger, prof.InvestmentProfileSchema.parse({ position_id: pos.id, maturity: "2026-10-20" }));
+
+    const found = agenda
+      .events(ledger, d("2026-10-01"), d("2026-10-31"), d("2026-10-03"))
+      .filter((e) => e.kind === "vencimento");
+    expect(found).toHaveLength(1);
+    expect(found[0]!.ref).toBe(pos.id);
+    expect(found[0]!.target).toBe("investments");
+    expect(found[0]!.amount.eq("1000")).toBe(true);
+    expect(found[0]!.state).toBe(agenda.EventState.PENDING);
+
+    const soon = alerts.alerts(ledger, d("2026-10-15")).filter((a) => a.target === alerts.Target.INVESTMENTS);
+    expect(soon.map((a) => a.severity)).toEqual([alerts.Severity.SOON]);
+    expect(soon[0]!.ref).toBe(pos.id);
+    expect(soon[0]!.title).toContain("CDB Banco X");
+
+    const late = alerts.alerts(ledger, d("2026-10-25")).filter((a) => a.target === alerts.Target.INVESTMENTS);
+    expect(late.map((a) => a.severity)).toEqual([alerts.Severity.INFO]);
+    expect(late[0]!.title).toContain("venceu");
+    const after = agenda.events(ledger, d("2026-10-01"), d("2026-10-31"), d("2026-10-25"));
+    expect(after.filter((e) => e.kind === "vencimento").map((e) => e.state)).toEqual([agenda.EventState.LATE]);
   });
 
   it("bank records survive save", () => {

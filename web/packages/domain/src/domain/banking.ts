@@ -20,16 +20,10 @@ import { bank as catalogBank } from "../catalogs/catalogs.ts";
 import { ValueNature } from "../investments/model.ts";
 import { valueAt } from "../investments/performance.ts";
 import { profiles } from "../investments/profile.ts";
-import { collapseSpaces, head, pyEquals } from "../investments/py.ts";
-import {
-  addValuation,
-  assets,
-  correctValuation,
-  getOrKeyError,
-  positions,
-  valuationsOf,
-} from "../investments/service.ts";
+import { addValuation, assets, correctValuation, positions, valuationsOf } from "../investments/service.ts";
 import { formatDateBr, type IsoDate } from "../lib/dates.ts";
+import { record as recordBalanceCheck } from "./balance_checks.ts";
+import { collapseSpaces, getOrKeyError, head, pyEquals } from "../lib/py.ts";
 import { Dec } from "../lib/dec.ts";
 import type { Id } from "../lib/ids.ts";
 import { zId } from "../lib/schema.ts";
@@ -339,19 +333,6 @@ export interface Recorded {
   readonly valuations: number;
 }
 
-/**
- * Records a conferência (`domain/balance_checks.record`).
- * TODO(W5-integration): `domain/balance_checks.ts` is ported by another agent; wire its `record`
- * here with `setBalanceCheckRecorder` when the areas are joined. Until then `recordValues`
- * refuses account values (investments work).
- */
-export type BalanceCheckRecorder = (ledger: Ledger, accountId: Id, on: IsoDate, informed: Dec, note: string) => void;
-let balanceCheckRecorder: BalanceCheckRecorder | null = null;
-
-export function setBalanceCheckRecorder(recorder: BalanceCheckRecorder | null): void {
-  balanceCheckRecorder = recorder;
-}
-
 export interface RecordValuesOptions {
   readonly adjust?: ReadonlySet<Id> | null;
   readonly note?: string | null;
@@ -388,10 +369,7 @@ export function recordValues(
     const value = raw instanceof Dec ? raw : toDecimal(raw);
     if (!isCents(value)) throw new DomainError("Use valores em reais e centavos.");
     if (accounts.has(ref)) {
-      if (balanceCheckRecorder === null) {
-        throw new Error("TODO(W5-integration): domain/balance_checks is not wired (setBalanceCheckRecorder).");
-      }
-      balanceCheckRecorder(ledger, ref, on, value, text);
+      recordBalanceCheck(ledger, ref, on, value, text);
       checks += 1;
       if (adjust && adjust.size && adjust.has(ref) && adjustBalance(ledger, ref, on, value) !== null) adjustments += 1;
     } else if (held.has(ref)) {

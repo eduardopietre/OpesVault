@@ -14,7 +14,7 @@ import { approveNote } from "./investments/notes.ts";
 
 registerInstallmentPlanFinder((ledger, cardId, description, number, count, amount) => {
   const found = findPlanForInstallment(ledger, cardId, description, number, count, amount);
-  return found === null ? null : { plan_id: found.planId, operation_id: found.operationId };
+  return found && { plan_id: found.planId, operation_id: found.operationId };
 });
 registerSettingsReader(getSettings);
 registerMerchants({

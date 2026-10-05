@@ -1,2 +1,2 @@
-/** Public modules of this area, one namespace per module. */
-export {};
+/** Public modules of this area (`charts/render.py` is not ported: the web draws with ECharts). */
+export * as data from "./data/index.ts";

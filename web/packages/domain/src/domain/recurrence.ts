@@ -9,6 +9,7 @@ import { z } from "zod";
 import { addDays, daysBetween, daysInMonth, type IsoDate, makeDate, ymAdd, ymFirstDay, ymOf } from "../lib/dates.ts";
 import { Dec } from "../lib/dec.ts";
 import type { Id } from "../lib/ids.ts";
+import { KeyError } from "../lib/py.ts";
 import { zDate, zDec, zId } from "../lib/schema.ts";
 import { sortedBy } from "../lib/text.ts";
 import { DomainError, Ledger } from "./ledger.ts";
@@ -155,7 +156,7 @@ function opValueOn(op: Operation, accountId: Id): Dec {
  */
 export function candidates(ledger: Ledger, forecast: Forecast): Operation[] {
   const rule = rules(ledger).get(forecast.ruleId);
-  if (rule === undefined) throw new KeyLookupError(forecast.ruleId);
+  if (rule === undefined) throw new KeyError(forecast.ruleId);
   const linkedOps = new Set<Id>();
   for (const link of links(ledger).values()) if (link.operation_id) linkedOps.add(link.operation_id);
   const out: Operation[] = [];
@@ -171,14 +172,6 @@ export function candidates(ledger: Ledger, forecast: Forecast): Operation[] {
     if (natural.sub(forecast.amount).abs().lte(rule.tolerance)) out.push(op);
   }
   return out;
-}
-
-/** A dict lookup that failed (Python's KeyError on a missing id). */
-export class KeyLookupError extends Error {
-  constructor(key: string) {
-    super(key);
-    this.name = "KeyError";
-  }
 }
 
 export function realize(ledger: Ledger, ruleId: Id, dueOn: IsoDate, operationId: Id): ForecastLink {

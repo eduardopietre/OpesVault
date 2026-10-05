@@ -15,7 +15,8 @@ import {
   type AnyRoute,
   type RouterHistory,
 } from "@tanstack/react-router";
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode } from "react";
+import { revealSearch } from "./data/navigation.ts";
 import { SHOW_CATALOG } from "./flags.ts";
 import { PAGES } from "./pages.tsx";
 import { SignInScreen, SignUpScreen, WelcomeScreen } from "./screens/auth.tsx";
@@ -23,6 +24,8 @@ import { PlaceholderPage } from "./screens/PlaceholderPage.tsx";
 import { CreateProjectScreen, ProjectsScreen, SetupScreen } from "./screens/projects.tsx";
 import type { SessionStore } from "./session.tsx";
 import { AppShell } from "./shell/AppShell.tsx";
+
+const SCREENS = import.meta.glob<{ Page: ComponentType }>("./pages/*/index.tsx");
 
 export interface RouterContext {
   session: SessionStore;
@@ -118,9 +121,17 @@ export function createAppRouter({
     beforeLoad: projectOpen,
     component: AppShell,
   });
-  const pages: AnyRoute[] = PAGES.map((page) =>
-    createRoute({ getParentRoute: () => shell, path: page.path, component: () => <PlaceholderPage page={page} /> }),
-  );
+  // Each screen lives in pages/<page id>/index.tsx and exports `Page`; it is loaded when first visited.
+  // A destination without its folder yet shows the placeholder.
+  const pages: AnyRoute[] = PAGES.map((page) => {
+    const load = SCREENS[`./pages/${page.id}/index.tsx`];
+    return createRoute({
+      getParentRoute: () => shell,
+      path: page.path,
+      validateSearch: revealSearch,
+      component: load ? lazyRouteComponent(load, "Page") : () => <PlaceholderPage page={page} />,
+    });
+  });
 
   const children: AnyRoute[] = [index, welcome, signIn, signUp, projects, newProject, setup, shell.addChildren(pages)];
   if (SHOW_CATALOG) {

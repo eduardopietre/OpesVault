@@ -342,3 +342,24 @@ Cada fase tem critério de saída verificável. Nenhuma tela entra antes de o do
 | Ollama recusa a origem do app | IA indisponível | Diagnóstico na tela de IA com o passo a passo do `OLLAMA_ORIGINS`; o app funciona inteiro sem IA |
 | Prender-se ao servidor escolhido | Migração cara | Porta `SyncBackend`, suíte de contrato e dados opacos (§3.4) |
 | Escopo enorme | Branch longa demais | Fases com saída verificável; `main` só recebe a web em W13 |
+
+## 10. Andamento
+
+Atualizado a cada fase. Detalhes técnicos em `web/README.md` e `web/PORTING.md`.
+
+| Fase | Situação | Verificação |
+|---|---|---|
+| W0 | Concluída | `pnpm check`; `Dec` reproduz o `decimal` do Python dígito a dígito (aritmética, arredondamentos, ln, exp, potências) |
+| W1 | Concluída | Vetores conhecidos, testes de adulteração e varredura sem texto claro no IndexedDB e nas requisições; normativo em `19` |
+| W2 | Concluída | Suíte de contrato contra o servidor em memória e o HTTP; `docker compose` com Caddy executado de ponta a ponta; guia em `20` |
+| W3 | Concluída | Livro, consultas, busca, reclassificação, migração e desfazer idênticos ao Python em cenários aleatórios com semente |
+| W4 | Concluída | 19 módulos do dia a dia com arquivos de referência (3 cenários de 14 meses) e os casos do pytest |
+| W5 | Concluída | Exemplos A–F do `06`, XIRR/TWR/Dietz dígito a dígito, imposto, catálogos e contas bancárias |
+| W6 | Concluída | Texto do pdf.js idêntico ao do pdfplumber nos sintéticos; parsers, fluxo de revisão, IA e fuzzing |
+| W7 | Concluída | Componentes, shell, quatro faixas, animações, PWA; e2e sem erros nem transbordamento em 5 tamanhos, claro e escuro, axe sem violações |
+| Integração | Em andamento | Avisos, calendário, gráficos, exportações, notas de corretagem, informes, Assistente e projeto de demonstração |
+
+Notas desta etapa:
+- O app usa o domínio por um `Workspace` (`apps/app/src/data/`): cada ação do usuário é um passo de desfazer e só os registros alterados vão, cifrados, ao cofre. Com a sincronização automática, o desfazer vale para a sessão da aba, mesmo depois de sincronizado (o estado anterior é enviado como nova alteração).
+- Corrigido no cofre: uma exclusão feita enquanto o envio da criação ainda não tinha resposta era descartada, e o registro ficava no servidor.
+- Zod roda sem compilação dinâmica (a CSP proíbe `eval`); a CSP do app permite `wasm-unsafe-eval` só para o Argon2id.

@@ -2,25 +2,26 @@
  * Support for the income tax return: ids, sheets, checklist, variable income and the
  * simplified/itemized simulation. All rates and tables are typed by the test. Port of `tests/test_tax.py`.
  *
- * Not ported (modules of other areas): the informe reader (`tax/statements`), issues and alerts
- * (`tax/issues`, `domain/alerts`), the HTML report (`exports`) and the reimbursement part of the
- * payments sheet (`domain/sharing`). The itemized simulation runs over a stand-in for
- * `domain/deductibles` registered with `setPaymentSources` (TODO(W5-integration)).
+ * `test_informe_is_read_and_checked_against_the_records` reads the text lines of the synthetic PDF
+ * (`synthetic_docs.bank_income_report_pdf`) instead of the PDF: extracting text is the import
+ * pipeline's job (`statements.read`, TODO(W6-integration)).
  */
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
+import * as alerts from "../src/domain/alerts.ts";
+import * as deductibles from "../src/domain/deductibles.ts";
 import { DomainError, Ledger } from "../src/domain/ledger.ts";
-import { AccountSubtype, AccountType, cashDate, LedgerAccountSchema } from "../src/domain/model.ts";
-import { normalize } from "../src/importing/rules.ts";
+import { AccountSubtype, AccountType, LedgerAccountSchema } from "../src/domain/model.ts";
+import * as sharing from "../src/domain/sharing.ts";
+import { exporting } from "../src/index.ts";
 import type { IsoDate } from "../src/lib/dates.ts";
-
-import type { Id } from "../src/lib/ids.ts";
 import { AssetClass, TrackingMode, ValueNature } from "../src/investments/model.ts";
 import * as inv from "../src/investments/service.ts";
 import * as trades from "../src/investments/trades.ts";
 import * as checklist from "../src/tax/checklist.ts";
 import * as declaration from "../src/tax/declaration.ts";
 import * as ids from "../src/tax/ids.ts";
+import * as issues from "../src/tax/issues.ts";
 import {
   BracketSchema,
   Bucket,
@@ -39,6 +40,7 @@ import {
 } from "../src/tax/model.ts";
 import * as records from "../src/tax/records.ts";
 import * as simulation from "../src/tax/simulation.ts";
+import * as statements from "../src/tax/statements.ts";
 import * as variableIncome from "../src/tax/variable_income.ts";
 import { category, family } from "./fixtures.ts";
 
@@ -48,34 +50,6 @@ const CPF_BRUNO = "111.444.777-35";
 const Y = 2025;
 const d = (s: string) => s as IsoDate;
 const TODAY = d("2026-10-05");
-
-afterEach(() => declaration.setPaymentSources(null));
-
-/** A stand-in for `domain/deductibles` & co.: every expense in the marked categories is deductible. */
-function deductibleCategories(marked: ReadonlyMap<Id, declaration.DeductibleKind>): declaration.PaymentSources {
-  return {
-    annual(ledger: Ledger, year: number) {
-      const groups = new Map<string, { kind: declaration.DeductibleKind; lines: declaration.DeductibleLineInput[] }>();
-      for (const op of ledger.activeOperations()) {
-        const when = cashDate(op) ?? op.occurred_on;
-        if (when === null || Number(when.slice(0, 4)) !== year) continue;
-        for (const p of op.postings) {
-          const kind = marked.get(p.account_id);
-          if (kind === undefined) continue;
-          const member = p.member_id ?? op.member_id;
-          const key = `${kind}|${member}`;
-          if (!groups.has(key)) groups.set(key, { kind, lines: [] });
-          groups.get(key)!.lines.push({ operation: op, member_id: member, amount: p.amount });
-        }
-      }
-      return [...groups.values()];
-    },
-    receipts: () => new Map(),
-    merchantKey: (description) => normalize(description),
-    merchantOf: (_ledger, description) => description,
-    hasAttachment: () => false,
-  };
-}
 
 function salarySetup() {
   const f = family();
@@ -118,7 +92,7 @@ describe("tax", () => {
     ); // gross < received
   });
 
-  it("unclassified income is flagged, not guessed (issues part not ported)", () => {
+  it("unclassified income is flagged, not guessed", () => {
     const f = family();
     const rent = f.ledger.addAccount(
       LedgerAccountSchema.parse({
@@ -130,6 +104,8 @@ describe("tax", () => {
     f.ledger.recordIncome(f.bank, rent.id, "1500.00", d(`${Y}-03-01`), "Aluguel", { member_id: f.ana });
     let found = declaration.income(f.ledger, Y);
     expect(declaration.unclassified(found).map((r) => r.source)).toEqual(["Aluguel recebido"]);
+    const titles = issues.issues(f.ledger, Y, null, d(`${Y + 1}-03-01`)).map((i) => i.title);
+    expect(titles).toContain("Natureza do rendimento: Aluguel recebido");
     records.classify(f.ledger, NatureSubject.CATEGORY, rent.id, IncomeNature.CARNE_LEAO);
     found = declaration.income(f.ledger, Y);
     expect(declaration.unclassified(found)).toEqual([]);
@@ -137,6 +113,8 @@ describe("tax", () => {
     const month = found.carne_leao[0]!;
     expect(month.month).toEqual({ year: Y, month: 3 });
     expect(month.amount.eq("1500.00") && month.paid.isZero()).toBe(true);
+    const foundIssues = issues.issues(f.ledger, Y, null, d(`${Y}-04-10`));
+    expect(foundIssues.some((i) => i.title.startsWith("Carnê-Leão 03/2025"))).toBe(true);
     records.recordPayment(
       f.ledger,
       PaymentPurpose.CARNE_LEAO,
@@ -147,6 +125,32 @@ describe("tax", () => {
       f.ana,
     );
     expect(declaration.income(f.ledger, Y).carne_leao[0]!.paid.eq("100.00")).toBe(true);
+  });
+
+  it("payments show paid and reimbursed parts per payee", () => {
+    const f = family();
+    const ledger = f.ledger;
+    const health = category(ledger, "Saúde");
+    deductibles.mark(ledger, health, deductibles.DeductibleKind.HEALTH);
+    const op = ledger.recordExpense(f.bank, health, "800.00", d(`${Y}-05-02`), "CLINICA SORRISO LTDA", {
+      member_id: f.bruno,
+    });
+    ledger.recordExpense(f.bank, health, "200.00", d(`${Y}-06-02`), "CLINICA SORRISO LTDA", { member_id: f.bruno });
+    const item = sharing.request(ledger, op.id, "Plano de saúde", "300.00");
+    sharing.receive(ledger, item.id, f.bank, "300.00", d(`${Y}-05-20`));
+    const rows = declaration.payments(ledger, Y);
+    expect(rows).toHaveLength(1);
+    const row = rows[0]!;
+    expect(row.paid.eq("1000.00") && row.not_deductible.eq("300.00") && declaration.paymentNet(row).eq("700.00")).toBe(
+      true,
+    );
+    expect(row.beneficiary_id).toBe(f.bruno);
+    expect(row.without_receipt).toBe(2);
+    expect(row.tax_id).toBeNull();
+    const found = issues.issues(ledger, Y, null, d(`${Y + 1}-03-01`));
+    expect(found.some((i) => i.title === `CPF/CNPJ de quem recebeu: ${row.payee}`)).toBe(true);
+    records.setIdentity(ledger, TaxSubject.MERCHANT, row.payee_key, CNPJ);
+    expect(declaration.payments(ledger, Y)[0]!.tax_id).toBe("11222333000181");
   });
 
   it("assets at cost and debts on December 31", () => {
@@ -217,6 +221,57 @@ describe("tax", () => {
     const other = ledger.addMember("Carla").id;
     ledger.recordIncome(f.bank, f.salary, "100.00", d(`${Y}-03-05`), "Bico", { member_id: other });
     expect(declaration.income(ledger, Y, records.peopleOf(ledger, f.ana)).taxable).toHaveLength(1);
+  });
+
+  it("the informe is read and checked against the records", () => {
+    const f = family();
+    const ledger = f.ledger;
+    // the text lines of synthetic_docs.bank_income_report_pdf(Y)
+    const parsed = statements.parse([
+      "Banco Exemplo S.A. - CNPJ 11.222.333/0001-81",
+      "INFORME DE RENDIMENTOS FINANCEIROS",
+      `Ano-calendário: ${Y}`,
+      "Cliente: Ana Teste - CPF 529.982.247-25",
+      "1. Saldos",
+      `Conta corrente - saldo em 31/12/${Y - 1} R$ 1.000,00`,
+      `Conta corrente - saldo em 31/12/${Y} R$ 2.500,00`,
+      "2. Rendimentos isentos e não tributáveis",
+      "Rendimento de poupança 12,34",
+      "3. Rendimentos sujeitos à tributação exclusiva",
+      "Aplicações de renda fixa 45,60",
+      "Imposto de renda retido na fonte 10,26",
+      "Atendimento 0800 000 0000",
+    ]);
+    expect(parsed.year).toBe(Y);
+    expect(parsed.payerTaxId).toBe("11222333000181");
+    const fields = new Map(parsed.lines.map((line) => [line.field, line.amount]));
+    expect(fields.get(ReportField.BALANCE_PREVIOUS)!.eq("1000.00")).toBe(true);
+    expect(fields.get(ReportField.BALANCE_END)!.eq("2500.00")).toBe(true);
+    expect(fields.get(ReportField.EXEMPT)!.eq("12.34")).toBe(true);
+    expect(fields.get(ReportField.WITHHELD)!.eq("10.26")).toBe(true);
+    ledger.recordOpeningBalance(f.bank, "1000.00", d(`${Y - 1}-01-02`));
+    ledger.recordIncome(f.bank, f.salary, "1400.00", d(`${Y}-06-01`), "Depósito");
+    const report = records.saveReport(ledger, Y, ReportSource.ACCOUNT, f.bank, parsed.lines, {
+      payer_tax_id: parsed.payerTaxId,
+    });
+    const diffs = statements.differences(ledger, report);
+    expect(diffs.map((x) => x.field)).toEqual([ReportField.BALANCE_END]); // 2.500 informed, 2.400 recorded
+    expect(statements.difference(diffs[0]!)!.eq("100.00")).toBe(true);
+    expect(() => records.saveReport(ledger, Y, ReportSource.ACCOUNT, f.bank, [])).toThrow(DomainError); // one per source and year
+    const found = issues.issues(ledger, Y, null, d(`${Y + 1}-03-01`));
+    expect(found.some((i) => i.title === "Informe diferente do registrado: Banco A")).toBe(true);
+  });
+
+  it("the parser never raises on garbage", () => {
+    const parsed = statements.parse([
+      "",
+      "R$ ,00",
+      "Saldo em 31/12/abcd 1,00",
+      "x".repeat(5000),
+      "CNPJ 00.000.000/0000-00",
+    ]);
+    expect(parsed.payerTaxId).toBeNull();
+    expect(parsed.lines.every((line) => !line.amount.isNegative())).toBe(true);
   });
 
   it("the checklist lists informes and receipts", () => {
@@ -293,7 +348,7 @@ describe("variable income", () => {
     expect(due.get(`${Y}-04`)!.paid.eq("2850.00")).toBe(true);
   });
 
-  it("without a rate the tax is unknown, not zero (issues part not ported)", () => {
+  it("without a rate the tax is unknown, not zero", () => {
     const { f, pos } = stockSetup();
     trades.sell(f.ledger, pos.id, d(`${Y}-04-10`), "1000", "30.00", f.bank);
     const months = variableIncome.months(f.ledger, Y);
@@ -301,6 +356,9 @@ describe("variable income", () => {
     const row = months[0]!;
     expect(row.base.eq("10000.00") && row.tax === null && row.due === null).toBe(true);
     expect(variableIncome.missingRate(row)).toBe(true);
+    expect(
+      issues.issues(f.ledger, Y, null, d(`${Y + 1}-03-01`)).some((i) => i.title === "Alíquotas de renda variável"),
+    ).toBe(true);
   });
 });
 
@@ -309,7 +367,7 @@ describe("simulation", () => {
     const f = salarySetup();
     const ledger = f.ledger;
     const health = category(ledger, "Saúde");
-    declaration.setPaymentSources(deductibleCategories(new Map([[health, "health"]])));
+    deductibles.mark(ledger, health, deductibles.DeductibleKind.HEALTH);
     ledger.recordExpense(f.bank, health, "3000.00", d(`${Y}-05-02`), "Hospital", { member_id: f.ana });
     let comparison = simulation.compare(ledger, Y, null);
     expect(comparison.simplified).toBeNull();
@@ -354,5 +412,30 @@ describe("simulation", () => {
     const f = salarySetup();
     const restored = Ledger.fromRecords(JSON.parse(JSON.stringify(f.ledger.toRecords())));
     expect(declaration.income(restored, Y).taxable[0]!.tax_id).toBe("11222333000181");
+  });
+
+  it("tax reminders reach the attention panel", () => {
+    const f = family();
+    const rent = f.ledger.addAccount(
+      LedgerAccountSchema.parse({
+        name: "Aluguel recebido",
+        type: AccountType.INCOME,
+        subtype: AccountSubtype.CATEGORY,
+      }),
+    );
+    records.classify(f.ledger, NatureSubject.CATEGORY, rent.id, IncomeNature.CARNE_LEAO);
+    f.ledger.recordIncome(f.bank, rent.id, "1500.00", d("2026-08-01"), "Aluguel", { member_id: f.ana });
+    const found = alerts.alerts(f.ledger, d("2026-09-25")).filter((a) => a.target === alerts.Target.TAX);
+    expect(found.map((a) => a.title)).toEqual(["Carnê-Leão 08/2026: Ana"]);
+    expect(found[0]!.dueOn).toBe("2026-09-30");
+  });
+
+  it("the report for the return lists the sheets", () => {
+    const f = salarySetup();
+    const html = exporting.taxReportHtml(f.ledger, Y, TODAY, null);
+    expect(html).toContain("Empresa Exemplo Ltda");
+    expect(html).toContain("11.222.333/0001-81");
+    expect(html).toContain("Bens e direitos");
+    expect(html).toContain("Pendências");
   });
 });

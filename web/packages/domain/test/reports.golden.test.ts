@@ -13,6 +13,7 @@ import * as agenda from "../src/domain/agenda.ts";
 import * as alerts from "../src/domain/alerts.ts";
 import * as annual from "../src/domain/annual.ts";
 import { Ledger, type LedgerRecord } from "../src/domain/ledger.ts";
+import { dump } from "../src/domain/model.ts";
 import {
   KIND_ORDER,
   interchangeJson,
@@ -22,8 +23,10 @@ import {
   taxReportHtml,
 } from "../src/exports.ts";
 import { type IsoDate, ymParse } from "../src/lib/dates.ts";
-import { head } from "../src/lib/py.ts";
+import { Dec } from "../src/lib/dec.ts";
+import { formatFixed, head } from "../src/lib/py.ts";
 import * as issues from "../src/tax/issues.ts";
+import * as statements from "../src/tax/statements.ts";
 import { golden, j, outcome } from "./golden.ts";
 import { py } from "./pyjson.ts";
 
@@ -40,7 +43,13 @@ interface Scenario {
   calls: Call[];
 }
 
-const data = golden<{ exported_at: string; kind_order: string[]; scenarios: Scenario[] }>("reports");
+interface Pure {
+  informes: { lines: unknown[]; result: unknown }[];
+  tables: { labels: string[]; style: string; unit: string; result: unknown }[];
+  formats: { value: string; places: number; signed: boolean; result: string }[];
+}
+
+const data = golden<{ exported_at: string; kind_order: string[]; pure: Pure; scenarios: Scenario[] }>("reports");
 
 const dt = (v: unknown) => v as IsoDate;
 const ym = (v: unknown) => ymParse(v as string);
@@ -186,5 +195,87 @@ describe("reports golden", () => {
       }
       expect(wrong).toEqual([]);
     });
+  });
+});
+
+/** The charts of `pure_cases()` in cases_reports.py, rebuilt from their description. */
+function pureChart(labels: string[], style: string, unit: string): charts.Chart {
+  const dec = (v: string | null) => (v === null ? null : Dec.parse(v));
+  if (style === "dates") {
+    const xs = labels as IsoDate[];
+    return charts.chart("d", "BRL", [
+      charts.series(
+        "S",
+        xs.map((x, k) => charts.datePoint(x, dec(`${k}.10`))),
+        { style: "step" },
+      ),
+      charts.series(
+        "T",
+        [...xs].reverse().map((x) => charts.datePoint(x, dec("1.00"))),
+        { style: "bar" },
+      ),
+    ]);
+  }
+  if (style === "mixed") {
+    return charts.chart("m", "BRL", [
+      charts.series("S", [
+        charts.datePoint("2026-01-01" as IsoDate, dec("1.00")),
+        charts.point("2026-01-01", dec("2.00")),
+      ]),
+    ]);
+  }
+  return charts.chart("t", unit, [
+    charts.series(
+      "A",
+      labels.map((x, k) => charts.point(x, dec(`${k + 1}.50`))),
+      { style: style as charts.SeriesStyle },
+    ),
+    charts.series(
+      "B",
+      labels.map((x, k) => charts.point(x, dec(k % 2 ? null : "2.25"))),
+      { style: "line" },
+    ),
+    charts.series(
+      "C",
+      labels.slice(0, 1).map((x) => charts.point(x, dec("1.00"))),
+      { style: "forecast" },
+    ),
+    charts.series(
+      "D",
+      labels.map((x) => charts.point(x, dec("3.00"))),
+      { style: "line", summable: true },
+    ),
+    charts.series(
+      "E",
+      labels.map((x) => charts.point(x, dec("3.00"))),
+      { style: "bar", summable: false },
+    ),
+  ]);
+}
+
+describe("reports golden: pure cases", () => {
+  it("reads informes like the desktop", () => {
+    expect(data.pure.informes.length).toBeGreaterThan(100);
+    for (const [index, c] of data.pure.informes.entries()) {
+      const parsed = statements.parse(c.lines);
+      // the lines are models: their persisted form, like `j()` writes them
+      const got = { ...(py(parsed) as object), lines: parsed.lines.map(dump) };
+      expect(got, `informe #${index}`).toEqual(c.result);
+    }
+  });
+
+  it("builds the table of values like the desktop", () => {
+    for (const [index, c] of data.pure.tables.entries()) {
+      const chart = pureChart(c.labels, c.style, c.unit);
+      expect(chartAndTable(chart), `table #${index} ${JSON.stringify(c.labels)} ${c.style} ${c.unit}`).toEqual(
+        c.result,
+      );
+    }
+  });
+
+  it("formats decimals like format(Decimal, 'f')", () => {
+    for (const c of data.pure.formats) {
+      expect(formatFixed(Dec.parse(c.value), c.places, c.signed), JSON.stringify(c)).toBe(c.result);
+    }
   });
 });

@@ -64,6 +64,9 @@ Each ported file starts with a doc comment that says what it is and "Port of `<p
 - **Dicts keyed by ids or other non-string-literal keys:** use `Map` (keeps insertion order like
   Python dicts). Do not use plain objects for data keyed by user input (prototype keys, numeric
   key reordering).
+- **Other Python semantics** live in `lib/py.ts`: `pyEquals` (model `==`), `head` (`text[:n]`), `strip`/`stripChars`,
+  `collapseSpaces` (`" ".join(text.split())`), `formatFixed` (`format(Decimal, ".2f")`, half to even), `orDec`
+  (`x or ZERO`), `KeyError` and `getOrKeyError` (`mapping[key]`). Reuse them; do not copy them into a module.
 - **Sorting:** JavaScript's sort is stable, like Python's. Python orders strings by code point;
   use `cmpStr`/`sortedBy` (`lib/text.ts`) where the order of names is visible or tested, and
   `cmpKeys` for tuple keys. `str.casefold()` → `casefold()`.

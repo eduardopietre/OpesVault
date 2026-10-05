@@ -57,7 +57,7 @@ from opesvault.importing.model import (
 from opesvault.investments import profile as prof
 from opesvault.investments import service, trades
 from opesvault.investments.model import AssetClass, TrackingMode, ValueNature
-from opesvault.tax import issues, records
+from opesvault.tax import issues, records, statements
 from opesvault.tax.model import (
     Bracket,
     Bucket,
@@ -710,6 +710,199 @@ def tax_scenarios() -> list[tuple[str, Ledger]]:
     return out
 
 
+# ── pure cases: no ledger ──────────
+
+INFORME_LINES = [
+    "Banco Exemplo S.A. - CNPJ 11.222.333/0001-81",
+    "INFORME DE RENDIMENTOS FINANCEIROS",
+    "Ano-calendário: 2025",
+    "Cliente: Ana Teste - CPF 529.982.247-25",
+    "1. Saldos",
+    "Conta corrente - saldo em 31/12/2024 R$ 1.000,00",
+    "Conta corrente - saldo em 31/12/2025 R$ 2.500,00",
+    "2. Rendimentos isentos e não tributáveis",
+    "Rendimento de poupança 12,34",
+    "3. Rendimentos sujeitos à tributação exclusiva",
+    "Aplicações de renda fixa 45,60",
+    "Imposto de renda retido na fonte 10,26",
+    "Atendimento 0800 000 0000",
+]
+
+PAYSLIP_LINES = [
+    "Empresa Exemplo Ltda, CNPJ: 11.222.333/0001-81",
+    "Exercício 2026",
+    "Rendimentos tributáveis, inclusive férias 90.000,00",
+    "Total dos rendimentos tributáveis 95.500,00",
+    "Contribuição previdenciária oficial 6.600,00",
+    "13º salário 7.500,00",
+    "Imposto retido na fonte sobre 13o salário 150,00",
+    "IRRF 8.400,00",
+    "Imposto sobre a renda retido na fonte 8.400,50",
+    "Rendimentos isentos",
+    "Lucros e dividendos 1.000,00",
+    "Valor -3,50",
+    "Valor R$ -1.234,56",
+    "Outros 500,00",
+]
+
+POOL = [
+    "Saldo em 31/12/2024 R$ 1.000,00",
+    "Saldo em 31/12/2025 R$ 2.500,00",
+    "Saldo em 31/12/2023 R$ 10,00",
+    "Saldo anterior em 31/12 R$ 7,00",
+    "Saldo 31/12 R$ 8,00",
+    "Ano-calendário: 2025",
+    "Ano calendario de 2024",
+    "Exercício: 2026",
+    "Banco X - CNPJ 11.222.333/0001-81",
+    "Banco Y CNPJ 11.444.777/0001-61",
+    "CPF 529.982.247-25 valor 10,00",
+    "Imposto retido na fonte 10,26",
+    "IRRF 5,00",
+    "13º salário 100,00",
+    "13 salario imposto 5,00",
+    "décimo terceiro 1.000,00",
+    "Previdência oficial 600,00",
+    "Contribuição previdenciária 12,00",
+    "Rendimentos isentos 12,34",
+    "Não tributáveis 3,00",
+    "Tributação exclusiva 45,60",
+    "Tributação definitiva 9,99",
+    "Total dos rendimentos 1.000,00",
+    "Rendimentos tributáveis 900,00",
+    "TOTAL 99,00",
+    "2. Rendimentos isentos",
+    "3. Tributação exclusiva",
+    "4) Outros",
+    "Rendimento de poupança 12,34",
+    "Linha sem valor",
+    "x" * 130,
+    "R$ ,00",
+    "1.234,56",
+    "-5,00",
+    "Valor R$ 1.234,56",
+    "",
+    "   ",
+    "Atendimento 0800 000 0000",
+    "Valor 1.2.3,45",
+    "Valor 12345,67",
+]
+
+
+def pure_cases() -> dict[str, Any]:
+    rng = random.Random(77)
+    informes = [
+        INFORME_LINES,
+        PAYSLIP_LINES,
+        [],
+        [""],
+        ["R$ ,00", "Saldo em 31/12/abcd 1,00", "x" * 5000, "CNPJ 00.000.000/0000-00"],
+    ]
+    informes.append([f"Linha {k} 1,00" for k in range(450)])
+    for _ in range(120):
+        informes.append([rng.choice(POOL) for _ in range(rng.randint(1, 14))])
+    parsed = []
+    for lines in informes:
+        parsed.append({"lines": lines, "result": j(statements.parse(lines))})
+    odd: list[Any] = [3, None, "Saldo em 31/12/2025 R$ 1,00"]  # not text: skipped, not an error
+    parsed.append({"lines": odd, "result": j(statements.parse(odd))})
+
+    # tables of values built by hand: labels that look like months, dates, totals and unknowns
+    def point(x: Any, y: str | None) -> charts.Point:
+        return charts.Point(x, None if y is None else Decimal(y))
+
+    month_like = [
+        "2026-03",
+        "2026-3",
+        " 2026-03",
+        "+2026-03",
+        "2026_0-03",
+        "2026-03-01",
+        "2026-13",
+        "1899-12",
+        "abcd-ef",
+        "2026-+4",
+    ]
+    tables = []
+    for labels in (
+        ["2026-01", "2026-02", "2026-03"],
+        ["2026-01", "2026-01", "2026-02"],
+        ["2026-1", "2026-02"],
+        ["2026-01"],
+        [],
+        [" 2026-01", "2026-02 "],
+        ["+2026-01", "2_026-02"],
+        ["2026-01-01", "2026-02-01"],
+        ["2026-13", "2026-01"],
+        ["1899-12", "2026-01"],
+        ["Casa", "2026-01"],
+        month_like[:3],
+        month_like[3:6],
+    ):
+        for style, unit in (("bar", "BRL"), ("line", "BRL"), ("bar", "%")):
+            chart = charts.Chart(
+                "t",
+                unit,
+                [
+                    charts.Series("A", [point(x, f"{k + 1}.50") for k, x in enumerate(labels)], style=style),
+                    charts.Series(
+                        "B", [point(x, None if k % 2 else "2.25") for k, x in enumerate(labels)], style="line"
+                    ),
+                    charts.Series("C", [point(x, "1.00") for x in labels[:1]], style="forecast"),
+                    charts.Series("D", [point(x, "3.00") for x in labels], style="line", summable=True),
+                    charts.Series("E", [point(x, "3.00") for x in labels], style="bar", summable=False),
+                ],
+            )
+            tables.append({"labels": labels, "style": style, "unit": unit, "result": dump_chart_and_table(chart)})
+    dates = [date(2026, 3, 5), date(2026, 1, 2), date(2026, 2, 9)]
+    for xs in (dates, [*dates, date(2026, 1, 2)], dates[:1]):
+        chart = charts.Chart(
+            "d",
+            "BRL",
+            [
+                charts.Series("S", [point(x, f"{k}.10") for k, x in enumerate(xs)], style="step"),
+                charts.Series("T", [point(x, "1.00") for x in reversed(xs)], style="bar"),
+            ],
+        )
+        tables.append(
+            {"labels": [str(x) for x in xs], "style": "dates", "unit": "BRL", "result": dump_chart_and_table(chart)}
+        )
+    mixed = charts.Chart(
+        "m", "BRL", [charts.Series("S", [point(date(2026, 1, 1), "1.00"), point("2026-01-01", "2.00")])]
+    )
+    tables.append({"labels": ["mixed"], "style": "mixed", "unit": "BRL", "result": dump_chart_and_table(mixed)})
+
+    # Decimal.__format__ with "f": half to even, signs, zero
+    formats = []
+    for text in (
+        "2.5",
+        "3.5",
+        "-2.5",
+        "-0.3",
+        "0",
+        "0.5",
+        "1.5",
+        "-0.5",
+        "1234.5",
+        "25.00",
+        "-25.00",
+        "0.4999",
+        "7",
+        "0.05",
+        "-0.05",
+        "99.995",
+        "100.5",
+        "1E+3",
+    ):
+        for places in (0, 1, 2):
+            for signed in (False, True):
+                spec = ("+" if signed else "") + f".{places}f"
+                formats.append(
+                    {"value": text, "places": places, "signed": signed, "result": format(Decimal(text), spec)}
+                )
+    return {"informes": parsed, "tables": tables, "formats": formats}
+
+
 def records_of(ledger: Ledger) -> list[dict[str, Any]]:
     return [{"id": str(i), "kind": k, "payload": p} for i, k, p in ledger.to_records()]
 
@@ -773,5 +966,6 @@ def generate() -> dict[str, Any]:
     return {
         "exported_at": EXPORTED_AT.isoformat(),
         "kind_order": kind_order,
+        "pure": pure_cases(),
         "scenarios": scenarios,
     }

@@ -18,6 +18,7 @@ const DOMAIN_KINDS = [
   "settings",
   "budget_line",
   "balance_check",
+  "bank_account",
   "loan_plan",
   "loan_payment",
   "loan_prepayment",

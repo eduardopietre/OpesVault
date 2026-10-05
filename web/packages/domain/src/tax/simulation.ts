@@ -11,7 +11,7 @@ import { roundMoney, ZERO } from "../domain/money.ts";
 import { Dec } from "../lib/dec.ts";
 import type { Id } from "../lib/ids.ts";
 import * as declaration from "./declaration.ts";
-import type { DeductibleKind } from "./declaration.ts";
+import type { DeductibleKind } from "../domain/deductibles.ts";
 import { type Bracket, IncomeNature, PaymentPurpose, type TaxParameters } from "./model.ts";
 import * as records from "./records.ts";
 

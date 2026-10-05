@@ -9,17 +9,22 @@
 import { assetLabel, CHECKING, SAVINGS } from "../catalogs/irpf.ts";
 import { bank } from "../catalogs/catalogs.ts";
 import * as banking from "../domain/banking.ts";
+import * as deductibles from "../domain/deductibles.ts";
+import { DeductibleKind } from "../domain/deductibles.ts";
 import type { Ledger } from "../domain/ledger.ts";
+import * as merchants from "../domain/merchants.ts";
 import { AccountSubtype, AccountType, cashDate, type Operation, type Posting } from "../domain/model.ts";
 import { ZERO } from "../domain/money.ts";
 import * as queries from "../domain/queries.ts";
+import * as sharing from "../domain/sharing.ts";
 import { type IsoDate, makeDate, type YearMonth, yearOf, ymOf, ymStr } from "../lib/dates.ts";
 import type { Dec } from "../lib/dec.ts";
 import type { Id } from "../lib/ids.ts";
 import { casefold, sortedBy } from "../lib/text.ts";
 import { AssetClass, EventKind, type InvestmentEvent, realizedGain } from "../investments/model.ts";
 import { description, profileOf } from "../investments/profile.ts";
-import { assets as assetEntities, events, getOrKeyError, positions } from "../investments/service.ts";
+import { assets as assetEntities, events, positions } from "../investments/service.ts";
+import { getOrKeyError } from "../lib/py.ts";
 import * as records from "./records.ts";
 import {
   ASSET_GROUPS,
@@ -310,39 +315,16 @@ function investmentIncome(
 // ── payments (Pagamentos efetuados) ──────────
 
 /**
- * The deductible kinds of `domain/deductibles.py` (DeductibleKind), in their order.
- * TODO(W5-integration): use `domain/deductibles.ts` (ported by another agent) instead.
+ * Whether an operation has a receipt attached (`domain/attachments.of_operation`).
+ * TODO(W6-integration): `domain/attachments.ts` is ported with the import pipeline and registers the
+ * "attachment" kind; until it lands this reads the same collection by its kind name, so a project
+ * that has attachments gives the same answer as the desktop.
  */
-export const DEDUCTIBLE_KINDS = ["health", "education", "pension", "alimony", "donation", "other"] as const;
-export type DeductibleKind = (typeof DEDUCTIBLE_KINDS)[number];
-
-/** One line of `deductibles.annual(ledger, year)`. */
-export interface DeductibleLineInput {
-  readonly operation: Operation;
-  readonly member_id: Id | null;
-  readonly amount: Dec;
-}
-
-/**
- * What `payments` reads from modules of other areas: `domain/deductibles` (annual groups),
- * `domain/sharing` (reimbursement receipts), `domain/merchants` (payee keys and names) and
- * `domain/attachments` (receipts attached).
- * TODO(W5-integration): register the real implementations with `setPaymentSources` when the
- * W4 modules land. Without them nothing is deductible and `payments` is empty.
- */
-export interface PaymentSources {
-  annual(ledger: Ledger, year: number): readonly { kind: DeductibleKind; lines: readonly DeductibleLineInput[] }[];
-  /** Receipt operation id → the reimbursed operation id (`sharing.reimbursements`). */
-  receipts(ledger: Ledger): ReadonlyMap<Id, Id>;
-  merchantKey(description: string): string;
-  merchantOf(ledger: Ledger, description: string): string;
-  hasAttachment(ledger: Ledger, operationId: Id): boolean;
-}
-
-let paymentSources: PaymentSources | null = null;
-
-export function setPaymentSources(sources: PaymentSources | null): void {
-  paymentSources = sources;
+function hasAttachment(ledger: Ledger, operationId: Id): boolean {
+  for (const a of ledger.entities<{ readonly operation_id: Id }>("attachment").values()) {
+    if (a.operation_id === operationId) return true;
+  }
+  return false;
 }
 
 export interface PaymentRow {
@@ -363,22 +345,23 @@ export function paymentNet(row: PaymentRow): Dec {
 }
 
 export function payments(ledger: Ledger, year: number, people: ReadonlySet<Id> | null = null): PaymentRow[] {
-  const sources = paymentSources;
-  if (sources === null) return [];
-  const receipts = sources.receipts(ledger);
+  const receipts = new Map<Id, Id>();
+  for (const item of sharing.reimbursements(ledger).values()) {
+    for (const opId of item.receipt_ids) receipts.set(opId, item.operation_id);
+  }
   const rows = new Map<string, PaymentRow>();
-  for (const group of sources.annual(ledger, year)) {
+  for (const group of deductibles.annual(ledger, year)) {
     for (const line of group.lines) {
       const op = line.operation;
       const original = ledger.operations.get(receipts.get(op.id) ?? op.id) ?? op;
-      const beneficiary = line.member_id || ownerOf(ledger, original);
+      const beneficiary = line.memberId || ownerOf(ledger, original);
       if (!isIn(beneficiary, people)) continue;
-      const key = sources.merchantKey(original.description);
+      const key = merchants.keyOf(original.description);
       const rowKey = `${group.kind}|${key}|${beneficiary}`;
       let row = rows.get(rowKey);
       if (row === undefined) {
         const found = records.identity(ledger, TaxSubject.MERCHANT, key);
-        const payee = (found && found.name ? found.name : null) || sources.merchantOf(ledger, original.description);
+        const payee = (found && found.name ? found.name : null) || merchants.merchantOf(ledger, original.description);
         row = {
           kind: group.kind,
           payee_key: key,
@@ -399,15 +382,12 @@ export function payments(ledger: Ledger, year: number, people: ReadonlySet<Id> |
       row.paid = row.paid.add(line.amount);
       if (!row.operations.includes(op.id)) {
         row.operations.push(op.id);
-        if (line.amount.isPositive() && !sources.hasAttachment(ledger, op.id)) row.without_receipt += 1;
+        if (line.amount.isPositive() && !hasAttachment(ledger, op.id)) row.without_receipt += 1;
       }
     }
   }
-  return sortedBy([...rows.values()], (r) => [
-    DEDUCTIBLE_KINDS.indexOf(r.kind),
-    casefold(r.payee),
-    pyStr(r.beneficiary_id),
-  ]);
+  const order = Object.values(DeductibleKind);
+  return sortedBy([...rows.values()], (r) => [order.indexOf(r.kind), casefold(r.payee), pyStr(r.beneficiary_id)]);
 }
 
 // ── assets and debts ──────────

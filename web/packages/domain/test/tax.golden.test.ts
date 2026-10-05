@@ -14,7 +14,8 @@ import { type IsoDate, makeDate, ymStr } from "../src/lib/dates.ts";
 import { Dec } from "../src/lib/dec.ts";
 import type { Id } from "../src/lib/ids.ts";
 import * as prof from "../src/investments/profile.ts";
-import { getOrKeyError, positions } from "../src/investments/service.ts";
+import { positions } from "../src/investments/service.ts";
+import { getOrKeyError } from "../src/lib/py.ts";
 import * as checklist from "../src/tax/checklist.ts";
 import * as declaration from "../src/tax/declaration.ts";
 import {

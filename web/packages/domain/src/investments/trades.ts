@@ -14,6 +14,7 @@ import { allocate, roundMoney, toDecimal, ZERO } from "../domain/money.ts";
 import type { IsoDate } from "../lib/dates.ts";
 import { Dec } from "../lib/dec.ts";
 import type { Id } from "../lib/ids.ts";
+import { getOrKeyError } from "../lib/py.ts";
 import { zDate, zDec, zId } from "../lib/schema.ts";
 import { sortedBy } from "../lib/text.ts";
 import { AssetClass, EventKind, type InvestmentEvent, investmentEvent, TrackingMode } from "./model.ts";
@@ -22,7 +23,6 @@ import {
   category,
   eventsOf,
   FEE_CATEGORY,
-  getOrKeyError,
   INCOME_CATEGORY,
   LOSS_CATEGORY,
   position,

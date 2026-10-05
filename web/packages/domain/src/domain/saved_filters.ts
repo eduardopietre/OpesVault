@@ -8,11 +8,11 @@
 import { z } from "zod";
 
 import type { Id } from "../lib/ids.ts";
+import { collapseSpaces } from "../lib/py.ts";
 import { zId } from "../lib/schema.ts";
 import { casefold, sortedBy } from "../lib/text.ts";
 import { DomainError, Ledger } from "./ledger.ts";
 import { zEntityId } from "./model.ts";
-import { collapseSpaces } from "./tags.ts";
 
 export const PERIODS = ["all", "month", "this_month", "last_month", "last_3", "this_year"] as const;
 

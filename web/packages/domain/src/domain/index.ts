@@ -1,6 +1,10 @@
 /** Public modules of this area, one namespace per module. */
+export * as agenda from "./agenda.ts";
+export * as alerts from "./alerts.ts";
+export * as annual from "./annual.ts";
 export * as anomalies from "./anomalies.ts";
 export * as balanceChecks from "./balance_checks.ts";
+export * as banking from "./banking.ts";
 export * as budget from "./budget.ts";
 export * as cards from "./cards.ts";
 export * as comparisons from "./comparisons.ts";

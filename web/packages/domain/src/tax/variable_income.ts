@@ -16,7 +16,8 @@ import { Dec } from "../lib/dec.ts";
 import type { Id } from "../lib/ids.ts";
 import { sortedBy } from "../lib/text.ts";
 import { AssetClass, EventKind, type InvestmentEvent } from "../investments/model.ts";
-import { assets, events, getOrKeyError, positions } from "../investments/service.ts";
+import { assets, events, positions } from "../investments/service.ts";
+import { getOrKeyError } from "../lib/py.ts";
 import { Bucket, PaymentPurpose, ruleOf } from "./model.ts";
 import * as records from "./records.ts";
 

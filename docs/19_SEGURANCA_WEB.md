@@ -63,7 +63,7 @@ senha da conta ──Argon2id(sal de login do servidor)──HKDF "opesvault/log
 ## 5. Contas e login
 
 - Cada pessoa tem sua conta no servidor (e-mail e senha da conta). A senha da conta **não é** a senha do projeto: uma abre a conta, a outra abre os dados. O dono adiciona integrantes pelo e-mail da conta.
-- O navegador pede ao servidor o **sal de login** do e-mail, deriva o segredo de login (§4) e envia só ele. A senha da conta não sai do navegador.
+- O navegador pede ao servidor o **sal de login** do e-mail (no corpo de um POST, para o e-mail nunca aparecer numa URL ou em log de proxy), deriva o segredo de login (§4) e envia só ele. A senha da conta não sai do navegador.
 - O sal de login é `HMAC-SHA256(segredo do servidor, e-mail normalizado)`, os 16 primeiros bytes. É estável e existe também para e-mails sem conta, para que pedir o sal não revele quem tem conta. Consequência: o **segredo do servidor precisa ser preservado** (está no volume de dados, `20`); trocá-lo invalida todos os logins.
 - O servidor guarda só `scrypt(segredo de login, sal aleatório por conta)` e compara em tempo constante. Mesmo com o banco vazado, cada tentativa contra a senha da conta custa um Argon2id mais um scrypt.
 - E-mails são normalizados (NFC, sem espaços nas pontas, minúsculas) dos dois lados.
@@ -189,7 +189,7 @@ Se a resposta de um envio se perde, o app não sabe se ele foi aceito e **não r
 - Chave em `CryptoKey` não extraível sempre que possível; bytes crus de chave só onde inevitável, sobrescritos depois do uso.
 - Aleatoriedade injetável só em testes (vetores conhecidos); o código de produção usa `crypto.getRandomValues`.
 - O `packages/vault` não importa o domínio (regra de lint) e só conhece `{kind, id, payload}`.
-- Servidor (`20`): valida toda entrada com zod, limita tamanho de requisição, limita tentativas de login por IP e por e-mail, exige o cabeçalho `X-OpesVault: 1` em toda requisição que altera (CSRF), registra só método, rota, situação, duração e ids opacos (nunca corpo, e-mail ou segredo), e serve o app com CSP sem `unsafe-inline`/`unsafe-eval`, `require-trusted-types-for 'script'`, `Cross-Origin-Opener-Policy: same-origin`, `Referrer-Policy: no-referrer`, `Permissions-Policy` restritiva, `X-Content-Type-Options: nosniff` e `frame-ancestors 'none'`.
+- Servidor (`20`): valida toda entrada com zod, limita tamanho de requisição, limita tentativas de login por IP e por e-mail, exige o cabeçalho `X-OpesVault: 1` em toda requisição que altera (CSRF), registra só método, rota, situação, duração e ids opacos (nunca corpo, e-mail ou segredo), e serve o app com CSP sem `unsafe-inline`/`unsafe-eval` (só `'wasm-unsafe-eval'`, que permite compilar WebAssembly para o Argon2id e não permite `eval` de JavaScript), `require-trusted-types-for 'script'`, `Cross-Origin-Opener-Policy: same-origin`, `Referrer-Policy: no-referrer`, `Permissions-Policy` restritiva, `X-Content-Type-Options: nosniff` e `frame-ancestors 'none'`.
 
 ## 13. Referências
 

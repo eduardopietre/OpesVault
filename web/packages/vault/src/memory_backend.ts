@@ -4,11 +4,9 @@
  * A `MemoryServer` holds the state; each `server.client()` is one browser with its own session,
  * so tests can sign in two people at once. Time is injectable to test lease expiry.
  */
-import { equalBytes, importHmacKey, hmac, normalizeEmail, randomId, toB64, utf8 } from "@opesvault/crypto";
+import { equalBytes, importHmacKey, hmac, randomId, toB64, utf8 } from "@opesvault/crypto";
 import {
   BackendError,
-  HOLDER_PATTERN,
-  ID_PATTERN,
   LEASE_MS,
   LIMITS,
   type AccountSession,
@@ -24,60 +22,18 @@ import {
   type SealedRecord,
   type SyncBackend,
 } from "./backend.ts";
-
-const EMAIL_PATTERN = /^[^\s@]{1,64}@[^\s@]{1,190}$/;
-const B64_PATTERN = /^[A-Za-z0-9_-]*$/;
-
-function invalid(): never {
-  throw new BackendError("invalid");
-}
-
-export function checkEmail(email: unknown): string {
-  if (typeof email !== "string") invalid();
-  const normalized = normalizeEmail(email);
-  if (!EMAIL_PATTERN.test(normalized)) invalid();
-  return normalized;
-}
-
-function checkB64(value: unknown, max: number, min = 1): B64 {
-  if (typeof value !== "string" || !B64_PATTERN.test(value) || value.length < min) invalid();
-  if (value.length > max) throw new BackendError("too_large");
-  return value;
-}
-
-function checkId(value: unknown): string {
-  if (typeof value !== "string" || !ID_PATTERN.test(value)) invalid();
-  return value;
-}
-
-function checkRevision(value: unknown): number {
-  if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0) invalid();
-  return value;
-}
-
-export function checkEnvelope(envelope: EnvelopeContent): EnvelopeContent {
-  const max = LIMITS.maxEnvelopeField;
-  if (typeof envelope !== "object" || envelope === null || typeof envelope.kdf !== "object" || envelope.kdf === null) {
-    invalid();
-  }
-  const { kdf } = envelope;
-  const ints = [envelope.version, kdf.memoryKiB, kdf.iterations, kdf.parallelism];
-  if (kdf.algorithm !== "argon2id" || !ints.every((n) => Number.isSafeInteger(n) && n > 0)) invalid();
-  if ((envelope.recoverySalt === null) !== (envelope.wrappedByRecovery === null)) invalid();
-  return {
-    version: envelope.version,
-    kdf: {
-      algorithm: "argon2id",
-      memoryKiB: kdf.memoryKiB,
-      iterations: kdf.iterations,
-      parallelism: kdf.parallelism,
-      salt: checkB64(kdf.salt, max),
-    },
-    wrappedByPassword: checkB64(envelope.wrappedByPassword, max),
-    recoverySalt: envelope.recoverySalt === null ? null : checkB64(envelope.recoverySalt, max),
-    wrappedByRecovery: envelope.wrappedByRecovery === null ? null : checkB64(envelope.wrappedByRecovery, max),
-  };
-}
+import {
+  checkB64,
+  checkEmail,
+  checkEnvelope,
+  checkHolder,
+  checkId,
+  checkLoginSecret,
+  checkPullLimit,
+  checkPushRecords,
+  checkRevision,
+  invalid,
+} from "./validation.ts";
 
 interface Account {
   readonly id: string;
@@ -223,8 +179,7 @@ export class MemoryServer {
 }
 
 function secretBytes(secret: unknown): Uint8Array {
-  const text = checkB64(secret, 128, 22);
-  return utf8(text);
+  return utf8(checkLoginSecret(secret));
 }
 
 export class MemoryBackend implements SyncBackend {
@@ -390,8 +345,7 @@ export class MemoryBackend implements SyncBackend {
     return this.#call(() => {
       const project = this.#server.project(this.#account(), projectId);
       const since = checkRevision(sinceRevision);
-      if (!Number.isSafeInteger(limit) || limit < 1) invalid();
-      const max = Math.min(limit, LIMITS.maxPullLimit);
+      const max = checkPullLimit(limit);
       const newer = [...project.records.values()]
         .filter((record) => record.revision > since)
         .sort((a, b) => a.revision - b.revision || (a.id < b.id ? -1 : 1));
@@ -409,25 +363,14 @@ export class MemoryBackend implements SyncBackend {
   push(projectId: string, leaseId: string, records: readonly PushRecord[]): Promise<PushResult> {
     return this.#call(() => {
       const project = this.#server.project(this.#account(), projectId);
-      if (!Array.isArray(records) || records.length === 0) invalid();
-      if (records.length > LIMITS.maxPushRecords) throw new BackendError("too_large");
-      const seen = new Set<string>();
-      let total = 0;
-      for (const record of records) {
-        checkId(record.id);
-        checkRevision(record.baseRevision);
-        if (seen.has(record.id)) invalid();
-        seen.add(record.id);
-        if (record.ciphertext !== null) total += checkB64(record.ciphertext, LIMITS.maxRecordCiphertext).length;
-      }
-      if (total > LIMITS.maxPushCiphertext) throw new BackendError("too_large");
+      const checked = checkPushRecords(records);
       this.#server.checkLease(project, leaseId);
-      const conflicts = records
+      const conflicts = checked
         .filter((record) => (project.records.get(record.id)?.revision ?? 0) !== record.baseRevision)
         .map((record) => record.id);
       if (conflicts.length > 0) return { ok: false, revision: project.revision, conflicts };
       const revision = project.revision + 1;
-      for (const record of records) {
+      for (const record of checked) {
         project.records.set(record.id, { id: record.id, revision, ciphertext: record.ciphertext });
       }
       project.revision = revision;
@@ -468,7 +411,7 @@ export class MemoryBackend implements SyncBackend {
     return this.#call(() => {
       const me = this.#account();
       const project = this.#server.project(me, projectId);
-      if (typeof holder !== "string" || !HOLDER_PATTERN.test(holder)) invalid();
+      checkHolder(holder);
       const current = this.#server.activeLease(project);
       const same = current !== null && current.accountId === me && current.holder === holder;
       if (current !== null && !takeOver && !same) throw new BackendError("lease_held");

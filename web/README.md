@@ -1,14 +1,16 @@
 # OpesVault web
 
 The web version of OpesVault (docs/18): zero-knowledge, TypeScript, React. Porting rules are in
-[PORTING.md](PORTING.md).
+[PORTING.md](PORTING.md). Security is specified in `docs/19_SEGURANCA_WEB.md` (normative) and
+self-hosting in `docs/20_HOSPEDAGEM.md`.
 
 ```
 pnpm install
 pnpm check                 # format, lint, typecheck and tests
 pnpm dev                   # the app (Vite)
 pnpm server                # the self-hosted server (development)
-docker compose up --build  # server + app behind Caddy
+pnpm --filter @opesvault/server build   # the server as one bundle (dist/server.mjs)
+docker compose up -d --build            # server + app behind Caddy (docs/20)
 uv run python -m scripts.golden.generate   # from the repository root: reference files from the Python domain
 ```
 

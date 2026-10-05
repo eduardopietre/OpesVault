@@ -58,6 +58,14 @@ export async function settle(rounds = 30): Promise<void> {
   for (let i = 0; i < rounds; i++) await new Promise((resolve) => setImmediate(resolve));
 }
 
+/**
+ * Waits (in event-loop turns, never in wall time) until `condition` holds: for work a timer
+ * started in the background, whose number of turns depends on the machine's load.
+ */
+export async function until(condition: () => boolean, rounds = 2000): Promise<void> {
+  for (let i = 0; i < rounds && !condition(); i++) await new Promise((resolve) => setImmediate(resolve));
+}
+
 /** One browser: its own IndexedDB, its own server session. */
 export interface Device {
   readonly factory: IDBFactory;

@@ -143,6 +143,8 @@ Ajustes feitos ao implementar a criptografia, o cofre e o servidor. O normativo 
 4. **O nome do projeto só aparece depois de desbloquear** (cifrado com a chave do projeto). A tela de projetos (W7) mostra antes disso o que o servidor sabe: data de criação, papel e integrantes.
 5. **Concessão de edição:** a mesma aba recarregada (mesma conta e mesmo rótulo de aba, guardado pelas preferências da aba) recupera a própria concessão sem assumir. Escrever sem a concessão atual é o erro `no_lease`, novo na porta `SyncBackend`.
 6. **Escolhas provisórias** (§8), adotadas provisoriamente e revisáveis: Argon2id com 64 MiB, 3 passadas, 1 via e saída de 32 bytes; o servidor guarda só a versão atual de cada registro (lápide para apagados), sem histórico; a IA não sai do navegador.
+7. **CSP com `'wasm-unsafe-eval'`.** O Argon2id roda em WebAssembly, e o navegador só compila WebAssembly com essa permissão. Ela não libera `eval` de JavaScript; `unsafe-inline` e `unsafe-eval` continuam proibidos (`19` §12).
+8. **Servidor em W2:** SQLite (`node:sqlite`, sem dependência nativa) atrás da interface `Storage`, e anexos em disco; Postgres e armazenamento compatível com S3 ficam para quando forem necessários, sem mudar a porta. O pedido de sal de login é um POST, para o e-mail não aparecer em URLs.
 
 ## 4. Paridade do domínio: como provar que a reescrita calcula igual
 

@@ -9,7 +9,7 @@ import {
   type SyncBackend,
   type VaultSnapshot,
 } from "../src/index.ts";
-import { account, createProject, device, intercept, login, settle } from "./helpers.ts";
+import { account, createProject, device, intercept, login, settle, until } from "./helpers.ts";
 
 const op = (id: string, description: string): PlainRecord => ({
   kind: "operation",
@@ -61,7 +61,7 @@ describe("creating and opening a project", () => {
     await vault.stage([op("2", "b")]);
     await vault.stage([op("1", "c")]);
     await dev.timers.advance(100);
-    await settle();
+    await until(() => vault.getSnapshot().status === "synced");
     expect(vault.getSnapshot()).toMatchObject({ status: "synced", revision: 1 });
   });
 
@@ -108,6 +108,7 @@ describe("creating and opening a project", () => {
     await dev.timers.advance(45_000);
     expect(idle.unlocked).toBe(true);
     await dev.timers.advance(20_000);
+    await until(() => idle.getSnapshot().status === "locked");
     expect(idle.getSnapshot().status).toBe("locked");
   });
 
@@ -177,6 +178,7 @@ describe("two people, one editor", () => {
     await vault.stage([op("1", "Mercado")]);
     await vault.syncNow();
     await bia.timers.advance(1000);
+    await until(() => reader.get("operation", "1") !== undefined);
     expect(reader.get("operation", "1")).toEqual(op("1", "Mercado"));
     expect(changes.flatMap((change) => change.upserts.map((r) => r.id))).toEqual(["1"]);
 
@@ -203,6 +205,7 @@ describe("two people, one editor", () => {
     expect(reader.getSnapshot().status).toBe("readOnly");
     await vault.lock();
     await bia.timers.advance(1000);
+    await until(() => reader.getSnapshot().status === "synced");
     expect(reader.getSnapshot().status).toBe("synced");
     expect(reader.getSnapshot().lease?.email).toBe("bia@example.com");
   });
@@ -254,9 +257,11 @@ describe("offline, reloads and network failures", () => {
     server.offline = true;
     await vault.stage([op("1", "offline")]);
     await dev.timers.advance(100);
+    await until(() => vault.getSnapshot().status === "offline");
     expect(vault.getSnapshot().status).toBe("offline");
     server.offline = false;
     await dev.timers.advance(5000);
+    await until(() => vault.getSnapshot().status === "synced");
     expect(vault.getSnapshot()).toMatchObject({ status: "synced", pending: 0 });
   });
 

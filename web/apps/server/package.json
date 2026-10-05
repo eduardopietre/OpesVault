@@ -7,16 +7,22 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "dev": "tsx watch src/main.ts",
+    "build": "tsx build.ts",
+    "start": "node --disable-warning=ExperimentalWarning dist/server.mjs"
   },
   "dependencies": {
+    "@hono/node-server": "^2.1.3",
     "@opesvault/vault": "workspace:*",
     "hono": "^4.13.13",
-    "@hono/node-server": "^2.1.3",
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@opesvault/backend-http": "workspace:*",
+    "@opesvault/crypto": "workspace:*",
     "esbuild": "^0.25.0",
+    "fake-indexeddb": "^6.2.5",
     "tsx": "^4.20.0"
   }
 }

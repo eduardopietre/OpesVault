@@ -186,12 +186,8 @@ export function recordInstallmentPurchase(
   return ledger.put("installment_plan", { ...plan, operation_ids: created.map((o) => o.id) });
 }
 
-/**
- * Runs the ledger's guards for a new operation (Python called `ledger._guard_new`).
- * TODO(W4-integration): `Ledger.guardNew` is private in ledger.ts; make it public and call it.
- */
 function guardNew(ledger: Ledger, op: Operation): void {
-  (ledger as unknown as { guardNew(op: Operation): void }).guardNew(op);
+  ledger.guardNew(op);
 }
 
 export interface ScheduledInstallment {

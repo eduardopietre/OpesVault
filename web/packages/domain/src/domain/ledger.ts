@@ -486,7 +486,8 @@ export class Ledger {
       throw new DomainError("Estorno de operação inexistente.");
   }
 
-  private guardNew(op: Operation): void {
+  /** Runs every registered guard for a new operation (modules that build operations call it). */
+  guardNew(op: Operation): void {
     for (const guard of operationGuards) guard(this, op);
   }
 

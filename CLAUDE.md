@@ -24,6 +24,18 @@ As **fases 0 a 6** estão implementadas e testadas (`docs/13`). Das fases 7 a 10
 
 ## Comandos
 
+Web (branch `web`, pasta `web/`; ver `web/README.md` e `web/PORTING.md`):
+
+```
+cd web && pnpm install && pnpm check              # formatação, lint, tipos e testes da web
+pnpm dev                                          # app com serviços falsos e projeto de demonstração
+pnpm --filter @opesvault/app e2e                  # Playwright (Chromium já instalado; nunca "playwright install")
+docker compose up --build                         # servidor + app atrás do Caddy (web/docker-compose.yml)
+uv run python -m scripts.golden.generate [NOME]   # arquivos de referência do domínio Python para a paridade
+```
+
+Desktop:
+
 ```
 uv sync                                  # dependências (uv sync --group build para o Nuitka)
 uv run pytest -q                         # testes; os marcados "windows" são pulados fora do Windows

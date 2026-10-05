@@ -91,6 +91,18 @@ function roundsAway(kept: bigint, rem: bigint, div: bigint, neg: boolean, roundi
 
 const NUMBER_PATTERN = /^([+-])?(?:(\d+)(?:\.(\d*))?|\.(\d+))(?:[eE]([+-]?\d+))?$/;
 
+const decimalJsClones = new Map<number, typeof DecimalJs>();
+
+/** A decimal.js constructor for one precision, created once (cloning is costly). */
+function decimalJsFor(prec: number): typeof DecimalJs {
+  let D = decimalJsClones.get(prec);
+  if (D === undefined) {
+    D = DecimalJs.clone({ precision: prec, rounding: DecimalJs.ROUND_HALF_EVEN, toExpNeg: -9e15, toExpPos: 9e15 });
+    decimalJsClones.set(prec, D);
+  }
+  return D;
+}
+
 export class Dec {
   /** Magnitude of the coefficient (never negative). */
   readonly coef: bigint;
@@ -311,8 +323,7 @@ export class Dec {
    */
   private static viaDecimalJs(compute: (D: typeof DecimalJs) => DecimalJs): Dec {
     const prec = current.prec;
-    const make = (p: number) =>
-      DecimalJs.clone({ precision: p, rounding: DecimalJs.ROUND_HALF_EVEN, toExpNeg: -9e15, toExpPos: 9e15 });
+    const make = decimalJsFor;
     const result = compute(make(prec));
     if (!result.isFinite()) throw new DecError("non-finite result");
     let value = Dec.parse(result.toFixed()).plus();

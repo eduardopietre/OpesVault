@@ -1,0 +1,9 @@
+node_modules
+dist
+coverage
+pnpm-lock.yaml
+**/golden/*.json
+packages/domain/src/catalogs/banks.ts
+playwright-report
+test-results
+build

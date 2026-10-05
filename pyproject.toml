@@ -53,6 +53,7 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S105", "S106", "S108"]
 "scripts/**" = ["S105"]
+"scripts/golden/**" = ["S105", "S311"]  # seeded generators for reference files, not secrets
 "src/opesvault/vault/errors.py" = ["S105"]  # error code names, not passwords
 "src/opesvault/importing/source.py" = ["S105"]
 

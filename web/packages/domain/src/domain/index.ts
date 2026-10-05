@@ -18,3 +18,4 @@ export * as settings from "./settings.ts";
 export * as sharing from "./sharing.ts";
 export * as subscriptions from "./subscriptions.ts";
 export * as tags from "./tags.ts";
+export * as attachments from "./attachments.ts";

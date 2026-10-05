@@ -8,3 +8,4 @@ import "./domain/kinds.ts";
 import "./importing/kinds.ts";
 import "./investments/kinds.ts";
 import "./tax/kinds.ts";
+import "./wiring.ts";

@@ -13,3 +13,4 @@ import "./tags.ts";
 import "./periods.ts";
 import "./recurrence.ts";
 import "./settings.ts";
+import "./attachments.ts";

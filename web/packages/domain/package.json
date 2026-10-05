@@ -10,9 +10,9 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
+    "@noble/hashes": "^2.4.0",
     "decimal.js": "^10.6.0",
-    "zod": "^4.6.5",
-    "@noble/hashes": "^2.4.0"
-  },
-  "devDependencies": {}
+    "pdfjs-dist": "^6.4.299",
+    "zod": "^4.6.5"
+  }
 }

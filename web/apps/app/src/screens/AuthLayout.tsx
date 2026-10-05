@@ -28,8 +28,8 @@ export function AuthLayout({ children, wide }: { children: ReactNode; wide?: boo
           className="pointer-events-none absolute -right-24 -bottom-48 size-[420px] rounded-full bg-positive-soft opacity-60 blur-3xl"
         />
         <Wordmark className="relative" />
-        <div className="relative max-w-[440px]">
-          <p className="text-[clamp(28px,2.6vw,40px)] leading-tight font-semibold tracking-[-0.02em] text-text">
+        <div className="relative max-w-[520px]">
+          <p className="text-[clamp(28px,2.6vw,40px)] leading-tight font-semibold tracking-[-0.02em] text-balance text-text">
             As finanças do projeto, cifradas de ponta a ponta.
           </p>
           <ul className="mt-8 flex flex-col gap-4">

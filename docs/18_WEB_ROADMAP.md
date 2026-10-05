@@ -1,6 +1,6 @@
 # Migração para a web: arquitetura e roadmap
 
-Versão 1.1 • 05/10/2026. Registra as decisões do usuário que levam o OpesVault do desktop para a web e o caminho completo até o lançamento hospedado pelo próprio usuário e, depois, ao Firebase. O trabalho acontece na branch `web`. Enquanto durar a migração, este documento prevalece sobre os outros no que tratar da web; no restante, os `docs/` continuam valendo (domínio, cálculos, importação, interface).
+Versão 1.2 • 05/10/2026. Registra as decisões do usuário que levam o OpesVault do desktop para a web e o caminho completo até o lançamento hospedado pelo próprio usuário e, depois, ao Firebase. O trabalho acontece na branch `web`. Enquanto durar a migração, este documento prevalece sobre os outros no que tratar da web; no restante, os `docs/` continuam valendo (domínio, cálculos, importação, interface).
 
 ## 1. Decisões (05/10/2026)
 
@@ -59,13 +59,12 @@ O domínio não importa nada de `ui`, `vault` ou rede, e uma regra de lint garan
 ### 3.2 Formato dos dados (zero-knowledge)
 
 - **Chave do projeto:** 256 bits aleatórios, gerada no navegador. Cifra todos os registros e anexos.
-- **Chave mestra:** Argon2id(senha, sal por conta), com parâmetros fixados no documento normativo de W1. Dela saem, por HKDF:
-  - a **chave de envelope**, que cifra a chave do projeto (trocar a senha só recifra o envelope);
-  - o **segredo de login**, enviado ao servidor no lugar da senha (o servidor guarda só um hash Argon2id dele).
-- **Registro:** `{id opaco, revisão, texto cifrado}`. Tipo, id real, datas e valores ficam **dentro** da cifra. AES-256-GCM com nonce aleatório e dados associados `(projeto, id opaco, revisão)`, para que um registro não possa ser trocado de lugar nem reaproveitado.
+- **Chave de envelope:** Argon2id(senha do projeto, sal do envelope) e HKDF, com parâmetros fixados no `19` §3. Cifra a chave do projeto (trocar a senha só recifra o envelope). Ver nota 1 da §3.8.
+- **Segredo de login:** Argon2id(senha da conta, sal de login do servidor) e HKDF, enviado ao servidor no lugar da senha da conta (o servidor guarda só um hash scrypt dele, `19` §5).
+- **Registro:** `{id opaco, revisão, texto cifrado}`. Tipo, id real, datas e valores ficam **dentro** da cifra. AES-256-GCM com nonce aleatório e dados associados `(projeto, id opaco)`, para que um registro não possa ser trocado de lugar nem de projeto. Ver nota 2 da §3.8.
 - **Anexo:** blob cifrado com chave própria, embrulhada pela chave do projeto. Só é baixado e aberto quando exibido.
 - **O servidor vê:** quantidade, tamanho e horário dos registros e das contas. Nada além disso. Isso é limitação conhecida e documentada, como as do `03` §1.
-- **Recuperação:** a chave de recuperação (aleatória, exibida uma vez em grupos legíveis) deriva uma segunda chave de envelope, que embrulha a mesma chave do projeto. Com ela, o usuário define uma senha nova sem o servidor participar. Sem senha e sem chave de recuperação, não há recuperação.
+- **Recuperação:** a chave de recuperação (aleatória, exibida uma vez em grupos legíveis) deriva uma segunda chave de envelope, que embrulha a mesma chave do projeto. Com ela, o usuário define uma senha nova sem o servidor participar da decifração (o servidor só recebe o envelope novo). Sem senha e sem chave de recuperação, não há recuperação.
 - **Senha compartilhada:** uma senha por projeto, a mesma para todos os integrantes. O login no servidor é por conta; abrir o projeto é pela senha do projeto.
 
 ### 3.3 Sessão, bloqueio e sincronização
@@ -133,6 +132,19 @@ Com a chave na aba, uma injeção de script é o pior cenário. Por isso:
 - SRI nos arquivos do app e auditoria de dependências no lockfile.
 - Nenhum dado em `localStorage`. Preferências do aparelho também ficam fora do projeto.
 - Logs só com códigos (o `diagnostics` portado). O servidor não registra corpo de requisição.
+
+### 3.8 Notas de W1 e W2 (05/10/2026)
+
+Ajustes feitos ao implementar a criptografia, o cofre e o servidor. O normativo é o `19`.
+
+1. **Duas senhas, duas derivações.** A versão anterior desta seção derivava a chave de envelope e o segredo de login da mesma "chave mestra". Com a decisão de senha compartilhada por projeto e conta própria por pessoa (§1), são senhas diferentes: a senha da conta gera só o segredo de login; a senha do projeto gera só a chave de envelope.
+2. **A revisão não entra nos dados associados do registro.** A revisão é atribuída pelo servidor depois do envio; o navegador não a conhece ao cifrar. O registro fica preso ao projeto e ao id opaco, e o id opaco é conferido contra o conteúdo decifrado. Devolver uma versão antiga do mesmo registro continua possível para um servidor malicioso; é limitação documentada no `19` §11, com a mitigação de nunca andar para trás.
+3. **O navegador escolhe o id do projeto** (`createProject(projectId, …)`), porque ele entra nos dados associados do envelope e do nome antes de o projeto existir no servidor.
+4. **O nome do projeto só aparece depois de desbloquear** (cifrado com a chave do projeto). A tela de projetos (W7) mostra antes disso o que o servidor sabe: data de criação, papel e integrantes.
+5. **Concessão de edição:** a mesma aba recarregada (mesma conta e mesmo rótulo de aba, guardado pelas preferências da aba) recupera a própria concessão sem assumir. Escrever sem a concessão atual é o erro `no_lease`, novo na porta `SyncBackend`.
+6. **Escolhas provisórias** (§8), adotadas provisoriamente e revisáveis: Argon2id com 64 MiB, 3 passadas, 1 via e saída de 32 bytes; o servidor guarda só a versão atual de cada registro (lápide para apagados), sem histórico; a IA não sai do navegador.
+7. **CSP com `'wasm-unsafe-eval'`.** O Argon2id roda em WebAssembly, e o navegador só compila WebAssembly com essa permissão. Ela não libera `eval` de JavaScript; `unsafe-inline` e `unsafe-eval` continuam proibidos (`19` §12).
+8. **Servidor em W2:** SQLite (`node:sqlite`, sem dependência nativa) atrás da interface `Storage`, e anexos em disco; Postgres e armazenamento compatível com S3 ficam para quando forem necessários, sem mudar a porta. O pedido de sal de login é um POST, para o e-mail não aparecer em URLs.
 
 ## 4. Paridade do domínio: como provar que a reescrita calcula igual
 
@@ -311,9 +323,9 @@ Cada fase tem critério de saída verificável. Nenhuma tela entra antes de o do
 
 | Assunto | Opções | Precisa até |
 |---|---|---|
-| Parâmetros do Argon2id | Proposta: 64 MiB, 3 passadas, 1 via; medir no celular mais fraco que for usado | W1 |
-| Histórico no servidor | Guardar versões antigas dos registros cifrados por N dias, ou só a atual | W2 |
-| IA fora do navegador | Manter só o Ollama local da máquina (padrão) ou permitir um Ollama no servidor, sabendo que o texto passa em claro por ele | W6 |
+| Parâmetros do Argon2id | Adotado provisoriamente, revisável: 64 MiB, 3 passadas, 1 via, 32 bytes (`19` §3); medir no celular mais fraco que for usado | W1 |
+| Histórico no servidor | Adotado provisoriamente, revisável: só a versão atual, com lápides (`19` §7). Alternativa: guardar versões antigas cifradas por N dias | W2 |
+| IA fora do navegador | Adotado provisoriamente, revisável: só o Ollama local da máquina. Alternativa: um Ollama no servidor, sabendo que o texto passa em claro por ele | W6 |
 | Domínio e hospedagem | Onde o servidor próprio roda (casa, VPS) e com qual domínio | W13 |
 
 ## 9. Riscos

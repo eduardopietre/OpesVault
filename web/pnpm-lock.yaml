@@ -139,9 +139,18 @@ importers:
         specifier: ^4.6.5
         version: 4.6.5
     devDependencies:
+      '@opesvault/backend-http':
+        specifier: workspace:*
+        version: link:../../packages/backend-http
+      '@opesvault/crypto':
+        specifier: workspace:*
+        version: link:../../packages/crypto
       esbuild:
         specifier: ^0.25.0
         version: 0.25.12
+      fake-indexeddb:
+        specifier: ^6.2.5
+        version: 6.2.5
       tsx:
         specifier: ^4.20.0
         version: 4.23.15

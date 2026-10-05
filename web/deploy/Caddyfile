@@ -1,0 +1,24 @@
+# OpesVault behind Caddy (docs/20): automatic HTTPS for the configured domain.
+#
+# OPESVAULT_DOMAIN = localhost (default): Caddy's own local certificate authority.
+# OPESVAULT_DOMAIN = a real domain pointing to this machine: a public certificate (Let's Encrypt or
+# ZeroSSL), obtained and renewed automatically; ports 80 and 443 must reach this machine.
+#
+# No access log on purpose: the server writes its own log without bodies or personal data.
+
+{
+	admin off
+}
+
+{$OPESVAULT_DOMAIN:localhost} {
+	encode zstd gzip
+	header -Server
+	request_body {
+		max_size 80MB
+	}
+	reverse_proxy server:8080 {
+		# Caddy replaces any client-sent X-Forwarded-For with the real client address.
+		health_uri /api/v1/health
+		health_interval 30s
+	}
+}

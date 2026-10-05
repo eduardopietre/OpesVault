@@ -1,0 +1,58 @@
+# OpesVault self-hosted (docs/20): the server and Caddy (automatic HTTPS).
+#
+#   cp .env.example .env    # set OPESVAULT_DOMAIN
+#   docker compose up -d --build
+name: opesvault
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  server:
+    build:
+      context: .
+    image: opesvault-server:local
+    restart: unless-stopped
+    environment:
+      OPESVAULT_SECURE_COOKIES: "true"
+      OPESVAULT_TRUST_PROXY: "true"
+      # Empty: the server generates a secret in the data volume on first start (back it up).
+      OPESVAULT_SECRET: ${OPESVAULT_SECRET:-}
+    volumes:
+      - opesvault-data:/data
+    expose:
+      - "8080"
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    logging: *logging
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      server:
+        condition: service_healthy
+    ports:
+      - "${OPESVAULT_HTTP_PORT:-80}:80"
+      - "${OPESVAULT_HTTPS_PORT:-443}:443"
+      - "${OPESVAULT_HTTPS_PORT:-443}:443/udp"
+    environment:
+      OPESVAULT_DOMAIN: ${OPESVAULT_DOMAIN:-localhost}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    logging: *logging
+
+volumes:
+  opesvault-data:
+  caddy-data:
+  caddy-config:

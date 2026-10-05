@@ -4,6 +4,8 @@ OpesVault: aplicativo desktop Windows, 100% offline, para finanças familiares, 
 
 ## Estado atual
 
+**Branch `web`:** o aplicativo está migrando para a web (zero-knowledge, TypeScript, React). Decisões, arquitetura e fases W0–W14 em `docs/18`; nessa branch, ele prevalece sobre os outros documentos no que tratar da web. O texto abaixo descreve o desktop atual.
+
 As **fases 0 a 6** estão implementadas e testadas (`docs/13`). Das fases 7 a 10 foi feito tudo o que não depende de documentos reais nem do build (`docs/09` §1.4). Regras de categoria, orçamento, avisos ao abrir e desfazer já foram feitos (`docs/13` §2.2).
 
 - **Windows, em Python:** o desenvolvimento passou para o Windows. G0 foi aprovado (suíte completa, inclusive os testes `windows`); G1 foi aprovado só em modo Python (`--self-test`); G2 foi medido. O build Nuitka e os gates G3–G7 seguem pendentes (`docs/11` §2.1).
@@ -54,6 +56,7 @@ No Windows, se o `uv sync` falhar com "arquivo em uso" (os error 32, antivírus)
 - Repositório **privado** e **sem CI** por enquanto. A branch principal é a `main`. Os gates do Windows que exigem build ou intervenção física (G3–G7) são executados manualmente pelo usuário.
 - Pagamento de fatura feito depois do vencimento quita primeiro as faturas vencidas com saldo, da mais antiga para a mais nova (`docs/04` §5).
 - Cofres recentes só são lembrados com consentimento explícito (`docs/07` §1); a lista nasce desligada.
+- **Web (05/10/2026, `docs/18` §1):** a web substitui o desktop; zero-knowledge (senha e chave só no navegador, servidor guarda registros cifrados); domínio reescrito em TypeScript com paridade por arquivos de referência gerados pelo Python; React + TS + Vite; chave na memória da aba enquanto desbloqueado, com sincronização automática; contas locais no servidor próprio agora e Firebase depois, pela porta `SyncBackend`; sem migração de cofres do desktop.
 - O Assistente pode usar ferramentas (04/10/2026), revendo o `docs/05` §5 e o `docs/02` §2 só para ele: ferramentas do próprio aplicativo, sem servidor MCP nem porta; **toda alteração exige aprovação explícita** do usuário; resposta inválida volta ao modelo como erro, e três seguidas interrompem a pergunta; CPF e CNPJ fora do alcance.
 
 ## Onde procurar
@@ -77,6 +80,7 @@ No Windows, se o `uv sync` falhar com "arquivo em uso" (os error 32, antivírus)
 | Qual teste cobre cada TA; validação de layouts reais | `docs/15` |
 | Arquitetura da janela, tokens, componentes e regras de interface | `docs/16` |
 | Situação da fase 7 e o que falta fazer com o usuário | `docs/17` |
+| Migração para a web: decisões, arquitetura, paridade de telas e fases W0–W14 | `docs/18` |
 
 Se dois documentos entrarem em conflito, vale o `docs/00` §2. Conflitos de segurança ou cálculo devem ser levados ao usuário, nunca resolvidos pela interpretação mais simples. Mudar de stack, adicionar cloud, reter chave para autosave ou permitir edição simultânea exige nova decisão do usuário.
 

@@ -5,6 +5,10 @@
  */
 import { z } from "zod";
 
+// Zod compiles object parsers with `new Function`; the app's CSP forbids eval and Trusted Types
+// report the attempt. The interpreted parsers measured just as fast on a 50 000-entry project.
+z.config({ jitless: true });
+
 import { Dec } from "./dec.ts";
 import { type Instant, type IsoDate, isIsoDate, type YearMonth } from "./dates.ts";
 import { type Id, isId } from "./ids.ts";

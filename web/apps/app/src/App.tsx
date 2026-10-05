@@ -4,7 +4,7 @@ import { RouterProvider } from "@tanstack/react-router";
 import type { AppRouter } from "./router.tsx";
 import type { AppServices } from "./services/types.ts";
 import { SessionProvider, type SessionStore } from "./session.tsx";
-import { UndoProvider } from "./shell/undo.tsx";
+import { WorkspaceBridge } from "./data/bridge.tsx";
 import { ThemeProvider } from "./theme.tsx";
 
 export function App({
@@ -23,9 +23,9 @@ export function App({
       <PreferencesProvider store={preferences}>
         <ThemeProvider>
           <SessionProvider store={session} services={services}>
-            <UndoProvider>
+            <WorkspaceBridge>
               <RouterProvider router={router} />
-            </UndoProvider>
+            </WorkspaceBridge>
           </SessionProvider>
         </ThemeProvider>
       </PreferencesProvider>

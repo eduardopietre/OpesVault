@@ -70,7 +70,7 @@ test("production build carries the strict CSP", async ({ page }) => {
   expect(csp).toContain("style-src 'self'");
   expect(csp).toContain("require-trusted-types-for 'script'");
   expect(csp).not.toContain("unsafe-inline");
-  expect(csp).not.toContain("unsafe-eval");
+  expect(csp).not.toContain("'unsafe-eval'");
   // No third-party origin anywhere in the document.
   const external = await page.evaluate(() =>
     [...document.querySelectorAll("script[src], link[href]")]

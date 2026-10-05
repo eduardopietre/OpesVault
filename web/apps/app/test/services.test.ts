@@ -48,7 +48,8 @@ describe("session", () => {
     await actions.signIn(DEMO.email, DEMO.password);
     await actions.openProject(services.demoProjectId!, DEMO.projectPassword);
     expect(store.get().open?.project.name).toBe("Casa");
-    expect(store.get().operatorId).toBe("m1");
+    expect(store.get().operatorId).toBe(store.get().open?.members[0]?.id);
+    expect(store.get().open?.members.map((m) => m.name)).toEqual(["Ana", "Bruno"]);
     expect(syncStateOf(store.get())).toBe("synced");
     await actions.lock();
     expect(store.get()).toMatchObject({ open: null, locked: true, lockedName: "Casa" });
@@ -103,7 +104,7 @@ describe("shortcuts", () => {
 
 describe("content security policy", () => {
   it("is strict and carries frame-ancestors only in the header", () => {
-    expect(cspMeta()).not.toMatch(/unsafe-(inline|eval)/);
+    expect(cspMeta()).not.toMatch(/'unsafe-(inline|eval)'/);
     expect(cspMeta()).toContain("require-trusted-types-for 'script'");
     expect(cspMeta()).not.toContain("frame-ancestors");
     expect(cspHeader()).toContain("frame-ancestors 'none'");

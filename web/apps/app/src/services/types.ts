@@ -4,6 +4,11 @@
  * clickable now and backs the tests. Screens never see a key: they hand over a password and get a session.
  */
 
+import type { Workspace } from "../data/workspace.ts";
+
+/** Sync state of the open project, reported by the services (the vault's status). */
+export type ProjectSyncStatus = "synced" | "pending" | "syncing" | "offline" | "conflict" | "readOnly" | "locked";
+
 export interface Account {
   id: string;
   name: string;
@@ -25,6 +30,8 @@ export interface Member {
 
 export interface OpenProject {
   project: ProjectSummary;
+  /** The project's ledger, undo and sync (data/workspace.ts). */
+  workspace: Workspace;
   /** Integrantes: the operator chosen in the top bar is recorded in the history. */
   members: readonly Member[];
   /** Counts that need attention, by page id (overview, imports). */
@@ -62,4 +69,9 @@ export interface AppServices {
   unlock(password: string): Promise<OpenProject>;
   /** Leaves the open project (back to the list). */
   closeProject(): Promise<void>;
+  /**
+   * Follows the open project's sync state (also an idle lock decided by the vault). Returns the
+   * unsubscribe function. The fake services report "synced" once.
+   */
+  watchSync(listener: (status: ProjectSyncStatus) => void): () => void;
 }

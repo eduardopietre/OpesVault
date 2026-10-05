@@ -42,6 +42,7 @@ import {
   type Envelope,
   type EnvelopeContent,
   type PullResult,
+  type PushResult,
   type SyncBackend,
 } from "./backend.ts";
 import { BlobCache } from "./blob_cache.ts";
@@ -234,6 +235,8 @@ export class ProjectVault {
   /** Opaque ids whose current server version is a tombstone. */
   readonly #tombstones = new Set<string>();
   readonly #pending = new Map<string, PendingChange>();
+  /** Opaque ids in a push whose answer has not arrived yet. */
+  readonly #inFlight = new Set<string>();
   readonly #conflicts = new Map<string, Conflict>();
   readonly #damaged = new Set<string>();
   #cursor = 0;
@@ -694,10 +697,15 @@ export class ProjectVault {
         const id = await keys.opaqueId(ref.kind, ref.id);
         this.#refs.set(id, { kind: ref.kind, id: ref.id });
         const known = this.#known.get(id);
-        if (known === undefined || this.#tombstones.has(id)) {
+        if ((known === undefined || this.#tombstones.has(id)) && !this.#inFlight.has(id)) {
           // Never reached the server (or already deleted there): just forget the local change.
+          // A record being pushed right now does reach it, so its deletion must follow.
           changes.delete(id);
-          if (this.#pending.has(id)) dropped.push(id);
+          if (this.#pending.has(id)) {
+            dropped.push(id);
+            // Out of the queue now, not after the cache write: a push starting meanwhile must not send it.
+            this.#pending.delete(id);
+          }
           continue;
         }
         changes.set(id, {
@@ -964,6 +972,7 @@ export class ProjectVault {
       const batch = this.#nextBatch();
       if (batch.length === 0) return;
       let result;
+      for (const change of batch) this.#inFlight.add(change.id);
       try {
         result = await this.#backend.push(
           this.projectId,
@@ -982,8 +991,21 @@ export class ProjectVault {
         }
         // The push may or may not have been applied: learn it from the server before resending.
         if (isOffline(error) || !(error instanceof BackendError)) this.#needPull = true;
+        for (const change of batch) this.#inFlight.delete(change.id);
         throw error;
       }
+      // Still "in flight" until the answer is recorded below: a deletion queued before that record
+      // must not believe the record never reached the server.
+      try {
+        await this.#afterPush(batch, result, generation);
+      } finally {
+        for (const change of batch) this.#inFlight.delete(change.id);
+      }
+    }
+  }
+
+  async #afterPush(batch: readonly PendingChange[], result: PushResult, generation: number): Promise<void> {
+    {
       if (generation !== this.#generation) return;
       this.#online = true;
       if (result.ok) {

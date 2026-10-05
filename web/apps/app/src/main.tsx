@@ -3,17 +3,20 @@ import "@opesvault/ui/styles.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App.tsx";
-import { devicePreferences } from "./preferences.ts";
+import { devicePreferences, tabHolder } from "./preferences.ts";
 import { UpdatePrompt } from "./pwa/UpdatePrompt.tsx";
 import { createAppRouter } from "./router.tsx";
 import { installTrustedTypes } from "./security.ts";
+import { USE_FAKE_SERVICES } from "./flags.ts";
 import { DEMO, createFakeServices } from "./services/fake.ts";
+import { createRealServices } from "./services/real.ts";
 import { SessionStore, sessionActions } from "./session.tsx";
 
 installTrustedTypes(`${import.meta.env.BASE_URL}sw.js`);
 
 async function start() {
-  const services = createFakeServices({ seed: true, latency: import.meta.env.DEV ? 250 : 120 });
+  const fake = USE_FAKE_SERVICES ? createFakeServices({ seed: true, latency: import.meta.env.DEV ? 250 : 120 }) : null;
+  const services = fake ?? createRealServices({ holder: tabHolder() });
   const session = new SessionStore();
   const online = () => session.update({ online: navigator.onLine });
   window.addEventListener("online", online);
@@ -22,10 +25,10 @@ async function start() {
 
   // "?demo" opens the demonstration project at once (fake services only): screenshots and e2e tests.
   const url = new URL(location.href);
-  if (url.searchParams.has("demo") && services.demoProjectId) {
+  if (url.searchParams.has("demo") && fake?.demoProjectId) {
     const actions = sessionActions(services, session);
     await actions.signIn(DEMO.email, DEMO.password);
-    await actions.openProject(services.demoProjectId, DEMO.projectPassword);
+    await actions.openProject(fake.demoProjectId, DEMO.projectPassword);
     url.searchParams.delete("demo");
     history.replaceState(null, "", url.pathname + url.search + url.hash);
   }

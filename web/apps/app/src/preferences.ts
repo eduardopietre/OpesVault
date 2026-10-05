@@ -36,3 +36,21 @@ export function readTheme(store: PreferenceStore): ThemeChoice {
   const value = store.get(THEME_KEY);
   return value === "light" || value === "dark" ? value : "system";
 }
+
+/**
+ * This tab's label for the edit lease, kept for the life of the tab (sessionStorage), so a reload gets
+ * its own lease back at once instead of opening read-only until the old one expires (docs/19).
+ * It is a random label, not project data.
+ */
+export function tabHolder(): string {
+  const key = PREFIX + "aba";
+  try {
+    const existing = sessionStorage.getItem(key);
+    if (existing) return existing;
+    const created = `tab-${crypto.randomUUID()}`;
+    sessionStorage.setItem(key, created);
+    return created;
+  } catch {
+    return `tab-${crypto.randomUUID()}`;
+  }
+}

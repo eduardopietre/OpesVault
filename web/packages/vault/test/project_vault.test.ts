@@ -356,6 +356,39 @@ describe("offline, reloads and network failures", () => {
   });
 });
 
+describe("deleting while the record is being pushed", () => {
+  it("a deletion staged while the creating push is in flight still reaches the server", async () => {
+    const server = new MemoryServer();
+    const real = server.client();
+    let release: () => void = () => undefined;
+    let hold = false;
+    const slow = intercept(real, {
+      push: async (projectId, leaseId, records) => {
+        if (hold) await new Promise<void>((resolve) => (release = resolve));
+        return real.push(projectId, leaseId, records);
+      },
+    });
+    const dev = await device(server, slow);
+    await account(slow, "ana@example.com");
+    const { vault } = await createProject(dev);
+    await vault.stage([op("1", "engano")]);
+    hold = true;
+    const sync = vault.syncNow();
+    await settle();
+    // Undone while its push is on the way: the server will have it, so the deletion must follow.
+    await vault.stage([], [{ kind: "operation", id: "1" }]);
+    hold = false;
+    release();
+    await sync;
+    await vault.syncNow();
+    expect(vault.getSnapshot()).toMatchObject({ status: "synced", pending: 0, conflicts: [] });
+    const reader = (await dev.reload()).vault(vault.projectId);
+    await vault.lock();
+    await reader.unlock("senha do projeto");
+    expect(reader.get("operation", "1")).toBeUndefined();
+  });
+});
+
 describe("conflicts are never resolved silently", () => {
   async function conflictScenario() {
     const { server, vault, dev } = await owner();

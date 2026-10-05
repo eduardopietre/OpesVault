@@ -2,6 +2,9 @@
  * In-memory AppServices for development, the catalog and tests. Nothing leaves the tab and nothing is
  * encrypted: it only imitates the answers of the real services so every screen can be walked through.
  */
+import { Ledger } from "@opesvault/domain";
+import { demoLedger } from "../data/demo.ts";
+import { Workspace } from "../data/workspace.ts";
 import {
   ServiceError,
   type Account,
@@ -19,8 +22,8 @@ interface StoredAccount extends Account {
 
 interface StoredProject extends ProjectSummary {
   password: string;
-  memberList: Member[];
   attention: Record<string, number>;
+  workspace: Workspace;
 }
 
 export const DEMO = {
@@ -38,6 +41,15 @@ export interface FakeOptions {
   /** Source of randomness for ids and recovery keys (tests pass a fixed one). */
   random?: () => number;
   now?: () => Date;
+}
+
+/** A new project's ledger with the account's first name as its first member. */
+function firstLedger(projectName: string, accountName: string): Ledger {
+  const ledger = Ledger.new(projectName);
+  const first = accountName.trim().split(/\s+/)[0];
+  if (first) ledger.addMember(first);
+  ledger.markClean(ledger.changeCount);
+  return ledger;
 }
 
 function delay(ms: number) {
@@ -62,11 +74,14 @@ export function createFakeServices(options: FakeOptions = {}): AppServices & { r
     id: project.id,
     name: project.name,
     updatedAt: project.updatedAt,
-    members: project.memberList.length,
+    members: membersOf(project).length,
   });
+  const membersOf = (project: StoredProject): Member[] =>
+    [...project.workspace.ledger.members.values()].filter((m) => m.active).map((m) => ({ id: m.id, name: m.name }));
   const opened = (project: StoredProject): OpenProject => ({
     project: summary(project),
-    members: project.memberList,
+    workspace: project.workspace,
+    members: membersOf(project),
     attention: { ...project.attention },
     readOnly: false,
   });
@@ -90,11 +105,8 @@ export function createFakeServices(options: FakeOptions = {}): AppServices & { r
       password: DEMO.projectPassword,
       updatedAt: now().toISOString(),
       members: 2,
-      memberList: [
-        { id: "m1", name: "Ana" },
-        { id: "m2", name: "Bruno" },
-      ],
       attention: { "visao-geral": 3, importar: 2 },
+      workspace: new Workspace(demoLedger(DEMO.projectName)),
     };
     account.projects.push(project.id);
     accounts.set(account.email, account);
@@ -146,8 +158,8 @@ export function createFakeServices(options: FakeOptions = {}): AppServices & { r
         password,
         updatedAt: now().toISOString(),
         members: 1,
-        memberList: [{ id: "m1", name: account.name.split(" ")[0] ?? account.name }],
         attention: {},
+        workspace: new Workspace(firstLedger(name.trim(), account.name)),
       };
       projects.set(project.id, project);
       account.projects.push(project.id);
@@ -186,6 +198,10 @@ export function createFakeServices(options: FakeOptions = {}): AppServices & { r
       await delay(latency);
       open = null;
       locked = null;
+    },
+    watchSync(listener) {
+      listener("synced");
+      return () => undefined;
     },
   };
 }

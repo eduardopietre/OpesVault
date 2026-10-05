@@ -7,7 +7,8 @@
 /** Directives shared by the header and the meta element. */
 export const CSP_DIRECTIVES: readonly string[] = [
   "default-src 'self'",
-  "script-src 'self'",
+  // WebAssembly only (Argon2id); JavaScript eval stays forbidden.
+  "script-src 'self' 'wasm-unsafe-eval'",
   "style-src 'self'",
   "img-src 'self' data: blob:",
   "font-src 'self'",

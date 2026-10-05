@@ -69,6 +69,25 @@ export interface SessionActions {
 }
 
 export function sessionActions(services: AppServices, store: SessionStore): SessionActions {
+  let unwatch: (() => void) | null = null;
+  /** Follows the vault: sync state in the top bar, and an idle lock decided by the vault itself. */
+  const watch = () => {
+    unwatch?.();
+    unwatch = services.watchSync((status) => {
+      const state = store.get();
+      if (status === "locked") {
+        if (state.open) {
+          cancelAllDecisions();
+          clearToasts();
+          store.update({ open: null, locked: true, lockedName: state.open.project.name });
+        }
+        return;
+      }
+      if (status === "readOnly") return; // shown from open.readOnly / the workspace
+      store.update({ sync: status });
+    });
+  };
+  const operatorName = (open: OpenProject, id: string | null) => open.members.find((m) => m.id === id)?.name ?? null;
   const forget = () => {
     // Nothing waits on a question about data that is no longer open.
     cancelAllDecisions();
@@ -84,15 +103,22 @@ export function sessionActions(services: AppServices, store: SessionStore): Sess
       store.update({ account });
     },
     async signOut() {
+      unwatch?.();
+      unwatch = null;
       await services.signOut();
       forget();
       store.update({ ...EMPTY, online: store.get().online });
     },
     async openProject(id, password) {
       const open = await services.openProject(id, password);
-      store.update({ open, locked: false, lockedName: null, sync: "synced", operatorId: open.members[0]?.id ?? null });
+      const operatorId = open.members[0]?.id ?? null;
+      open.workspace.setOperator(operatorName(open, operatorId));
+      store.update({ open, locked: false, lockedName: null, sync: "synced", operatorId });
+      watch();
     },
     async closeProject() {
+      unwatch?.();
+      unwatch = null;
       await services.closeProject();
       forget();
       store.update({ open: null, locked: false, lockedName: null, operatorId: null });
@@ -105,14 +131,14 @@ export function sessionActions(services: AppServices, store: SessionStore): Sess
     },
     async unlock(password) {
       const open = await services.unlock(password);
-      store.update({
-        open,
-        locked: false,
-        lockedName: null,
-        operatorId: store.get().operatorId ?? open.members[0]?.id ?? null,
-      });
+      const operatorId = store.get().operatorId ?? open.members[0]?.id ?? null;
+      open.workspace.setOperator(operatorName(open, operatorId));
+      store.update({ open, locked: false, lockedName: null, operatorId });
+      watch();
     },
     setOperator(id) {
+      const open = store.get().open;
+      if (open) open.workspace.setOperator(operatorName(open, id));
       store.update({ operatorId: id });
     },
   };

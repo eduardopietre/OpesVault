@@ -55,7 +55,7 @@ describe("the shell", () => {
     const session = new SessionStore();
     const account = await services.signIn(DEMO.email, DEMO.password);
     const open = await services.openProject(services.demoProjectId!, DEMO.projectPassword);
-    session.update({ account, open, operatorId: "m1" });
+    session.update({ account, open, operatorId: open.members[0]?.id ?? null });
     const router = createAppRouter({ session, history: createMemoryHistory({ initialEntries: ["/livro"] }) });
     render(<App router={router} services={services} session={session} preferences={memoryPreferences()} />);
     await screen.findByRole("heading", { level: 1, name: "Livro financeiro" });

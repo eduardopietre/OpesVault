@@ -22,6 +22,7 @@ OUT = ROOT / "web" / "packages" / "domain" / "golden"
 GENERATORS: dict[str, str] = {
     "dec": "scripts.golden.cases_dec",
     "money": "scripts.golden.cases_money",
+    "ledger": "scripts.golden.cases_ledger",
 }
 
 

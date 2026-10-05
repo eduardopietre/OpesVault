@@ -19,8 +19,8 @@ import type { Id } from "../lib/ids.ts";
 import { zDate, zDec, zId } from "../lib/schema.ts";
 import { display, isCnpj } from "../tax/ids.ts";
 import { AssetClass } from "./model.ts";
-import { head, pyEquals } from "./py.ts";
-import { assets, getOrKeyError, positions } from "./service.ts";
+import { getOrKeyError, head, pyEquals } from "../lib/py.ts";
+import { assets, positions } from "./service.ts";
 
 function values<T extends Record<string, string>>(o: T): [T[keyof T], ...T[keyof T][]] {
   return Object.values(o) as [T[keyof T], ...T[keyof T][]];

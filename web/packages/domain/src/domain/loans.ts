@@ -16,6 +16,7 @@ import { z } from "zod";
 import { daysInMonth, type IsoDate, makeDate, ymAdd, ymOf } from "../lib/dates.ts";
 import { Dec } from "../lib/dec.ts";
 import type { Id } from "../lib/ids.ts";
+import { KeyError } from "../lib/py.ts";
 import { zDate, zDec, zId } from "../lib/schema.ts";
 import { sortedBy } from "../lib/text.ts";
 import * as queries from "./queries.ts";
@@ -30,7 +31,6 @@ import {
   zEntityId,
 } from "./model.ts";
 import { isCents, roundMoney, toDecimal, ZERO } from "./money.ts";
-import { KeyLookupError } from "./recurrence.ts";
 
 export const RATE_PLACES = Dec.from("0.0000000001");
 export const MAX_TERM = 600;
@@ -219,7 +219,7 @@ function extraOf(ledger: Ledger, planId: Id): [number, Dec, PrepaymentMode][] {
 
 function planOf(ledger: Ledger, planId: Id): LoanPlan {
   const plan = plans(ledger).get(planId);
-  if (plan === undefined) throw new KeyLookupError(planId);
+  if (plan === undefined) throw new KeyError(planId);
   return plan;
 }
 

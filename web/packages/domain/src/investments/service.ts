@@ -20,6 +20,7 @@ import { balance } from "../domain/queries.ts";
 import type { IsoDate } from "../lib/dates.ts";
 import type { Dec } from "../lib/dec.ts";
 import type { Id } from "../lib/ids.ts";
+import { getOrKeyError } from "../lib/py.ts";
 import { sortedBy } from "../lib/text.ts";
 import {
   type Asset,
@@ -44,21 +45,6 @@ export const TAX_CATEGORY = "Impostos e taxas";
 export const FEE_CATEGORY = "Custos de investimentos";
 export const TAX_PAYABLE = "Imposto a pagar";
 export const SUSPENSE = "Resgates a discriminar";
-
-/** Python's `KeyError` on a missing dict key (`assets(ledger)[id]`). */
-export class KeyError extends Error {
-  constructor(message = "") {
-    super(message);
-    this.name = "KeyError";
-  }
-}
-
-/** `mapping[key]` with Python's failure: a KeyError, never `undefined`. */
-export function getOrKeyError<K, V>(map: ReadonlyMap<K, V>, key: K): V {
-  const value = map.get(key);
-  if (value === undefined) throw new KeyError();
-  return value;
-}
 
 export function assets(ledger: Ledger) {
   return ledger.entities<Asset>("asset");

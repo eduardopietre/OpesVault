@@ -9,8 +9,8 @@ import { casefold, sortedBy } from "../lib/text.ts";
 import { isAssetCode } from "../catalogs/irpf.ts";
 import { AssetClass } from "../investments/model.ts";
 import { profileOf, TaxTreatment } from "../investments/profile.ts";
-import { collapseSpaces, head, pyEquals } from "../investments/py.ts";
-import { category, getOrKeyError, positions, TAX_CATEGORY } from "../investments/service.ts";
+import { category, positions, TAX_CATEGORY } from "../investments/service.ts";
+import { collapseSpaces, getOrKeyError, head, pyEquals } from "../lib/py.ts";
 import * as ids from "./ids.ts";
 import {
   ASSET_GROUPS,

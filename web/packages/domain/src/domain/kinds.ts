@@ -1,6 +1,7 @@
 /** Domain modules that register persisted kinds or guards (part of `registry.ts`). */
 import "./anomalies.ts";
 import "./balance_checks.ts";
+import "./banking.ts";
 import "./budget.ts";
 import "./cards.ts";
 import "./deductibles.ts";

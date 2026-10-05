@@ -12,6 +12,7 @@ import { z } from "zod";
 import type { IsoDate } from "../lib/dates.ts";
 import type { Dec } from "../lib/dec.ts";
 import { type Id, uuid5 } from "../lib/ids.ts";
+import { collapseSpaces } from "../lib/py.ts";
 import { zId } from "../lib/schema.ts";
 import { casefold, sortedBy } from "../lib/text.ts";
 import { plans } from "./cards.ts";
@@ -21,18 +22,6 @@ import { ZERO } from "./money.ts";
 
 export const MAX_LENGTH = 40;
 const NAMESPACE = "8f0c1f56-4c1b-4f61-9f1e-5d6c7a0b7a11";
-
-/** Python's whitespace for `str.split()`/`str.strip()` (JavaScript's `\s` differs slightly). */
-// eslint-disable-next-line no-control-regex -- Python counts \x1c-\x1f as whitespace
-const PY_SPACE = /[\t\n\v\f\r\x1c-\x1f \x85\xa0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]+/u;
-
-/** `" ".join(text.split())`: words separated by single spaces, no ends. */
-export function collapseSpaces(text: string): string {
-  return text
-    .split(PY_SPACE)
-    .filter((w) => w)
-    .join(" ");
-}
 
 export const OperationTagsSchema = z.strictObject({
   id: zEntityId,

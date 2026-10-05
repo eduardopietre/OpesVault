@@ -12,12 +12,12 @@ import { z } from "zod";
 import type { IsoDate } from "../lib/dates.ts";
 import { Dec } from "../lib/dec.ts";
 import type { Id } from "../lib/ids.ts";
+import { collapseSpaces } from "../lib/py.ts";
 import { sortedBy } from "../lib/text.ts";
 import { normalize } from "../importing/rules.ts";
 import { DomainError, Ledger } from "./ledger.ts";
 import { AccountType, cashDate, type Operation, zEntityId } from "./model.ts";
 import { ZERO } from "./money.ts";
-import { collapseSpaces } from "./tags.ts";
 
 // Payment processors that prefix the merchant on card statements.
 const SPACE = "\\t\\n\\v\\f\\r\\x1c-\\x1f \\x85\\xa0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000";

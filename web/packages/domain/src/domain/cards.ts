@@ -20,6 +20,7 @@ import {
 } from "../lib/dates.ts";
 import { Dec } from "../lib/dec.ts";
 import type { Id } from "../lib/ids.ts";
+import { KeyError } from "../lib/py.ts";
 import { zDate, zDec, zId } from "../lib/schema.ts";
 import { cmpKeys } from "../lib/text.ts";
 import { normalize } from "../importing/rules.ts";
@@ -35,7 +36,6 @@ import {
   zEntityId,
 } from "./model.ts";
 import { allocate, toDecimal, ZERO } from "./money.ts";
-import { KeyLookupError } from "./recurrence.ts";
 
 function clamped(year: number, month: number, day: number): IsoDate {
   return makeDate(year, month, Math.min(day, daysInMonth(year, month)));
@@ -201,7 +201,7 @@ export interface ScheduledInstallment {
 
 export function schedule(ledger: Ledger, plan: InstallmentPlan): ScheduledInstallment[] {
   const card = ledger.cards.get(plan.card_id);
-  if (card === undefined) throw new KeyLookupError(plan.card_id);
+  if (card === undefined) throw new KeyError(plan.card_id);
   const first = cycleFor(card, plan.purchased_on);
   return plan.amounts.map((part, index) => {
     const number = plan.first_number + index;
@@ -274,7 +274,7 @@ function dueMonth(card: Card, paidOn: IsoDate): YearMonth {
  */
 export function bills(ledger: Ledger, cardId: Id, months: readonly YearMonth[]): Bill[] {
   const card = ledger.cards.get(cardId);
-  if (card === undefined) throw new KeyLookupError(cardId);
+  if (card === undefined) throw new KeyError(cardId);
   const byMonth = cardHistory(ledger, cardId);
   // Months outside the card's history have no charges nor payments: an empty bill each.
   return months.map((m) => byMonth.get(ymStr(m)) ?? new Bill(cycleByDueMonth(card, m)));
@@ -290,7 +290,7 @@ function cardHistory(ledger: Ledger, cardId: Id): Map<string, Bill> {
 
 function computeHistory(ledger: Ledger, cardId: Id): Map<string, Bill> {
   const card = ledger.cards.get(cardId);
-  if (card === undefined) throw new KeyLookupError(cardId);
+  if (card === undefined) throw new KeyError(cardId);
   const planOps = new Set<Id>();
   for (const p of plans(ledger).values()) if (p.card_id === cardId) for (const oid of p.operation_ids) planOps.add(oid);
   const charges: [YearMonth, Dec, Id][] = []; // (bill month, liability change, operation)

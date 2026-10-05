@@ -1,20 +1,24 @@
 /**
  * Port of `tests/test_planning_more.py`: saved filters, merchants, suspicious operations and goals.
  *
- * Skipped (modules ported later or owned elsewhere): receipts (`attachments` + Session), the year-end
- * summary (`annual` + investments), backup reminders (`alerts`), printable reports (`exports`), and
- * the `alerts.suspicion_alerts` assert of the duplicate case.
+ * Skipped (owned by the import pipeline port): receipts (`attachments` + Session), W6-integration.
  */
 import { describe, expect, it } from "vitest";
 
+import * as alerts from "../src/domain/alerts.ts";
+import * as annual from "../src/domain/annual.ts";
 import * as anomalies from "../src/domain/anomalies.ts";
 import { recordInstallmentPurchase } from "../src/domain/cards.ts";
 import * as goals from "../src/domain/goals.ts";
 import { DomainError } from "../src/domain/ledger.ts";
 import * as merchants from "../src/domain/merchants.ts";
 import * as savedFilters from "../src/domain/saved_filters.ts";
+import { exporting } from "../src/index.ts";
+import { AssetClass } from "../src/investments/model.ts";
+import * as inv from "../src/investments/service.ts";
 import { type IsoDate, ym } from "../src/lib/dates.ts";
-import { family } from "./fixtures.ts";
+import { Dec } from "../src/lib/dec.ts";
+import { category, family } from "./fixtures.ts";
 
 const d = (s: string) => s as IsoDate;
 
@@ -91,6 +95,9 @@ describe("suspicious operations", () => {
     expect(found[0]!.detail).toContain("10/03");
     expect(found[0]!.accountId).toBe(f.card_account);
     expect(found[0]!.title).toBe("Possível cobrança duplicada: POSTO SHELL");
+    expect(alerts.suspicionAlerts(f.ledger, today).map((a) => a.title)).toEqual([
+      "Possível cobrança duplicada: POSTO SHELL",
+    ]);
     expect(anomalies.markReviewed(f.ledger, second.id)).toBe(2);
     expect(anomalies.suspicions(f.ledger, today)).toEqual([]);
     expect(anomalies.markReviewed(f.ledger, second.id)).toBe(0);
@@ -170,5 +177,56 @@ describe("goals", () => {
         }),
       ),
     ).toThrow(/futura/);
+  });
+});
+
+describe("year end", () => {
+  it("summary", () => {
+    const f = family();
+    const D = (v: string) => Dec.parse(v);
+    f.ledger.recordOpeningBalance(f.bank, "1000.00", d("2025-06-01"));
+    f.ledger.recordIncome(f.bank, f.salary, "5000.00", d("2026-02-05"), "Salário");
+    f.ledger.recordExpense(f.bank, f.groceries, "300.00", d("2026-02-08"), "Mercado");
+    const pos = inv.createPosition(f.ledger, "Fundo", AssetClass.FIXED_INCOME, d("2026-01-02"), {
+      initial_cost: "2000",
+      from_account: f.bank,
+    });
+    inv.distribute(f.ledger, pos.id, "50.00", d("2026-06-30"), f.bank, "7.50");
+    inv.redeem(f.ledger, pos.id, d("2026-09-01"), "1100.00", f.bank, {
+      cost_attributed: "1000.00",
+      tax_withheld: "15.00",
+    });
+    const summary = annual.annual(f.ledger, 2026);
+    const balances = new Map(summary.balances.map((b) => [b.name, [b.previousYearEnd, b.yearEnd]]));
+    expect(balances.get("Banco A")![0]!.eq("1000.00")).toBe(true);
+    expect(summary.income.get(f.salary)!.eq("5000.00")).toBe(true);
+    expect(summary.expenseTotal.gte(D("300.00"))).toBe(true);
+    expect(summary.investmentIncome.eq("50.00") && summary.taxWithheld.eq("22.50")).toBe(true);
+    expect(summary.realizedGains.eq("100.00") && summary.incompleteEvents === 0).toBe(true);
+    expect(annual.annual(f.ledger, 2024).balances).toEqual([]);
+  });
+});
+
+describe("reminders and printable reports", () => {
+  it("backup reminder", () => {
+    const today = d("2026-03-31");
+    expect(alerts.backupAlert(null, today, false)[0]!.title).toBe("Faça um backup do cofre");
+    expect(alerts.backupAlert(null, today, true)[0]!.detail).toContain("nenhum backup");
+    expect(alerts.backupAlert(d("2026-03-20"), today, true)).toEqual([]);
+    expect(alerts.backupAlert(d("2026-01-31"), today, true)[0]!.title).toBe("Último backup há 59 dias");
+  });
+
+  it("monthly and annual reports escape text and say they are unencrypted", () => {
+    const f = family();
+    f.ledger.recordIncome(f.bank, f.salary, "5000.00", d("2026-03-05"), "Salário");
+    f.ledger.recordExpense(f.bank, f.groceries, "300.00", d("2026-03-08"), "<script>Mercado</script>");
+    const html = exporting.monthlyReportHtml(f.ledger, ym(2026, 3), d("2026-03-31"));
+    for (const text of [exporting.WARNING, "março de 2026", "R$ 5.000,00", "Alimentação"]) expect(html).toContain(text);
+    expect(html).not.toContain("<script>");
+    const memberView = exporting.monthlyReportHtml(f.ledger, ym(2026, 3), d("2026-03-31"), f.ana);
+    expect(memberView).toContain("Visão de <b>Ana</b>");
+    const year = exporting.annualReportHtml(f.ledger, 2026);
+    for (const text of ["fechamento de 2026", "Salário", exporting.WARNING]) expect(year).toContain(text);
+    expect(category(f.ledger, "Saúde")).toBeTruthy(); // deductibles section renders even when empty
   });
 });

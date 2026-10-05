@@ -6,17 +6,22 @@
 import { describe, expect, it } from "vitest";
 
 import { investmentCodes } from "../src/catalogs/irpf.ts";
+import * as balanceChecks from "../src/domain/balance_checks.ts";
 import * as banking from "../src/domain/banking.ts";
+import * as deductibles from "../src/domain/deductibles.ts";
 import { DomainError, Ledger, type LedgerRecord } from "../src/domain/ledger.ts";
 import { AccountType } from "../src/domain/model.ts";
 import * as queries from "../src/domain/queries.ts";
+import * as sharing from "../src/domain/sharing.ts";
 import { type IsoDate, makeDate, ymStr } from "../src/lib/dates.ts";
 import { Dec } from "../src/lib/dec.ts";
 import type { Id } from "../src/lib/ids.ts";
 import * as prof from "../src/investments/profile.ts";
-import { getOrKeyError, positions } from "../src/investments/service.ts";
+import { positions } from "../src/investments/service.ts";
+import { getOrKeyError } from "../src/lib/py.ts";
 import * as checklist from "../src/tax/checklist.ts";
 import * as declaration from "../src/tax/declaration.ts";
+import * as issues from "../src/tax/issues.ts";
 import {
   BucketRuleSchema,
   DeclaredAssetSchema,
@@ -46,6 +51,8 @@ interface File {
 const data = golden<File>("tax");
 const Y = 2025;
 const TODAY = "2026-10-05" as IsoDate;
+const ISSUE_DAYS = [`${Y + 1}-03-01`, `${Y}-04-10`] as IsoDate[];
+const REMINDER_DAYS = [`${Y}-05-25`, `${Y}-07-10`, `${Y + 1}-03-15`, `${Y + 1}-04-30`] as IsoDate[];
 
 type O = Record<string, unknown>;
 const s = (v: unknown) => v as string;
@@ -147,6 +154,14 @@ const TAX_COMMANDS: CommandTable = {
       note: orNull(o["note"]) as string | null,
     }),
   save_profile: (l, [fields]) => prof.saveProfile(l, prof.InvestmentProfileSchema.parse(fields)),
+  mark_deductible: (l, [category, kind]) =>
+    deductibles.mark(l, s(category), (kind as deductibles.DeductibleKind | null) || null),
+  request_reimbursement: (l, [op, payer, expected, on]) =>
+    sharing.request(l, s(op), s(payer), expected, (orNull(on) as IsoDate | null) || null),
+  receive_reimbursement: (l, [item, account, amount, on]) =>
+    sharing.receive(l, s(item), s(account), amount, asDate(on)),
+  balance_check: (l, [account, on, value, note]) =>
+    balanceChecks.record(l, s(account), asDate(on), value, orNull(note) as string | null),
 };
 
 function sortedPeople(people: ReadonlySet<Id> | null, known: ReadonlySet<string>): unknown {
@@ -194,6 +209,7 @@ function yearSheets(ledger: Ledger, year: number, declarant: Id | null, known: R
       j(v.paid),
       v.due_date,
     ]),
+    issues: ISSUE_DAYS.map((today) => norm(j(issues.issues(ledger, year, declarant, today)), known)),
   };
 }
 
@@ -211,6 +227,9 @@ const KINDS = [
   "tax_checklist_mark",
   "bank_account",
   "investment_profile",
+  "balance_check",
+  "deductible_category",
+  "reimbursement",
 ];
 
 function snapshot(ledger: Ledger, known: ReadonlySet<string>): O {
@@ -226,6 +245,8 @@ function snapshot(ledger: Ledger, known: ReadonlySet<string>): O {
   };
   for (const kind of KINDS) out[kind] = [...ledger.entities(kind).values()].map((e) => norm(dumpOrNull(e), known));
   out["declarants"] = norm(records.declarants(ledger), known);
+  out["reminders"] = REMINDER_DAYS.map((today) => norm(j(issues.reminders(ledger, today, 7)), known));
+  out["engaged"] = issues.engaged(ledger);
   const natures: unknown[] = [];
   for (const account of ledger.accounts.values()) {
     if (account.type === AccountType.INCOME) {

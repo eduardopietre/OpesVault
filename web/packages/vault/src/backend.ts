@@ -92,6 +92,13 @@ export class BackendError extends Error {
   }
 }
 
+/** A person with access to a project: their own account, the shared project password (docs/18 §1). */
+export interface ProjectMember {
+  readonly accountId: string;
+  readonly email: string;
+  readonly role: "owner" | "member";
+}
+
 export interface PushRecord {
   readonly id: string;
   /** The revision this change was based on (0 for a new record). */
@@ -113,6 +120,12 @@ export interface SyncBackend {
   createProject(sealedName: B64, envelope: Envelope): Promise<ProjectSummary>;
   renameProject(projectId: string, sealedName: B64): Promise<void>;
   deleteProject(projectId: string): Promise<void>;
+  /** Who can reach the project's ciphertext; they still need the project password to read it. */
+  listMembers(projectId: string): Promise<readonly ProjectMember[]>;
+  /** Owner only: gives an existing account access to the project. */
+  addMember(projectId: string, email: string): Promise<ProjectMember>;
+  /** Owner only (or the member leaving). The last owner cannot be removed. */
+  removeMember(projectId: string, accountId: string): Promise<void>;
   getEnvelope(projectId: string): Promise<Envelope>;
   /** Replaces the envelope if `expectedRevision` still matches (password or recovery change). */
   putEnvelope(projectId: string, envelope: Envelope, expectedRevision: number): Promise<Envelope>;

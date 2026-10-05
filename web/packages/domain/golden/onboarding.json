@@ -1,0 +1,2109 @@
+{
+ "cases": [
+  {
+   "existing": [],
+   "plan": {
+    "members": [
+     "Ana",
+     "Bruno"
+    ],
+    "accounts": [
+     [
+      "Banco A",
+      "checking",
+      [
+       "Ana"
+      ],
+      "Banco",
+      "1500.00",
+      "2026-01-01"
+     ],
+     [
+      "Conjunta",
+      "checking",
+      [
+       "Ana",
+       "bruno"
+      ],
+      "  ",
+      null,
+      null
+     ],
+     [
+      "Financiamento",
+      "loan",
+      [],
+      null,
+      "90000.00",
+      "2026-01-01"
+     ],
+     [
+      "Carteira",
+      "cash",
+      [],
+      null,
+      "0",
+      "2026-01-01"
+     ],
+     [
+      "Corretora",
+      "brokerage_cash",
+      [
+       "Bruno"
+      ],
+      " XP ",
+      "-10.50",
+      "2025-12-31"
+     ]
+    ],
+    "cards": [
+     [
+      "Cartão Ana",
+      "Ana",
+      "1234",
+      3,
+      10,
+      "Banco A",
+      null
+     ],
+     [
+      "Cartão B",
+      "bruno",
+      "0001",
+      31,
+      31,
+      null,
+      "Nu"
+     ]
+    ]
+   },
+   "result": {
+    "ok": [
+     2,
+     5,
+     2,
+     3
+    ],
+    "state": {
+     "accounts": [
+      {
+       "name": "Patrimônio de abertura",
+       "type": "equity",
+       "subtype": "opening_equity",
+       "institution": null,
+       "masked_number": null,
+       "holders": [],
+       "balance": "-88510.50"
+      },
+      {
+       "name": "Moradia",
+       "type": "expense",
+       "subtype": "category",
+       "institution": null,
+       "masked_number": null,
+       "holders": [],
+       "balance": "0"
+      },
+      {
+       "name": "Alimentação",
+       "type": "expense",
+       "subtype": "category",
+       "institution": null,
+       "masked_number": null,
+       "holders": [],
+       "balance": "0"
+      },
+      {
+       "name": "Transporte",
+       "type": "expense",
+       "subtype": "category",
+       "institution": null,
+       "masked_number": null,
+       "holders": [],
+       "balance": "0"
+      },
+      {
+       "name": "Saúde",
+       "type": "expense",
+       "subtype": "category",
+       "institution": null,
+       "masked_number": null,
+       "holders": [],
+       "balance": "0"
+      },
+      {
+       "name": "Educação",
+       "type": "expense",
+       "subtype": "category",
+       "institution": null,
+       "masked_number": null,
+       "holders": [],
+       "balance": "0"
+      },
+      {
+       "name": "Lazer",
+       "type": "expense",
+       "subtype": "category",
+       "institution": null,
+       "masked_number": null,
+       "holders": [],
+       "balance": "0"
+      },
+      {
+       "name": "Serviços e assinaturas",
+       "type": "expense",
+       "subtype": "category",
+       "institution": null,
+       "masked_number": null,
+       "holders": [],
+       "balance": "0"
+      },
+      {
+       "name": "Impostos e taxas",
+       "type": "expense",
+       "subtype": "category",
+       "institution": null,
+       "masked_number": null,
+       "holders": [],
+       "balance": "0"
+      },
+      {
+       "name": "Juros e encargos",
+       "type": "expense",
+       "subtype": "category",
+       "institution": null,
+       "masked_number": null,
+       "holders": [],
+       "balance": "0"
+      },
+      {
+       "name": "Outras despesas",
+       "type": "expense",
+       "subtype": "category",
+       "institution": null,
+       "masked_number": null,
+       "holders": [],
+       "balance": "0"
+      },
+      {
+       "name": "Salário",
+       "type": "income",
+       "subtype": "category",
+       "institution": null,
+       "masked_number": null,
+       "holders": [],
+       "balance": "-0"
+      },
+      {
+       "name": "Rendimentos de investimentos",
+       "type": "income",
+       "subtype": "category",
+       "institution": null,
+       "masked_number": null,
+       "holders": [],
+       "balance": "-0"
+      },
+      {
+       "name": "Outras receitas",
+       "type": "income",
+       "subtype": "category",
+       "institution": null,
+       "masked_number": null,
+       "holders": [],
+       "balance": "-0"
+      },
+      {
+       "name": "Banco A",
+       "type": "asset",
+       "subtype": "checking",
+       "institution": "Banco",
+       "masked_number": null,
+       "holders": [
+        "Ana"
+       ],
+       "balance": "1500.00"
+      },
+      {
+       "name": "Conjunta",
+       "type": "asset",
+       "subtype": "checking",
+       "institution": null,
+       "masked_number": null,
+       "holders": [
+        "Ana",
+        "Bruno"
+       ],
+       "balance": "0"
+      },
+      {
+       "name": "Financiamento",
+       "type": "liability",
+       "subtype": "loan",
+       "institution": null,
+       "masked_number": null,
+       "holders": [],
+       "balance": "90000.00"
+      },
+      {
+       "name": "Carteira",
+       "type": "asset",
+       "subtype": "cash",
+       "institution": null,
+       "masked_number": null,
+       "holders": [],
+       "balance": "0"
+      },
+      {
+       "name": "Corretora",
+       "type": "asset",
+       "subtype": "brokerage_cash",
+       "institution": "XP",
+       "masked_number": null,
+       "holders": [
+        "Bruno"
+       ],
+       "balance": "-10.50"
+      },
+      {
+       "name": "Cartão Ana",
+       "type": "liability",
+       "subtype": "credit_card",
+       "institution": null,
+       "masked_number": "final 1234",
+       "holders": [
+        "Ana"
+       ],
+       "balance": "-0"
+      },
+      {
+       "name": "Cartão B",
+       "type": "liability",
+       "subtype": "credit_card",
+       "institution": "Nu",
+       "masked_number": "final 0001",
+       "holders": [
+        "Bruno"
+       ],
+       "balance": "-0"
+      }
+     ],
+     "cards": [
+      {
+       "name": "Cartão Ana",
+       "liability": "Cartão Ana",
+       "holder": "Ana",
+       "last4": "1234",
+       "closing_day": 3,
+       "due_day": 10,
+       "settlement": "Banco A"
+      },
+      {
+       "name": "Cartão B",
+       "liability": "Cartão B",
+       "holder": "Bruno",
+       "last4": "0001",
+       "closing_day": 31,
+       "due_day": 31,
+       "settlement": null
+      }
+     ],
+     "operations": [
+      {
+       "kind": "opening_balance",
+       "description": "Saldo de abertura — Banco A",
+       "occurred_on": "2026-01-01",
+       "postings": [
+        [
+         "Banco A",
+         "1500.00"
+        ],
+        [
+         "Patrimônio de abertura",
+         "-1500.00"
+        ]
+       ]
+      },
+      {
+       "kind": "opening_balance",
+       "description": "Saldo de abertura — Financiamento",
+       "occurred_on": "2026-01-01",
+       "postings": [
+        [
+         "Financiamento",
+         "-90000.00"
+        ],
+        [
+         "Patrimônio de abertura",
+         "90000.00"
+        ]
+       ]
+      },
+      {
+       "kind": "opening_balance",
+       "description": "Saldo de abertura — Corretora",
+       "occurred_on": "2025-12-31",
+       "postings": [
+        [
+         "Corretora",
+         "-10.50"
+        ],
+        [
+         "Patrimônio de abertura",
+         "10.50"
+        ]
+       ]
+      }
+     ],
+     "members": [
+      [
+       "Ana",
+       "holder"
+      ],
+      [
+       "Bruno",
+       "holder"
+      ]
+     ],
+     "history": 28
+    }
+   }
+  },
+  {
+   "existing": [
+    "Carla"
+   ],
+   "plan": {
+    "members": [
+     "Ana"
+    ],
+    "accounts": [
+     [
+      "X",
+      "savings",
+      [
+       "carla",
+       "ANA"
+      ]
+     ]
+    ],
+    "cards": [
+     [
+      "Cartão Ana",
+      "Ana",
+      "1234",
+      3,
+      10,
+      "Banco A",
+      null
+     ],
+     [
+      "Cartão B",
+      "bruno",
+      "0001",
+      31,
+      31,
+      null,
+      "Nu"
+     ]
+    ]
+   },
+   "result": {
+    "error": "Conta de pagamento desconhecida no cartão Cartão Ana.",
+    "unchanged": true
+   }
+  },
+  {
+   "existing": [],
+   "plan": {
+    "members": [],
+    "accounts": [],
+    "cards": []
+   },
+   "result": {
+    "ok": [
+     0,
+     0,
+     0,
+     0
+    ],
+    "state": {
+     "accounts": [
+      {
+       "name": "Patrimônio de abertura",
+       "type": "equity",
+       "subtype": "opening_equity",
+       "institution": null,
+       "masked_number": null,
+       "holders": [],
+       "balance": "-0"
+      },
+      {
+       "name": "Moradia",
+       "type": "expense",
+       "subtype": "category",
+       "institution": null,
+       "masked_number": null,
+       "holders": [],
+       "balance": "0"
+      },
+      {
+       "name": "Alimentação",
+       "type": "expense",
+       "subtype": "category",
+       "institution": null,
+       "masked_number": null,
+       "holders": [],
+       "balance": "0"
+      },
+      {
+       "name": "Transporte",
+       "type": "expense",
+       "subtype": "category",
+       "institution": null,
+       "masked_number": null,
+       "holders": [],
+       "balance": "0"
+      },
+      {
+       "name": "Saúde",
+       "type": "expense",
+       "subtype": "category",
+       "institution": null,
+       "masked_number": null,
+       "holders": [],
+       "balance": "0"
+      },
+      {
+       "name": "Educação",
+       "type": "expense",
+       "subtype": "category",
+       "institution": null,
+       "masked_number": null,
+       "holders": [],
+       "balance": "0"
+      },
+      {
+       "name": "Lazer",
+       "type": "expense",
+       "subtype": "category",
+       "institution": null,
+       "masked_number": null,
+       "holders": [],
+       "balance": "0"
+      },
+      {
+       "name": "Serviços e assinaturas",
+       "type": "expense",
+       "subtype": "category",
+       "institution": null,
+       "masked_number": null,
+       "holders": [],
+       "balance": "0"
+      },
+      {
+       "name": "Impostos e taxas",
+       "type": "expense",
+       "subtype": "category",
+       "institution": null,
+       "masked_number": null,
+       "holders": [],
+       "balance": "0"
+      },
+      {
+       "name": "Juros e encargos",
+       "type": "expense",
+       "subtype": "category",
+       "institution": null,
+       "masked_number": null,
+       "holders": [],
+       "balance": "0"
+      },
+      {
+       "name": "Outras despesas",
+       "type": "expense",
+       "subtype": "category",
+       "institution": null,
+       "masked_number": null,
+       "holders": [],
+       "balance": "0"
+      },
+      {
+       "name": "Salário",
+       "type": "income",
+       "subtype": "category",
+       "institution": null,
+       "masked_number": null,
+       "holders": [],
+       "balance": "-0"
+      },
+      {
+       "name": "Rendimentos de investimentos",
+       "type": "income",
+       "subtype": "category",
+       "institution": null,
+       "masked_number": null,
+       "holders": [],
+       "balance": "-0"
+      },
+      {
+       "name": "Outras receitas",
+       "type": "income",
+       "subtype": "category",
+       "institution": null,
+       "masked_number": null,
+       "holders": [],
+       "balance": "-0"
+      }
+     ],
+     "cards": [],
+     "operations": [],
+     "members": [],
+     "history": 14
+    }
+   }
+  },
+  {
+   "existing": [],
+   "plan": {
+    "members": [
+     "Ana",
+     "ana"
+    ],
+    "accounts": [
+     [
+      "Banco A",
+      "checking",
+      [
+       "Ana"
+      ],
+      "Banco",
+      "1500.00",
+      "2026-01-01"
+     ],
+     [
+      "Conjunta",
+      "checking",
+      [
+       "Ana",
+       "bruno"
+      ],
+      "  ",
+      null,
+      null
+     ],
+     [
+      "Financiamento",
+      "loan",
+      [],
+      null,
+      "90000.00",
+      "2026-01-01"
+     ],
+     [
+      "Carteira",
+      "cash",
+      [],
+      null,
+      "0",
+      "2026-01-01"
+     ],
+     [
+      "Corretora",
+      "brokerage_cash",
+      [
+       "Bruno"
+      ],
+      " XP ",
+      "-10.50",
+      "2025-12-31"
+     ]
+    ],
+    "cards": [
+     [
+      "Cartão Ana",
+      "Ana",
+      "1234",
+      3,
+      10,
+      "Banco A",
+      null
+     ],
+     [
+      "Cartão B",
+      "bruno",
+      "0001",
+      31,
+      31,
+      null,
+      "Nu"
+     ]
+    ]
+   },
+   "result": {
+    "error": "Há integrantes com o mesmo nome.",
+    "unchanged": true
+   }
+  },
+  {
+   "existing": [],
+   "plan": {
+    "members": [
+     "Ana",
+     " "
+    ],
+    "accounts": [
+     [
+      "Banco A",
+      "checking",
+      [
+       "Ana"
+      ],
+      "Banco",
+      "1500.00",
+      "2026-01-01"
+     ],
+     [
+      "Conjunta",
+      "checking",
+      [
+       "Ana",
+       "bruno"
+      ],
+      "  ",
+      null,
+      null
+     ],
+     [
+      "Financiamento",
+      "loan",
+      [],
+      null,
+      "90000.00",
+      "2026-01-01"
+     ],
+     [
+      "Carteira",
+      "cash",
+      [],
+      null,
+      "0",
+      "2026-01-01"
+     ],
+     [
+      "Corretora",
+      "brokerage_cash",
+      [
+       "Bruno"
+      ],
+      " XP ",
+      "-10.50",
+      "2025-12-31"
+     ]
+    ],
+    "cards": [
+     [
+      "Cartão Ana",
+      "Ana",
+      "1234",
+      3,
+      10,
+      "Banco A",
+      null
+     ],
+     [
+      "Cartão B",
+      "bruno",
+      "0001",
+      31,
+      31,
+      null,
+      "Nu"
+     ]
+    ]
+   },
+   "result": {
+    "error": "Há um integrante sem nome.",
+    "unchanged": true
+   }
+  },
+  {
+   "existing": [
+    "Ana"
+   ],
+   "plan": {
+    "members": [
+     "ANA"
+    ],
+    "accounts": [
+     [
+      "Banco A",
+      "checking",
+      [
+       "Ana"
+      ],
+      "Banco",
+      "1500.00",
+      "2026-01-01"
+     ],
+     [
+      "Conjunta",
+      "checking",
+      [
+       "Ana",
+       "bruno"
+      ],
+      "  ",
+      null,
+      null
+     ],
+     [
+      "Financiamento",
+      "loan",
+      [],
+      null,
+      "90000.00",
+      "2026-01-01"
+     ],
+     [
+      "Carteira",
+      "cash",
+      [],
+      null,
+      "0",
+      "2026-01-01"
+     ],
+     [
+      "Corretora",
+      "brokerage_cash",
+      [
+       "Bruno"
+      ],
+      " XP ",
+      "-10.50",
+      "2025-12-31"
+     ]
+    ],
+    "cards": [
+     [
+      "Cartão Ana",
+      "Ana",
+      "1234",
+      3,
+      10,
+      "Banco A",
+      null
+     ],
+     [
+      "Cartão B",
+      "bruno",
+      "0001",
+      31,
+      31,
+      null,
+      "Nu"
+     ]
+    ]
+   },
+   "result": {
+    "error": "Há integrantes com o mesmo nome.",
+    "unchanged": true
+   }
+  },
+  {
+   "existing": [],
+   "plan": {
+    "members": [
+     "Ana",
+     "Bruno"
+    ],
+    "accounts": [
+     [
+      "X",
+      "checking",
+      [
+       "Carla"
+      ]
+     ]
+    ],
+    "cards": [
+     [
+      "Cartão Ana",
+      "Ana",
+      "1234",
+      3,
+      10,
+      "Banco A",
+      null
+     ],
+     [
+      "Cartão B",
+      "bruno",
+      "0001",
+      31,
+      31,
+      null,
+      "Nu"
+     ]
+    ]
+   },
+   "result": {
+    "error": "Titular desconhecido na conta X.",
+    "unchanged": true
+   }
+  },
+  {
+   "existing": [],
+   "plan": {
+    "members": [
+     "Ana",
+     "Bruno"
+    ],
+    "accounts": [
+     [
+      "X",
+      "checking",
+      [],
+      null,
+      "1",
+      null
+     ]
+    ],
+    "cards": [
+     [
+      "Cartão Ana",
+      "Ana",
+      "1234",
+      3,
+      10,
+      "Banco A",
+      null
+     ],
+     [
+      "Cartão B",
+      "bruno",
+      "0001",
+      31,
+      31,
+      null,
+      "Nu"
+     ]
+    ]
+   },
+   "result": {
+    "error": "Informe a data do saldo de abertura de X.",
+    "unchanged": true
+   }
+  },
+  {
+   "existing": [],
+   "plan": {
+    "members": [
+     "Ana",
+     "Bruno"
+    ],
+    "accounts": [
+     [
+      "X",
+      "checking"
+     ],
+     [
+      "x",
+      "savings"
+     ]
+    ],
+    "cards": [
+     [
+      "Cartão Ana",
+      "Ana",
+      "1234",
+      3,
+      10,
+      "Banco A",
+      null
+     ],
+     [
+      "Cartão B",
+      "bruno",
+      "0001",
+      31,
+      31,
+      null,
+      "Nu"
+     ]
+    ]
+   },
+   "result": {
+    "error": "Conta repetida: x.",
+    "unchanged": true
+   }
+  },
+  {
+   "existing": [],
+   "plan": {
+    "members": [
+     "Ana",
+     "Bruno"
+    ],
+    "accounts": [
+     [
+      "  ",
+      "checking"
+     ]
+    ],
+    "cards": [
+     [
+      "Cartão Ana",
+      "Ana",
+      "1234",
+      3,
+      10,
+      "Banco A",
+      null
+     ],
+     [
+      "Cartão B",
+      "bruno",
+      "0001",
+      31,
+      31,
+      null,
+      "Nu"
+     ]
+    ]
+   },
+   "result": {
+    "error": "Há uma conta sem nome.",
+    "unchanged": true
+   }
+  },
+  {
+   "existing": [],
+   "plan": {
+    "members": [
+     "Ana",
+     "Bruno"
+    ],
+    "accounts": [
+     [
+      "X",
+      "credit_card"
+     ]
+    ],
+    "cards": [
+     [
+      "Cartão Ana",
+      "Ana",
+      "1234",
+      3,
+      10,
+      "Banco A",
+      null
+     ],
+     [
+      "Cartão B",
+      "bruno",
+      "0001",
+      31,
+      31,
+      null,
+      "Nu"
+     ]
+    ]
+   },
+   "result": {
+    "error": "Tipo de conta inválido.",
+    "unchanged": true
+   }
+  },
+  {
+   "existing": [],
+   "plan": {
+    "members": [
+     "Ana",
+     "Bruno"
+    ],
+    "accounts": [
+     [
+      "Alimentação",
+      "checking"
+     ]
+    ],
+    "cards": [
+     [
+      "Cartão Ana",
+      "Ana",
+      "1234",
+      3,
+      10,
+      "Banco A",
+      null
+     ],
+     [
+      "Cartão B",
+      "bruno",
+      "0001",
+      31,
+      31,
+      null,
+      "Nu"
+     ]
+    ]
+   },
+   "result": {
+    "error": "Conta repetida: Alimentação.",
+    "unchanged": true
+   }
+  },
+  {
+   "existing": [],
+   "plan": {
+    "members": [
+     "Ana",
+     "Bruno"
+    ],
+    "accounts": [
+     [
+      "Banco A",
+      "checking",
+      [
+       "Ana"
+      ],
+      "Banco",
+      "1500.00",
+      "2026-01-01"
+     ],
+     [
+      "Conjunta",
+      "checking",
+      [
+       "Ana",
+       "bruno"
+      ],
+      "  ",
+      null,
+      null
+     ],
+     [
+      "Financiamento",
+      "loan",
+      [],
+      null,
+      "90000.00",
+      "2026-01-01"
+     ],
+     [
+      "Carteira",
+      "cash",
+      [],
+      null,
+      "0",
+      "2026-01-01"
+     ],
+     [
+      "Corretora",
+      "brokerage_cash",
+      [
+       "Bruno"
+      ],
+      " XP ",
+      "-10.50",
+      "2025-12-31"
+     ]
+    ],
+    "cards": [
+     [
+      "C",
+      "Ana",
+      "12a4",
+      3,
+      10
+     ]
+    ]
+   },
+   "result": {
+    "error": "Informe os 4 últimos dígitos do cartão C.",
+    "unchanged": true
+   }
+  },
+  {
+   "existing": [],
+   "plan": {
+    "members": [
+     "Ana",
+     "Bruno"
+    ],
+    "accounts": [
+     [
+      "Banco A",
+      "checking",
+      [
+       "Ana"
+      ],
+      "Banco",
+      "1500.00",
+      "2026-01-01"
+     ],
+     [
+      "Conjunta",
+      "checking",
+      [
+       "Ana",
+       "bruno"
+      ],
+      "  ",
+      null,
+      null
+     ],
+     [
+      "Financiamento",
+      "loan",
+      [],
+      null,
+      "90000.00",
+      "2026-01-01"
+     ],
+     [
+      "Carteira",
+      "cash",
+      [],
+      null,
+      "0",
+      "2026-01-01"
+     ],
+     [
+      "Corretora",
+      "brokerage_cash",
+      [
+       "Bruno"
+      ],
+      " XP ",
+      "-10.50",
+      "2025-12-31"
+     ]
+    ],
+    "cards": [
+     [
+      "C",
+      "Ana",
+      "123",
+      3,
+      10
+     ]
+    ]
+   },
+   "result": {
+    "error": "Informe os 4 últimos dígitos do cartão C.",
+    "unchanged": true
+   }
+  },
+  {
+   "existing": [],
+   "plan": {
+    "members": [
+     "Ana",
+     "Bruno"
+    ],
+    "accounts": [
+     [
+      "Banco A",
+      "checking",
+      [
+       "Ana"
+      ],
+      "Banco",
+      "1500.00",
+      "2026-01-01"
+     ],
+     [
+      "Conjunta",
+      "checking",
+      [
+       "Ana",
+       "bruno"
+      ],
+      "  ",
+      null,
+      null
+     ],
+     [
+      "Financiamento",
+      "loan",
+      [],
+      null,
+      "90000.00",
+      "2026-01-01"
+     ],
+     [
+      "Carteira",
+      "cash",
+      [],
+      null,
+      "0",
+      "2026-01-01"
+     ],
+     [
+      "Corretora",
+      "brokerage_cash",
+      [
+       "Bruno"
+      ],
+      " XP ",
+      "-10.50",
+      "2025-12-31"
+     ]
+    ],
+    "cards": [
+     [
+      "C",
+      "Ana",
+      "1234",
+      0,
+      10
+     ]
+    ]
+   },
+   "result": {
+    "error": "Dias de fechamento e vencimento vão de 1 a 31.",
+    "unchanged": true
+   }
+  },
+  {
+   "existing": [],
+   "plan": {
+    "members": [
+     "Ana",
+     "Bruno"
+    ],
+    "accounts": [
+     [
+      "Banco A",
+      "checking",
+      [
+       "Ana"
+      ],
+      "Banco",
+      "1500.00",
+      "2026-01-01"
+     ],
+     [
+      "Conjunta",
+      "checking",
+      [
+       "Ana",
+       "bruno"
+      ],
+      "  ",
+      null,
+      null
+     ],
+     [
+      "Financiamento",
+      "loan",
+      [],
+      null,
+      "90000.00",
+      "2026-01-01"
+     ],
+     [
+      "Carteira",
+      "cash",
+      [],
+      null,
+      "0",
+      "2026-01-01"
+     ],
+     [
+      "Corretora",
+      "brokerage_cash",
+      [
+       "Bruno"
+      ],
+      " XP ",
+      "-10.50",
+      "2025-12-31"
+     ]
+    ],
+    "cards": [
+     [
+      "C",
+      "Ana",
+      "1234",
+      3,
+      32
+     ]
+    ]
+   },
+   "result": {
+    "error": "Dias de fechamento e vencimento vão de 1 a 31.",
+    "unchanged": true
+   }
+  },
+  {
+   "existing": [],
+   "plan": {
+    "members": [
+     "Ana",
+     "Bruno"
+    ],
+    "accounts": [
+     [
+      "Banco A",
+      "checking",
+      [
+       "Ana"
+      ],
+      "Banco",
+      "1500.00",
+      "2026-01-01"
+     ],
+     [
+      "Conjunta",
+      "checking",
+      [
+       "Ana",
+       "bruno"
+      ],
+      "  ",
+      null,
+      null
+     ],
+     [
+      "Financiamento",
+      "loan",
+      [],
+      null,
+      "90000.00",
+      "2026-01-01"
+     ],
+     [
+      "Carteira",
+      "cash",
+      [],
+      null,
+      "0",
+      "2026-01-01"
+     ],
+     [
+      "Corretora",
+      "brokerage_cash",
+      [
+       "Bruno"
+      ],
+      " XP ",
+      "-10.50",
+      "2025-12-31"
+     ]
+    ],
+    "cards": [
+     [
+      "C",
+      "Zé",
+      "1234",
+      3,
+      10
+     ]
+    ]
+   },
+   "result": {
+    "error": "Escolha o portador do cartão C.",
+    "unchanged": true
+   }
+  },
+  {
+   "existing": [],
+   "plan": {
+    "members": [
+     "Ana",
+     "Bruno"
+    ],
+    "accounts": [
+     [
+      "Banco A",
+      "checking",
+      [
+       "Ana"
+      ],
+      "Banco",
+      "1500.00",
+      "2026-01-01"
+     ],
+     [
+      "Conjunta",
+      "checking",
+      [
+       "Ana",
+       "bruno"
+      ],
+      "  ",
+      null,
+      null
+     ],
+     [
+      "Financiamento",
+      "loan",
+      [],
+      null,
+      "90000.00",
+      "2026-01-01"
+     ],
+     [
+      "Carteira",
+      "cash",
+      [],
+      null,
+      "0",
+      "2026-01-01"
+     ],
+     [
+      "Corretora",
+      "brokerage_cash",
+      [
+       "Bruno"
+      ],
+      " XP ",
+      "-10.50",
+      "2025-12-31"
+     ]
+    ],
+    "cards": [
+     [
+      "C",
+      "Ana",
+      "1234",
+      3,
+      10,
+      "Inexistente"
+     ]
+    ]
+   },
+   "result": {
+    "error": "Conta de pagamento desconhecida no cartão C.",
+    "unchanged": true
+   }
+  },
+  {
+   "existing": [],
+   "plan": {
+    "members": [
+     "Ana",
+     "Bruno"
+    ],
+    "accounts": [
+     [
+      "Banco A",
+      "checking",
+      [
+       "Ana"
+      ],
+      "Banco",
+      "1500.00",
+      "2026-01-01"
+     ],
+     [
+      "Conjunta",
+      "checking",
+      [
+       "Ana",
+       "bruno"
+      ],
+      "  ",
+      null,
+      null
+     ],
+     [
+      "Financiamento",
+      "loan",
+      [],
+      null,
+      "90000.00",
+      "2026-01-01"
+     ],
+     [
+      "Carteira",
+      "cash",
+      [],
+      null,
+      "0",
+      "2026-01-01"
+     ],
+     [
+      "Corretora",
+      "brokerage_cash",
+      [
+       "Bruno"
+      ],
+      " XP ",
+      "-10.50",
+      "2025-12-31"
+     ]
+    ],
+    "cards": [
+     [
+      "C",
+      "Ana",
+      "1234",
+      3,
+      10,
+      "Financiamento"
+     ]
+    ]
+   },
+   "result": {
+    "error": "Conta de pagamento da fatura inválida.",
+    "unchanged": true
+   }
+  },
+  {
+   "existing": [],
+   "plan": {
+    "members": [
+     "Ana",
+     "Bruno"
+    ],
+    "accounts": [
+     [
+      "Banco A",
+      "checking",
+      [
+       "Ana"
+      ],
+      "Banco",
+      "1500.00",
+      "2026-01-01"
+     ],
+     [
+      "Conjunta",
+      "checking",
+      [
+       "Ana",
+       "bruno"
+      ],
+      "  ",
+      null,
+      null
+     ],
+     [
+      "Financiamento",
+      "loan",
+      [],
+      null,
+      "90000.00",
+      "2026-01-01"
+     ],
+     [
+      "Carteira",
+      "cash",
+      [],
+      null,
+      "0",
+      "2026-01-01"
+     ],
+     [
+      "Corretora",
+      "brokerage_cash",
+      [
+       "Bruno"
+      ],
+      " XP ",
+      "-10.50",
+      "2025-12-31"
+     ]
+    ],
+    "cards": [
+     [
+      "Banco A",
+      "Ana",
+      "1234",
+      3,
+      10
+     ]
+    ]
+   },
+   "result": {
+    "error": "Nome repetido: Banco A.",
+    "unchanged": true
+   }
+  },
+  {
+   "existing": [],
+   "plan": {
+    "members": [
+     "Ana",
+     "Bruno"
+    ],
+    "accounts": [
+     [
+      "Banco A",
+      "checking",
+      [
+       "Ana"
+      ],
+      "Banco",
+      "1500.00",
+      "2026-01-01"
+     ],
+     [
+      "Conjunta",
+      "checking",
+      [
+       "Ana",
+       "bruno"
+      ],
+      "  ",
+      null,
+      null
+     ],
+     [
+      "Financiamento",
+      "loan",
+      [],
+      null,
+      "90000.00",
+      "2026-01-01"
+     ],
+     [
+      "Carteira",
+      "cash",
+      [],
+      null,
+      "0",
+      "2026-01-01"
+     ],
+     [
+      "Corretora",
+      "brokerage_cash",
+      [
+       "Bruno"
+      ],
+      " XP ",
+      "-10.50",
+      "2025-12-31"
+     ]
+    ],
+    "cards": [
+     [
+      " ",
+      "Ana",
+      "1234",
+      3,
+      10
+     ]
+    ]
+   },
+   "result": {
+    "error": "Há um cartão sem nome.",
+    "unchanged": true
+   }
+  },
+  {
+   "existing": [],
+   "plan": {
+    "members": [
+     "Ana",
+     "Bruno"
+    ],
+    "accounts": [
+     [
+      "Banco A",
+      "checking",
+      [
+       "Ana"
+      ],
+      "Banco",
+      "1500.00",
+      "2026-01-01"
+     ],
+     [
+      "Conjunta",
+      "checking",
+      [
+       "Ana",
+       "bruno"
+      ],
+      "  ",
+      null,
+      null
+     ],
+     [
+      "Financiamento",
+      "loan",
+      [],
+      null,
+      "90000.00",
+      "2026-01-01"
+     ],
+     [
+      "Carteira",
+      "cash",
+      [],
+      null,
+      "0",
+      "2026-01-01"
+     ],
+     [
+      "Corretora",
+      "brokerage_cash",
+      [
+       "Bruno"
+      ],
+      " XP ",
+      "-10.50",
+      "2025-12-31"
+     ]
+    ],
+    "cards": [
+     [
+      "C",
+      "Ana",
+      "1234",
+      3,
+      10,
+      "Patrimônio de abertura"
+     ]
+    ]
+   },
+   "result": {
+    "error": "Conta de pagamento da fatura inválida.",
+    "unchanged": true
+   }
+  },
+  {
+   "existing": [],
+   "plan": {
+    "members": [
+     "Ana",
+     "Bruno"
+    ],
+    "accounts": [
+     [
+      "Banco A",
+      "checking",
+      [
+       "Ana"
+      ],
+      "Banco",
+      "1500.00",
+      "2026-01-01"
+     ],
+     [
+      "Conjunta",
+      "checking",
+      [
+       "Ana",
+       "bruno"
+      ],
+      "  ",
+      null,
+      null
+     ],
+     [
+      "Financiamento",
+      "loan",
+      [],
+      null,
+      "90000.00",
+      "2026-01-01"
+     ],
+     [
+      "Carteira",
+      "cash",
+      [],
+      null,
+      "0",
+      "2026-01-01"
+     ],
+     [
+      "Corretora",
+      "brokerage_cash",
+      [
+       "Bruno"
+      ],
+      " XP ",
+      "-10.50",
+      "2025-12-31"
+     ]
+    ],
+    "cards": [
+     [
+      "C",
+      "Ana",
+      "1234",
+      3,
+      10,
+      "carteira"
+     ]
+    ]
+   },
+   "result": {
+    "ok": [
+     2,
+     5,
+     1,
+     3
+    ],
+    "state": {
+     "accounts": [
+      {
+       "name": "Patrimônio de abertura",
+       "type": "equity",
+       "subtype": "opening_equity",
+       "institution": null,
+       "masked_number": null,
+       "holders": [],
+       "balance": "-88510.50"
+      },
+      {
+       "name": "Moradia",
+       "type": "expense",
+       "subtype": "category",
+       "institution": null,
+       "masked_number": null,
+       "holders": [],
+       "balance": "0"
+      },
+      {
+       "name": "Alimentação",
+       "type": "expense",
+       "subtype": "category",
+       "institution": null,
+       "masked_number": null,
+       "holders": [],
+       "balance": "0"
+      },
+      {
+       "name": "Transporte",
+       "type": "expense",
+       "subtype": "category",
+       "institution": null,
+       "masked_number": null,
+       "holders": [],
+       "balance": "0"
+      },
+      {
+       "name": "Saúde",
+       "type": "expense",
+       "subtype": "category",
+       "institution": null,
+       "masked_number": null,
+       "holders": [],
+       "balance": "0"
+      },
+      {
+       "name": "Educação",
+       "type": "expense",
+       "subtype": "category",
+       "institution": null,
+       "masked_number": null,
+       "holders": [],
+       "balance": "0"
+      },
+      {
+       "name": "Lazer",
+       "type": "expense",
+       "subtype": "category",
+       "institution": null,
+       "masked_number": null,
+       "holders": [],
+       "balance": "0"
+      },
+      {
+       "name": "Serviços e assinaturas",
+       "type": "expense",
+       "subtype": "category",
+       "institution": null,
+       "masked_number": null,
+       "holders": [],
+       "balance": "0"
+      },
+      {
+       "name": "Impostos e taxas",
+       "type": "expense",
+       "subtype": "category",
+       "institution": null,
+       "masked_number": null,
+       "holders": [],
+       "balance": "0"
+      },
+      {
+       "name": "Juros e encargos",
+       "type": "expense",
+       "subtype": "category",
+       "institution": null,
+       "masked_number": null,
+       "holders": [],
+       "balance": "0"
+      },
+      {
+       "name": "Outras despesas",
+       "type": "expense",
+       "subtype": "category",
+       "institution": null,
+       "masked_number": null,
+       "holders": [],
+       "balance": "0"
+      },
+      {
+       "name": "Salário",
+       "type": "income",
+       "subtype": "category",
+       "institution": null,
+       "masked_number": null,
+       "holders": [],
+       "balance": "-0"
+      },
+      {
+       "name": "Rendimentos de investimentos",
+       "type": "income",
+       "subtype": "category",
+       "institution": null,
+       "masked_number": null,
+       "holders": [],
+       "balance": "-0"
+      },
+      {
+       "name": "Outras receitas",
+       "type": "income",
+       "subtype": "category",
+       "institution": null,
+       "masked_number": null,
+       "holders": [],
+       "balance": "-0"
+      },
+      {
+       "name": "Banco A",
+       "type": "asset",
+       "subtype": "checking",
+       "institution": "Banco",
+       "masked_number": null,
+       "holders": [
+        "Ana"
+       ],
+       "balance": "1500.00"
+      },
+      {
+       "name": "Conjunta",
+       "type": "asset",
+       "subtype": "checking",
+       "institution": null,
+       "masked_number": null,
+       "holders": [
+        "Ana",
+        "Bruno"
+       ],
+       "balance": "0"
+      },
+      {
+       "name": "Financiamento",
+       "type": "liability",
+       "subtype": "loan",
+       "institution": null,
+       "masked_number": null,
+       "holders": [],
+       "balance": "90000.00"
+      },
+      {
+       "name": "Carteira",
+       "type": "asset",
+       "subtype": "cash",
+       "institution": null,
+       "masked_number": null,
+       "holders": [],
+       "balance": "0"
+      },
+      {
+       "name": "Corretora",
+       "type": "asset",
+       "subtype": "brokerage_cash",
+       "institution": "XP",
+       "masked_number": null,
+       "holders": [
+        "Bruno"
+       ],
+       "balance": "-10.50"
+      },
+      {
+       "name": "C",
+       "type": "liability",
+       "subtype": "credit_card",
+       "institution": null,
+       "masked_number": "final 1234",
+       "holders": [
+        "Ana"
+       ],
+       "balance": "-0"
+      }
+     ],
+     "cards": [
+      {
+       "name": "C",
+       "liability": "C",
+       "holder": "Ana",
+       "last4": "1234",
+       "closing_day": 3,
+       "due_day": 10,
+       "settlement": "Carteira"
+      }
+     ],
+     "operations": [
+      {
+       "kind": "opening_balance",
+       "description": "Saldo de abertura — Banco A",
+       "occurred_on": "2026-01-01",
+       "postings": [
+        [
+         "Banco A",
+         "1500.00"
+        ],
+        [
+         "Patrimônio de abertura",
+         "-1500.00"
+        ]
+       ]
+      },
+      {
+       "kind": "opening_balance",
+       "description": "Saldo de abertura — Financiamento",
+       "occurred_on": "2026-01-01",
+       "postings": [
+        [
+         "Financiamento",
+         "-90000.00"
+        ],
+        [
+         "Patrimônio de abertura",
+         "90000.00"
+        ]
+       ]
+      },
+      {
+       "kind": "opening_balance",
+       "description": "Saldo de abertura — Corretora",
+       "occurred_on": "2025-12-31",
+       "postings": [
+        [
+         "Corretora",
+         "-10.50"
+        ],
+        [
+         "Patrimônio de abertura",
+         "10.50"
+        ]
+       ]
+      }
+     ],
+     "members": [
+      [
+       "Ana",
+       "holder"
+      ],
+      [
+       "Bruno",
+       "holder"
+      ]
+     ],
+     "history": 26
+    }
+   }
+  }
+ ]
+}

@@ -1,2 +1,20 @@
 /** Public modules of this area, one namespace per module. */
-export {};
+export * as anomalies from "./anomalies.ts";
+export * as balanceChecks from "./balance_checks.ts";
+export * as budget from "./budget.ts";
+export * as cards from "./cards.ts";
+export * as comparisons from "./comparisons.ts";
+export * as deductibles from "./deductibles.ts";
+export * as goals from "./goals.ts";
+export * as indicators from "./indicators.ts";
+export * as loans from "./loans.ts";
+export * as merchants from "./merchants.ts";
+export * as onboarding from "./onboarding.ts";
+export * as periods from "./periods.ts";
+export * as projection from "./projection.ts";
+export * as recurrence from "./recurrence.ts";
+export * as savedFilters from "./saved_filters.ts";
+export * as settings from "./settings.ts";
+export * as sharing from "./sharing.ts";
+export * as subscriptions from "./subscriptions.ts";
+export * as tags from "./tags.ts";

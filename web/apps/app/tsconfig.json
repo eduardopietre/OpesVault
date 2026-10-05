@@ -1,5 +1,9 @@
 {
   "extends": "../../tsconfig.base.json",
-  "compilerOptions": { "lib": ["ES2023", "DOM", "DOM.Iterable", "WebWorker"], "types": ["vite/client"] },
-  "include": ["src", "test", "*.ts"]
+  "compilerOptions": {
+    "lib": ["ES2023", "DOM", "DOM.Iterable", "WebWorker"],
+    "types": ["vite/client", "vite-plugin-pwa/react", "node"],
+    "jsx": "react-jsx"
+  },
+  "include": ["src", "test", "e2e", "scripts", "*.ts"]
 }

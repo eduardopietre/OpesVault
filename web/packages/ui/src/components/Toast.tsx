@@ -115,7 +115,7 @@ function ToastView({ toast }: { toast: ToastItem }) {
 }
 
 /** The toast region. Mount once; on phones it sits above the bottom navigation. */
-export function Toaster({ className }: { className?: string }) {
+export function Toaster({ className }: { className?: string | undefined }) {
   const items = useSyncExternalStore(
     subscribe,
     () => toasts,

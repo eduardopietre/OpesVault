@@ -20,7 +20,7 @@ export interface InspectorProps {
   children: ReactNode;
   /** Width of the side column on wide screens. */
   width?: number;
-  className?: string;
+  className?: string | undefined;
   /** Forces a band (the catalog shows each form). */
   band?: Band;
 }

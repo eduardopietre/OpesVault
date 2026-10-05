@@ -16,7 +16,7 @@ export interface MonthPickerProps {
   label?: string;
   min?: Month;
   max?: Month;
-  className?: string;
+  className?: string | undefined;
 }
 
 const index = (m: Month) => m.year * 12 + m.month - 1;

@@ -58,7 +58,7 @@ export interface DataTableProps<T> {
   rowHeight?: number;
   /** Card title in the phone list (defaults to the first column). */
   cardTitle?: (row: T) => ReactNode;
-  className?: string;
+  className?: string | undefined;
   /** Forces the card layout (tests and catalog); otherwise it follows the container width. */
   layout?: "auto" | "table" | "cards";
 }
@@ -330,9 +330,7 @@ export function DataTable<T extends object>({
                       {rest.map((column) => (
                         <div key={column.id} className="contents">
                           <dt className="text-secondary">{column.header}</dt>
-                          <dd className={cn("min-w-0 truncate text-text", column.align === "end" && "text-right")}>
-                            {column.cell(original)}
-                          </dd>
+                          <dd className="min-w-0 truncate text-text">{column.cell(original)}</dd>
                         </div>
                       ))}
                     </dl>
@@ -349,7 +347,7 @@ export function DataTable<T extends object>({
                 className={cn(
                   "absolute top-0 left-0 grid min-w-full cursor-default border-b border-separator/60 text-body",
                   selected
-                    ? "bg-selection-inactive group-focus/grid:bg-selection group-focus/grid:text-accent-text"
+                    ? "bg-selection-inactive group-focus/grid:bg-selection group-focus/grid:text-accent-text group-focus/grid:**:text-accent-text"
                     : item.index % 2
                       ? "bg-alternate hover:bg-hover"
                       : "hover:bg-hover",

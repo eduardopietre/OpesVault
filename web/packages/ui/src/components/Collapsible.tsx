@@ -22,7 +22,7 @@ export interface CollapsibleProps {
   /** Preference key, e.g. "secoes/visao-geral/mes-a-mes". */
   prefKey?: string;
   level?: 2 | 3;
-  className?: string;
+  className?: string | undefined;
 }
 
 export function Collapsible({
@@ -49,7 +49,7 @@ export function Collapsible({
   return (
     <section className={cn("min-w-0", className)}>
       <div className="mb-2 flex min-h-8 flex-wrap items-center justify-between gap-x-4 gap-y-2">
-        <Heading className="min-w-0 text-headline font-semibold">
+        <Heading className="min-w-0 flex-1 text-headline font-semibold">
           <button
             type="button"
             aria-expanded={open}

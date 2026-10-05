@@ -16,7 +16,7 @@ export interface PageHeaderProps {
   actions?: ReactNode;
   /** Something that sits between title and actions on wide screens, such as the MonthPicker. */
   children?: ReactNode;
-  className?: string;
+  className?: string | undefined;
 }
 
 /** Title ("where am I"), context and actions; at most one primary action (docs/16 §1). */
@@ -46,7 +46,7 @@ export interface EmptyStateProps {
   description: ReactNode;
   icon?: ReactNode;
   actions?: ReactNode;
-  className?: string;
+  className?: string | undefined;
   /** Heading level for the title (2 inside a page, 1 when it is the whole screen). */
   level?: 1 | 2 | 3;
 }
@@ -111,7 +111,7 @@ export interface AdaptiveProps {
   /** The first part goes on top when stacked and to the right when wide (a side column). */
   firstRight?: boolean;
   gap?: number;
-  className?: string;
+  className?: string | undefined;
 }
 
 /**
@@ -164,7 +164,7 @@ export interface BadgeProps {
   tone?: BadgeTone;
   /** What the badge means for screen readers ("3 itens pedem atenção"). */
   label?: string;
-  className?: string;
+  className?: string | undefined;
 }
 
 export function badgeText(count: number): string {
@@ -189,7 +189,7 @@ export function Badge({ children, tone = "neutral", label, className }: BadgePro
 }
 
 export interface SkeletonProps {
-  className?: string;
+  className?: string | undefined;
   /** Several text lines, the last one shorter. */
   lines?: number;
 }

@@ -22,7 +22,7 @@ export interface TabsProps {
   onValueChange: (id: string) => void;
   /** Accessible name of the tab list ("Cadastros da conta"). */
   label: string;
-  className?: string;
+  className?: string | undefined;
 }
 
 export function Tabs({ tabs, value, onValueChange, label, className }: TabsProps) {

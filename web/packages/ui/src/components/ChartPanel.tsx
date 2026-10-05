@@ -134,7 +134,7 @@ export function chartOption(chart: ChartData, reduceMotion: boolean): ChartOptio
         ...(series.stack ? { stack: series.stack } : {}),
         barMaxWidth: 28,
         barGap: "12%",
-        itemStyle: { borderRadius: [4, 4, 0, 0], borderColor: raised, borderWidth: 1 },
+        itemStyle: { borderRadius: 3, borderColor: raised, borderWidth: 1 },
         emphasis: { focus: "series" as const },
       };
     }),
@@ -149,7 +149,7 @@ export interface ChartViewProps {
   height?: number;
   /** Receives the instance (for export). */
   onReady?: (instance: Instance | null) => void;
-  className?: string;
+  className?: string | undefined;
 }
 
 /** The chart alone; prefer ChartPanel, which always shows the table of the same values. */
@@ -226,7 +226,7 @@ export interface ChartPanelProps {
   /** Preference key prefix for the two collapsible parts. */
   prefKey?: string;
   height?: number;
-  className?: string;
+  className?: string | undefined;
 }
 
 export function ChartPanel({ chart, prefKey, height = 300, className }: ChartPanelProps) {

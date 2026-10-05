@@ -34,6 +34,27 @@ export interface OverlayProps {
   role?: "dialog" | "alertdialog";
 }
 
+/**
+ * Leaves the modal state: closes the native dialog (the page is no longer inert) and gives focus back to
+ * where it was, unless the user or the action already moved it elsewhere.
+ */
+function release(element: HTMLDialogElement, previous: Element | null) {
+  if (element.hasAttribute("data-closing")) return;
+  element.setAttribute("data-closing", "");
+  const active = document.activeElement;
+  const focusInside = active !== null && element.contains(active);
+  if (element.open) element.close();
+  // The panel stays visible while it animates out: focus must not stay on a control inside it.
+  if (focusInside && active instanceof HTMLElement) active.blur();
+  if (
+    (focusInside || active === document.body || active === null) &&
+    previous instanceof HTMLElement &&
+    previous.isConnected
+  ) {
+    previous.focus();
+  }
+}
+
 /** Keeps the layer mounted until its exit animation ends. */
 export function Overlay(props: OverlayProps) {
   const [mounted, setMounted] = useState(props.open);
@@ -80,17 +101,19 @@ function OverlayLayer({
         "input:not([disabled]), textarea, select, button:not([disabled]), [href], [tabindex]:not([tabindex='-1'])",
       );
     target?.focus();
-    return () => {
-      if (element.open) element.close();
-      const back = previous.current;
-      if (back instanceof HTMLElement && back.isConnected) back.focus();
-    };
+    return () => release(element, previous.current);
     // Runs once per opening: the layer is remounted for each one.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useLayoutEffect(() => {
+    // Closing: the page becomes usable at once (focus returns, nothing inert) while the panel animates out.
+    const element = dialog.current;
+    if (!open && element) release(element, previous.current);
+  }, [open]);
+
   useEffect(() => {
-    // The pointer must have started on the scrim too (a text selection ending outside does not close).
+    // Escape is handled on keydown (so the browser's own cancel never closes a decision).
     const element = dialog.current;
     if (!element) return;
     const stop = (event: Event) => event.preventDefault();

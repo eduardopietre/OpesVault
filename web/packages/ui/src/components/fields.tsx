@@ -201,7 +201,7 @@ export interface CheckboxProps {
   onCheckedChange: (checked: boolean) => void;
   disabled?: boolean;
   description?: ReactNode;
-  className?: string;
+  className?: string | undefined;
 }
 
 export function Checkbox({ label, checked, onCheckedChange, disabled, description, className }: CheckboxProps) {
@@ -244,7 +244,7 @@ export interface SwitchProps {
   onCheckedChange: (checked: boolean) => void;
   disabled?: boolean;
   description?: ReactNode;
-  className?: string;
+  className?: string | undefined;
 }
 
 /** A setting that applies at once (docs/16 §5: no Apply button). The state is also written ("Ligada"). */
@@ -294,7 +294,7 @@ export interface RadioGroupProps {
   onValueChange: (value: string) => void;
   options: readonly RadioOption[];
   orientation?: "vertical" | "horizontal";
-  className?: string;
+  className?: string | undefined;
 }
 
 export function RadioGroup({

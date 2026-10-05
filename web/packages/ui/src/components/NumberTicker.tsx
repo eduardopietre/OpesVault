@@ -17,7 +17,7 @@ export interface NumberTickerProps {
   /** Count from this value (defaults to zero on first show, then from the previous value). */
   from?: string;
   durationMs?: number;
-  className?: string;
+  className?: string | undefined;
 }
 
 const STEPS = 1_000_000n;

@@ -52,7 +52,7 @@ export interface StatusPillProps {
   /** More detail for the tooltip ("3 alterações aguardando envio"). */
   detail?: string;
   compact?: boolean;
-  className?: string;
+  className?: string | undefined;
   onClick?: () => void;
 }
 

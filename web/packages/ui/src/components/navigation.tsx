@@ -116,7 +116,7 @@ export interface SidebarProps {
   collapsed?: boolean;
   /** Something above the groups (the drawer shows the project there). */
   header?: ReactNode;
-  className?: string;
+  className?: string | undefined;
   label?: string;
 }
 
@@ -193,7 +193,7 @@ export interface BottomNavProps {
   moreSelected?: boolean;
   /** Attention count of the pages under "Mais". */
   moreCount?: number;
-  className?: string;
+  className?: string | undefined;
 }
 
 export function BottomNav({

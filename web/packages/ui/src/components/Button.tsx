@@ -48,7 +48,7 @@ const sizes: Record<ButtonSize, string> = {
   lg: "h-10 px-4 text-body",
 };
 
-export function Spinner({ className }: { className?: string }) {
+export function Spinner({ className }: { className?: string | undefined }) {
   return (
     <span
       aria-hidden="true"

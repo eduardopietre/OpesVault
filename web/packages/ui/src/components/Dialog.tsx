@@ -66,7 +66,12 @@ export function Dialog({
           />
         )}
       </div>
-      {children ? <div className="min-h-0 flex-1 overflow-y-auto px-5 py-3">{children}</div> : null}
+      {children ? (
+        // Focusable so a long body scrolls with the keyboard too.
+        <div tabIndex={0} className="min-h-0 flex-1 overflow-y-auto rounded-sm px-5 py-3">
+          {children}
+        </div>
+      ) : null}
       {footer ? (
         <div className="flex flex-col-reverse gap-2 border-t border-separator px-5 py-3 tablet:flex-row tablet:justify-end [&>button]:w-full tablet:[&>button]:w-auto">
           {footer}
@@ -111,7 +116,7 @@ export interface SheetProps {
   children: ReactNode;
   /** Visually hides the title (the drawer shows the sidebar's own header instead). */
   hideTitle?: boolean;
-  className?: string;
+  className?: string | undefined;
 }
 
 /** A panel that slides in from an edge: the drawer, the inspector on medium screens, "Mais" on phones. */

@@ -1,0 +1,188 @@
+/*
+ * Design tokens (docs/16 §2, docs/18 §5.3): the desktop's ui/theme.py ported to CSS custom properties.
+ *
+ * Light is the default. Dark follows the system unless the user chose a theme: the html element carries
+ * data-theme="light" or data-theme="dark" for an explicit choice and nothing for "follow the system".
+ * Components never use raw colors: Tailwind utilities map to these variables (index.css, @theme inline).
+ */
+
+:root {
+  color-scheme: light;
+
+  /* Surfaces (theme.py Tokens). */
+  --ov-window: #f2f2f4; /* chrome: sidebar, top bar */
+  --ov-content: #ffffff; /* main working surface */
+  --ov-raised: #ffffff; /* inputs, tables, dialogs */
+  --ov-sunken: #ebebef; /* wells: segmented controls, skeletons */
+  --ov-alternate: #f7f7f9; /* zebra rows */
+  --ov-separator: #dcdce0;
+  --ov-separator-strong: #c4c4ca; /* control borders */
+
+  /* Text in three levels; secondary stays AA on content and window. */
+  --ov-text: #1d1d1f;
+  --ov-secondary: #5b5b61;
+  --ov-tertiary: #8a8a90; /* placeholders and disabled only: below AA for body text */
+
+  /* Accent: primary action, selection in tables, focus. */
+  --ov-accent: #0a64c8; /* accent as text and icon */
+  --ov-accent-fill: #0a64c8; /* primary button background (white text: 5.6:1) */
+  --ov-accent-fill-hover: #0856ad;
+  --ov-accent-text: #ffffff;
+  --ov-accent-soft: #e6effa; /* quiet accent wash: active chips, current day */
+  --ov-focus: #0a64c8;
+  --ov-selection: #0a64c8;
+  --ov-selection-inactive: #dcdce2;
+  --ov-hover: #ececf0;
+  --ov-pressed: #e2e2e8;
+
+  /* Tones: positive, negative (muted: a loss is information, not an alarm) and warning. */
+  --ov-positive: #2a7a46;
+  --ov-positive-soft: #e5f2e9;
+  --ov-negative: #a63830;
+  --ov-negative-soft: #f8e7e5;
+  --ov-warning: #8a5a00;
+  --ov-warning-soft: #fbf0d9;
+
+  /* Elevation: overlays float above the content with a shadow, never with a heavy border. */
+  --ov-scrim: rgb(20 20 24 / 0.32);
+  --ov-shadow-sm: 0 1px 2px rgb(16 16 20 / 0.06), 0 1px 1px rgb(16 16 20 / 0.04);
+  --ov-shadow-md: 0 4px 12px rgb(16 16 20 / 0.08), 0 1px 3px rgb(16 16 20 / 0.06);
+  --ov-shadow-lg: 0 16px 40px rgb(16 16 20 / 0.16), 0 4px 12px rgb(16 16 20 / 0.08);
+
+  /* Chart series (dataviz reference palette, validated in light and dark; fixed order, never cycled). */
+  --ov-chart-1: #2a78d6;
+  --ov-chart-2: #eb6834;
+  --ov-chart-3: #1baf7a;
+  --ov-chart-4: #eda100;
+  --ov-chart-5: #e87ba4;
+  --ov-chart-6: #4a3aa7;
+  --ov-chart-grid: #e6e6ea;
+
+  /* Spacing (theme.py SPACE_*): inside a control, related items, within a group, between groups, sections. */
+  --ov-space-xs: 4px;
+  --ov-space-s: 8px;
+  --ov-space-m: 12px;
+  --ov-space-l: 16px;
+  --ov-space-xl: 24px;
+  --ov-space-xxl: 32px;
+
+  /* Radii: 6 px controls (theme.py RADIUS), larger for cards, sheets and dialogs on the web. */
+  --ov-radius-sm: 4px;
+  --ov-radius: 6px;
+  --ov-radius-lg: 10px;
+  --ov-radius-xl: 14px;
+
+  /* Rows. */
+  --ov-row-height: 32px; /* 26 px on the desktop; touch and pointer on the web */
+  --ov-nav-row-height: 32px;
+
+  /* Type scale (theme.py): one variable family, two weights (400 and 600), tabular figures everywhere. */
+  --ov-font-sans:
+    "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --ov-text-caption: 12px;
+  --ov-text-body: 14px;
+  --ov-text-headline: 16px;
+  --ov-text-title: 22px;
+  --ov-text-figure: 28px;
+
+  /* Motion (docs/18 §5.2): three durations and their curves. Only transform and opacity animate. */
+  --ov-duration-fast: 120ms;
+  --ov-duration-base: 200ms;
+  --ov-duration-slow: 320ms;
+  --ov-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ov-ease-enter: cubic-bezier(0, 0, 0, 1);
+  --ov-ease-exit: cubic-bezier(0.3, 0, 1, 1);
+}
+
+/* Dark values, declared for the system setting and again for the explicit choice. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --ov-window: #1f1f22;
+    --ov-content: #18181a;
+    --ov-raised: #252528;
+    --ov-sunken: #2c2c30;
+    --ov-alternate: #1d1d20;
+    --ov-separator: #36363b;
+    --ov-separator-strong: #4a4a50;
+    --ov-text: #f2f2f4;
+    --ov-secondary: #b0b0b6;
+    --ov-tertiary: #86868c;
+    --ov-accent: #6aa8f5;
+    --ov-accent-fill: #2b6cc4;
+    --ov-accent-fill-hover: #3479d4;
+    --ov-accent-text: #ffffff;
+    --ov-accent-soft: #1d3150;
+    --ov-focus: #6aa8f5;
+    --ov-selection: #2f6fc0;
+    --ov-selection-inactive: #3a3a40;
+    --ov-hover: #2c2c30;
+    --ov-pressed: #35353a;
+    --ov-positive: #5cbf7d;
+    --ov-positive-soft: #1c3325;
+    --ov-negative: #e8867c;
+    --ov-negative-soft: #3d2220;
+    --ov-warning: #e0a43a;
+    --ov-warning-soft: #3a2d14;
+    --ov-scrim: rgb(0 0 0 / 0.55);
+    --ov-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+    --ov-shadow-md: 0 4px 12px rgb(0 0 0 / 0.45), 0 1px 3px rgb(0 0 0 / 0.3);
+    --ov-shadow-lg: 0 16px 40px rgb(0 0 0 / 0.6), 0 4px 12px rgb(0 0 0 / 0.35);
+    --ov-chart-1: #3987e5;
+    --ov-chart-2: #d95926;
+    --ov-chart-3: #199e70;
+    --ov-chart-4: #c98500;
+    --ov-chart-5: #d55181;
+    --ov-chart-6: #9085e9;
+    --ov-chart-grid: #303035;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ov-window: #1f1f22;
+  --ov-content: #18181a;
+  --ov-raised: #252528;
+  --ov-sunken: #2c2c30;
+  --ov-alternate: #1d1d20;
+  --ov-separator: #36363b;
+  --ov-separator-strong: #4a4a50;
+  --ov-text: #f2f2f4;
+  --ov-secondary: #b0b0b6;
+  --ov-tertiary: #86868c;
+  --ov-accent: #6aa8f5;
+  --ov-accent-fill: #2b6cc4;
+  --ov-accent-fill-hover: #3479d4;
+  --ov-accent-text: #ffffff;
+  --ov-accent-soft: #1d3150;
+  --ov-focus: #6aa8f5;
+  --ov-selection: #2f6fc0;
+  --ov-selection-inactive: #3a3a40;
+  --ov-hover: #2c2c30;
+  --ov-pressed: #35353a;
+  --ov-positive: #5cbf7d;
+  --ov-positive-soft: #1c3325;
+  --ov-negative: #e8867c;
+  --ov-negative-soft: #3d2220;
+  --ov-warning: #e0a43a;
+  --ov-warning-soft: #3a2d14;
+  --ov-scrim: rgb(0 0 0 / 0.55);
+  --ov-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+  --ov-shadow-md: 0 4px 12px rgb(0 0 0 / 0.45), 0 1px 3px rgb(0 0 0 / 0.3);
+  --ov-shadow-lg: 0 16px 40px rgb(0 0 0 / 0.6), 0 4px 12px rgb(0 0 0 / 0.35);
+  --ov-chart-1: #3987e5;
+  --ov-chart-2: #d95926;
+  --ov-chart-3: #199e70;
+  --ov-chart-4: #c98500;
+  --ov-chart-5: #d55181;
+  --ov-chart-6: #9085e9;
+  --ov-chart-grid: #303035;
+}
+
+/* Reduced motion (docs/18 §5.2): nothing moves; short fades stay. Motion components read the same setting. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --ov-duration-base: 120ms;
+    --ov-duration-slow: 120ms;
+  }
+}

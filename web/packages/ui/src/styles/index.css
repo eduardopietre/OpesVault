@@ -1,0 +1,285 @@
+/*
+ * The design system stylesheet: the embedded variable font, the tokens, Tailwind mapped onto them and the
+ * few rules that utilities cannot express (container queries with fixed thresholds, native dialogs,
+ * reduced motion). Imported once by the app entry; no remote font or stylesheet (docs/18 §3.7).
+ */
+@import "@fontsource-variable/inter/index.css";
+@import "tailwindcss";
+@import "./tokens.css";
+
+/* Tailwind scans the components of this package (a workspace link is not scanned automatically). */
+@source "../";
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+@theme {
+  /* No default palette: every color comes from a token. */
+  --color-*: initial;
+  --font-*: initial;
+  --breakpoint-tablet: 640px;
+  --breakpoint-medium: 1024px;
+  --breakpoint-wide: 1440px;
+}
+
+@theme inline {
+  --color-window: var(--ov-window);
+  --color-content: var(--ov-content);
+  --color-raised: var(--ov-raised);
+  --color-sunken: var(--ov-sunken);
+  --color-alternate: var(--ov-alternate);
+  --color-separator: var(--ov-separator);
+  --color-separator-strong: var(--ov-separator-strong);
+  --color-text: var(--ov-text);
+  --color-secondary: var(--ov-secondary);
+  --color-tertiary: var(--ov-tertiary);
+  --color-accent: var(--ov-accent);
+  --color-accent-fill: var(--ov-accent-fill);
+  --color-accent-fill-hover: var(--ov-accent-fill-hover);
+  --color-accent-text: var(--ov-accent-text);
+  --color-accent-soft: var(--ov-accent-soft);
+  --color-focus: var(--ov-focus);
+  --color-selection: var(--ov-selection);
+  --color-selection-inactive: var(--ov-selection-inactive);
+  --color-hover: var(--ov-hover);
+  --color-pressed: var(--ov-pressed);
+  --color-positive: var(--ov-positive);
+  --color-positive-soft: var(--ov-positive-soft);
+  --color-negative: var(--ov-negative);
+  --color-negative-soft: var(--ov-negative-soft);
+  --color-warning: var(--ov-warning);
+  --color-warning-soft: var(--ov-warning-soft);
+  --color-scrim: var(--ov-scrim);
+  --color-transparent: transparent;
+  --color-current: currentColor;
+
+  --font-sans: var(--ov-font-sans);
+
+  --text-caption: var(--ov-text-caption);
+  --text-caption--line-height: 16px;
+  --text-body: var(--ov-text-body);
+  --text-body--line-height: 20px;
+  --text-headline: var(--ov-text-headline);
+  --text-headline--line-height: 22px;
+  --text-title: var(--ov-text-title);
+  --text-title--line-height: 28px;
+  --text-figure: var(--ov-text-figure);
+  --text-figure--line-height: 34px;
+
+  --radius-sm: var(--ov-radius-sm);
+  --radius-md: var(--ov-radius);
+  --radius-lg: var(--ov-radius-lg);
+  --radius-xl: var(--ov-radius-xl);
+
+  --shadow-sm: var(--ov-shadow-sm);
+  --shadow-md: var(--ov-shadow-md);
+  --shadow-lg: var(--ov-shadow-lg);
+
+  --ease-standard: var(--ov-ease-standard);
+  --ease-enter: var(--ov-ease-enter);
+  --ease-exit: var(--ov-ease-exit);
+}
+
+@layer base {
+  html {
+    font-family: var(--ov-font-sans);
+    font-size: var(--ov-text-body);
+    line-height: 20px;
+    color: var(--ov-text);
+    background: var(--ov-window);
+    font-feature-settings:
+      "tnum" 1,
+      "cv11" 1; /* tabular figures: amounts line up in columns */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-size-adjust: 100%;
+  }
+  body {
+    margin: 0;
+    min-height: 100dvh;
+    background: var(--ov-window);
+    color: var(--ov-text);
+  }
+  /* Focus is always visible on keyboard focus, in the accent color, outside the control. */
+  :focus-visible {
+    outline: 2px solid var(--ov-focus);
+    outline-offset: 2px;
+    border-radius: inherit;
+  }
+  ::selection {
+    background: var(--ov-accent-soft);
+  }
+  /* Thin scroll bars in the theme's colors. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--ov-separator-strong) transparent;
+  }
+  /* A modal dialog is open: the page under it does not scroll. */
+  html:has(dialog[open][data-ov-modal]) {
+    overflow: hidden;
+  }
+  button,
+  [role="button"] {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: default;
+  }
+}
+
+@layer components {
+  /* Native dialog used as a transparent, full-viewport layer; the panel inside carries the look. */
+  dialog.ov-layer {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    overflow: hidden;
+  }
+  dialog.ov-layer::backdrop {
+    background: transparent;
+  }
+
+  /* Adaptive (docs/16 §4 rule 5): stacked by default; side by side once the container has room. */
+  .ov-adaptive {
+    container-type: inline-size;
+    min-width: 0;
+  }
+  .ov-adaptive > .ov-adaptive-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--ov-adaptive-gap, var(--ov-space-xl));
+    align-items: start;
+  }
+  @container (min-width: 720px) {
+    .ov-adaptive[data-at="720"] > .ov-adaptive-grid {
+      grid-template-columns: var(--ov-adaptive-cols);
+    }
+    .ov-adaptive[data-at="720"][data-first-right] > .ov-adaptive-grid > :first-child {
+      order: 2;
+    }
+  }
+  @container (min-width: 1000px) {
+    .ov-adaptive[data-at="1000"] > .ov-adaptive-grid {
+      grid-template-columns: var(--ov-adaptive-cols);
+    }
+    .ov-adaptive[data-at="1000"][data-first-right] > .ov-adaptive-grid > :first-child {
+      order: 2;
+    }
+  }
+  @container (min-width: 1200px) {
+    .ov-adaptive[data-at="1200"] > .ov-adaptive-grid {
+      grid-template-columns: var(--ov-adaptive-cols);
+    }
+    .ov-adaptive[data-at="1200"][data-first-right] > .ov-adaptive-grid > :first-child {
+      order: 2;
+    }
+  }
+  @container (min-width: 1300px) {
+    .ov-adaptive[data-at="1300"] > .ov-adaptive-grid {
+      grid-template-columns: var(--ov-adaptive-cols);
+    }
+    .ov-adaptive[data-at="1300"][data-first-right] > .ov-adaptive-grid > :first-child {
+      order: 2;
+    }
+  }
+  @container (min-width: 1400px) {
+    .ov-adaptive[data-at="1400"] > .ov-adaptive-grid {
+      grid-template-columns: var(--ov-adaptive-cols);
+    }
+    .ov-adaptive[data-at="1400"][data-first-right] > .ov-adaptive-grid > :first-child {
+      order: 2;
+    }
+  }
+
+  /* Page header: actions beside the title when they fit, below it (wrapping) when they do not. */
+  .ov-page-header {
+    container-type: inline-size;
+  }
+  .ov-page-header > .ov-page-header-row {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ov-space-m);
+  }
+  @container (min-width: 760px) {
+    .ov-page-header > .ov-page-header-row {
+      flex-direction: row;
+      align-items: flex-end;
+      justify-content: space-between;
+    }
+    .ov-page-header .ov-page-header-actions {
+      justify-content: flex-end;
+    }
+  }
+
+  /* Skeleton: a quiet shimmer that stops when the user asks for less motion. */
+  .ov-skeleton {
+    position: relative;
+    overflow: hidden;
+    background: var(--ov-sunken);
+  }
+  .ov-skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.35), transparent);
+    animation: ov-shimmer 1.4s var(--ov-ease-standard) infinite;
+  }
+  :root[data-theme="dark"] .ov-skeleton::after {
+    background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.06), transparent);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .ov-skeleton::after {
+      background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.06), transparent);
+    }
+  }
+
+  /* Sync dot: alive while syncing. */
+  .ov-pulse {
+    animation: ov-pulse 1.2s var(--ov-ease-standard) infinite;
+  }
+}
+
+@keyframes ov-shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+@keyframes ov-menu-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-4px);
+  }
+}
+@keyframes ov-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @keyframes ov-menu-in {
+    from {
+      opacity: 0;
+    }
+  }
+  .ov-skeleton::after {
+    animation: none;
+    display: none;
+  }
+  /* CSS transitions keep only short fades and color changes. */
+  *,
+  *::before,
+  *::after {
+    transition-property: opacity, color, background-color, border-color !important;
+    transition-duration: 120ms !important;
+    scroll-behavior: auto !important;
+  }
+}

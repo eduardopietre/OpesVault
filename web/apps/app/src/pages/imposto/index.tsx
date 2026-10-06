@@ -515,7 +515,7 @@ export function Page() {
             aria-label="Resumo do ano"
             className="min-w-0 rounded-xl border border-separator bg-raised p-5 shadow-sm"
           >
-            <FigureRow figures={figures} min="10rem" />
+            <FigureRow figures={figures} min="11.5rem" />
             <p className="mt-4 text-caption text-secondary">{tax.declaration.NOTICE}</p>
           </section>
 

@@ -56,7 +56,7 @@ describe("rows of the sheets", () => {
     const found = tax.declaration.assets(ledger, 2026, null);
     const rows = assetRows(found);
     found.forEach((asset, index) => {
-      expect(rows[index]!.cells[0].includes("(sugerido)")).toBe(Boolean(asset.suggested && asset.group));
+      expect(rows[index]!.cells[0]!.includes("(sugerido)")).toBe(Boolean(asset.suggested && asset.group));
       if (!asset.group) expect(rows[index]!.cells[0]).toBe("a definir");
     });
   });
@@ -80,7 +80,12 @@ describe("rows of the sheets", () => {
       withheld: Dec.from("4000"),
       deductions: new Map([["Saúde", Dec.from("12000")]]),
       left_out: new Map(),
-      simplified: { name: "Simplificada", deductions: Dec.from("10000"), base: Dec.from("40000"), tax: Dec.from("3000") },
+      simplified: {
+        name: "Simplificada",
+        deductions: Dec.from("10000"),
+        base: Dec.from("40000"),
+        tax: Dec.from("3000"),
+      },
       itemized: { name: "Completa", deductions: Dec.from("12000"), base: Dec.from("38000"), tax: Dec.from("2500") },
       missing: [],
     };
@@ -186,7 +191,9 @@ describe("what the dialogs read", () => {
     ];
     const brackets = readBrackets(rows);
     expect(brackets).toHaveLength(2);
-    expect(brackets[0]!.up_to!.eq("28467.20") && brackets[0]!.rate.eq("0.075") && brackets[0]!.deduction.isZero()).toBe(true);
+    expect(brackets[0]!.up_to!.eq("28467.20") && brackets[0]!.rate.eq("0.075") && brackets[0]!.deduction.isZero()).toBe(
+      true,
+    );
     expect(brackets[1]!.up_to).toBeNull();
     expect(() => readBrackets([{ key: 0, upTo: "x", rate: "", deduction: "" }])).toThrow(/Faixa 1: use valores como/);
   });

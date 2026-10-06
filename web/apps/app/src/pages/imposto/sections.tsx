@@ -91,15 +91,14 @@ export function DocumentsSection({
       description="Informes e comprovantes que a declaração pede."
       open={open}
       onOpenChange={onOpenChange}
-      actions={
-        <>
-          <EditButton onClick={() => onOpenItem()}>Abrir…</EditButton>
-          <EditButton onClick={onToggle}>Recebido / não recebido</EditButton>
-        </>
-      }
     >
       {rows.length ? (
         <>
+          {/* in the body, not on the title line: the title ("faltam 6") would be cut on a phone */}
+          <div className="mb-2 flex flex-wrap gap-2">
+            <EditButton onClick={() => onOpenItem()}>Abrir…</EditButton>
+            <EditButton onClick={onToggle}>Recebido / não recebido</EditButton>
+          </div>
           <SheetTable
             label="Documentos do ano"
             cols={DOCUMENTS}

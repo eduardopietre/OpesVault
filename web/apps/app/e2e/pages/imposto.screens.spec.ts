@@ -35,7 +35,9 @@ for (const size of SIZES) {
         await settle(page, 700);
         await pageShot(page, size, `${OUT}imposto-${suffix}.png`);
 
-        await page.getByRole("button", { name: /^Informar CPF\/CNPJ… \(CPF\/CNPJ de quem recebeu: Consulta Pediatra\)/ }).click();
+        await page
+          .getByRole("button", { name: /^Informar CPF\/CNPJ… \(CPF\/CNPJ de quem recebeu: Consulta Pediatra\)/ })
+          .click();
         const taxId = page.getByRole("dialog", { name: "CPF ou CNPJ" });
         await taxId.waitFor();
         await taxId.getByLabel("CPF ou CNPJ").fill("11222333000180");
@@ -76,7 +78,11 @@ for (const size of SIZES) {
       test("relatório para a declaração", async ({ page }) => {
         await page.goto("/imposto-de-renda?demo&ref=year:2026");
         await expect(page.getByRole("heading", { level: 1, name: "Imposto de renda" })).toBeVisible();
-        await page.getByRole("button", { name: "Declarante" }).or(page.getByRole("combobox", { name: "Declarante" })).first().click();
+        await page
+          .getByRole("button", { name: "Declarante" })
+          .or(page.getByRole("combobox", { name: "Declarante" }))
+          .first()
+          .click();
         await page.getByRole("option", { name: "Ana", exact: true }).click();
         await page.getByRole("button", { name: "Mais", exact: true }).click();
         await page.evaluate(() => {

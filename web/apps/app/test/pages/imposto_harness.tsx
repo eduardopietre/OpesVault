@@ -48,7 +48,8 @@ export async function pick(user: User, grid: HTMLElement, text: string | RegExp)
   await user.click(rowOf(grid, text));
 }
 
-export const dialog = (name: string | RegExp) => screen.findByRole("dialog", { name });
+export const dialog = (name: string | RegExp, options: { timeout?: number } = {}) =>
+  screen.findByRole("dialog", { name }, options);
 
 export const closed = (name: string | RegExp) =>
   waitFor(() => expect(screen.queryByRole("dialog", { name })).toBeNull());
@@ -110,10 +111,16 @@ export function seedVariableIncome(ledger: Ledger, options: { rates?: boolean } 
   const bank = account(ledger, "Banco A");
   const ana = member(ledger, "Ana");
   ledger.recordOpeningBalance(bank.id, "100000.00", d(YEAR - 1, 12, 1));
-  const position = investments.service.createPosition(ledger, "PETR4", investments.model.AssetClass.STOCK, d(YEAR, 1, 2), {
-    mode: investments.model.TrackingMode.QUANTITY,
-    holder_id: ana.id,
-  });
+  const position = investments.service.createPosition(
+    ledger,
+    "PETR4",
+    investments.model.AssetClass.STOCK,
+    d(YEAR, 1, 2),
+    {
+      mode: investments.model.TrackingMode.QUANTITY,
+      holder_id: ana.id,
+    },
+  );
   investments.trades.buy(ledger, position.id, d(YEAR, 1, 2), "1000", "20.00", bank.id);
   if (options.rates !== false) {
     tax.records.setVariableRules(

@@ -17,9 +17,48 @@ import { saveTextFile } from "../visao-geral/save_file.ts";
 import { taxReportData, taxReportFile, taxReportFileName, type ReportSection } from "./report.ts";
 import type { TaxReportSearch } from "./report_search.ts";
 
+/** On a phone a row is a small card (many columns do not fit); on paper and from the tablet it is the table. */
+function Cards({ table }: { table: ReportTable }) {
+  if (table.rows.length === 0) return <p className="text-body text-secondary">Nada no período.</p>;
+  return (
+    <ul className="flex flex-col tablet:hidden print:hidden">
+      {table.rows.map((row, rowIndex) => (
+        <li key={rowIndex} className="border-b border-separator py-2">
+          <dl className="flex flex-col gap-1 text-body">
+            {row.map((cell, index) => (
+              <div key={index} className="flex items-baseline justify-between gap-3">
+                <dt className="w-2/5 shrink-0 text-caption text-secondary [overflow-wrap:anywhere]">
+                  {table.headers[index] || "Item"}
+                </dt>
+                <dd
+                  className={cn(
+                    "min-w-0 flex-1 text-right [overflow-wrap:anywhere]",
+                    table.numeric.includes(index) && "tabular-nums",
+                  )}
+                >
+                  {cellText(cell)}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function Table({ table }: { table: ReportTable }) {
   return (
-    <table className="w-full border-collapse text-body">
+    <>
+      <Cards table={table} />
+      <PrintTable table={table} />
+    </>
+  );
+}
+
+function PrintTable({ table }: { table: ReportTable }) {
+  return (
+    <table className="hidden w-full border-collapse text-body tablet:table print:table">
       <caption className="sr-only">{table.title}</caption>
       <thead>
         <tr className="border-b border-secondary">

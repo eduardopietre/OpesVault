@@ -3,9 +3,19 @@
  * the read-only lock, the dialog slot (one at a time, mounted with a fresh key so it animates out with its
  * content) and the one-shot reveal a link asks of a tab.
  */
-import { Button, DataTable, EmptyState, useMediaQuery, type ButtonProps, type DataTableProps } from "@opesvault/ui";
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  Button,
+  DataTable,
+  EmptyState,
+  useElementWidth,
+  useMediaQuery,
+  type ButtonProps,
+  type DataTableProps,
+} from "@opesvault/ui";
+import { TriangleAlert } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useWorkspace } from "../../data/react.tsx";
+import { fitColumns, type TierColumn } from "./columns.ts";
 
 export const LOCKED = "Outra aba ou outro aparelho está editando este projeto. Atualize para editar.";
 
@@ -13,6 +23,20 @@ export const LOCKED = "Outra aba ou outro aparelho está editando este projeto. 
 export function useLock(): { locked: boolean; tip: string | undefined } {
   const locked = useWorkspace().readOnly;
   return { locked, tip: locked ? LOCKED : undefined };
+}
+
+/**
+ * A value that needs attention (a difference from the bank, a rule the family contradicts): the warning shape
+ * before the text, which keeps the table's own text color, so the state is never by color alone and the text
+ * keeps its contrast on a selected row.
+ */
+export function Warn({ children }: { children: ReactNode }) {
+  return (
+    <span className="inline-flex min-w-0 items-center gap-1.5 font-medium">
+      <TriangleAlert aria-hidden="true" className="size-3.5 shrink-0 text-warning" />
+      <span className="truncate">{children}</span>
+    </span>
+  );
 }
 
 /** The commands of a tab, above its table; they wrap on narrow screens. */
@@ -36,13 +60,20 @@ export function useTableHeight(count: number, max: number): string {
   return phone ? "none" : `${Math.min(Math.max(count, 1), max) * 36 + 38}px`;
 }
 
-/** A work table that fits its rows. */
+/** A work table that fits its rows and shows the columns its room allows (`columns.ts`). */
 export function ListTable<T extends object>({
   max = 10,
+  columns,
   ...props
-}: Omit<DataTableProps<T>, "height"> & { max?: number }) {
+}: Omit<DataTableProps<T>, "height" | "columns"> & { max?: number; columns: readonly TierColumn<T>[] }) {
+  const [measure, width] = useElementWidth<HTMLDivElement>();
   const height = useTableHeight(props.rows.length, max);
-  return <DataTable {...props} height={height} />;
+  const fitted = useMemo(() => fitColumns(columns, width), [columns, width]);
+  return (
+    <div ref={measure} className="min-w-0">
+      <DataTable {...props} columns={fitted} height={height} />
+    </div>
+  );
 }
 
 /** An empty table or chart: what it is, why it is empty and what to do. */

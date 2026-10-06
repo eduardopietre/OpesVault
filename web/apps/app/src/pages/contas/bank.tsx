@@ -3,7 +3,7 @@
  * savings) and the investments held there; the composition of the selected one, values on a date and the
  * investments' characteristics. One holder or two (a joint account), kept through `dom.banking`.
  */
-import { confirm, type DataColumn, Collapsible, MenuButton, notify } from "@opesvault/ui";
+import { confirm, Collapsible, MenuButton, notify } from "@opesvault/ui";
 import { dom, type Id } from "@opesvault/domain";
 import { useState } from "react";
 import { useAct, useLedger, useWorkspace } from "../../data/react.tsx";
@@ -12,36 +12,46 @@ import { InvestmentDialog } from "../../dialogs/bank_investment.tsx";
 import { ValuesDialog } from "../../dialogs/bank_values.tsx";
 import { useUndo } from "../../shell/undo.tsx";
 import { type TabReveal, EditButton, Empty, ListTable, Toolbar, useDialog, useLock, useTabReveal } from "./parts.tsx";
+import type { TierColumn } from "./columns.ts";
 import { bankRows, partRows, whereLine, type BankRow, type PartRow } from "./rows.ts";
 
 const { banking } = dom;
 
-const COLUMNS: DataColumn<BankRow>[] = [
-  { id: "name", header: "Conta", cell: (r) => r.name, sortValue: (r) => r.name, grow: 2, width: 160 },
-  { id: "bank", header: "Banco", cell: (r) => r.bank, sortValue: (r) => r.bank, grow: 2, width: 150 },
-  { id: "branch", header: "Agência", cell: (r) => r.branch, width: 90 },
-  { id: "number", header: "Conta nº", cell: (r) => r.number, width: 130 },
+const COLUMNS: TierColumn<BankRow>[] = [
+  { id: "name", header: "Conta", cell: (r) => r.name, sortValue: (r) => r.name, grow: 2, width: 130, tier: 1 },
+  { id: "bank", header: "Banco", cell: (r) => r.bank, sortValue: (r) => r.bank, grow: 2, width: 140, tier: 1 },
+  { id: "branch", header: "Agência", cell: (r) => r.branch, width: 72, tier: 5 },
+  { id: "number", header: "Conta nº", cell: (r) => r.number, width: 100, tier: 5 },
   {
     id: "holders",
     header: "Titulares",
     cell: (r) => r.holders,
     sortValue: (r) => r.holders,
     grow: 2,
-    width: 150,
+    width: 140,
+    tier: 2,
   },
-  { id: "checking", header: "Corrente", cell: (r) => r.checking, align: "end", width: 120, priority: 2 },
-  { id: "savings", header: "Poupança", cell: (r) => r.savings, align: "end", width: 120, priority: 2 },
-  { id: "investments", header: "Investimentos", cell: (r) => r.investments, align: "end", width: 130, priority: 2 },
-  { id: "total", header: "Total", cell: (r) => r.total, sortValue: (r) => r.totalCents, align: "end", width: 130 },
+  { id: "checking", header: "Corrente", cell: (r) => r.checking, align: "end", width: 104, tier: 3 },
+  { id: "savings", header: "Poupança", cell: (r) => r.savings, align: "end", width: 104, tier: 4 },
+  { id: "investments", header: "Investimentos", cell: (r) => r.investments, align: "end", width: 112, tier: 3 },
+  {
+    id: "total",
+    header: "Total",
+    cell: (r) => r.total,
+    sortValue: (r) => r.totalCents,
+    align: "end",
+    width: 110,
+    tier: 1,
+  },
 ];
 
-const PART_COLUMNS: DataColumn<PartRow>[] = [
-  { id: "label", header: "Item", cell: (r) => r.label, grow: 2, width: 160 },
-  { id: "irpf", header: "Tipo no IRPF", cell: (r) => r.irpf, grow: 2, width: 200 },
-  { id: "yield", header: "Rentabilidade", cell: (r) => r.yield, grow: 1, width: 130 },
-  { id: "maturity", header: "Vencimento", cell: (r) => r.maturity, width: 110 },
-  { id: "tax", header: "Tributação", cell: (r) => r.tax, grow: 1, width: 150 },
-  { id: "today", header: "Valor hoje", cell: (r) => r.today, align: "end", width: 120 },
+const PART_COLUMNS: TierColumn<PartRow>[] = [
+  { id: "label", header: "Item", cell: (r) => r.label, grow: 2, width: 150, tier: 1 },
+  { id: "irpf", header: "Tipo no IRPF", cell: (r) => r.irpf, grow: 2, width: 200, tier: 5 },
+  { id: "yield", header: "Rentabilidade", cell: (r) => r.yield, grow: 1, width: 120, tier: 2 },
+  { id: "maturity", header: "Vencimento", cell: (r) => r.maturity, width: 100, tier: 3 },
+  { id: "tax", header: "Tributação", cell: (r) => r.tax, grow: 1, width: 140, tier: 5 },
+  { id: "today", header: "Valor hoje", cell: (r) => r.today, align: "end", width: 110, tier: 1 },
   {
     id: "lastBank",
     header: "Último valor do banco",
@@ -49,7 +59,7 @@ const PART_COLUMNS: DataColumn<PartRow>[] = [
     align: "end",
     grow: 1,
     width: 190,
-    priority: 2,
+    tier: 4,
   },
 ];
 

@@ -3,7 +3,7 @@
  * Integrantes. Each is a table with its commands above; a double click or Enter edits the row.
  */
 import { AccountType, type Id } from "@opesvault/domain";
-import { Button, type DataColumn, notify } from "@opesvault/ui";
+import { Button, notify } from "@opesvault/ui";
 import { useState } from "react";
 import { useLedger, useWorkspace } from "../../data/react.tsx";
 import { CardDialog } from "../../dialogs/accounts_card.tsx";
@@ -22,13 +22,14 @@ import {
   type MemberRow,
 } from "./rows.ts";
 import { type TabReveal, EditButton, Empty, ListTable, Toolbar, useDialog, useTabReveal } from "./parts.tsx";
+import type { TierColumn } from "./columns.ts";
 
 // ── cards ────────────────────────────────────────
 
-const CARD_COLUMNS: DataColumn<CardRow>[] = [
-  { id: "name", header: "Cartão", cell: (r) => r.name, sortValue: (r) => r.name, grow: 2, width: 160 },
-  { id: "holder", header: "Portador", cell: (r) => r.holder, sortValue: (r) => r.holder, grow: 1, width: 120 },
-  { id: "last4", header: "Final", cell: (r) => r.last4, sortValue: (r) => r.last4, width: 80 },
+const CARD_COLUMNS: TierColumn<CardRow>[] = [
+  { id: "name", header: "Cartão", cell: (r) => r.name, sortValue: (r) => r.name, grow: 2, width: 160, tier: 1 },
+  { id: "holder", header: "Portador", cell: (r) => r.holder, sortValue: (r) => r.holder, grow: 1, width: 120, tier: 2 },
+  { id: "last4", header: "Final", cell: (r) => r.last4, sortValue: (r) => r.last4, width: 70, tier: 3 },
   {
     id: "closing",
     header: "Fechamento",
@@ -36,7 +37,7 @@ const CARD_COLUMNS: DataColumn<CardRow>[] = [
     sortValue: (r) => r.closing,
     align: "end",
     width: 110,
-    priority: 2,
+    tier: 4,
   },
   {
     id: "due",
@@ -44,7 +45,8 @@ const CARD_COLUMNS: DataColumn<CardRow>[] = [
     cell: (r) => `dia ${r.due}`,
     sortValue: (r) => r.due,
     align: "end",
-    width: 110,
+    width: 100,
+    tier: 1,
   },
   {
     id: "open",
@@ -52,7 +54,8 @@ const CARD_COLUMNS: DataColumn<CardRow>[] = [
     cell: (r) => money(r.open),
     sortValue: (r) => cents(r.open),
     align: "end",
-    width: 150,
+    width: 140,
+    tier: 1,
   },
 ];
 
@@ -123,9 +126,9 @@ export function CardsTab({ reveal }: { reveal?: TabReveal<Id> | null }) {
 
 // ── categories ───────────────────────────────────
 
-const CATEGORY_COLUMNS: DataColumn<CategoryRow>[] = [
-  { id: "name", header: "Categoria", cell: (r) => r.name, sortValue: (r) => r.name, grow: 2, width: 180 },
-  { id: "kind", header: "Tipo", cell: (r) => r.kind, sortValue: (r) => r.kind, width: 100 },
+const CATEGORY_COLUMNS: TierColumn<CategoryRow>[] = [
+  { id: "name", header: "Categoria", cell: (r) => r.name, sortValue: (r) => r.name, grow: 2, width: 180, tier: 1 },
+  { id: "kind", header: "Tipo", cell: (r) => r.kind, sortValue: (r) => r.kind, width: 100, tier: 1 },
   {
     id: "parent",
     header: "Dentro de",
@@ -133,6 +136,7 @@ const CATEGORY_COLUMNS: DataColumn<CategoryRow>[] = [
     sortValue: (r) => r.parent,
     grow: 1,
     width: 140,
+    tier: 3,
   },
   {
     id: "deductible",
@@ -141,6 +145,7 @@ const CATEGORY_COLUMNS: DataColumn<CategoryRow>[] = [
     sortValue: (r) => r.deductible,
     grow: 1,
     width: 160,
+    tier: 2,
   },
 ];
 
@@ -211,10 +216,10 @@ export function CategoriesTab() {
 
 // ── members ──────────────────────────────────────
 
-const MEMBER_COLUMNS: DataColumn<MemberRow>[] = [
-  { id: "name", header: "Integrante", cell: (r) => r.name, sortValue: (r) => r.name, grow: 2, width: 180 },
-  { id: "role", header: "Papel", cell: (r) => r.role, sortValue: (r) => r.role, width: 130 },
-  { id: "status", header: "Situação", cell: (r) => r.status, sortValue: (r) => r.status, width: 110 },
+const MEMBER_COLUMNS: TierColumn<MemberRow>[] = [
+  { id: "name", header: "Integrante", cell: (r) => r.name, sortValue: (r) => r.name, grow: 2, width: 180, tier: 1 },
+  { id: "role", header: "Papel", cell: (r) => r.role, sortValue: (r) => r.role, width: 130, tier: 1 },
+  { id: "status", header: "Situação", cell: (r) => r.status, sortValue: (r) => r.status, width: 110, tier: 1 },
 ];
 
 export function MembersTab() {

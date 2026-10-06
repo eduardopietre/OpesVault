@@ -4,23 +4,14 @@
  * without a click; a payment after the due date settles the overdue bill first.
  */
 import { charts, dom, ymStr, type Id, type YearMonth } from "@opesvault/domain";
-import {
-  Badge,
-  type BadgeTone,
-  Button,
-  ChartView,
-  Collapsible,
-  type DataColumn,
-  Select,
-  formatBrDate,
-  notify,
-} from "@opesvault/ui";
+import { Badge, type BadgeTone, Button, ChartView, Collapsible, Select, formatBrDate, notify } from "@opesvault/ui";
 import { useState } from "react";
 import { useLedger, useWorkspace } from "../../data/react.tsx";
 import { cardItems } from "../../dialogs/account_choices.ts";
 import { BillPaymentDialog, type BillSummary } from "../../dialogs/bill_payment.tsx";
 import { billsChartData } from "./chart.ts";
 import { type TabReveal, Empty, ListTable, Toolbar, useDialog, useLock, useTabReveal } from "./parts.tsx";
+import type { TierColumn } from "./columns.ts";
 import { billRows, cents, defaultBill, money, type BillRow } from "./rows.ts";
 
 const { cards } = dom;
@@ -39,21 +30,22 @@ const TONES: Record<dom.cards.BillStatus, BadgeTone> = {
   [cards.BillStatus.OVERDUE]: "negative",
 };
 
-const COLUMNS: DataColumn<BillRow>[] = [
+const COLUMNS: TierColumn<BillRow>[] = [
   {
     id: "due",
     header: "Vencimento",
     cell: (r) => formatBrDate(r.due),
     sortValue: (r) => r.due,
-    width: 110,
+    width: 108,
+    tier: 1,
   },
   {
     id: "closing",
     header: "Fechamento",
     cell: (r) => formatBrDate(r.closing),
     sortValue: (r) => r.closing,
-    width: 110,
-    priority: 3,
+    width: 108,
+    tier: 5,
   },
   {
     id: "charges",
@@ -61,8 +53,8 @@ const COLUMNS: DataColumn<BillRow>[] = [
     cell: (r) => money(r.charges),
     sortValue: (r) => cents(r.charges),
     align: "end",
-    width: 120,
-    priority: 3,
+    width: 100,
+    tier: 4,
   },
   {
     id: "installments",
@@ -70,8 +62,8 @@ const COLUMNS: DataColumn<BillRow>[] = [
     cell: (r) => money(r.installments),
     sortValue: (r) => cents(r.installments),
     align: "end",
-    width: 110,
-    priority: 3,
+    width: 92,
+    tier: 4,
   },
   {
     id: "credits",
@@ -79,8 +71,8 @@ const COLUMNS: DataColumn<BillRow>[] = [
     cell: (r) => money(r.credits),
     sortValue: (r) => cents(r.credits),
     align: "end",
-    width: 110,
-    priority: 3,
+    width: 92,
+    tier: 4,
   },
   {
     id: "total",
@@ -88,7 +80,8 @@ const COLUMNS: DataColumn<BillRow>[] = [
     cell: (r) => money(r.total),
     sortValue: (r) => cents(r.total),
     align: "end",
-    width: 120,
+    width: 100,
+    tier: 1,
   },
   {
     id: "paid",
@@ -96,8 +89,8 @@ const COLUMNS: DataColumn<BillRow>[] = [
     cell: (r) => money(r.paid),
     sortValue: (r) => cents(r.paid),
     align: "end",
-    width: 120,
-    priority: 2,
+    width: 100,
+    tier: 2,
   },
   {
     id: "remaining",
@@ -105,7 +98,8 @@ const COLUMNS: DataColumn<BillRow>[] = [
     cell: (r) => money(r.remaining),
     sortValue: (r) => cents(r.remaining),
     align: "end",
-    width: 120,
+    width: 100,
+    tier: 1,
   },
   {
     id: "document",
@@ -113,8 +107,8 @@ const COLUMNS: DataColumn<BillRow>[] = [
     cell: (r) => r.document,
     sortValue: (r) => r.document,
     align: "end",
-    width: 150,
-    priority: 2,
+    width: 130,
+    tier: 3,
   },
   {
     id: "status",
@@ -123,6 +117,7 @@ const COLUMNS: DataColumn<BillRow>[] = [
     sortValue: (r) => r.statusLabel,
     grow: 1,
     width: 150,
+    tier: 1,
   },
 ];
 

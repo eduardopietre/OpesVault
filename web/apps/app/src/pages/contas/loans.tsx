@@ -3,7 +3,7 @@
  * payments. The schedule is computed from the contract; the ledger's balance is the reference.
  */
 import { charts, dom, formatDateBr, type Id } from "@opesvault/domain";
-import { ChartView, Collapsible, type DataColumn, MenuButton, notify } from "@opesvault/ui";
+import { ChartView, Collapsible, MenuButton, notify } from "@opesvault/ui";
 import { useState } from "react";
 import { useGoTo } from "../../data/navigation.ts";
 import { useLedger, useWorkspace } from "../../data/react.tsx";
@@ -13,6 +13,7 @@ import { PrepaymentDialog } from "../../dialogs/loan_prepay.tsx";
 import { FigureCard, Money } from "../visao-geral/figures.tsx";
 import { scheduleChartData } from "./chart.ts";
 import { type TabReveal, EditButton, Empty, ListTable, Toolbar, useDialog, useLock, useTabReveal } from "./parts.tsx";
+import type { TierColumn } from "./columns.ts";
 import { cents, installmentRows, loanRows, money, nextInstallment, type InstallmentRow, type LoanRow } from "./rows.ts";
 
 const { loans } = dom;
@@ -23,12 +24,12 @@ export interface LoanReveal {
   pay: boolean;
 }
 
-const COLUMNS: DataColumn<LoanRow>[] = [
-  { id: "name", header: "Financiamento", cell: (r) => r.name, sortValue: (r) => r.name, grow: 2, width: 170 },
-  { id: "system", header: "Sistema", cell: (r) => r.system, sortValue: (r) => r.system, width: 100 },
-  { id: "rate", header: "Taxa", cell: (r) => r.rate, width: 160 },
-  { id: "paid", header: "Parcelas pagas", cell: (r) => r.paid, width: 130 },
-  { id: "next", header: "Próxima", cell: (r) => r.next, grow: 1, width: 180 },
+const COLUMNS: TierColumn<LoanRow>[] = [
+  { id: "name", header: "Financiamento", cell: (r) => r.name, sortValue: (r) => r.name, grow: 2, width: 170, tier: 1 },
+  { id: "system", header: "Sistema", cell: (r) => r.system, sortValue: (r) => r.system, width: 100, tier: 5 },
+  { id: "rate", header: "Taxa", cell: (r) => r.rate, width: 160, tier: 3 },
+  { id: "paid", header: "Parcelas pagas", cell: (r) => r.paid, width: 130, tier: 2 },
+  { id: "next", header: "Próxima", cell: (r) => r.next, grow: 1, width: 180, tier: 1 },
   {
     id: "outstanding",
     header: "Saldo devedor",
@@ -36,6 +37,7 @@ const COLUMNS: DataColumn<LoanRow>[] = [
     sortValue: (r) => cents(r.outstanding),
     align: "end",
     width: 130,
+    tier: 1,
   },
   {
     id: "inLedger",
@@ -44,7 +46,7 @@ const COLUMNS: DataColumn<LoanRow>[] = [
     sortValue: (r) => cents(r.inLedger),
     align: "end",
     width: 120,
-    priority: 3,
+    tier: 4,
   },
 ];
 
@@ -54,9 +56,9 @@ const STATE_TONE: Record<dom.loans.InstallmentState, string> = {
   [loans.InstallmentState.PENDING]: "",
 };
 
-const SCHEDULE_COLUMNS: DataColumn<InstallmentRow>[] = [
-  { id: "number", header: "Nº", cell: (r) => r.number, sortValue: (r) => r.number, align: "end", width: 60 },
-  { id: "due", header: "Vencimento", cell: (r) => r.due, sortValue: (r) => r.number, width: 110 },
+const SCHEDULE_COLUMNS: TierColumn<InstallmentRow>[] = [
+  { id: "number", header: "Nº", cell: (r) => r.number, sortValue: (r) => r.number, align: "end", width: 60, tier: 1 },
+  { id: "due", header: "Vencimento", cell: (r) => r.due, sortValue: (r) => r.number, width: 110, tier: 1 },
   {
     id: "payment",
     header: "Parcela",
@@ -64,6 +66,7 @@ const SCHEDULE_COLUMNS: DataColumn<InstallmentRow>[] = [
     sortValue: (r) => cents(r.payment),
     align: "end",
     width: 120,
+    tier: 1,
   },
   {
     id: "amortization",
@@ -72,7 +75,7 @@ const SCHEDULE_COLUMNS: DataColumn<InstallmentRow>[] = [
     sortValue: (r) => cents(r.amortization),
     align: "end",
     width: 120,
-    priority: 2,
+    tier: 3,
   },
   {
     id: "interest",
@@ -81,7 +84,7 @@ const SCHEDULE_COLUMNS: DataColumn<InstallmentRow>[] = [
     sortValue: (r) => cents(r.interest),
     align: "end",
     width: 110,
-    priority: 2,
+    tier: 2,
   },
   {
     id: "fees",
@@ -90,7 +93,7 @@ const SCHEDULE_COLUMNS: DataColumn<InstallmentRow>[] = [
     sortValue: (r) => cents(r.fees),
     align: "end",
     width: 130,
-    priority: 3,
+    tier: 5,
   },
   {
     id: "balanceAfter",
@@ -99,7 +102,7 @@ const SCHEDULE_COLUMNS: DataColumn<InstallmentRow>[] = [
     sortValue: (r) => cents(r.balanceAfter),
     align: "end",
     width: 130,
-    priority: 3,
+    tier: 4,
   },
   {
     id: "state",
@@ -108,6 +111,7 @@ const SCHEDULE_COLUMNS: DataColumn<InstallmentRow>[] = [
     sortValue: (r) => r.number,
     grow: 2,
     width: 150,
+    tier: 1,
   },
 ];
 

@@ -4,14 +4,15 @@
  * the balance the bank shows on a date; a difference is shown, never adjusted by itself.
  */
 import { charts, dom, ymAdd, ymOf, type Id } from "@opesvault/domain";
-import { Button, ChartPanel, Collapsible, type DataColumn, notify } from "@opesvault/ui";
+import { Button, ChartPanel, Collapsible, notify } from "@opesvault/ui";
 import { useState } from "react";
 import { useGoTo } from "../../data/navigation.ts";
 import { useLedger, useWorkspace } from "../../data/react.tsx";
 import { AccountDialog } from "../../dialogs/accounts_account.tsx";
 import { BalanceCheckDialog } from "../../dialogs/balance_check.tsx";
 import { accountChartData } from "./chart.ts";
-import { type TabReveal, EditButton, Empty, ListTable, Toolbar, useDialog, useTabReveal } from "./parts.tsx";
+import { type TabReveal, EditButton, Empty, ListTable, Toolbar, Warn, useDialog, useTabReveal } from "./parts.tsx";
+import type { TierColumn } from "./columns.ts";
 import { accountRows, cents, checkRows, money, type AccountRow, type CheckRow } from "./rows.ts";
 
 const HISTORY_MONTHS = 12;
@@ -25,9 +26,9 @@ export interface AccountReveal {
   checks: boolean;
 }
 
-const COLUMNS: DataColumn<AccountRow>[] = [
-  { id: "name", header: "Conta", cell: (r) => r.name, sortValue: (r) => r.name, grow: 2, width: 170 },
-  { id: "type", header: "Tipo", cell: (r) => r.type, sortValue: (r) => r.type, grow: 1, width: 140 },
+const COLUMNS: TierColumn<AccountRow>[] = [
+  { id: "name", header: "Conta", cell: (r) => r.name, sortValue: (r) => r.name, grow: 2, width: 150, tier: 1 },
+  { id: "type", header: "Tipo", cell: (r) => r.type, sortValue: (r) => r.type, grow: 1, width: 130, tier: 2 },
   {
     id: "institution",
     header: "Instituição",
@@ -35,7 +36,7 @@ const COLUMNS: DataColumn<AccountRow>[] = [
     sortValue: (r) => r.institution,
     grow: 1,
     width: 130,
-    priority: 3,
+    tier: 4,
   },
   {
     id: "holders",
@@ -43,8 +44,8 @@ const COLUMNS: DataColumn<AccountRow>[] = [
     cell: (r) => r.holders,
     sortValue: (r) => r.holders,
     grow: 1,
-    width: 130,
-    priority: 2,
+    width: 120,
+    tier: 3,
   },
   {
     id: "balance",
@@ -52,30 +53,33 @@ const COLUMNS: DataColumn<AccountRow>[] = [
     cell: (r) => money(r.balance),
     sortValue: (r) => cents(r.balance),
     align: "end",
-    width: 130,
+    width: 110,
+    tier: 1,
   },
   {
     id: "checked",
     header: "Conferido com o banco",
-    cell: (r) => <span className={r.diverges ? "font-medium text-warning" : undefined}>{r.checked}</span>,
+    cell: (r) => (r.diverges ? <Warn>{r.checked}</Warn> : r.checked),
     sortValue: (r) => r.checked,
     grow: 2,
-    width: 220,
+    width: 270,
+    tier: 1,
   },
 ];
 
-const CHECK_COLUMNS: DataColumn<CheckRow>[] = [
-  { id: "on", header: "Data", cell: (r) => r.on, width: 120 },
-  { id: "bank", header: "Banco", cell: (r) => r.bank, align: "end", width: 120 },
-  { id: "app", header: "Aplicativo", cell: (r) => r.app, align: "end", width: 120 },
+const CHECK_COLUMNS: TierColumn<CheckRow>[] = [
+  { id: "on", header: "Data", cell: (r) => r.on, width: 110, tier: 1 },
+  { id: "bank", header: "Banco", cell: (r) => r.bank, align: "end", width: 110, tier: 1 },
+  { id: "app", header: "Aplicativo", cell: (r) => r.app, align: "end", width: 110, tier: 1 },
   {
     id: "difference",
     header: "Diferença",
-    cell: (r) => <span className={r.matches ? undefined : "font-medium text-warning"}>{r.difference}</span>,
+    cell: (r) => (r.matches ? r.difference : <Warn>{r.difference}</Warn>),
     align: "end",
-    width: 120,
+    width: 130,
+    tier: 1,
   },
-  { id: "note", header: "Observação", cell: (r) => r.note, grow: 2, width: 160, priority: 2 },
+  { id: "note", header: "Observação", cell: (r) => r.note, grow: 2, width: 160, tier: 2 },
 ];
 
 export function AccountsTab({ reveal }: { reveal?: TabReveal<AccountReveal> | null }) {

@@ -6,18 +6,19 @@
  * categorized the same way several times (docs/05 §6).
  */
 import { importing, type Id } from "@opesvault/domain";
-import { Collapsible, type DataColumn, notify } from "@opesvault/ui";
+import { Collapsible, notify } from "@opesvault/ui";
 import { useState } from "react";
 import { useLedger, useWorkspace } from "../../data/react.tsx";
 import { ReasonDialog } from "../../dialogs/livro_prompts.tsx";
 import { useFormAct } from "../../dialogs/livro_form.tsx";
 import { RuleDialog } from "../../dialogs/rule_dialog.tsx";
-import { type TabReveal, EditButton, Empty, ListTable, Toolbar, useDialog, useTabReveal } from "./parts.tsx";
+import { type TabReveal, EditButton, Empty, ListTable, Toolbar, Warn, useDialog, useTabReveal } from "./parts.tsx";
+import type { TierColumn } from "./columns.ts";
 import { proposalRows, ruleRows, type ProposalRow, type RuleRow } from "./rows.ts";
 
 const { rules, suggestions } = importing;
 
-const COLUMNS: DataColumn<RuleRow>[] = [
+const COLUMNS: TierColumn<RuleRow>[] = [
   {
     id: "pattern",
     header: "A descrição contém",
@@ -25,8 +26,17 @@ const COLUMNS: DataColumn<RuleRow>[] = [
     sortValue: (r) => r.pattern,
     grow: 2,
     width: 170,
+    tier: 1,
   },
-  { id: "category", header: "Categoria", cell: (r) => r.category, sortValue: (r) => r.category, grow: 1, width: 140 },
+  {
+    id: "category",
+    header: "Categoria",
+    cell: (r) => r.category,
+    sortValue: (r) => r.category,
+    grow: 1,
+    width: 140,
+    tier: 1,
+  },
   {
     id: "scope",
     header: "Vale para",
@@ -34,28 +44,29 @@ const COLUMNS: DataColumn<RuleRow>[] = [
     sortValue: (r) => r.scope,
     grow: 1,
     width: 130,
-    priority: 2,
+    tier: 2,
   },
-  { id: "uses", header: "Usos", cell: (r) => r.uses, sortValue: (r) => r.uses, align: "end", width: 70 },
+  { id: "uses", header: "Usos", cell: (r) => r.uses, sortValue: (r) => r.uses, align: "end", width: 70, tier: 2 },
   {
     id: "state",
     header: "Situação",
-    cell: (r) => (
-      <span className={r.contradicted ? "font-medium text-warning" : r.active ? undefined : "text-secondary"}>
-        {r.state}
-      </span>
-    ),
+    cell: (r) =>
+      r.contradicted ? (
+        <Warn>{r.state}</Warn>
+      ) : (
+        <span className={r.active ? undefined : "text-secondary"}>{r.state}</span>
+      ),
     sortValue: (r) => r.state,
     grow: 3,
     width: 220,
-    priority: 2,
+    tier: 1,
   },
 ];
 
-const PROPOSAL_COLUMNS: DataColumn<ProposalRow>[] = [
-  { id: "pattern", header: "A descrição contém", cell: (r) => r.pattern, grow: 2, width: 170 },
-  { id: "category", header: "Categoria", cell: (r) => r.category, grow: 1, width: 140 },
-  { id: "count", header: "Vezes", cell: (r) => r.count, align: "end", width: 80 },
+const PROPOSAL_COLUMNS: TierColumn<ProposalRow>[] = [
+  { id: "pattern", header: "A descrição contém", cell: (r) => r.pattern, grow: 2, width: 170, tier: 1 },
+  { id: "category", header: "Categoria", cell: (r) => r.category, grow: 1, width: 140, tier: 1 },
+  { id: "count", header: "Vezes", cell: (r) => r.count, align: "end", width: 80, tier: 1 },
 ];
 
 type Spec =

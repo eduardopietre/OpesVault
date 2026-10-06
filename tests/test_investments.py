@@ -77,6 +77,8 @@ def test_example_c_total_redemption_simulated_tax_ta22() -> None:
     assert queries.balance(f.ledger, f.bank) == balance_before + D("11680.00")
     assert inv.remaining_cost(f.ledger, pos.id) == 0
     assert realized(f.ledger, pos.id).value == D("2000.00")
+    # A total redemption closes a value-mode position.
+    assert inv.position(f.ledger, pos.id).closed
 
 
 def test_example_d_partial_redemption_ta23() -> None:

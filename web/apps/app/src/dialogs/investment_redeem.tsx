@@ -67,8 +67,8 @@ export function InvestmentRedemptionDialog({
     const informed = readMoney(net, { allowEmpty: true });
     const to = need();
     act((l) => {
-      const held = service.position(l, positionId);
-      const event = service.redeem(l, positionId, on, amount, to, {
+      // A total redemption closes a value-mode position inside the domain call (docs/06).
+      return service.redeem(l, positionId, on, amount, to, {
         cost_attributed: attributed,
         tax_withheld: tw ?? "0",
         tax_due_later: td ?? "0",
@@ -76,16 +76,6 @@ export function InvestmentRedemptionDialog({
         net_informed: informed,
         final,
       });
-      // A total redemption closes the position. The domain tests this against the balance after posting, when
-      // it is already lower, so it never closes (the desktop has the same defect): done here, in the same action.
-      if (
-        final &&
-        held.mode === investments.model.TrackingMode.VALUE &&
-        service.remainingCost(l, positionId).isZero()
-      ) {
-        l.put("position", { ...held, closed: true }, { reason: "resgate total" });
-      }
-      return event;
     });
     onDone?.();
   };

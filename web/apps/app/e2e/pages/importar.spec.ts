@@ -26,6 +26,7 @@ import {
   watchWorkers,
 } from "./importar_helpers.ts";
 import { PROTECTED_PDF_PASSWORD } from "./protected_pdf.ts";
+import { fakeOllama } from "./livro_helpers.ts";
 import { audit, tableOf } from "./sharing_helpers.ts";
 
 const items = (page: Page) => tableOf(page, "Itens extraídos");
@@ -104,6 +105,7 @@ for (const size of SIZES) {
       test("files chosen in the file chooser and dropped on the app are read by the worker", async ({ page }) => {
         const errors = watchErrors(page);
         const workers = watchWorkers(page);
+        await fakeOllama(page);
         await openDemo(page, "/importar");
         await expect(items(page).locator("[data-row-id]").first()).toBeVisible();
 
@@ -114,6 +116,10 @@ for (const size of SIZES) {
         await expect(readNotice(page, "itau.pdf")).toBeVisible();
         // the parser worker started from this app's own address, under the production CSP
         expect(workers.some((url) => /\/assets\/parser\.worker-[\w-]+\.js$/.test(url))).toBe(true);
+        // the local AI looked at the items without a category, in the background, and nothing was approved
+        await expect(
+          page.getByText(/IA local: \d+ categoria\(s\) sugerida\(s\)\. Revise antes de aprovar\./),
+        ).toBeVisible();
         // the last file read is the one open: its original has two pages
         await expect(page.getByRole("heading", { level: 2, name: "itau.pdf" })).toBeVisible();
         await expect(page.getByText("Página 1 de 2")).toBeVisible();
@@ -140,9 +146,10 @@ for (const size of SIZES) {
         expect(errors).toEqual([]);
       });
 
-      test("every button, menu and dialog works, and each step can be undone", async ({ page }) => {
+      test("every button, menu and dialog works, and the last import can be undone", async ({ page }) => {
         const errors = watchErrors(page);
         const addresses = await recordAddresses(page);
+        await fakeOllama(page);
         await openDemo(page, "/importar");
         await expect(items(page).locator("[data-row-id]").first()).toBeVisible();
 
@@ -155,6 +162,8 @@ for (const size of SIZES) {
         await expect(layouts).toHaveCount(0);
 
         // a category by hand, the rule offered right then, and the rule dialog
+        // (on a narrow screen the cards hold no controls: the category of the selected item is chosen above the list)
+        await pick(page, "Loja Eletro");
         await page.getByRole("combobox", { name: "Categoria ou conta de Loja Eletro" }).click();
         await page.getByRole("option", { name: "Lazer", exact: true }).click();
         await expect(page.getByText(/Usar sempre “Lazer” para descrições com “/)).toBeVisible();
@@ -176,12 +185,6 @@ for (const size of SIZES) {
         await expect(fix).toHaveCount(0);
         await expect(row(items(page), "Padaria Pão Quente")).toBeVisible();
 
-        // reject one item with a reason
-        await pick(page, "Amazon.com");
-        await more(page, /^Rejeitar item…/);
-        await reasonDialog(page, "Rejeitar item", "Compra que não é nossa", "Rejeitar");
-        await expect(row(items(page), "Amazon.com")).toContainText("Rejeitado");
-
         // approve one item (a partial approval asks for its reason) and see it in the Livro
         await pick(page, "Mercado Bom Preço");
         await page.getByRole("button", { name: "Aprovar selecionado" }).click();
@@ -196,7 +199,9 @@ for (const size of SIZES) {
 
         // approve what is left; the document is approved and the page says so
         await page.getByRole("button", { name: "Aprovar prontos" }).click();
-        await expect(page.getByText(/operação\(ões\) criada\(s\), 0 evidência\(s\) vinculada\(s\)\./).last()).toBeVisible();
+        await expect(
+          page.getByText(/operação\(ões\) criada\(s\), 0 evidência\(s\) vinculada\(s\)\./).last(),
+        ).toBeVisible();
         await expect(queue(page).getByText("Aprovado").first()).toBeVisible();
         await expect(page.getByRole("button", { name: "Aprovar prontos" })).toBeDisabled();
 
@@ -221,10 +226,19 @@ for (const size of SIZES) {
         await reasonDialog(page, "Manter como lançamento separado", "Dois aluguéis", "Manter separado");
         await expect(row(items(page), "PIX ALUGUEL")).toContainText("Pronto");
 
+        // a card statement of a CSV: one item is rejected with a reason
+        await chooseFiles(page, [CSV]);
+        await expect(readNotice(page, "fatura.csv")).toBeVisible();
+        await pick(page, "Loja Z");
+        await more(page, /^Rejeitar item…/);
+        await reasonDialog(page, "Rejeitar item", "Compra que não é nossa", "Rejeitar");
+        await expect(row(items(page), "Loja Z")).toContainText("Rejeitado");
+
         // a document two layouts recognize: the person chooses, and it is read again
         await chooseFiles(page, [AMBIGUOUS]);
         await expect(readNotice(page, "dois-layouts.csv")).toBeVisible();
         await expect(page.getByRole("heading", { level: 2, name: "dois-layouts.csv" })).toBeVisible();
+        await expectNoHorizontalOverflow(page);
         await page.getByRole("combobox", { name: "Layout", exact: true }).click();
         await page.getByRole("option", { name: /nubank-cartao-csv/ }).click();
         await page.getByRole("button", { name: "Usar layout" }).click();
@@ -249,6 +263,11 @@ for (const size of SIZES) {
         await view.getByLabel(/Senha do PDF/).fill(PROTECTED_PDF_PASSWORD);
         await view.getByRole("button", { name: "Abrir", exact: true }).click();
         await expect(page.getByRole("region", { name: "Página do documento" }).locator("canvas")).toBeVisible();
+
+        // one undo takes the last import back
+        await page.locator("h1").click();
+        await page.keyboard.press("Control+z");
+        await expect(queue(page).getByText("protegido.pdf")).toHaveCount(0);
 
         await settle(page);
         await expectNoHorizontalOverflow(page);

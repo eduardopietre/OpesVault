@@ -33,7 +33,7 @@ export interface DocumentViewerProps {
 
 export function DocumentViewer({ documentId, name, evidence }: DocumentViewerProps) {
   return (
-    <section aria-label="Documento original" className="flex min-w-0 flex-col gap-2">
+    <section id="importar-original" aria-label="Documento original" className="flex min-w-0 scroll-mt-4 flex-col gap-2">
       <h2 className="text-headline font-semibold">Documento original</h2>
       {documentId === null ? (
         <p className="rounded-lg border border-dashed border-separator-strong px-4 py-10 text-center text-body text-secondary">

@@ -15,14 +15,15 @@ import {
   MenuButton,
   Select,
   notify,
+  useElementWidth,
   useMotionPreset,
   type DataColumn,
   type MenuEntry,
   type SelectOption,
 } from "@opesvault/ui";
 import { AnimatePresence, motion } from "motion/react";
-import { Check, ExternalLink, FileSearch, Pencil, Sparkles, TriangleAlert } from "lucide-react";
-import { useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { Check, ExternalLink, FileSearch, Pencil, ScanSearch, Sparkles, TriangleAlert } from "lucide-react";
+import { useCallback, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { useGoTo } from "../../data/navigation.ts";
 import { useLedger, useWorkspace } from "../../data/react.tsx";
 import { liquidAccounts } from "../../dialogs/account_choices.ts";
@@ -47,6 +48,8 @@ import {
 
 const { BatchStatus, ItemKind, ItemStatus } = importing.importModel;
 
+/** Below this width the items are cards: the columns that always show need about 550 px. */
+const CARDS_BELOW = 560;
 const NO_SELECTION = "Selecione um item da lista.";
 const READ_ONLY = "Outra aba ou aparelho está editando este projeto; aqui só leitura.";
 
@@ -79,7 +82,18 @@ export function Review({ batchId, selected, onSelect, queue, ai }: ReviewProps) 
   const preset = useMotionPreset();
   const readOnly = workspace.readOnly;
   const prompts = useReasonPrompt();
-  const table = useRef<HTMLDivElement>(null);
+  const table = useRef<HTMLDivElement | null>(null);
+  const [measure, tableWidth] = useElementWidth<HTMLDivElement>();
+  const attachTable = useCallback(
+    (node: HTMLDivElement | null) => {
+      table.current = node;
+      measure(node);
+    },
+    [measure],
+  );
+  // A card list (a narrow room) cannot hold controls inside its cards: the category of the selected item is
+  // chosen in a strip above the list instead of in each card.
+  const cards = tableWidth > 0 && tableWidth < CARDS_BELOW;
 
   const batch = useLedger((ledger) => importing.pipeline.batches(ledger).get(batchId) ?? null, batchId);
   const rows = useLedger((ledger) => itemRows(ledger, batchId), batchId);
@@ -266,7 +280,12 @@ export function Review({ batchId, selected, onSelect, queue, ai }: ReviewProps) 
 
   const focusCategory = () => {
     if (!current) return;
-    table.current?.querySelector<HTMLElement>(`[data-row-id="${CSS.escape(current.id)}"] [role="combobox"]`)?.click();
+    const scope = cards ? document.querySelector("[data-selected-category]") : table.current;
+    scope
+      ?.querySelector<HTMLElement>(
+        cards ? '[role="combobox"]' : `[data-row-id="${CSS.escape(current.id)}"] [role="combobox"]`,
+      )
+      ?.click();
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -297,37 +316,45 @@ export function Review({ batchId, selected, onSelect, queue, ai }: ReviewProps) 
 
   // ── the items ──────────────────────────────────
 
+  // The description leads: it is the title of the card on a narrow screen, and the row is told apart by it.
   const columns: DataColumn<ItemRow>[] = [
-    {
-      id: "status",
-      header: "Situação",
-      cell: (row) => <Badge tone={STATUS_TONE[row.item.status] ?? "neutral"}>{row.status}</Badge>,
-      sortValue: (row) => row.status,
-      width: 118,
-    },
-    { id: "date", header: "Data", cell: (row) => day(row.date), sortValue: (row) => row.date ?? "", width: 100 },
     {
       id: "description",
       header: "Descrição",
       cell: (row) => <ElidedText>{row.description}</ElidedText>,
       sortValue: (row) => row.description,
       grow: 3,
-      width: 150,
+      width: 140,
     },
-    { id: "kind", header: "Tipo", cell: (row) => row.kind, sortValue: (row) => row.kind, width: 120, priority: 2 },
+    {
+      id: "status",
+      header: "Situação",
+      cell: (row) => <Badge tone={STATUS_TONE[row.item.status] ?? "neutral"}>{row.status}</Badge>,
+      sortValue: (row) => row.status,
+      width: 120,
+    },
+    {
+      id: "date",
+      header: "Data",
+      cell: (row) => day(row.date),
+      sortValue: (row) => row.date ?? "",
+      width: 108,
+      priority: 2,
+    },
+    { id: "kind", header: "Tipo", cell: (row) => row.kind, sortValue: (row) => row.kind, width: 120, priority: 3 },
     {
       id: "amount",
       header: "Valor",
       cell: (row) => money(row.amount),
       sortValue: (row) => row.amount?.toFixed() ?? null,
       align: "end",
-      width: 112,
+      width: 104,
     },
     {
       id: "target",
       header: "Categoria",
       cell: (row) =>
-        row.editable ? (
+        row.editable && !cards ? (
           <Select
             label={`Categoria ou conta de ${row.description}`}
             hideLabel
@@ -335,14 +362,14 @@ export function Review({ batchId, selected, onSelect, queue, ai }: ReviewProps) 
             value={row.targetId ?? DEFAULT_TARGET}
             onChange={(id) => setTarget(row.id, id === DEFAULT_TARGET ? null : id)}
             disabled={readOnly}
-            className="w-full"
+            className="w-40"
           />
         ) : (
           <ElidedText>{row.targetName}</ElidedText>
         ),
       sortValue: (row) => row.targetName,
       grow: 2,
-      width: 190,
+      width: 184,
     },
     {
       id: "notes",
@@ -431,7 +458,7 @@ export function Review({ batchId, selected, onSelect, queue, ai }: ReviewProps) 
           className="w-full min-w-48 tablet:w-72"
         />
         {needsLayout(batch) ? (
-          <div className="flex flex-wrap items-end gap-2">
+          <div className="flex w-full min-w-0 flex-wrap items-end gap-2 tablet:w-auto">
             <Select
               label="Layout"
               options={parsers.map((p) => ({ id: p.id, label: `${p.institution} — ${p.product} (${p.id})` }))}
@@ -528,9 +555,34 @@ export function Review({ batchId, selected, onSelect, queue, ai }: ReviewProps) 
         ) : null}
       </AnimatePresence>
 
-      <div ref={table} className="min-w-0">
+      {cards && current?.editable ? (
+        <div data-selected-category="" className="rounded-lg border border-separator bg-raised p-3">
+          <Select
+            label={`Categoria ou conta de ${current.description}`}
+            options={optionsByKind.get(current.item.kind) ?? []}
+            value={current.targetId ?? DEFAULT_TARGET}
+            onChange={(id) => setTarget(current.id, id === DEFAULT_TARGET ? null : id)}
+            disabled={readOnly}
+          />
+          <div className="mt-2">
+            <Button
+              size="sm"
+              variant="ghost"
+              icon={<ScanSearch />}
+              onClick={() =>
+                document.getElementById("importar-original")?.scrollIntoView({ block: "start", behavior: "smooth" })
+              }
+            >
+              Ver no original
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
+      <div ref={attachTable} className="min-w-0">
         <DataTable
           label="Itens extraídos"
+          layout={cards ? "cards" : "table"}
           rows={rows}
           columns={columns}
           getRowId={(row) => row.id}

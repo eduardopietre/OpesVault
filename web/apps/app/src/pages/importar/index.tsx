@@ -226,7 +226,7 @@ export function Page() {
           />
         </div>
       ) : (
-        <Adaptive at={1400} columns="2fr 7fr" gap={24}>
+        <Adaptive at={1400} columns="1fr 5fr" gap={24}>
           <section aria-label="Documentos importados" className="min-w-0">
             {rows.length ? (
               <TableBox rows={rows.length} cap={8}>

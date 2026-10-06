@@ -138,6 +138,19 @@ describe("Importar e revisar: ler arquivos", () => {
     expect(await screen.findByText("Nenhum item extraído deste documento")).toBeTruthy();
   });
 
+  it("keeps a corrupt PDF as a document that could not be read, with the reason, instead of failing", async () => {
+    const o = await openImport();
+    await importFiles(o, [file(bytes("%PDF-1.4 isto não é um PDF"), "quebrado.pdf")]);
+    const batch = lastBatch(o);
+    expect(batch.status).toBe(importing.importModel.BatchStatus.UNSUPPORTED);
+    expect(batch.warnings).toEqual([importing.source.PROBLEM_MESSAGES[importing.source.SourceProblem.INVALID]]);
+    expect(await screen.findByText(/quebrado\.pdf: Arquivo corrompido ou inválido\./)).toBeTruthy();
+    // the original is kept in the project, so another layout can be tried
+    expect(o.workspace.session.documents.some((d) => d.meta.original_name === "quebrado.pdf")).toBe(true);
+    o.workspace.undo();
+    expect(o.workspace.session.documents.some((d) => d.meta.original_name === "quebrado.pdf")).toBe(false);
+  });
+
   it("refuses a file larger than the limit without reading it", async () => {
     const o = await openImport();
     const huge = file(bytes("%PDF-1.4"), "enorme.pdf");

@@ -54,7 +54,12 @@ export function useReveal(onReveal: (ref: string | undefined, act: string | unde
   useEffect(() => {
     if (pathname !== own) return;
     const key = `${search.ref ?? ""}|${search.act ?? ""}`;
-    if (key === "|" || handled.current === key) return;
+    if (key === "|") {
+      // The URL was cleared: the same link followed again later is a new request.
+      handled.current = null;
+      return;
+    }
+    if (handled.current === key) return;
     handled.current = key;
     callback.current(search.ref, search.act);
     void navigate({ to: pathname, search: {}, replace: true });

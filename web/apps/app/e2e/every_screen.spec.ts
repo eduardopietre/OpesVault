@@ -17,6 +17,26 @@ import { Walker } from "./walk.ts";
 const WALK_SIZES = [SIZES[0], SIZES[1], SIZES[2], SIZES[4]] as const;
 
 /** Values that exist only in the demonstration project: none may be on screen without it. */
+/**
+ * Waits for the Livro to show its first entry, as a table row or (narrow) as a list option, and returns its
+ * description: the entry on top depends on today's date and on the demo data, so the tests read it here.
+ */
+async function firstEntry(page: Page): Promise<string> {
+  const row = page
+    .getByRole("row")
+    .nth(1)
+    .or(page.getByRole("listbox", { name: "Lançamentos" }).getByRole("option").first());
+  await expect(row.first()).toBeVisible();
+  const text = (await row.first().innerText()).split("\n").map((part) => part.trim());
+  // the description: the longest part that is not a date or an amount
+  const description =
+    text
+      .filter((part) => part && !/^\d{2}\/\d{2}\/\d{4}$/.test(part) && !/R\$/.test(part))
+      .sort((a, b) => b.length - a.length)[0] ?? "";
+  expect(description.length, "the first entry has a description").toBeGreaterThan(2);
+  return description;
+}
+
 const CANARIES = [
   "Pão de Açúcar",
   "Farmácia São Paulo",
@@ -157,14 +177,15 @@ test.describe("without a project (TA-31)", () => {
       await page.setViewportSize(size);
       const errors = watchErrors(page);
       await openDemo(page, "/livro");
-      await expect(page.getByText("Pão de Açúcar").first()).toBeVisible();
+      const shown = await firstEntry(page);
       await page.getByRole("button", { name: "Bloquear o projeto" }).click();
       await expect(page.getByRole("heading", { name: /está bloqueado/ })).toBeVisible();
       for (const route of ROUTES) {
         await goInApp(page, route);
         await expect(page.getByRole("heading", { name: /está bloqueado/ }), route).toBeVisible();
         const text = await screenText(page);
-        for (const canary of CANARIES) expect(text, `${route} shows ${canary} while locked`).not.toContain(canary);
+        for (const canary of [...CANARIES, shown])
+          expect(text, `${route} shows ${canary} while locked`).not.toContain(canary);
       }
       await page.getByLabel("Senha do projeto").fill(DEMO.projectPassword);
       await page.getByRole("button", { name: "Desbloquear" }).click();
@@ -176,7 +197,7 @@ test.describe("without a project (TA-31)", () => {
       await page.setViewportSize(size);
       const errors = watchErrors(page);
       await openDemo(page, "/livro");
-      await expect(page.getByText("Pão de Açúcar").first()).toBeVisible();
+      const shown = await firstEntry(page);
       await page.getByRole("button", { name: "Conta de Ana Souza" }).click();
       await page.getByRole("menuitem", { name: "Trocar de projeto" }).click();
       await expect(page).toHaveURL(/\/projetos$/);
@@ -184,7 +205,7 @@ test.describe("without a project (TA-31)", () => {
         await goInApp(page, route);
         await expect(page, route).toHaveURL(/\/projetos$/);
         const text = await screenText(page);
-        for (const canary of CANARIES) expect(text, `${route} shows ${canary}`).not.toContain(canary);
+        for (const canary of [...CANARIES, shown]) expect(text, `${route} shows ${canary}`).not.toContain(canary);
       }
       expect(errors).toEqual([]);
     });
@@ -193,7 +214,7 @@ test.describe("without a project (TA-31)", () => {
   test("browser storage and cookies hold no data of the project (TA-05, TA-31)", async ({ page }) => {
     const errors = watchErrors(page);
     await openDemo(page, "/livro");
-    await expect(page.getByText("Pão de Açúcar").first()).toBeVisible();
+    await firstEntry(page);
     for (const route of ["/contas", "/investimentos", "/importar", "/livro"]) await goInApp(page, route);
     const held = await page.evaluate(() => {
       const entries: string[] = [];

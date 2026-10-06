@@ -1,0 +1,5971 @@
+{
+ "today": "2026-10-06",
+ "records": [
+  {
+   "kind": "account",
+   "id": "#0",
+   "payload": {
+    "archived": false,
+    "currency": "BRL",
+    "holders": [],
+    "id": "#0",
+    "institution": null,
+    "masked_number": null,
+    "name": "Patrimônio de abertura",
+    "parent_id": null,
+    "subtype": "opening_equity",
+    "type": "equity"
+   }
+  },
+  {
+   "kind": "account",
+   "id": "#1",
+   "payload": {
+    "archived": false,
+    "currency": "BRL",
+    "holders": [],
+    "id": "#1",
+    "institution": null,
+    "masked_number": null,
+    "name": "Moradia",
+    "parent_id": null,
+    "subtype": "category",
+    "type": "expense"
+   }
+  },
+  {
+   "kind": "account",
+   "id": "#2",
+   "payload": {
+    "archived": false,
+    "currency": "BRL",
+    "holders": [],
+    "id": "#2",
+    "institution": null,
+    "masked_number": null,
+    "name": "Alimentação",
+    "parent_id": null,
+    "subtype": "category",
+    "type": "expense"
+   }
+  },
+  {
+   "kind": "account",
+   "id": "#3",
+   "payload": {
+    "archived": false,
+    "currency": "BRL",
+    "holders": [],
+    "id": "#3",
+    "institution": null,
+    "masked_number": null,
+    "name": "Transporte",
+    "parent_id": null,
+    "subtype": "category",
+    "type": "expense"
+   }
+  },
+  {
+   "kind": "account",
+   "id": "#4",
+   "payload": {
+    "archived": false,
+    "currency": "BRL",
+    "holders": [],
+    "id": "#4",
+    "institution": null,
+    "masked_number": null,
+    "name": "Saúde",
+    "parent_id": null,
+    "subtype": "category",
+    "type": "expense"
+   }
+  },
+  {
+   "kind": "account",
+   "id": "#5",
+   "payload": {
+    "archived": false,
+    "currency": "BRL",
+    "holders": [],
+    "id": "#5",
+    "institution": null,
+    "masked_number": null,
+    "name": "Educação",
+    "parent_id": null,
+    "subtype": "category",
+    "type": "expense"
+   }
+  },
+  {
+   "kind": "account",
+   "id": "#6",
+   "payload": {
+    "archived": false,
+    "currency": "BRL",
+    "holders": [],
+    "id": "#6",
+    "institution": null,
+    "masked_number": null,
+    "name": "Lazer",
+    "parent_id": null,
+    "subtype": "category",
+    "type": "expense"
+   }
+  },
+  {
+   "kind": "account",
+   "id": "#7",
+   "payload": {
+    "archived": false,
+    "currency": "BRL",
+    "holders": [],
+    "id": "#7",
+    "institution": null,
+    "masked_number": null,
+    "name": "Serviços e assinaturas",
+    "parent_id": null,
+    "subtype": "category",
+    "type": "expense"
+   }
+  },
+  {
+   "kind": "account",
+   "id": "#8",
+   "payload": {
+    "archived": false,
+    "currency": "BRL",
+    "holders": [],
+    "id": "#8",
+    "institution": null,
+    "masked_number": null,
+    "name": "Impostos e taxas",
+    "parent_id": null,
+    "subtype": "category",
+    "type": "expense"
+   }
+  },
+  {
+   "kind": "account",
+   "id": "#9",
+   "payload": {
+    "archived": false,
+    "currency": "BRL",
+    "holders": [],
+    "id": "#9",
+    "institution": null,
+    "masked_number": null,
+    "name": "Juros e encargos",
+    "parent_id": null,
+    "subtype": "category",
+    "type": "expense"
+   }
+  },
+  {
+   "kind": "account",
+   "id": "#10",
+   "payload": {
+    "archived": false,
+    "currency": "BRL",
+    "holders": [],
+    "id": "#10",
+    "institution": null,
+    "masked_number": null,
+    "name": "Outras despesas",
+    "parent_id": null,
+    "subtype": "category",
+    "type": "expense"
+   }
+  },
+  {
+   "kind": "account",
+   "id": "#11",
+   "payload": {
+    "archived": false,
+    "currency": "BRL",
+    "holders": [],
+    "id": "#11",
+    "institution": null,
+    "masked_number": null,
+    "name": "Salário",
+    "parent_id": null,
+    "subtype": "category",
+    "type": "income"
+   }
+  },
+  {
+   "kind": "account",
+   "id": "#12",
+   "payload": {
+    "archived": false,
+    "currency": "BRL",
+    "holders": [],
+    "id": "#12",
+    "institution": null,
+    "masked_number": null,
+    "name": "Rendimentos de investimentos",
+    "parent_id": null,
+    "subtype": "category",
+    "type": "income"
+   }
+  },
+  {
+   "kind": "account",
+   "id": "#13",
+   "payload": {
+    "archived": false,
+    "currency": "BRL",
+    "holders": [],
+    "id": "#13",
+    "institution": null,
+    "masked_number": null,
+    "name": "Outras receitas",
+    "parent_id": null,
+    "subtype": "category",
+    "type": "income"
+   }
+  },
+  {
+   "kind": "account",
+   "id": "#14",
+   "payload": {
+    "archived": false,
+    "currency": "BRL",
+    "holders": [
+     "#15",
+     "#16"
+    ],
+    "id": "#14",
+    "institution": "ITAÚ UNIBANCO S.A.",
+    "masked_number": "ag 0123 c 45678-9",
+    "name": "Banco A",
+    "parent_id": null,
+    "subtype": "checking",
+    "type": "asset"
+   }
+  },
+  {
+   "kind": "account",
+   "id": "#17",
+   "payload": {
+    "archived": false,
+    "currency": "BRL",
+    "holders": [
+     "#15",
+     "#16"
+    ],
+    "id": "#17",
+    "institution": "ITAÚ UNIBANCO S.A.",
+    "masked_number": "ag 0123 c 45678-9",
+    "name": "Poupança",
+    "parent_id": null,
+    "subtype": "savings",
+    "type": "asset"
+   }
+  },
+  {
+   "kind": "account",
+   "id": "#18",
+   "payload": {
+    "archived": false,
+    "currency": "BRL",
+    "holders": [
+     "#15",
+     "#16"
+    ],
+    "id": "#18",
+    "institution": null,
+    "masked_number": null,
+    "name": "Conjunta",
+    "parent_id": null,
+    "subtype": "checking",
+    "type": "asset"
+   }
+  },
+  {
+   "kind": "account",
+   "id": "#19",
+   "payload": {
+    "archived": false,
+    "currency": "BRL",
+    "holders": [],
+    "id": "#19",
+    "institution": null,
+    "masked_number": null,
+    "name": "Cartão X",
+    "parent_id": null,
+    "subtype": "credit_card",
+    "type": "liability"
+   }
+  },
+  {
+   "kind": "account",
+   "id": "#20",
+   "payload": {
+    "archived": false,
+    "currency": "BRL",
+    "holders": [],
+    "id": "#20",
+    "institution": null,
+    "masked_number": null,
+    "name": "Investimento: CDB Banco X 2028",
+    "parent_id": null,
+    "subtype": "investment",
+    "type": "asset"
+   }
+  },
+  {
+   "kind": "account",
+   "id": "#21",
+   "payload": {
+    "archived": false,
+    "currency": "BRL",
+    "holders": [],
+    "id": "#21",
+    "institution": null,
+    "masked_number": null,
+    "name": "Financiamento do carro",
+    "parent_id": null,
+    "subtype": "loan",
+    "type": "liability"
+   }
+  },
+  {
+   "kind": "account",
+   "id": "#22",
+   "payload": {
+    "archived": false,
+    "currency": "BRL",
+    "holders": [
+     "#16"
+    ],
+    "id": "#22",
+    "institution": "NU PAGAMENTOS S.A. - INSTITUIÇÃO DE PAGAMENTO",
+    "masked_number": "ag 0001 c 9876543-2",
+    "name": "Nubank do Bruno — conta corrente",
+    "parent_id": null,
+    "subtype": "checking",
+    "type": "asset"
+   }
+  },
+  {
+   "kind": "asset",
+   "id": "#23",
+   "payload": {
+    "asset_class": "fixed_income",
+    "currency": "BRL",
+    "id": "#23",
+    "name": "CDB Banco X 2028",
+    "ticker": null
+   }
+  },
+  {
+   "kind": "balance_check",
+   "id": "#24",
+   "payload": {
+    "account_id": "#14",
+    "id": "#24",
+    "informed": "9000.00",
+    "note": "extrato do aplicativo",
+    "on": "2026-03-31"
+   }
+  },
+  {
+   "kind": "balance_check",
+   "id": "#25",
+   "payload": {
+    "account_id": "#22",
+    "id": "#25",
+    "informed": "712.40",
+    "note": "valor informado",
+    "on": "2026-03-31"
+   }
+  },
+  {
+   "kind": "bank_account",
+   "id": "#26",
+   "payload": {
+    "archived": false,
+    "bank_code": "341",
+    "bank_name": "ITAÚ UNIBANCO S.A.",
+    "branch": "0123",
+    "checking_id": "#14",
+    "co_holder_id": "#16",
+    "holder_id": "#15",
+    "id": "#26",
+    "name": "Itaú da Ana",
+    "number": "45678-9",
+    "savings_id": "#17"
+   }
+  },
+  {
+   "kind": "bank_account",
+   "id": "#27",
+   "payload": {
+    "archived": false,
+    "bank_code": "260",
+    "bank_name": "NU PAGAMENTOS S.A. - INSTITUIÇÃO DE PAGAMENTO",
+    "branch": "0001",
+    "checking_id": "#22",
+    "co_holder_id": null,
+    "holder_id": "#16",
+    "id": "#27",
+    "name": "Nubank do Bruno",
+    "number": "9876543-2",
+    "savings_id": null
+   }
+  },
+  {
+   "kind": "budget_line",
+   "id": "#28",
+   "payload": {
+    "amount": "600.00",
+    "category_id": "#2",
+    "id": "#28",
+    "month": {
+     "month": 3,
+     "year": 2026
+    },
+    "version": 1
+   }
+  },
+  {
+   "kind": "budget_line",
+   "id": "#29",
+   "payload": {
+    "amount": "600.00",
+    "category_id": "#2",
+    "id": "#29",
+    "month": {
+     "month": 10,
+     "year": 2026
+    },
+    "version": 1
+   }
+  },
+  {
+   "kind": "budget_line",
+   "id": "#30",
+   "payload": {
+    "amount": "2350.00",
+    "category_id": "#1",
+    "id": "#30",
+    "month": {
+     "month": 3,
+     "year": 2026
+    },
+    "version": 1
+   }
+  },
+  {
+   "kind": "budget_line",
+   "id": "#31",
+   "payload": {
+    "amount": "2350.00",
+    "category_id": "#1",
+    "id": "#31",
+    "month": {
+     "month": 10,
+     "year": 2026
+    },
+    "version": 1
+   }
+  },
+  {
+   "kind": "budget_line",
+   "id": "#32",
+   "payload": {
+    "amount": "120.00",
+    "category_id": "#3",
+    "id": "#32",
+    "month": {
+     "month": 3,
+     "year": 2026
+    },
+    "version": 1
+   }
+  },
+  {
+   "kind": "budget_line",
+   "id": "#33",
+   "payload": {
+    "amount": "120.00",
+    "category_id": "#3",
+    "id": "#33",
+    "month": {
+     "month": 10,
+     "year": 2026
+    },
+    "version": 1
+   }
+  },
+  {
+   "kind": "budget_line",
+   "id": "#34",
+   "payload": {
+    "amount": "60.00",
+    "category_id": "#4",
+    "id": "#34",
+    "month": {
+     "month": 3,
+     "year": 2026
+    },
+    "version": 1
+   }
+  },
+  {
+   "kind": "budget_line",
+   "id": "#35",
+   "payload": {
+    "amount": "60.00",
+    "category_id": "#4",
+    "id": "#35",
+    "month": {
+     "month": 10,
+     "year": 2026
+    },
+    "version": 1
+   }
+  },
+  {
+   "kind": "card",
+   "id": "#36",
+   "payload": {
+    "additional": [],
+    "closing_day": 3,
+    "due_day": 10,
+    "holder_id": "#15",
+    "id": "#36",
+    "last4": "1234",
+    "liability_account_id": "#19",
+    "name": "Cartão X",
+    "settlement_account_id": "#14"
+   }
+  },
+  {
+   "kind": "category_rule",
+   "id": "#37",
+   "payload": {
+    "account_id": null,
+    "active": true,
+    "created_from_item": null,
+    "id": "#37",
+    "pattern": "PADARIA",
+    "target_account_id": "#2",
+    "version": 1
+   }
+  },
+  {
+   "kind": "deductible_category",
+   "id": "#38",
+   "payload": {
+    "category_id": "#4",
+    "id": "#38",
+    "kind": "health"
+   }
+  },
+  {
+   "kind": "deductible_category",
+   "id": "#39",
+   "payload": {
+    "category_id": "#5",
+    "id": "#39",
+    "kind": "education"
+   }
+  },
+  {
+   "kind": "evidence",
+   "id": "#40",
+   "payload": {
+    "bbox": [
+     40.0,
+     99.07,
+     216.74,
+     109.07
+    ],
+    "document_id": "#41",
+    "id": "#40",
+    "line": null,
+    "page": 1,
+    "text": "05 DEZ Mercado Bom Preço R$ 100,00"
+   }
+  },
+  {
+   "kind": "evidence",
+   "id": "#42",
+   "payload": {
+    "bbox": [
+     40.0,
+     112.07,
+     216.74,
+     122.07
+    ],
+    "document_id": "#41",
+    "id": "#42",
+    "line": null,
+    "page": 1,
+    "text": "05 DEZ Mercado Bom Preço R$ 100,00"
+   }
+  },
+  {
+   "kind": "evidence",
+   "id": "#43",
+   "payload": {
+    "bbox": [
+     40.0,
+     125.07,
+     221.2,
+     135.07
+    ],
+    "document_id": "#41",
+    "id": "#43",
+    "line": null,
+    "page": 1,
+    "text": "12 DEZ Pagamento recebido -R$ 500,00"
+   }
+  },
+  {
+   "kind": "evidence",
+   "id": "#44",
+   "payload": {
+    "bbox": [
+     40.0,
+     138.07,
+     232.87,
+     148.07
+    ],
+    "document_id": "#41",
+    "id": "#44",
+    "line": null,
+    "page": 1,
+    "text": "20 DEZ Loja Eletro - Parcela 1/3 R$ 300,00"
+   }
+  },
+  {
+   "kind": "evidence",
+   "id": "#45",
+   "payload": {
+    "bbox": [
+     40.0,
+     151.07,
+     186.72,
+     161.07
+    ],
+    "document_id": "#41",
+    "id": "#45",
+    "line": null,
+    "page": 1,
+    "text": "28 DEZ Amazon.com USD 20,00"
+   }
+  },
+  {
+   "kind": "evidence",
+   "id": "#46",
+   "payload": {
+    "bbox": [
+     40.0,
+     164.07,
+     169.78,
+     174.07
+    ],
+    "document_id": "#41",
+    "id": "#46",
+    "line": null,
+    "page": 1,
+    "text": "Conversão: USD 1 = R$ 5,20"
+   }
+  },
+  {
+   "kind": "evidence",
+   "id": "#47",
+   "payload": {
+    "bbox": [
+     40.0,
+     177.07,
+     86.14,
+     187.07
+    ],
+    "document_id": "#41",
+    "id": "#47",
+    "line": null,
+    "page": 1,
+    "text": "R$ 104,00"
+   }
+  },
+  {
+   "kind": "evidence",
+   "id": "#48",
+   "payload": {
+    "bbox": [
+     40.0,
+     190.07,
+     213.28,
+     200.07
+    ],
+    "document_id": "#41",
+    "id": "#48",
+    "line": null,
+    "page": 1,
+    "text": "28 DEZ IOF de \"Amazon.com\" R$ 3,64"
+   }
+  },
+  {
+   "kind": "evidence",
+   "id": "#49",
+   "payload": {
+    "bbox": [
+     40.0,
+     203.07,
+     207.3,
+     213.07
+    ],
+    "document_id": "#41",
+    "id": "#49",
+    "line": null,
+    "page": 1,
+    "text": "02 JAN Estorno Loja Eletro -R$ 57,34"
+   }
+  },
+  {
+   "kind": "evidence",
+   "id": "#50",
+   "payload": {
+    "bbox": [
+     40.0,
+     229.07,
+     158.95,
+     239.07
+    ],
+    "document_id": "#41",
+    "id": "#50",
+    "line": null,
+    "page": 1,
+    "text": "02 JAN Padaria R$ 500,00"
+   }
+  },
+  {
+   "kind": "extracted_item",
+   "id": "#51",
+   "payload": {
+    "amount": "100.00",
+    "bank_id": null,
+    "batch_id": "#52",
+    "card_last4": null,
+    "corrections": [],
+    "credit": false,
+    "description": "Mercado Bom Preço",
+    "duplicate_of": null,
+    "evidence_ids": [
+     "#40"
+    ],
+    "foreign_amount": null,
+    "foreign_currency": null,
+    "id": "#51",
+    "installment": null,
+    "kind": "purchase",
+    "member_id": null,
+    "occurred_on": "2025-12-05",
+    "operation_id": null,
+    "quantity": null,
+    "status": "ready",
+    "suggestion_source": "rule",
+    "target_account_id": "#2",
+    "ticker": null,
+    "unit_price": null,
+    "warnings": []
+   }
+  },
+  {
+   "kind": "extracted_item",
+   "id": "#53",
+   "payload": {
+    "amount": "100.00",
+    "bank_id": null,
+    "batch_id": "#52",
+    "card_last4": null,
+    "corrections": [],
+    "credit": false,
+    "description": "Mercado Bom Preço",
+    "duplicate_of": null,
+    "evidence_ids": [
+     "#42"
+    ],
+    "foreign_amount": null,
+    "foreign_currency": null,
+    "id": "#53",
+    "installment": null,
+    "kind": "purchase",
+    "member_id": null,
+    "occurred_on": "2025-12-05",
+    "operation_id": null,
+    "quantity": null,
+    "status": "ready",
+    "suggestion_source": "rule",
+    "target_account_id": "#2",
+    "ticker": null,
+    "unit_price": null,
+    "warnings": []
+   }
+  },
+  {
+   "kind": "extracted_item",
+   "id": "#54",
+   "payload": {
+    "amount": "500.00",
+    "bank_id": null,
+    "batch_id": "#52",
+    "card_last4": null,
+    "corrections": [],
+    "credit": false,
+    "description": "Pagamento recebido",
+    "duplicate_of": null,
+    "evidence_ids": [
+     "#43"
+    ],
+    "foreign_amount": null,
+    "foreign_currency": null,
+    "id": "#54",
+    "installment": null,
+    "kind": "card_payment",
+    "member_id": null,
+    "occurred_on": "2025-12-12",
+    "operation_id": null,
+    "quantity": null,
+    "status": "ready",
+    "suggestion_source": null,
+    "target_account_id": null,
+    "ticker": null,
+    "unit_price": null,
+    "warnings": []
+   }
+  },
+  {
+   "kind": "extracted_item",
+   "id": "#55",
+   "payload": {
+    "amount": "300.00",
+    "bank_id": null,
+    "batch_id": "#52",
+    "card_last4": null,
+    "corrections": [],
+    "credit": false,
+    "description": "Loja Eletro",
+    "duplicate_of": null,
+    "evidence_ids": [
+     "#44"
+    ],
+    "foreign_amount": null,
+    "foreign_currency": null,
+    "id": "#55",
+    "installment": [
+     1,
+     3
+    ],
+    "kind": "purchase",
+    "member_id": null,
+    "occurred_on": "2025-12-20",
+    "operation_id": null,
+    "quantity": null,
+    "status": "ready",
+    "suggestion_source": null,
+    "target_account_id": null,
+    "ticker": null,
+    "unit_price": null,
+    "warnings": []
+   }
+  },
+  {
+   "kind": "extracted_item",
+   "id": "#56",
+   "payload": {
+    "amount": "104.00",
+    "bank_id": null,
+    "batch_id": "#52",
+    "card_last4": null,
+    "corrections": [],
+    "credit": false,
+    "description": "Amazon.com",
+    "duplicate_of": null,
+    "evidence_ids": [
+     "#45",
+     "#46",
+     "#47"
+    ],
+    "foreign_amount": "20.00",
+    "foreign_currency": "USD",
+    "id": "#56",
+    "installment": null,
+    "kind": "purchase",
+    "member_id": null,
+    "occurred_on": "2025-12-28",
+    "operation_id": null,
+    "quantity": null,
+    "status": "ready",
+    "suggestion_source": null,
+    "target_account_id": null,
+    "ticker": null,
+    "unit_price": null,
+    "warnings": []
+   }
+  },
+  {
+   "kind": "extracted_item",
+   "id": "#57",
+   "payload": {
+    "amount": "3.64",
+    "bank_id": null,
+    "batch_id": "#52",
+    "card_last4": null,
+    "corrections": [],
+    "credit": false,
+    "description": "IOF de \"Amazon.com\"",
+    "duplicate_of": null,
+    "evidence_ids": [
+     "#48"
+    ],
+    "foreign_amount": null,
+    "foreign_currency": null,
+    "id": "#57",
+    "installment": null,
+    "kind": "card_charge",
+    "member_id": null,
+    "occurred_on": "2025-12-28",
+    "operation_id": null,
+    "quantity": null,
+    "status": "ready",
+    "suggestion_source": "rule",
+    "target_account_id": "#8",
+    "ticker": null,
+    "unit_price": null,
+    "warnings": []
+   }
+  },
+  {
+   "kind": "extracted_item",
+   "id": "#58",
+   "payload": {
+    "amount": "57.34",
+    "bank_id": null,
+    "batch_id": "#52",
+    "card_last4": null,
+    "corrections": [],
+    "credit": false,
+    "description": "Estorno Loja Eletro",
+    "duplicate_of": null,
+    "evidence_ids": [
+     "#49"
+    ],
+    "foreign_amount": null,
+    "foreign_currency": null,
+    "id": "#58",
+    "installment": null,
+    "kind": "card_credit",
+    "member_id": null,
+    "occurred_on": "2026-01-02",
+    "operation_id": null,
+    "quantity": null,
+    "status": "ready",
+    "suggestion_source": null,
+    "target_account_id": null,
+    "ticker": null,
+    "unit_price": null,
+    "warnings": []
+   }
+  },
+  {
+   "kind": "extracted_item",
+   "id": "#59",
+   "payload": {
+    "amount": "500.00",
+    "bank_id": null,
+    "batch_id": "#52",
+    "card_last4": null,
+    "corrections": [],
+    "credit": false,
+    "description": "Padaria",
+    "duplicate_of": null,
+    "evidence_ids": [
+     "#50"
+    ],
+    "foreign_amount": null,
+    "foreign_currency": null,
+    "id": "#59",
+    "installment": null,
+    "kind": "purchase",
+    "member_id": null,
+    "occurred_on": "2026-01-02",
+    "operation_id": null,
+    "quantity": null,
+    "status": "ready",
+    "suggestion_source": "rule",
+    "target_account_id": "#2",
+    "ticker": null,
+    "unit_price": null,
+    "warnings": []
+   }
+  },
+  {
+   "kind": "goal",
+   "id": "#60",
+   "payload": {
+    "account_ids": [
+     "#14",
+     "#17"
+    ],
+    "archived": false,
+    "created_on": "2026-01-01",
+    "id": "#60",
+    "kind": "accounts",
+    "name": "Reserva de emergência",
+    "target": "30000.00",
+    "target_date": "2027-12-31",
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#61",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#0",
+    "entity_kind": "account",
+    "id": "#61",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#62",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#1",
+    "entity_kind": "account",
+    "id": "#62",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#63",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#2",
+    "entity_kind": "account",
+    "id": "#63",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#64",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#3",
+    "entity_kind": "account",
+    "id": "#64",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#65",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#4",
+    "entity_kind": "account",
+    "id": "#65",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#66",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#5",
+    "entity_kind": "account",
+    "id": "#66",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#67",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#6",
+    "entity_kind": "account",
+    "id": "#67",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#68",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#7",
+    "entity_kind": "account",
+    "id": "#68",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#69",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#8",
+    "entity_kind": "account",
+    "id": "#69",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#70",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#9",
+    "entity_kind": "account",
+    "id": "#70",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#71",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#10",
+    "entity_kind": "account",
+    "id": "#71",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#72",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#11",
+    "entity_kind": "account",
+    "id": "#72",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#73",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#12",
+    "entity_kind": "account",
+    "id": "#73",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#74",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#13",
+    "entity_kind": "account",
+    "id": "#74",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#75",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#15",
+    "entity_kind": "member",
+    "id": "#75",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#76",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#16",
+    "entity_kind": "member",
+    "id": "#76",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#77",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#14",
+    "entity_kind": "account",
+    "id": "#77",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#78",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#17",
+    "entity_kind": "account",
+    "id": "#78",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#79",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#18",
+    "entity_kind": "account",
+    "id": "#79",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#80",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#19",
+    "entity_kind": "account",
+    "id": "#80",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#81",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#36",
+    "entity_kind": "card",
+    "id": "#81",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#82",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#83",
+    "entity_kind": "operation",
+    "id": "#82",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#84",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#85",
+    "entity_kind": "operation",
+    "id": "#84",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#86",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#87",
+    "entity_kind": "operation",
+    "id": "#86",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#88",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#89",
+    "entity_kind": "operation",
+    "id": "#88",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#90",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#91",
+    "entity_kind": "operation",
+    "id": "#90",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#92",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#93",
+    "entity_kind": "operation",
+    "id": "#92",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#94",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#95",
+    "entity_kind": "operation",
+    "id": "#94",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#96",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#97",
+    "entity_kind": "operation",
+    "id": "#96",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#98",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#99",
+    "entity_kind": "operation",
+    "id": "#98",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#100",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#101",
+    "entity_kind": "operation",
+    "id": "#100",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#102",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#103",
+    "entity_kind": "operation",
+    "id": "#102",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#104",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#105",
+    "entity_kind": "operation",
+    "id": "#104",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#106",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#107",
+    "entity_kind": "operation",
+    "id": "#106",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#108",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#109",
+    "entity_kind": "operation",
+    "id": "#108",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#110",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#111",
+    "entity_kind": "operation",
+    "id": "#110",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#112",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#113",
+    "entity_kind": "operation",
+    "id": "#112",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#114",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#115",
+    "entity_kind": "operation",
+    "id": "#114",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#116",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#117",
+    "entity_kind": "operation",
+    "id": "#116",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#118",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#119",
+    "entity_kind": "operation",
+    "id": "#118",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#120",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#121",
+    "entity_kind": "operation",
+    "id": "#120",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#122",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#123",
+    "entity_kind": "operation",
+    "id": "#122",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#124",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#125",
+    "entity_kind": "operation",
+    "id": "#124",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#126",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#127",
+    "entity_kind": "operation",
+    "id": "#126",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#128",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#129",
+    "entity_kind": "operation",
+    "id": "#128",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#130",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#131",
+    "entity_kind": "installment_plan",
+    "id": "#130",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#132",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#133",
+    "entity_kind": "recurrence_rule",
+    "id": "#132",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#134",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#23",
+    "entity_kind": "asset",
+    "id": "#134",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#135",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#20",
+    "entity_kind": "account",
+    "id": "#135",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#136",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#137",
+    "entity_kind": "position",
+    "id": "#136",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#138",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#139",
+    "entity_kind": "operation",
+    "id": "#138",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#140",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#141",
+    "entity_kind": "investment_event",
+    "id": "#140",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#142",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#143",
+    "entity_kind": "valuation",
+    "id": "#142",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#144",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#145",
+    "entity_kind": "valuation",
+    "id": "#144",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#146",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#147",
+    "entity_kind": "valuation",
+    "id": "#146",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#148",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#149",
+    "entity_kind": "valuation",
+    "id": "#148",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#150",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#52",
+    "entity_kind": "import_batch",
+    "id": "#150",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#151",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#40",
+    "entity_kind": "evidence",
+    "id": "#151",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#152",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#51",
+    "entity_kind": "extracted_item",
+    "id": "#152",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#153",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#42",
+    "entity_kind": "evidence",
+    "id": "#153",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#154",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#53",
+    "entity_kind": "extracted_item",
+    "id": "#154",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#155",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#43",
+    "entity_kind": "evidence",
+    "id": "#155",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#156",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#54",
+    "entity_kind": "extracted_item",
+    "id": "#156",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#157",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#44",
+    "entity_kind": "evidence",
+    "id": "#157",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#158",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#55",
+    "entity_kind": "extracted_item",
+    "id": "#158",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#159",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#45",
+    "entity_kind": "evidence",
+    "id": "#159",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#160",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#46",
+    "entity_kind": "evidence",
+    "id": "#160",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#161",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#47",
+    "entity_kind": "evidence",
+    "id": "#161",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#162",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#56",
+    "entity_kind": "extracted_item",
+    "id": "#162",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#163",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#48",
+    "entity_kind": "evidence",
+    "id": "#163",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#164",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#57",
+    "entity_kind": "extracted_item",
+    "id": "#164",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#165",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#49",
+    "entity_kind": "evidence",
+    "id": "#165",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#166",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#58",
+    "entity_kind": "extracted_item",
+    "id": "#166",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#167",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#50",
+    "entity_kind": "evidence",
+    "id": "#167",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#168",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#59",
+    "entity_kind": "extracted_item",
+    "id": "#168",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#169",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#28",
+    "entity_kind": "budget_line",
+    "id": "#169",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#170",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#29",
+    "entity_kind": "budget_line",
+    "id": "#170",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#171",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#30",
+    "entity_kind": "budget_line",
+    "id": "#171",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#172",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#31",
+    "entity_kind": "budget_line",
+    "id": "#172",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#173",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#32",
+    "entity_kind": "budget_line",
+    "id": "#173",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#174",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#33",
+    "entity_kind": "budget_line",
+    "id": "#174",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#175",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#34",
+    "entity_kind": "budget_line",
+    "id": "#175",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#176",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#35",
+    "entity_kind": "budget_line",
+    "id": "#176",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#177",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#178",
+    "entity_kind": "operation",
+    "id": "#177",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#179",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#180",
+    "entity_kind": "operation",
+    "id": "#179",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#181",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#37",
+    "entity_kind": "category_rule",
+    "id": "#181",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#182",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#21",
+    "entity_kind": "account",
+    "id": "#182",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#183",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#184",
+    "entity_kind": "operation",
+    "id": "#183",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#185",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#186",
+    "entity_kind": "loan_plan",
+    "id": "#185",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#187",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#188",
+    "entity_kind": "operation",
+    "id": "#187",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#189",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#190",
+    "entity_kind": "loan_payment",
+    "id": "#189",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#191",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#192",
+    "entity_kind": "operation",
+    "id": "#191",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#193",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#194",
+    "entity_kind": "loan_payment",
+    "id": "#193",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#195",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#196",
+    "entity_kind": "operation",
+    "id": "#195",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#197",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#198",
+    "entity_kind": "operation",
+    "id": "#197",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#199",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#200",
+    "entity_kind": "operation",
+    "id": "#199",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#201",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#202",
+    "entity_kind": "operation",
+    "id": "#201",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#203",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#204",
+    "entity_kind": "operation",
+    "id": "#203",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#205",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#206",
+    "entity_kind": "operation",
+    "id": "#205",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#207",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#208",
+    "entity_kind": "operation_tags",
+    "id": "#207",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#209",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#210",
+    "entity_kind": "operation_tags",
+    "id": "#209",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#211",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#212",
+    "entity_kind": "operation_tags",
+    "id": "#211",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#213",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#214",
+    "entity_kind": "operation",
+    "id": "#213",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#215",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#216",
+    "entity_kind": "reimbursement",
+    "id": "#215",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#217",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#218",
+    "entity_kind": "operation",
+    "id": "#217",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#219",
+   "payload": {
+    "action": "update",
+    "after": {
+     "denied": false,
+     "expected": "300.00",
+     "id": "#216",
+     "note": null,
+     "operation_id": "#214",
+     "payer": "Plano de saúde",
+     "receipt_ids": [
+      "#218"
+     ],
+     "requested_on": "2026-03-07",
+     "version": 2
+    },
+    "at": "<instant>",
+    "before": {
+     "denied": false,
+     "expected": "300.00",
+     "id": "#216",
+     "note": null,
+     "operation_id": "#214",
+     "payer": "Plano de saúde",
+     "receipt_ids": [],
+     "requested_on": "2026-03-07",
+     "version": 1
+    },
+    "entity_id": "#216",
+    "entity_kind": "reimbursement",
+    "id": "#219",
+    "operator": null,
+    "reason": "reembolso recebido",
+    "version": 2
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#220",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#38",
+    "entity_kind": "deductible_category",
+    "id": "#220",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#221",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#39",
+    "entity_kind": "deductible_category",
+    "id": "#221",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#222",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#24",
+    "entity_kind": "balance_check",
+    "id": "#222",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#223",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#60",
+    "entity_kind": "goal",
+    "id": "#223",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#224",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#225",
+    "entity_kind": "merchant_alias",
+    "id": "#224",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#226",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#227",
+    "entity_kind": "member_tax_info",
+    "id": "#226",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#228",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#229",
+    "entity_kind": "member_tax_info",
+    "id": "#228",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#230",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#231",
+    "entity_kind": "income_classification",
+    "id": "#230",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#232",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#233",
+    "entity_kind": "tax_identity",
+    "id": "#232",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#234",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#235",
+    "entity_kind": "income_detail",
+    "id": "#234",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#236",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#237",
+    "entity_kind": "tax_identity",
+    "id": "#236",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#238",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#239",
+    "entity_kind": "income_report",
+    "id": "#238",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#240",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#26",
+    "entity_kind": "bank_account",
+    "id": "#240",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#241",
+   "payload": {
+    "action": "update",
+    "after": {
+     "archived": false,
+     "currency": "BRL",
+     "holders": [
+      "#15",
+      "#16"
+     ],
+     "id": "#14",
+     "institution": "ITAÚ UNIBANCO S.A.",
+     "masked_number": "ag 0123 c 45678-9",
+     "name": "Banco A",
+     "parent_id": null,
+     "subtype": "checking",
+     "type": "asset"
+    },
+    "at": "<instant>",
+    "before": {
+     "archived": false,
+     "currency": "BRL",
+     "holders": [
+      "#15"
+     ],
+     "id": "#14",
+     "institution": null,
+     "masked_number": null,
+     "name": "Banco A",
+     "parent_id": null,
+     "subtype": "checking",
+     "type": "asset"
+    },
+    "entity_id": "#14",
+    "entity_kind": "account",
+    "id": "#241",
+    "operator": null,
+    "reason": "dados da conta bancária",
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#242",
+   "payload": {
+    "action": "update",
+    "after": {
+     "archived": false,
+     "currency": "BRL",
+     "holders": [
+      "#15",
+      "#16"
+     ],
+     "id": "#17",
+     "institution": "ITAÚ UNIBANCO S.A.",
+     "masked_number": "ag 0123 c 45678-9",
+     "name": "Poupança",
+     "parent_id": null,
+     "subtype": "savings",
+     "type": "asset"
+    },
+    "at": "<instant>",
+    "before": {
+     "archived": false,
+     "currency": "BRL",
+     "holders": [
+      "#15"
+     ],
+     "id": "#17",
+     "institution": null,
+     "masked_number": null,
+     "name": "Poupança",
+     "parent_id": null,
+     "subtype": "savings",
+     "type": "asset"
+    },
+    "entity_id": "#17",
+    "entity_kind": "account",
+    "id": "#242",
+    "operator": null,
+    "reason": "dados da conta bancária",
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#243",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#244",
+    "entity_kind": "tax_identity",
+    "id": "#243",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#245",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#246",
+    "entity_kind": "investment_profile",
+    "id": "#245",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#247",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#22",
+    "entity_kind": "account",
+    "id": "#247",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#248",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#27",
+    "entity_kind": "bank_account",
+    "id": "#248",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#249",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#250",
+    "entity_kind": "tax_identity",
+    "id": "#249",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#251",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#252",
+    "entity_kind": "operation",
+    "id": "#251",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "history",
+   "id": "#253",
+   "payload": {
+    "action": "create",
+    "after": null,
+    "at": "<instant>",
+    "before": null,
+    "entity_id": "#25",
+    "entity_kind": "balance_check",
+    "id": "#253",
+    "operator": null,
+    "reason": null,
+    "version": 1
+   }
+  },
+  {
+   "kind": "import_batch",
+   "id": "#52",
+   "payload": {
+    "account_id": "#19",
+    "candidates": [],
+    "card_id": "#36",
+    "created_at": "<instant>",
+    "doc_format": "pdf",
+    "doc_type": "card_statement",
+    "document_id": "#41",
+    "header": {
+     "account_hint": null,
+     "closing_balance": null,
+     "closing_on": "2026-01-03",
+     "due_on": "2026-01-10",
+     "holder": null,
+     "institution": "Nubank",
+     "net_amount": null,
+     "note_number": null,
+     "opening_balance": null,
+     "period_end": null,
+     "period_start": null,
+     "previous_balance": "500.00",
+     "settlement_date": null,
+     "total": "1050.30",
+     "trade_date": null
+    },
+    "id": "#52",
+    "parser_id": "nubank-cartao-pdf",
+    "parser_version": "1",
+    "partial_reason": null,
+    "reconciliations": [
+     {
+      "computed": "1050.30",
+      "expected": "1050.30",
+      "label": "Total da fatura (saldo anterior + lançamentos − créditos − pagamentos)",
+      "ok": true
+     }
+    ],
+    "status": "in_review",
+    "unmapped_lines": 1,
+    "warnings": [
+     "Layout ainda não validado com documentos reais: confira cada item com o original."
+    ]
+   }
+  },
+  {
+   "kind": "income_classification",
+   "id": "#231",
+   "payload": {
+    "id": "#231",
+    "nature": "taxable_pj",
+    "ref": "#11",
+    "subject": "category"
+   }
+  },
+  {
+   "kind": "income_detail",
+   "id": "#235",
+   "payload": {
+    "gross": "9600.00",
+    "id": "#235",
+    "kind": "salary",
+    "operation_id": "#87",
+    "social_security": "908.86",
+    "withheld": "1210.00"
+   }
+  },
+  {
+   "kind": "income_report",
+   "id": "#239",
+   "payload": {
+    "document_id": null,
+    "id": "#239",
+    "lines": [
+     {
+      "amount": "16052.00",
+      "field": "balance_end",
+      "label": "Saldo em 31/12/2026"
+     }
+    ],
+    "note": null,
+    "payer_name": null,
+    "payer_tax_id": "11222333000181",
+    "source": "account",
+    "source_id": "#14",
+    "year": 2026
+   }
+  },
+  {
+   "kind": "installment_plan",
+   "id": "#131",
+   "payload": {
+    "amounts": [
+     "400.00",
+     "400.00",
+     "400.00",
+     "400.00",
+     "400.00",
+     "400.00"
+    ],
+    "card_id": "#36",
+    "category_id": "#6",
+    "count": 6,
+    "description": "TV 55",
+    "first_number": 1,
+    "id": "#131",
+    "operation_ids": [
+     "#129"
+    ],
+    "policy": "purchase",
+    "purchased_on": "2026-02-14",
+    "total": "2400.00"
+   }
+  },
+  {
+   "kind": "investment_event",
+   "id": "#141",
+   "payload": {
+    "cash_account_id": "#14",
+    "cost_attributed": null,
+    "cost_method": null,
+    "factor": null,
+    "fees": "0",
+    "gross": "5000",
+    "id": "#141",
+    "kind": "contribution",
+    "lot_id": null,
+    "net": "5000",
+    "note": null,
+    "on": "2026-01-02",
+    "operation_ids": [
+     "#139"
+    ],
+    "position_id": "#137",
+    "quality": "complete",
+    "quantity": null,
+    "tax_due_later": "0",
+    "tax_withheld": "0",
+    "unit_price": null
+   }
+  },
+  {
+   "kind": "investment_profile",
+   "id": "#246",
+   "payload": {
+    "applied_on": "2026-01-02",
+    "bank_account_id": "#26",
+    "fgc": true,
+    "id": "#246",
+    "income_code": "exclusivo:06",
+    "indexer": "cdi",
+    "irpf_code": "02",
+    "irpf_group": "04",
+    "issuer": "Banco X S.A.",
+    "issuer_tax_id": null,
+    "liquidity": "at_maturity",
+    "liquidity_days": null,
+    "maturity": "2028-01-03",
+    "notes": null,
+    "position_id": "#137",
+    "rate": "110",
+    "tax": "withheld"
+   }
+  },
+  {
+   "kind": "ledger.meta",
+   "id": "#254",
+   "payload": {
+    "currency": "BRL",
+    "family_name": "Projeto Teste",
+    "opening_equity_id": "#0",
+    "schema_version": 2
+   }
+  },
+  {
+   "kind": "loan_payment",
+   "id": "#190",
+   "payload": {
+    "id": "#190",
+    "number": 1,
+    "operation_id": "#188",
+    "paid_on": "2026-01-20",
+    "plan_id": "#186"
+   }
+  },
+  {
+   "kind": "loan_payment",
+   "id": "#194",
+   "payload": {
+    "id": "#194",
+    "number": 2,
+    "operation_id": "#192",
+    "paid_on": "2026-02-20",
+    "plan_id": "#186"
+   }
+  },
+  {
+   "kind": "loan_plan",
+   "id": "#186",
+   "payload": {
+    "fees_category_id": null,
+    "fees_per_installment": "0",
+    "first_due": "2026-01-20",
+    "id": "#186",
+    "interest_category_id": "#9",
+    "liability_account_id": "#21",
+    "monthly_rate": "0.0149",
+    "name": "Financiamento do carro",
+    "payment_account_id": "#14",
+    "principal": "38000.00",
+    "system": "price",
+    "term": 36,
+    "version": 1
+   }
+  },
+  {
+   "kind": "member",
+   "id": "#15",
+   "payload": {
+    "active": true,
+    "id": "#15",
+    "name": "Ana",
+    "role": "holder"
+   }
+  },
+  {
+   "kind": "member",
+   "id": "#16",
+   "payload": {
+    "active": true,
+    "id": "#16",
+    "name": "Bruno",
+    "role": "holder"
+   }
+  },
+  {
+   "kind": "member_tax_info",
+   "id": "#227",
+   "payload": {
+    "birth_date": "1985-04-02",
+    "cpf": "52998224725",
+    "declared_by": null,
+    "id": "#227",
+    "member_id": "#15",
+    "relation": null
+   }
+  },
+  {
+   "kind": "member_tax_info",
+   "id": "#229",
+   "payload": {
+    "birth_date": "2016-08-09",
+    "cpf": "11144477735",
+    "declared_by": "#15",
+    "id": "#229",
+    "member_id": "#16",
+    "relation": "Filho(a)"
+   }
+  },
+  {
+   "kind": "merchant_alias",
+   "id": "#225",
+   "payload": {
+    "id": "#225",
+    "key": "NETFLIX",
+    "name": "Netflix"
+   }
+  },
+  {
+   "kind": "operation",
+   "id": "#83",
+   "payload": {
+    "accrual_month": null,
+    "booked_on": null,
+    "card_id": null,
+    "cardholder_id": null,
+    "currency": "BRL",
+    "description": "Saldo de abertura — Banco A",
+    "due_on": null,
+    "forecast_id": null,
+    "id": "#83",
+    "installment": null,
+    "kind": "opening_balance",
+    "member_id": null,
+    "notes": null,
+    "occurred_on": "2026-01-01",
+    "origin": {
+     "evidence_ids": [],
+     "import_id": null,
+     "kind": "manual"
+    },
+    "postings": [
+     {
+      "account_id": "#14",
+      "amount": "8450.00",
+      "member_id": null
+     },
+     {
+      "account_id": "#0",
+      "amount": "-8450.00",
+      "member_id": null
+     }
+    ],
+    "reversal_of": null,
+    "settled_on": "2026-01-01",
+    "status": "active",
+    "version": 1
+   }
+  },
+  {
+   "kind": "operation",
+   "id": "#85",
+   "payload": {
+    "accrual_month": null,
+    "booked_on": null,
+    "card_id": null,
+    "cardholder_id": null,
+    "currency": "BRL",
+    "description": "Saldo de abertura — Conjunta",
+    "due_on": null,
+    "forecast_id": null,
+    "id": "#85",
+    "installment": null,
+    "kind": "opening_balance",
+    "member_id": null,
+    "notes": null,
+    "occurred_on": "2026-01-01",
+    "origin": {
+     "evidence_ids": [],
+     "import_id": null,
+     "kind": "manual"
+    },
+    "postings": [
+     {
+      "account_id": "#18",
+      "amount": "2300.00",
+      "member_id": null
+     },
+     {
+      "account_id": "#0",
+      "amount": "-2300.00",
+      "member_id": null
+     }
+    ],
+    "reversal_of": null,
+    "settled_on": "2026-01-01",
+    "status": "active",
+    "version": 1
+   }
+  },
+  {
+   "kind": "operation",
+   "id": "#87",
+   "payload": {
+    "accrual_month": null,
+    "booked_on": null,
+    "card_id": null,
+    "cardholder_id": null,
+    "currency": "BRL",
+    "description": "Salário",
+    "due_on": null,
+    "forecast_id": null,
+    "id": "#87",
+    "installment": null,
+    "kind": "income",
+    "member_id": null,
+    "notes": null,
+    "occurred_on": "2026-01-05",
+    "origin": {
+     "evidence_ids": [],
+     "import_id": null,
+     "kind": "manual"
+    },
+    "postings": [
+     {
+      "account_id": "#14",
+      "amount": "7800.00",
+      "member_id": null
+     },
+     {
+      "account_id": "#11",
+      "amount": "-7800.00",
+      "member_id": null
+     }
+    ],
+    "reversal_of": null,
+    "settled_on": "2026-01-05",
+    "status": "active",
+    "version": 1
+   }
+  },
+  {
+   "kind": "operation",
+   "id": "#89",
+   "payload": {
+    "accrual_month": null,
+    "booked_on": null,
+    "card_id": "#36",
+    "cardholder_id": "#15",
+    "currency": "BRL",
+    "description": "Mercado Pão de Açúcar",
+    "due_on": null,
+    "forecast_id": null,
+    "id": "#89",
+    "installment": null,
+    "kind": "card_purchase",
+    "member_id": null,
+    "notes": null,
+    "occurred_on": "2026-01-03",
+    "origin": {
+     "evidence_ids": [],
+     "import_id": null,
+     "kind": "manual"
+    },
+    "postings": [
+     {
+      "account_id": "#2",
+      "amount": "38",
+      "member_id": null
+     },
+     {
+      "account_id": "#19",
+      "amount": "-38",
+      "member_id": null
+     }
+    ],
+    "reversal_of": null,
+    "settled_on": null,
+    "status": "active",
+    "version": 1
+   }
+  },
+  {
+   "kind": "operation",
+   "id": "#91",
+   "payload": {
+    "accrual_month": null,
+    "booked_on": null,
+    "card_id": "#36",
+    "cardholder_id": "#15",
+    "currency": "BRL",
+    "description": "Farmácia São Paulo",
+    "due_on": null,
+    "forecast_id": null,
+    "id": "#91",
+    "installment": null,
+    "kind": "card_purchase",
+    "member_id": null,
+    "notes": null,
+    "occurred_on": "2026-01-07",
+    "origin": {
+     "evidence_ids": [],
+     "import_id": null,
+     "kind": "manual"
+    },
+    "postings": [
+     {
+      "account_id": "#4",
+      "amount": "61",
+      "member_id": null
+     },
+     {
+      "account_id": "#19",
+      "amount": "-61",
+      "member_id": null
+     }
+    ],
+    "reversal_of": null,
+    "settled_on": null,
+    "status": "active",
+    "version": 1
+   }
+  },
+  {
+   "kind": "operation",
+   "id": "#93",
+   "payload": {
+    "accrual_month": null,
+    "booked_on": null,
+    "card_id": "#36",
+    "cardholder_id": "#15",
+    "currency": "BRL",
+    "description": "Posto Shell",
+    "due_on": null,
+    "forecast_id": null,
+    "id": "#93",
+    "installment": null,
+    "kind": "card_purchase",
+    "member_id": null,
+    "notes": null,
+    "occurred_on": "2026-01-11",
+    "origin": {
+     "evidence_ids": [],
+     "import_id": null,
+     "kind": "manual"
+    },
+    "postings": [
+     {
+      "account_id": "#3",
+      "amount": "84",
+      "member_id": null
+     },
+     {
+      "account_id": "#19",
+      "amount": "-84",
+      "member_id": null
+     }
+    ],
+    "reversal_of": null,
+    "settled_on": null,
+    "status": "active",
+    "version": 1
+   }
+  },
+  {
+   "kind": "operation",
+   "id": "#95",
+   "payload": {
+    "accrual_month": null,
+    "booked_on": null,
+    "card_id": "#36",
+    "cardholder_id": "#15",
+    "currency": "BRL",
+    "description": "Restaurante Bom Prato",
+    "due_on": null,
+    "forecast_id": null,
+    "id": "#95",
+    "installment": null,
+    "kind": "card_purchase",
+    "member_id": null,
+    "notes": null,
+    "occurred_on": "2026-01-15",
+    "origin": {
+     "evidence_ids": [],
+     "import_id": null,
+     "kind": "manual"
+    },
+    "postings": [
+     {
+      "account_id": "#2",
+      "amount": "107",
+      "member_id": null
+     },
+     {
+      "account_id": "#19",
+      "amount": "-107",
+      "member_id": null
+     }
+    ],
+    "reversal_of": null,
+    "settled_on": null,
+    "status": "active",
+    "version": 1
+   }
+  },
+  {
+   "kind": "operation",
+   "id": "#97",
+   "payload": {
+    "accrual_month": null,
+    "booked_on": null,
+    "card_id": "#36",
+    "cardholder_id": "#15",
+    "currency": "BRL",
+    "description": "Padaria Real",
+    "due_on": null,
+    "forecast_id": null,
+    "id": "#97",
+    "installment": null,
+    "kind": "card_purchase",
+    "member_id": null,
+    "notes": null,
+    "occurred_on": "2026-01-19",
+    "origin": {
+     "evidence_ids": [],
+     "import_id": null,
+     "kind": "manual"
+    },
+    "postings": [
+     {
+      "account_id": "#2",
+      "amount": "130",
+      "member_id": null
+     },
+     {
+      "account_id": "#19",
+      "amount": "-130",
+      "member_id": null
+     }
+    ],
+    "reversal_of": null,
+    "settled_on": null,
+    "status": "active",
+    "version": 1
+   }
+  },
+  {
+   "kind": "operation",
+   "id": "#99",
+   "payload": {
+    "accrual_month": null,
+    "booked_on": null,
+    "card_id": null,
+    "cardholder_id": null,
+    "currency": "BRL",
+    "description": "Aluguel",
+    "due_on": null,
+    "forecast_id": null,
+    "id": "#99",
+    "installment": null,
+    "kind": "expense",
+    "member_id": null,
+    "notes": null,
+    "occurred_on": "2026-01-10",
+    "origin": {
+     "evidence_ids": [],
+     "import_id": null,
+     "kind": "manual"
+    },
+    "postings": [
+     {
+      "account_id": "#1",
+      "amount": "2350.00",
+      "member_id": null
+     },
+     {
+      "account_id": "#14",
+      "amount": "-2350.00",
+      "member_id": null
+     }
+    ],
+    "reversal_of": null,
+    "settled_on": "2026-01-10",
+    "status": "active",
+    "version": 1
+   }
+  },
+  {
+   "kind": "operation",
+   "id": "#101",
+   "payload": {
+    "accrual_month": null,
+    "booked_on": null,
+    "card_id": null,
+    "cardholder_id": null,
+    "currency": "BRL",
+    "description": "Salário",
+    "due_on": null,
+    "forecast_id": null,
+    "id": "#101",
+    "installment": null,
+    "kind": "income",
+    "member_id": null,
+    "notes": null,
+    "occurred_on": "2026-02-05",
+    "origin": {
+     "evidence_ids": [],
+     "import_id": null,
+     "kind": "manual"
+    },
+    "postings": [
+     {
+      "account_id": "#14",
+      "amount": "7800.00",
+      "member_id": null
+     },
+     {
+      "account_id": "#11",
+      "amount": "-7800.00",
+      "member_id": null
+     }
+    ],
+    "reversal_of": null,
+    "settled_on": "2026-02-05",
+    "status": "active",
+    "version": 1
+   }
+  },
+  {
+   "kind": "operation",
+   "id": "#103",
+   "payload": {
+    "accrual_month": null,
+    "booked_on": null,
+    "card_id": "#36",
+    "cardholder_id": "#15",
+    "currency": "BRL",
+    "description": "Mercado Pão de Açúcar",
+    "due_on": null,
+    "forecast_id": null,
+    "id": "#103",
+    "installment": null,
+    "kind": "card_purchase",
+    "member_id": null,
+    "notes": null,
+    "occurred_on": "2026-02-03",
+    "origin": {
+     "evidence_ids": [],
+     "import_id": null,
+     "kind": "manual"
+    },
+    "postings": [
+     {
+      "account_id": "#2",
+      "amount": "39",
+      "member_id": null
+     },
+     {
+      "account_id": "#19",
+      "amount": "-39",
+      "member_id": null
+     }
+    ],
+    "reversal_of": null,
+    "settled_on": null,
+    "status": "active",
+    "version": 1
+   }
+  },
+  {
+   "kind": "operation",
+   "id": "#105",
+   "payload": {
+    "accrual_month": null,
+    "booked_on": null,
+    "card_id": "#36",
+    "cardholder_id": "#15",
+    "currency": "BRL",
+    "description": "Farmácia São Paulo",
+    "due_on": null,
+    "forecast_id": null,
+    "id": "#105",
+    "installment": null,
+    "kind": "card_purchase",
+    "member_id": null,
+    "notes": null,
+    "occurred_on": "2026-02-07",
+    "origin": {
+     "evidence_ids": [],
+     "import_id": null,
+     "kind": "manual"
+    },
+    "postings": [
+     {
+      "account_id": "#4",
+      "amount": "62",
+      "member_id": null
+     },
+     {
+      "account_id": "#19",
+      "amount": "-62",
+      "member_id": null
+     }
+    ],
+    "reversal_of": null,
+    "settled_on": null,
+    "status": "active",
+    "version": 1
+   }
+  },
+  {
+   "kind": "operation",
+   "id": "#107",
+   "payload": {
+    "accrual_month": null,
+    "booked_on": null,
+    "card_id": "#36",
+    "cardholder_id": "#15",
+    "currency": "BRL",
+    "description": "Posto Shell",
+    "due_on": null,
+    "forecast_id": null,
+    "id": "#107",
+    "installment": null,
+    "kind": "card_purchase",
+    "member_id": null,
+    "notes": null,
+    "occurred_on": "2026-02-11",
+    "origin": {
+     "evidence_ids": [],
+     "import_id": null,
+     "kind": "manual"
+    },
+    "postings": [
+     {
+      "account_id": "#3",
+      "amount": "85",
+      "member_id": null
+     },
+     {
+      "account_id": "#19",
+      "amount": "-85",
+      "member_id": null
+     }
+    ],
+    "reversal_of": null,
+    "settled_on": null,
+    "status": "active",
+    "version": 1
+   }
+  },
+  {
+   "kind": "operation",
+   "id": "#109",
+   "payload": {
+    "accrual_month": null,
+    "booked_on": null,
+    "card_id": "#36",
+    "cardholder_id": "#15",
+    "currency": "BRL",
+    "description": "Restaurante Bom Prato",
+    "due_on": null,
+    "forecast_id": null,
+    "id": "#109",
+    "installment": null,
+    "kind": "card_purchase",
+    "member_id": null,
+    "notes": null,
+    "occurred_on": "2026-02-15",
+    "origin": {
+     "evidence_ids": [],
+     "import_id": null,
+     "kind": "manual"
+    },
+    "postings": [
+     {
+      "account_id": "#2",
+      "amount": "108",
+      "member_id": null
+     },
+     {
+      "account_id": "#19",
+      "amount": "-108",
+      "member_id": null
+     }
+    ],
+    "reversal_of": null,
+    "settled_on": null,
+    "status": "active",
+    "version": 1
+   }
+  },
+  {
+   "kind": "operation",
+   "id": "#111",
+   "payload": {
+    "accrual_month": null,
+    "booked_on": null,
+    "card_id": "#36",
+    "cardholder_id": "#15",
+    "currency": "BRL",
+    "description": "Padaria Real",
+    "due_on": null,
+    "forecast_id": null,
+    "id": "#111",
+    "installment": null,
+    "kind": "card_purchase",
+    "member_id": null,
+    "notes": null,
+    "occurred_on": "2026-02-19",
+    "origin": {
+     "evidence_ids": [],
+     "import_id": null,
+     "kind": "manual"
+    },
+    "postings": [
+     {
+      "account_id": "#2",
+      "amount": "131",
+      "member_id": null
+     },
+     {
+      "account_id": "#19",
+      "amount": "-131",
+      "member_id": null
+     }
+    ],
+    "reversal_of": null,
+    "settled_on": null,
+    "status": "active",
+    "version": 1
+   }
+  },
+  {
+   "kind": "operation",
+   "id": "#113",
+   "payload": {
+    "accrual_month": null,
+    "booked_on": null,
+    "card_id": null,
+    "cardholder_id": null,
+    "currency": "BRL",
+    "description": "Aluguel",
+    "due_on": null,
+    "forecast_id": null,
+    "id": "#113",
+    "installment": null,
+    "kind": "expense",
+    "member_id": null,
+    "notes": null,
+    "occurred_on": "2026-02-10",
+    "origin": {
+     "evidence_ids": [],
+     "import_id": null,
+     "kind": "manual"
+    },
+    "postings": [
+     {
+      "account_id": "#1",
+      "amount": "2350.00",
+      "member_id": null
+     },
+     {
+      "account_id": "#14",
+      "amount": "-2350.00",
+      "member_id": null
+     }
+    ],
+    "reversal_of": null,
+    "settled_on": "2026-02-10",
+    "status": "active",
+    "version": 1
+   }
+  },
+  {
+   "kind": "operation",
+   "id": "#115",
+   "payload": {
+    "accrual_month": null,
+    "booked_on": null,
+    "card_id": null,
+    "cardholder_id": null,
+    "currency": "BRL",
+    "description": "Salário",
+    "due_on": null,
+    "forecast_id": null,
+    "id": "#115",
+    "installment": null,
+    "kind": "income",
+    "member_id": null,
+    "notes": null,
+    "occurred_on": "2026-03-05",
+    "origin": {
+     "evidence_ids": [],
+     "import_id": null,
+     "kind": "manual"
+    },
+    "postings": [
+     {
+      "account_id": "#14",
+      "amount": "7800.00",
+      "member_id": null
+     },
+     {
+      "account_id": "#11",
+      "amount": "-7800.00",
+      "member_id": null
+     }
+    ],
+    "reversal_of": null,
+    "settled_on": "2026-03-05",
+    "status": "active",
+    "version": 1
+   }
+  },
+  {
+   "kind": "operation",
+   "id": "#117",
+   "payload": {
+    "accrual_month": null,
+    "booked_on": null,
+    "card_id": "#36",
+    "cardholder_id": "#15",
+    "currency": "BRL",
+    "description": "Mercado Pão de Açúcar",
+    "due_on": null,
+    "forecast_id": null,
+    "id": "#117",
+    "installment": null,
+    "kind": "card_purchase",
+    "member_id": null,
+    "notes": null,
+    "occurred_on": "2026-03-03",
+    "origin": {
+     "evidence_ids": [],
+     "import_id": null,
+     "kind": "manual"
+    },
+    "postings": [
+     {
+      "account_id": "#2",
+      "amount": "40",
+      "member_id": null
+     },
+     {
+      "account_id": "#19",
+      "amount": "-40",
+      "member_id": null
+     }
+    ],
+    "reversal_of": null,
+    "settled_on": null,
+    "status": "active",
+    "version": 1
+   }
+  },
+  {
+   "kind": "operation",
+   "id": "#119",
+   "payload": {
+    "accrual_month": null,
+    "booked_on": null,
+    "card_id": "#36",
+    "cardholder_id": "#15",
+    "currency": "BRL",
+    "description": "Farmácia São Paulo",
+    "due_on": null,
+    "forecast_id": null,
+    "id": "#119",
+    "installment": null,
+    "kind": "card_purchase",
+    "member_id": null,
+    "notes": null,
+    "occurred_on": "2026-03-07",
+    "origin": {
+     "evidence_ids": [],
+     "import_id": null,
+     "kind": "manual"
+    },
+    "postings": [
+     {
+      "account_id": "#4",
+      "amount": "63",
+      "member_id": null
+     },
+     {
+      "account_id": "#19",
+      "amount": "-63",
+      "member_id": null
+     }
+    ],
+    "reversal_of": null,
+    "settled_on": null,
+    "status": "active",
+    "version": 1
+   }
+  },
+  {
+   "kind": "operation",
+   "id": "#121",
+   "payload": {
+    "accrual_month": null,
+    "booked_on": null,
+    "card_id": "#36",
+    "cardholder_id": "#15",
+    "currency": "BRL",
+    "description": "Posto Shell",
+    "due_on": null,
+    "forecast_id": null,
+    "id": "#121",
+    "installment": null,
+    "kind": "card_purchase",
+    "member_id": null,
+    "notes": null,
+    "occurred_on": "2026-03-11",
+    "origin": {
+     "evidence_ids": [],
+     "import_id": null,
+     "kind": "manual"
+    },
+    "postings": [
+     {
+      "account_id": "#3",
+      "amount": "86",
+      "member_id": null
+     },
+     {
+      "account_id": "#19",
+      "amount": "-86",
+      "member_id": null
+     }
+    ],
+    "reversal_of": null,
+    "settled_on": null,
+    "status": "active",
+    "version": 1
+   }
+  },
+  {
+   "kind": "operation",
+   "id": "#123",
+   "payload": {
+    "accrual_month": null,
+    "booked_on": null,
+    "card_id": "#36",
+    "cardholder_id": "#15",
+    "currency": "BRL",
+    "description": "Restaurante Bom Prato",
+    "due_on": null,
+    "forecast_id": null,
+    "id": "#123",
+    "installment": null,
+    "kind": "card_purchase",
+    "member_id": null,
+    "notes": null,
+    "occurred_on": "2026-03-15",
+    "origin": {
+     "evidence_ids": [],
+     "import_id": null,
+     "kind": "manual"
+    },
+    "postings": [
+     {
+      "account_id": "#2",
+      "amount": "109",
+      "member_id": null
+     },
+     {
+      "account_id": "#19",
+      "amount": "-109",
+      "member_id": null
+     }
+    ],
+    "reversal_of": null,
+    "settled_on": null,
+    "status": "active",
+    "version": 1
+   }
+  },
+  {
+   "kind": "operation",
+   "id": "#125",
+   "payload": {
+    "accrual_month": null,
+    "booked_on": null,
+    "card_id": "#36",
+    "cardholder_id": "#15",
+    "currency": "BRL",
+    "description": "Padaria Real",
+    "due_on": null,
+    "forecast_id": null,
+    "id": "#125",
+    "installment": null,
+    "kind": "card_purchase",
+    "member_id": null,
+    "notes": null,
+    "occurred_on": "2026-03-19",
+    "origin": {
+     "evidence_ids": [],
+     "import_id": null,
+     "kind": "manual"
+    },
+    "postings": [
+     {
+      "account_id": "#2",
+      "amount": "132",
+      "member_id": null
+     },
+     {
+      "account_id": "#19",
+      "amount": "-132",
+      "member_id": null
+     }
+    ],
+    "reversal_of": null,
+    "settled_on": null,
+    "status": "active",
+    "version": 1
+   }
+  },
+  {
+   "kind": "operation",
+   "id": "#127",
+   "payload": {
+    "accrual_month": null,
+    "booked_on": null,
+    "card_id": null,
+    "cardholder_id": null,
+    "currency": "BRL",
+    "description": "Aluguel",
+    "due_on": null,
+    "forecast_id": null,
+    "id": "#127",
+    "installment": null,
+    "kind": "expense",
+    "member_id": null,
+    "notes": null,
+    "occurred_on": "2026-03-10",
+    "origin": {
+     "evidence_ids": [],
+     "import_id": null,
+     "kind": "manual"
+    },
+    "postings": [
+     {
+      "account_id": "#1",
+      "amount": "2350.00",
+      "member_id": null
+     },
+     {
+      "account_id": "#14",
+      "amount": "-2350.00",
+      "member_id": null
+     }
+    ],
+    "reversal_of": null,
+    "settled_on": "2026-03-10",
+    "status": "active",
+    "version": 1
+   }
+  },
+  {
+   "kind": "operation",
+   "id": "#129",
+   "payload": {
+    "accrual_month": null,
+    "booked_on": null,
+    "card_id": "#36",
+    "cardholder_id": "#15",
+    "currency": "BRL",
+    "description": "TV 55 (6x)",
+    "due_on": null,
+    "forecast_id": null,
+    "id": "#129",
+    "installment": {
+     "number": 1,
+     "plan_id": "#131",
+     "total": 6
+    },
+    "kind": "card_purchase",
+    "member_id": null,
+    "notes": null,
+    "occurred_on": "2026-02-14",
+    "origin": {
+     "evidence_ids": [],
+     "import_id": null,
+     "kind": "manual"
+    },
+    "postings": [
+     {
+      "account_id": "#6",
+      "amount": "2400.00",
+      "member_id": null
+     },
+     {
+      "account_id": "#19",
+      "amount": "-2400.00",
+      "member_id": null
+     }
+    ],
+    "reversal_of": null,
+    "settled_on": null,
+    "status": "active",
+    "version": 1
+   }
+  },
+  {
+   "kind": "operation",
+   "id": "#139",
+   "payload": {
+    "accrual_month": null,
+    "booked_on": null,
+    "card_id": null,
+    "cardholder_id": null,
+    "currency": "BRL",
+    "description": "Aporte — CDB Banco X 2028",
+    "due_on": null,
+    "forecast_id": null,
+    "id": "#139",
+    "installment": null,
+    "kind": "investment_contribution",
+    "member_id": null,
+    "notes": null,
+    "occurred_on": "2026-01-02",
+    "origin": {
+     "evidence_ids": [],
+     "import_id": null,
+     "kind": "manual"
+    },
+    "postings": [
+     {
+      "account_id": "#20",
+      "amount": "5000",
+      "member_id": null
+     },
+     {
+      "account_id": "#14",
+      "amount": "-5000",
+      "member_id": null
+     }
+    ],
+    "reversal_of": null,
+    "settled_on": "2026-01-02",
+    "status": "active",
+    "version": 1
+   }
+  },
+  {
+   "kind": "operation",
+   "id": "#178",
+   "payload": {
+    "accrual_month": null,
+    "booked_on": null,
+    "card_id": null,
+    "cardholder_id": null,
+    "currency": "BRL",
+    "description": "Posto Shell",
+    "due_on": null,
+    "forecast_id": null,
+    "id": "#178",
+    "installment": null,
+    "kind": "expense",
+    "member_id": null,
+    "notes": null,
+    "occurred_on": "2026-10-06",
+    "origin": {
+     "evidence_ids": [],
+     "import_id": null,
+     "kind": "manual"
+    },
+    "postings": [
+     {
+      "account_id": "#3",
+      "amount": "145.00",
+      "member_id": null
+     },
+     {
+      "account_id": "#14",
+      "amount": "-145.00",
+      "member_id": null
+     }
+    ],
+    "reversal_of": null,
+    "settled_on": "2026-10-06",
+    "status": "active",
+    "version": 1
+   }
+  },
+  {
+   "kind": "operation",
+   "id": "#180",
+   "payload": {
+    "accrual_month": null,
+    "booked_on": null,
+    "card_id": null,
+    "cardholder_id": null,
+    "currency": "BRL",
+    "description": "Mercado do mês",
+    "due_on": null,
+    "forecast_id": null,
+    "id": "#180",
+    "installment": null,
+    "kind": "expense",
+    "member_id": null,
+    "notes": null,
+    "occurred_on": "2026-10-06",
+    "origin": {
+     "evidence_ids": [],
+     "import_id": null,
+     "kind": "manual"
+    },
+    "postings": [
+     {
+      "account_id": "#2",
+      "amount": "560.00",
+      "member_id": null
+     },
+     {
+      "account_id": "#14",
+      "amount": "-560.00",
+      "member_id": null
+     }
+    ],
+    "reversal_of": null,
+    "settled_on": "2026-10-06",
+    "status": "active",
+    "version": 1
+   }
+  },
+  {
+   "kind": "operation",
+   "id": "#184",
+   "payload": {
+    "accrual_month": null,
+    "booked_on": null,
+    "card_id": null,
+    "cardholder_id": null,
+    "currency": "BRL",
+    "description": "Saldo de abertura — Financiamento do carro",
+    "due_on": null,
+    "forecast_id": null,
+    "id": "#184",
+    "installment": null,
+    "kind": "opening_balance",
+    "member_id": null,
+    "notes": null,
+    "occurred_on": "2025-12-20",
+    "origin": {
+     "evidence_ids": [],
+     "import_id": null,
+     "kind": "manual"
+    },
+    "postings": [
+     {
+      "account_id": "#21",
+      "amount": "-38000.00",
+      "member_id": null
+     },
+     {
+      "account_id": "#0",
+      "amount": "38000.00",
+      "member_id": null
+     }
+    ],
+    "reversal_of": null,
+    "settled_on": "2025-12-20",
+    "status": "active",
+    "version": 1
+   }
+  },
+  {
+   "kind": "operation",
+   "id": "#188",
+   "payload": {
+    "accrual_month": {
+     "month": 1,
+     "year": 2026
+    },
+    "booked_on": null,
+    "card_id": null,
+    "cardholder_id": null,
+    "currency": "BRL",
+    "description": "Parcela 1/36 — Financiamento do carro",
+    "due_on": "2026-01-20",
+    "forecast_id": null,
+    "id": "#188",
+    "installment": null,
+    "kind": "other",
+    "member_id": null,
+    "notes": null,
+    "occurred_on": "2026-01-20",
+    "origin": {
+     "evidence_ids": [],
+     "import_id": null,
+     "kind": "manual"
+    },
+    "postings": [
+     {
+      "account_id": "#21",
+      "amount": "805.30",
+      "member_id": null
+     },
+     {
+      "account_id": "#9",
+      "amount": "566.20",
+      "member_id": null
+     },
+     {
+      "account_id": "#14",
+      "amount": "-1371.50",
+      "member_id": null
+     }
+    ],
+    "reversal_of": null,
+    "settled_on": "2026-01-20",
+    "status": "active",
+    "version": 1
+   }
+  },
+  {
+   "kind": "operation",
+   "id": "#192",
+   "payload": {
+    "accrual_month": {
+     "month": 2,
+     "year": 2026
+    },
+    "booked_on": null,
+    "card_id": null,
+    "cardholder_id": null,
+    "currency": "BRL",
+    "description": "Parcela 2/36 — Financiamento do carro",
+    "due_on": "2026-02-20",
+    "forecast_id": null,
+    "id": "#192",
+    "installment": null,
+    "kind": "other",
+    "member_id": null,
+    "notes": null,
+    "occurred_on": "2026-02-20",
+    "origin": {
+     "evidence_ids": [],
+     "import_id": null,
+     "kind": "manual"
+    },
+    "postings": [
+     {
+      "account_id": "#21",
+      "amount": "817.30",
+      "member_id": null
+     },
+     {
+      "account_id": "#9",
+      "amount": "554.20",
+      "member_id": null
+     },
+     {
+      "account_id": "#14",
+      "amount": "-1371.50",
+      "member_id": null
+     }
+    ],
+    "reversal_of": null,
+    "settled_on": "2026-02-20",
+    "status": "active",
+    "version": 1
+   }
+  },
+  {
+   "kind": "operation",
+   "id": "#196",
+   "payload": {
+    "accrual_month": null,
+    "booked_on": null,
+    "card_id": "#36",
+    "cardholder_id": "#15",
+    "currency": "BRL",
+    "description": "NETFLIX.COM",
+    "due_on": null,
+    "forecast_id": null,
+    "id": "#196",
+    "installment": null,
+    "kind": "card_purchase",
+    "member_id": null,
+    "notes": null,
+    "occurred_on": "2026-01-12",
+    "origin": {
+     "evidence_ids": [],
+     "import_id": null,
+     "kind": "manual"
+    },
+    "postings": [
+     {
+      "account_id": "#7",
+      "amount": "55.90",
+      "member_id": null
+     },
+     {
+      "account_id": "#19",
+      "amount": "-55.90",
+      "member_id": null
+     }
+    ],
+    "reversal_of": null,
+    "settled_on": null,
+    "status": "active",
+    "version": 1
+   }
+  },
+  {
+   "kind": "operation",
+   "id": "#198",
+   "payload": {
+    "accrual_month": null,
+    "booked_on": null,
+    "card_id": "#36",
+    "cardholder_id": "#15",
+    "currency": "BRL",
+    "description": "NETFLIX.COM",
+    "due_on": null,
+    "forecast_id": null,
+    "id": "#198",
+    "installment": null,
+    "kind": "card_purchase",
+    "member_id": null,
+    "notes": null,
+    "occurred_on": "2026-02-12",
+    "origin": {
+     "evidence_ids": [],
+     "import_id": null,
+     "kind": "manual"
+    },
+    "postings": [
+     {
+      "account_id": "#7",
+      "amount": "55.90",
+      "member_id": null
+     },
+     {
+      "account_id": "#19",
+      "amount": "-55.90",
+      "member_id": null
+     }
+    ],
+    "reversal_of": null,
+    "settled_on": null,
+    "status": "active",
+    "version": 1
+   }
+  },
+  {
+   "kind": "operation",
+   "id": "#200",
+   "payload": {
+    "accrual_month": null,
+    "booked_on": null,
+    "card_id": "#36",
+    "cardholder_id": "#15",
+    "currency": "BRL",
+    "description": "NETFLIX.COM",
+    "due_on": null,
+    "forecast_id": null,
+    "id": "#200",
+    "installment": null,
+    "kind": "card_purchase",
+    "member_id": null,
+    "notes": null,
+    "occurred_on": "2026-03-12",
+    "origin": {
+     "evidence_ids": [],
+     "import_id": null,
+     "kind": "manual"
+    },
+    "postings": [
+     {
+      "account_id": "#7",
+      "amount": "55.90",
+      "member_id": null
+     },
+     {
+      "account_id": "#19",
+      "amount": "-55.90",
+      "member_id": null
+     }
+    ],
+    "reversal_of": null,
+    "settled_on": null,
+    "status": "active",
+    "version": 1
+   }
+  },
+  {
+   "kind": "operation",
+   "id": "#202",
+   "payload": {
+    "accrual_month": null,
+    "booked_on": null,
+    "card_id": "#36",
+    "cardholder_id": "#15",
+    "currency": "BRL",
+    "description": "Pousada Serra",
+    "due_on": null,
+    "forecast_id": null,
+    "id": "#202",
+    "installment": null,
+    "kind": "card_purchase",
+    "member_id": null,
+    "notes": null,
+    "occurred_on": "2026-02-02",
+    "origin": {
+     "evidence_ids": [],
+     "import_id": null,
+     "kind": "manual"
+    },
+    "postings": [
+     {
+      "account_id": "#6",
+      "amount": "1380.00",
+      "member_id": null
+     },
+     {
+      "account_id": "#19",
+      "amount": "-1380.00",
+      "member_id": null
+     }
+    ],
+    "reversal_of": null,
+    "settled_on": null,
+    "status": "active",
+    "version": 1
+   }
+  },
+  {
+   "kind": "operation",
+   "id": "#204",
+   "payload": {
+    "accrual_month": null,
+    "booked_on": null,
+    "card_id": "#36",
+    "cardholder_id": "#15",
+    "currency": "BRL",
+    "description": "Restaurante",
+    "due_on": null,
+    "forecast_id": null,
+    "id": "#204",
+    "installment": null,
+    "kind": "card_purchase",
+    "member_id": null,
+    "notes": null,
+    "occurred_on": "2026-02-03",
+    "origin": {
+     "evidence_ids": [],
+     "import_id": null,
+     "kind": "manual"
+    },
+    "postings": [
+     {
+      "account_id": "#2",
+      "amount": "412.30",
+      "member_id": null
+     },
+     {
+      "account_id": "#19",
+      "amount": "-412.30",
+      "member_id": null
+     }
+    ],
+    "reversal_of": null,
+    "settled_on": null,
+    "status": "active",
+    "version": 1
+   }
+  },
+  {
+   "kind": "operation",
+   "id": "#206",
+   "payload": {
+    "accrual_month": null,
+    "booked_on": null,
+    "card_id": "#36",
+    "cardholder_id": "#15",
+    "currency": "BRL",
+    "description": "Pedágio e posto",
+    "due_on": null,
+    "forecast_id": null,
+    "id": "#206",
+    "installment": null,
+    "kind": "card_purchase",
+    "member_id": null,
+    "notes": null,
+    "occurred_on": "2026-02-04",
+    "origin": {
+     "evidence_ids": [],
+     "import_id": null,
+     "kind": "manual"
+    },
+    "postings": [
+     {
+      "account_id": "#3",
+      "amount": "260.00",
+      "member_id": null
+     },
+     {
+      "account_id": "#19",
+      "amount": "-260.00",
+      "member_id": null
+     }
+    ],
+    "reversal_of": null,
+    "settled_on": null,
+    "status": "active",
+    "version": 1
+   }
+  },
+  {
+   "kind": "operation",
+   "id": "#214",
+   "payload": {
+    "accrual_month": null,
+    "booked_on": null,
+    "card_id": null,
+    "cardholder_id": null,
+    "currency": "BRL",
+    "description": "Consulta pediatra",
+    "due_on": null,
+    "forecast_id": null,
+    "id": "#214",
+    "installment": null,
+    "kind": "expense",
+    "member_id": "#16",
+    "notes": null,
+    "occurred_on": "2026-03-06",
+    "origin": {
+     "evidence_ids": [],
+     "import_id": null,
+     "kind": "manual"
+    },
+    "postings": [
+     {
+      "account_id": "#4",
+      "amount": "450.00",
+      "member_id": null
+     },
+     {
+      "account_id": "#14",
+      "amount": "-450.00",
+      "member_id": null
+     }
+    ],
+    "reversal_of": null,
+    "settled_on": "2026-03-06",
+    "status": "active",
+    "version": 1
+   }
+  },
+  {
+   "kind": "operation",
+   "id": "#218",
+   "payload": {
+    "accrual_month": {
+     "month": 3,
+     "year": 2026
+    },
+    "booked_on": null,
+    "card_id": null,
+    "cardholder_id": null,
+    "currency": "BRL",
+    "description": "Reembolso (Plano de saúde): Consulta pediatra",
+    "due_on": null,
+    "forecast_id": null,
+    "id": "#218",
+    "installment": null,
+    "kind": "refund",
+    "member_id": "#16",
+    "notes": null,
+    "occurred_on": "2026-03-25",
+    "origin": {
+     "evidence_ids": [],
+     "import_id": null,
+     "kind": "manual"
+    },
+    "postings": [
+     {
+      "account_id": "#14",
+      "amount": "150.00",
+      "member_id": null
+     },
+     {
+      "account_id": "#4",
+      "amount": "-150.00",
+      "member_id": null
+     }
+    ],
+    "reversal_of": null,
+    "settled_on": "2026-03-25",
+    "status": "active",
+    "version": 1
+   }
+  },
+  {
+   "kind": "operation",
+   "id": "#252",
+   "payload": {
+    "accrual_month": null,
+    "booked_on": null,
+    "card_id": null,
+    "cardholder_id": null,
+    "currency": "BRL",
+    "description": "Saldo de abertura — Nubank do Bruno — conta corrente",
+    "due_on": null,
+    "forecast_id": null,
+    "id": "#252",
+    "installment": null,
+    "kind": "opening_balance",
+    "member_id": null,
+    "notes": null,
+    "occurred_on": "2026-01-01",
+    "origin": {
+     "evidence_ids": [],
+     "import_id": null,
+     "kind": "manual"
+    },
+    "postings": [
+     {
+      "account_id": "#22",
+      "amount": "640.00",
+      "member_id": null
+     },
+     {
+      "account_id": "#0",
+      "amount": "-640.00",
+      "member_id": null
+     }
+    ],
+    "reversal_of": null,
+    "settled_on": "2026-01-01",
+    "status": "active",
+    "version": 1
+   }
+  },
+  {
+   "kind": "operation_tags",
+   "id": "#208",
+   "payload": {
+    "id": "#208",
+    "operation_id": "#202",
+    "tags": [
+     "Viagem Serra 2026"
+    ],
+    "version": 1
+   }
+  },
+  {
+   "kind": "operation_tags",
+   "id": "#210",
+   "payload": {
+    "id": "#210",
+    "operation_id": "#204",
+    "tags": [
+     "Viagem Serra 2026"
+    ],
+    "version": 1
+   }
+  },
+  {
+   "kind": "operation_tags",
+   "id": "#212",
+   "payload": {
+    "id": "#212",
+    "operation_id": "#206",
+    "tags": [
+     "Viagem Serra 2026"
+    ],
+    "version": 1
+   }
+  },
+  {
+   "kind": "position",
+   "id": "#137",
+   "payload": {
+    "account_id": "#20",
+    "asset_id": "#23",
+    "closed": false,
+    "cost_known": true,
+    "holder_id": null,
+    "id": "#137",
+    "mode": "value",
+    "opened_on": "2026-01-02"
+   }
+  },
+  {
+   "kind": "recurrence_rule",
+   "id": "#133",
+   "payload": {
+    "account_id": "#14",
+    "amount": "2350.00",
+    "counterpart_id": "#1",
+    "day": 10,
+    "description": "Aluguel",
+    "end": null,
+    "frequency": "monthly",
+    "id": "#133",
+    "paused": false,
+    "skipped": [],
+    "start": "2026-01-01",
+    "tolerance": "0",
+    "window_days": 5
+   }
+  },
+  {
+   "kind": "reimbursement",
+   "id": "#216",
+   "payload": {
+    "denied": false,
+    "expected": "300.00",
+    "id": "#216",
+    "note": null,
+    "operation_id": "#214",
+    "payer": "Plano de saúde",
+    "receipt_ids": [
+     "#218"
+    ],
+    "requested_on": "2026-03-07",
+    "version": 2
+   }
+  },
+  {
+   "kind": "tax_identity",
+   "id": "#233",
+   "payload": {
+    "id": "#233",
+    "name": "Empresa Exemplo Ltda",
+    "ref": "#11",
+    "subject": "category",
+    "tax_id": "11222333000181"
+   }
+  },
+  {
+   "kind": "tax_identity",
+   "id": "#237",
+   "payload": {
+    "id": "#237",
+    "name": "Banco A S.A.",
+    "ref": "#14",
+    "subject": "account",
+    "tax_id": "11222333000181"
+   }
+  },
+  {
+   "kind": "tax_identity",
+   "id": "#244",
+   "payload": {
+    "id": "#244",
+    "name": "ITAÚ UNIBANCO S.A.",
+    "ref": "#17",
+    "subject": "account",
+    "tax_id": "60701190000104"
+   }
+  },
+  {
+   "kind": "tax_identity",
+   "id": "#250",
+   "payload": {
+    "id": "#250",
+    "name": "NU PAGAMENTOS S.A. - INSTITUIÇÃO DE PAGAMENTO",
+    "ref": "#22",
+    "subject": "account",
+    "tax_id": "18236120000158"
+   }
+  },
+  {
+   "kind": "valuation",
+   "id": "#143",
+   "payload": {
+    "evidence_id": null,
+    "id": "#143",
+    "nature": "gross",
+    "note": null,
+    "on": "2026-01-02",
+    "position_id": "#137",
+    "quantity": null,
+    "selected": true,
+    "source": "custo inicial",
+    "unit_price": null,
+    "value": "5000"
+   }
+  },
+  {
+   "kind": "valuation",
+   "id": "#145",
+   "payload": {
+    "evidence_id": null,
+    "id": "#145",
+    "nature": "gross",
+    "note": null,
+    "on": "2026-01-28",
+    "position_id": "#137",
+    "quantity": null,
+    "selected": true,
+    "source": "manual",
+    "unit_price": null,
+    "value": "5040"
+   }
+  },
+  {
+   "kind": "valuation",
+   "id": "#147",
+   "payload": {
+    "evidence_id": null,
+    "id": "#147",
+    "nature": "gross",
+    "note": null,
+    "on": "2026-02-28",
+    "position_id": "#137",
+    "quantity": null,
+    "selected": true,
+    "source": "manual",
+    "unit_price": null,
+    "value": "5085"
+   }
+  },
+  {
+   "kind": "valuation",
+   "id": "#149",
+   "payload": {
+    "evidence_id": null,
+    "id": "#149",
+    "nature": "gross",
+    "note": null,
+    "on": "2026-03-28",
+    "position_id": "#137",
+    "quantity": null,
+    "selected": true,
+    "source": "manual",
+    "unit_price": null,
+    "value": "5131"
+   }
+  }
+ ],
+ "summary": {
+  "balances": [
+   [
+    "Patrimônio de abertura",
+    {
+     "$dec": "-26610.00"
+    }
+   ],
+   [
+    "Moradia",
+    {
+     "$dec": "7050.00"
+    }
+   ],
+   [
+    "Alimentação",
+    {
+     "$dec": "1806.30"
+    }
+   ],
+   [
+    "Transporte",
+    {
+     "$dec": "660.00"
+    }
+   ],
+   [
+    "Saúde",
+    {
+     "$dec": "486.00"
+    }
+   ],
+   [
+    "Educação",
+    {
+     "$dec": "0"
+    }
+   ],
+   [
+    "Lazer",
+    {
+     "$dec": "3780.00"
+    }
+   ],
+   [
+    "Serviços e assinaturas",
+    {
+     "$dec": "167.70"
+    }
+   ],
+   [
+    "Impostos e taxas",
+    {
+     "$dec": "0"
+    }
+   ],
+   [
+    "Juros e encargos",
+    {
+     "$dec": "1120.40"
+    }
+   ],
+   [
+    "Outras despesas",
+    {
+     "$dec": "0"
+    }
+   ],
+   [
+    "Salário",
+    {
+     "$dec": "23400.00"
+    }
+   ],
+   [
+    "Rendimentos de investimentos",
+    {
+     "$dec": "-0"
+    }
+   ],
+   [
+    "Outras receitas",
+    {
+     "$dec": "-0"
+    }
+   ],
+   [
+    "Banco A",
+    {
+     "$dec": "16052.00"
+    }
+   ],
+   [
+    "Poupança",
+    {
+     "$dec": "0"
+    }
+   ],
+   [
+    "Conjunta",
+    {
+     "$dec": "2300.00"
+    }
+   ],
+   [
+    "Cartão X",
+    {
+     "$dec": "5895.00"
+    }
+   ],
+   [
+    "Investimento: CDB Banco X 2028",
+    {
+     "$dec": "5000"
+    }
+   ],
+   [
+    "Financiamento do carro",
+    {
+     "$dec": "36377.40"
+    }
+   ],
+   [
+    "Nubank do Bruno — conta corrente",
+    {
+     "$dec": "640.00"
+    }
+   ]
+  ],
+  "balances_at_march": {
+   "Banco A": {
+    "$dec": "16757.00"
+   },
+   "Alimentação": {
+    "$dec": "1246.30"
+   },
+   "Cartão X": {
+    "$dec": "5895.00"
+   },
+   "Transporte": {
+    "$dec": "515.00"
+   },
+   "Financiamento do carro": {
+    "$dec": "36377.40"
+   },
+   "Conjunta": {
+    "$dec": "2300.00"
+   },
+   "Saúde": {
+    "$dec": "486.00"
+   },
+   "Salário": {
+    "$dec": "23400.00"
+   },
+   "Investimento: CDB Banco X 2028": {
+    "$dec": "5000"
+   },
+   "Serviços e assinaturas": {
+    "$dec": "167.70"
+   },
+   "Nubank do Bruno — conta corrente": {
+    "$dec": "640.00"
+   },
+   "Patrimônio de abertura": {
+    "$dec": "-26610.00"
+   },
+   "Juros e encargos": {
+    "$dec": "1120.40"
+   },
+   "Moradia": {
+    "$dec": "7050.00"
+   },
+   "Lazer": {
+    "$dec": "3780.00"
+   }
+  },
+  "net_worth": {
+   "assets": {
+    "$dec": "23992.00"
+   },
+   "liabilities": {
+    "$dec": "42272.40"
+   },
+   "net": {
+    "$dec": "-18280.40"
+   }
+  },
+  "statements": {
+   "2026-01": {
+    "income": {
+     "Salário": {
+      "$dec": "7800.00"
+     }
+    },
+    "expense": {
+     "Alimentação": {
+      "$dec": "275"
+     },
+     "Saúde": {
+      "$dec": "61"
+     },
+     "Transporte": {
+      "$dec": "84"
+     },
+     "Moradia": {
+      "$dec": "2350.00"
+     },
+     "Juros e encargos": {
+      "$dec": "566.20"
+     },
+     "Serviços e assinaturas": {
+      "$dec": "55.90"
+     }
+    },
+    "total_income": {
+     "$dec": "7800.00"
+    },
+    "total_expense": {
+     "$dec": "3392.10"
+    },
+    "result": {
+     "$dec": "4407.90"
+    }
+   },
+   "2026-02": {
+    "income": {
+     "Salário": {
+      "$dec": "7800.00"
+     }
+    },
+    "expense": {
+     "Alimentação": {
+      "$dec": "690.30"
+     },
+     "Saúde": {
+      "$dec": "62"
+     },
+     "Transporte": {
+      "$dec": "345.00"
+     },
+     "Moradia": {
+      "$dec": "2350.00"
+     },
+     "Lazer": {
+      "$dec": "3780.00"
+     },
+     "Juros e encargos": {
+      "$dec": "554.20"
+     },
+     "Serviços e assinaturas": {
+      "$dec": "55.90"
+     }
+    },
+    "total_income": {
+     "$dec": "7800.00"
+    },
+    "total_expense": {
+     "$dec": "7837.40"
+    },
+    "result": {
+     "$dec": "-37.40"
+    }
+   },
+   "2026-03": {
+    "income": {
+     "Salário": {
+      "$dec": "7800.00"
+     }
+    },
+    "expense": {
+     "Alimentação": {
+      "$dec": "281"
+     },
+     "Saúde": {
+      "$dec": "363.00"
+     },
+     "Transporte": {
+      "$dec": "86"
+     },
+     "Moradia": {
+      "$dec": "2350.00"
+     },
+     "Serviços e assinaturas": {
+      "$dec": "55.90"
+     }
+    },
+    "total_income": {
+     "$dec": "7800.00"
+    },
+    "total_expense": {
+     "$dec": "3135.90"
+    },
+    "result": {
+     "$dec": "4664.10"
+    }
+   },
+   "2026-10": {
+    "income": {},
+    "expense": {
+     "Transporte": {
+      "$dec": "145.00"
+     },
+     "Alimentação": {
+      "$dec": "560.00"
+     }
+    },
+    "total_income": {
+     "$dec": "0"
+    },
+    "total_expense": {
+     "$dec": "705.00"
+    },
+    "result": {
+     "$dec": "-705.00"
+    }
+   }
+  },
+  "expenses_by_category": {
+   "Alimentação": {
+    "$dec": "1246.30"
+   },
+   "Saúde": {
+    "$dec": "486.00"
+   },
+   "Transporte": {
+    "$dec": "515.00"
+   },
+   "Moradia": {
+    "$dec": "7050.00"
+   },
+   "Juros e encargos": {
+    "$dec": "1120.40"
+   },
+   "Serviços e assinaturas": {
+    "$dec": "167.70"
+   },
+   "Lazer": {
+    "$dec": "3780.00"
+   }
+  },
+  "budget": [
+   {
+    "month": "2026-03",
+    "rows": [
+     [
+      "Saúde",
+      {
+       "$dec": "60.00"
+      },
+      {
+       "$dec": "363.00"
+      },
+      {
+       "$dec": "-303.00"
+      },
+      "over",
+      {
+       "$dec": "6.0500"
+      }
+     ],
+     [
+      "Moradia",
+      {
+       "$dec": "2350.00"
+      },
+      {
+       "$dec": "2350.00"
+      },
+      {
+       "$dec": "0.00"
+      },
+      "near",
+      {
+       "$dec": "1.0000"
+      }
+     ],
+     [
+      "Transporte",
+      {
+       "$dec": "120.00"
+      },
+      {
+       "$dec": "86"
+      },
+      {
+       "$dec": "34.00"
+      },
+      "ok",
+      {
+       "$dec": "0.7167"
+      }
+     ],
+     [
+      "Alimentação",
+      {
+       "$dec": "600.00"
+      },
+      {
+       "$dec": "281"
+      },
+      {
+       "$dec": "319.00"
+      },
+      "ok",
+      {
+       "$dec": "0.4683"
+      }
+     ]
+    ],
+    "planned": {
+     "$dec": "3130.00"
+    },
+    "actual": {
+     "$dec": "3080.00"
+    },
+    "unbudgeted": {
+     "$dec": "55.90"
+    }
+   },
+   {
+    "month": "2026-10",
+    "rows": [
+     [
+      "Transporte",
+      {
+       "$dec": "120.00"
+      },
+      {
+       "$dec": "145.00"
+      },
+      {
+       "$dec": "-25.00"
+      },
+      "over",
+      {
+       "$dec": "1.2083"
+      }
+     ],
+     [
+      "Alimentação",
+      {
+       "$dec": "600.00"
+      },
+      {
+       "$dec": "560.00"
+      },
+      {
+       "$dec": "40.00"
+      },
+      "near",
+      {
+       "$dec": "0.9333"
+      }
+     ],
+     [
+      "Moradia",
+      {
+       "$dec": "2350.00"
+      },
+      {
+       "$dec": "0"
+      },
+      {
+       "$dec": "2350.00"
+      },
+      "ok",
+      {
+       "$dec": "0.0000"
+      }
+     ],
+     [
+      "Saúde",
+      {
+       "$dec": "60.00"
+      },
+      {
+       "$dec": "0"
+      },
+      {
+       "$dec": "60.00"
+      },
+      "ok",
+      {
+       "$dec": "0.0000"
+      }
+     ]
+    ],
+    "planned": {
+     "$dec": "3130.00"
+    },
+    "actual": {
+     "$dec": "705.00"
+    },
+    "unbudgeted": {
+     "$dec": "0"
+    }
+   }
+  ],
+  "tags": [
+   [
+    "Viagem Serra 2026",
+    3,
+    {
+     "$dec": "2052.30"
+    }
+   ]
+  ],
+  "merchants": [
+   [
+    "Aluguel",
+    {
+     "$dec": "7050.00"
+    },
+    3,
+    false
+   ],
+   [
+    "Tv",
+    {
+     "$dec": "2400.00"
+    },
+    1,
+    false
+   ],
+   [
+    "Pousada Serra",
+    {
+     "$dec": "1380.00"
+    },
+    1,
+    false
+   ],
+   [
+    "— Financiamento Do",
+    {
+     "$dec": "1120.40"
+    },
+    2,
+    false
+   ],
+   [
+    "Mercado Do Mês",
+    {
+     "$dec": "560.00"
+    },
+    1,
+    false
+   ],
+   [
+    "Consulta Pediatra",
+    {
+     "$dec": "450.00"
+    },
+    1,
+    false
+   ],
+   [
+    "Restaurante",
+    {
+     "$dec": "412.30"
+    },
+    1,
+    false
+   ],
+   [
+    "Posto Shell",
+    {
+     "$dec": "400.00"
+    },
+    4,
+    false
+   ],
+   [
+    "Padaria Real",
+    {
+     "$dec": "393"
+    },
+    3,
+    false
+   ],
+   [
+    "Restaurante Bom Prato",
+    {
+     "$dec": "324"
+    },
+    3,
+    false
+   ],
+   [
+    "Pedágio E Posto",
+    {
+     "$dec": "260.00"
+    },
+    1,
+    false
+   ],
+   [
+    "Farmácia São Paulo",
+    {
+     "$dec": "186"
+    },
+    3,
+    false
+   ],
+   [
+    "Netflix",
+    {
+     "$dec": "167.70"
+    },
+    3,
+    true
+   ],
+   [
+    "Mercado Pão De",
+    {
+     "$dec": "117"
+    },
+    3,
+    false
+   ],
+   [
+    "Reembolso (plano De",
+    {
+     "$dec": "-150.00"
+    },
+    1,
+    false
+   ]
+  ],
+  "positions": [
+   {
+    "name": "CDB Banco X 2028",
+    "remaining_cost": {
+     "$dec": "5000"
+    },
+    "unrealized": {
+     "value": {
+      "$dec": "131"
+     },
+     "unit": "BRL",
+     "method": "resultado não realizado (valor observado − custo remanescente)",
+     "start": null,
+     "end": "2026-03-31",
+     "quality": "observed",
+     "notes": [
+      "avaliação de 28/03/2026 (3 dias)"
+     ],
+     "version": "1"
+    },
+    "value": {
+     "$dec": "5131"
+    }
+   }
+  ],
+  "categories": {
+   "expense": [
+    "Alimentação",
+    "Educação",
+    "Impostos e taxas",
+    "Juros e encargos",
+    "Lazer",
+    "Moradia",
+    "Outras despesas",
+    "Saúde",
+    "Serviços e assinaturas",
+    "Transporte"
+   ],
+   "income": [
+    "Outras receitas",
+    "Rendimentos de investimentos",
+    "Salário"
+   ]
+  },
+  "row_counts": {
+   "member": 2,
+   "account": 21,
+   "card": 1,
+   "operation": 39,
+   "category_rule": 1,
+   "import_batch": 1,
+   "evidence": 10,
+   "extracted_item": 8,
+   "asset": 1,
+   "position": 1,
+   "valuation": 4,
+   "investment_event": 1,
+   "bank_account": 2,
+   "balance_check": 2,
+   "budget_line": 8,
+   "installment_plan": 1,
+   "deductible_category": 2,
+   "goal": 1,
+   "loan_plan": 1,
+   "loan_payment": 2,
+   "merchant_alias": 1,
+   "reimbursement": 1,
+   "operation_tags": 3,
+   "recurrence_rule": 1,
+   "investment_profile": 1,
+   "tax_identity": 4,
+   "member_tax_info": 2,
+   "income_classification": 1,
+   "income_detail": 1,
+   "income_report": 1,
+   "history": 128,
+   "ledger.meta": 1
+  },
+  "members": [
+   [
+    "Ana",
+    "holder",
+    true
+   ],
+   [
+    "Bruno",
+    "holder",
+    true
+   ]
+  ],
+  "meta": {
+   "family_name": "Projeto Teste"
+  },
+  "documents": [
+   [
+    "fatura-nubank-03.pdf",
+    "6cbaa3c00b43bed9941fdfdad3092677e42b72794086db184cd8b9a715bb2e24",
+    1225
+   ]
+  ],
+  "operations": 39
+ }
+}

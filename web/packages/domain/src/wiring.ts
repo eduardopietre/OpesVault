@@ -8,7 +8,9 @@ import { aliases, keyOf, merchantOf, nameMerchant } from "./domain/merchants.ts"
 import { getSettings } from "./domain/settings.ts";
 import { registerMerchants } from "./importing/ai_merchants.ts";
 import { registerSettingsReader } from "./importing/ai_suggestions.ts";
+import { registerNoteApprover } from "./importing/approval.ts";
 import { registerInstallmentPlanFinder } from "./importing/checks.ts";
+import { approveNote } from "./investments/notes.ts";
 
 registerInstallmentPlanFinder((ledger, cardId, description, number, count, amount) => {
   const found = findPlanForInstallment(ledger, cardId, description, number, count, amount);
@@ -21,3 +23,4 @@ registerMerchants({
   merchantOf,
   nameMerchant: (ledger, description, name, origin) => nameMerchant(ledger, description, name, origin),
 });
+registerNoteApprover(approveNote);

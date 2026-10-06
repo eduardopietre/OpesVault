@@ -7,10 +7,6 @@
  * isentos"...). Anything else stays out and is listed, never guessed. Layouts were not validated with
  * real documents yet (docs/15 §2): every line read is shown for review before it is saved. Like the
  * parsers, the text is data, never instructions.
- *
- * TODO(W6-integration): `read(data, password)` (PDF or text file to a parsed informe) needs
- * `importing/source.load_source`, which the import pipeline port owns. Call `parse` with the text
- * lines it returns.
  */
 import { AccountType, cashDate } from "../domain/model.ts";
 import { type Ledger } from "../domain/ledger.ts";
@@ -19,6 +15,7 @@ import * as queries from "../domain/queries.ts";
 import { EventKind, realizedGain } from "../investments/model.ts";
 import { events, positions } from "../investments/service.ts";
 import { normalize } from "../importing/rules.ts";
+import { loadSource, type PdfTextExtractor } from "../importing/source.ts";
 import { makeDate } from "../lib/dates.ts";
 import { Dec } from "../lib/dec.ts";
 import type { Id } from "../lib/ids.ts";
@@ -144,6 +141,17 @@ export function parse(input: readonly unknown[]): ParsedReport {
     out.lines.push(...(totals.length ? totals : entries.map(([, line]) => line)));
   }
   return out;
+}
+
+/** Text of a PDF (or a text file) to a parsed informe. Runs off the UI thread. */
+export async function read(
+  data: Uint8Array,
+  extractor: PdfTextExtractor,
+  password: string | null = null,
+): Promise<ParsedReport> {
+  const source = await loadSource("informe", data, password, extractor);
+  if (source.lines.length) return parse(source.lines.map((l) => l.text));
+  return parse(source.rows.map(([, cells]) => cells.join(" ")));
 }
 
 // ── comparison with what was recorded ──────────

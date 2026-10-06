@@ -26,3 +26,4 @@ export * as ai from "./ai/index.ts";
 export * as assistant from "./assistant/index.ts";
 export * as charts from "./charts/index.ts";
 export * as session from "./session.ts";
+export { demoSession } from "./demo.ts";

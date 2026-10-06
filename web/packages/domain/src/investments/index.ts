@@ -6,3 +6,5 @@ export * as returns from "./returns.ts";
 export * as trades from "./trades.ts";
 export * as simulation from "./simulation.ts";
 export * as profile from "./profile.ts";
+export * as notes from "./notes.ts";
+export * as benchmarks from "./benchmarks.ts";

@@ -1,0 +1,5718 @@
+{
+ "cases": [
+  {
+   "why": "semicolon, header",
+   "name": "CDI",
+   "source": "arquivo do usuário",
+   "csv": "ZGF0YTt2YWxvcgowMS8wMS8yMDI2OzEwMCwwMAowMS8wMy8yMDI2OzEwMiwwMAo=",
+   "outcome": {
+    "ok": {
+     "name": "CDI",
+     "currency": "BRL",
+     "points": [
+      [
+       "2026-01-01",
+       "100.00"
+      ],
+      [
+       "2026-03-01",
+       "102.00"
+      ]
+     ],
+     "source": "arquivo do usuário"
+    }
+   },
+   "returns": [
+    {
+     "start": "2025-12-31",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice CDI (arquivo do usuário)",
+      "start": "2025-12-31",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2025-12-31",
+     "end": "2026-01-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice CDI (arquivo do usuário)",
+      "start": "2025-12-31",
+      "end": "2026-01-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2025-12-31",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice CDI (arquivo do usuário)",
+      "start": "2025-12-31",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2025-12-31",
+     "end": "2026-03-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice CDI (arquivo do usuário)",
+      "start": "2025-12-31",
+      "end": "2026-03-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice CDI (arquivo do usuário)",
+      "start": "2026-01-01",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2026-01-01",
+     "result": {
+      "value": {
+       "$dec": "0"
+      },
+      "unit": "ratio",
+      "method": "variação do índice CDI (arquivo do usuário)",
+      "start": "2026-01-01",
+      "end": "2026-01-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice CDI (arquivo do usuário)",
+      "start": "2026-01-01",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2026-03-01",
+     "result": {
+      "value": {
+       "$dec": "0.02"
+      },
+      "unit": "ratio",
+      "method": "variação do índice CDI (arquivo do usuário)",
+      "start": "2026-01-01",
+      "end": "2026-03-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice CDI (arquivo do usuário)",
+      "start": "2026-01-02",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2026-01-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice CDI (arquivo do usuário)",
+      "start": "2026-01-02",
+      "end": "2026-01-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice CDI (arquivo do usuário)",
+      "start": "2026-01-02",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2026-03-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice CDI (arquivo do usuário)",
+      "start": "2026-01-02",
+      "end": "2026-03-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-03-01",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice CDI (arquivo do usuário)",
+      "start": "2026-03-01",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-03-01",
+     "end": "2026-01-01",
+     "result": {
+      "value": {
+       "$dec": "-0.0196078431372549019607843137"
+      },
+      "unit": "ratio",
+      "method": "variação do índice CDI (arquivo do usuário)",
+      "start": "2026-03-01",
+      "end": "2026-01-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-03-01",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice CDI (arquivo do usuário)",
+      "start": "2026-03-01",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-03-01",
+     "end": "2026-03-01",
+     "result": {
+      "value": {
+       "$dec": "0"
+      },
+      "unit": "ratio",
+      "method": "variação do índice CDI (arquivo do usuário)",
+      "start": "2026-03-01",
+      "end": "2026-03-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    }
+   ],
+   "stored": 1
+  },
+  {
+   "why": "comma and dots",
+   "name": "IPCA",
+   "source": "tabela",
+   "csv": "ZGF0YSx2YWxvcgowMS8wMS8yMDI2LDEwMC41MAowMS8wMi8yMDI2LDEwMS4yNQowMS8wMy8yMDI2LDEwMS45Cg==",
+   "outcome": {
+    "ok": {
+     "name": "IPCA",
+     "currency": "BRL",
+     "points": [
+      [
+       "2026-01-01",
+       "100.50"
+      ],
+      [
+       "2026-02-01",
+       "101.25"
+      ],
+      [
+       "2026-03-01",
+       "101.9"
+      ]
+     ],
+     "source": "tabela"
+    }
+   },
+   "returns": [
+    {
+     "start": "2025-12-31",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice IPCA (tabela)",
+      "start": "2025-12-31",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2025-12-31",
+     "end": "2026-01-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice IPCA (tabela)",
+      "start": "2025-12-31",
+      "end": "2026-01-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2025-12-31",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice IPCA (tabela)",
+      "start": "2025-12-31",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2025-12-31",
+     "end": "2026-02-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice IPCA (tabela)",
+      "start": "2025-12-31",
+      "end": "2026-02-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2025-12-31",
+     "end": "2026-03-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice IPCA (tabela)",
+      "start": "2025-12-31",
+      "end": "2026-03-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice IPCA (tabela)",
+      "start": "2026-01-01",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2026-01-01",
+     "result": {
+      "value": {
+       "$dec": "0"
+      },
+      "unit": "ratio",
+      "method": "variação do índice IPCA (tabela)",
+      "start": "2026-01-01",
+      "end": "2026-01-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice IPCA (tabela)",
+      "start": "2026-01-01",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2026-02-01",
+     "result": {
+      "value": {
+       "$dec": "0.007462686567164179104477612"
+      },
+      "unit": "ratio",
+      "method": "variação do índice IPCA (tabela)",
+      "start": "2026-01-01",
+      "end": "2026-02-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2026-03-01",
+     "result": {
+      "value": {
+       "$dec": "0.013930348258706467661691542"
+      },
+      "unit": "ratio",
+      "method": "variação do índice IPCA (tabela)",
+      "start": "2026-01-01",
+      "end": "2026-03-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice IPCA (tabela)",
+      "start": "2026-01-02",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2026-01-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice IPCA (tabela)",
+      "start": "2026-01-02",
+      "end": "2026-01-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice IPCA (tabela)",
+      "start": "2026-01-02",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2026-02-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice IPCA (tabela)",
+      "start": "2026-01-02",
+      "end": "2026-02-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2026-03-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice IPCA (tabela)",
+      "start": "2026-01-02",
+      "end": "2026-03-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice IPCA (tabela)",
+      "start": "2026-02-01",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2026-01-01",
+     "result": {
+      "value": {
+       "$dec": "-0.0074074074074074074074074074"
+      },
+      "unit": "ratio",
+      "method": "variação do índice IPCA (tabela)",
+      "start": "2026-02-01",
+      "end": "2026-01-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice IPCA (tabela)",
+      "start": "2026-02-01",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2026-02-01",
+     "result": {
+      "value": {
+       "$dec": "0"
+      },
+      "unit": "ratio",
+      "method": "variação do índice IPCA (tabela)",
+      "start": "2026-02-01",
+      "end": "2026-02-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2026-03-01",
+     "result": {
+      "value": {
+       "$dec": "0.006419753086419753086419753"
+      },
+      "unit": "ratio",
+      "method": "variação do índice IPCA (tabela)",
+      "start": "2026-02-01",
+      "end": "2026-03-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-03-01",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice IPCA (tabela)",
+      "start": "2026-03-01",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-03-01",
+     "end": "2026-01-01",
+     "result": {
+      "value": {
+       "$dec": "-0.0137389597644749754661432777"
+      },
+      "unit": "ratio",
+      "method": "variação do índice IPCA (tabela)",
+      "start": "2026-03-01",
+      "end": "2026-01-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-03-01",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice IPCA (tabela)",
+      "start": "2026-03-01",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-03-01",
+     "end": "2026-02-01",
+     "result": {
+      "value": {
+       "$dec": "-0.0063788027477919528949950932"
+      },
+      "unit": "ratio",
+      "method": "variação do índice IPCA (tabela)",
+      "start": "2026-03-01",
+      "end": "2026-02-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-03-01",
+     "end": "2026-03-01",
+     "result": {
+      "value": {
+       "$dec": "0"
+      },
+      "unit": "ratio",
+      "method": "variação do índice IPCA (tabela)",
+      "start": "2026-03-01",
+      "end": "2026-03-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    }
+   ],
+   "stored": 1
+  },
+  {
+   "why": "thousand separators, no header",
+   "name": "Mixed",
+   "source": "x",
+   "csv": "MDEvMDEvMjAyNjsxLjAwMCw1MAowMS8wMi8yMDI2OzEuMDEwLDc1CjE1LzAyLzIwMjY7MS4wMTIsMDAK",
+   "outcome": {
+    "ok": {
+     "name": "Mixed",
+     "currency": "BRL",
+     "points": [
+      [
+       "2026-01-01",
+       "1000.50"
+      ],
+      [
+       "2026-02-01",
+       "1010.75"
+      ],
+      [
+       "2026-02-15",
+       "1012.00"
+      ]
+     ],
+     "source": "x"
+    }
+   },
+   "returns": [
+    {
+     "start": "2025-12-31",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Mixed (x)",
+      "start": "2025-12-31",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2025-12-31",
+     "end": "2026-01-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Mixed (x)",
+      "start": "2025-12-31",
+      "end": "2026-01-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2025-12-31",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Mixed (x)",
+      "start": "2025-12-31",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2025-12-31",
+     "end": "2026-02-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Mixed (x)",
+      "start": "2025-12-31",
+      "end": "2026-02-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2025-12-31",
+     "end": "2026-02-15",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Mixed (x)",
+      "start": "2025-12-31",
+      "end": "2026-02-15",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Mixed (x)",
+      "start": "2026-01-01",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2026-01-01",
+     "result": {
+      "value": {
+       "$dec": "0"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Mixed (x)",
+      "start": "2026-01-01",
+      "end": "2026-01-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Mixed (x)",
+      "start": "2026-01-01",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2026-02-01",
+     "result": {
+      "value": {
+       "$dec": "0.010244877561219390304847576"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Mixed (x)",
+      "start": "2026-01-01",
+      "end": "2026-02-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2026-02-15",
+     "result": {
+      "value": {
+       "$dec": "0.011494252873563218390804598"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Mixed (x)",
+      "start": "2026-01-01",
+      "end": "2026-02-15",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Mixed (x)",
+      "start": "2026-01-02",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2026-01-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Mixed (x)",
+      "start": "2026-01-02",
+      "end": "2026-01-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Mixed (x)",
+      "start": "2026-01-02",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2026-02-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Mixed (x)",
+      "start": "2026-01-02",
+      "end": "2026-02-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2026-02-15",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Mixed (x)",
+      "start": "2026-01-02",
+      "end": "2026-02-15",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Mixed (x)",
+      "start": "2026-02-01",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2026-01-01",
+     "result": {
+      "value": {
+       "$dec": "-0.0101409844175117487014593124"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Mixed (x)",
+      "start": "2026-02-01",
+      "end": "2026-01-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Mixed (x)",
+      "start": "2026-02-01",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2026-02-01",
+     "result": {
+      "value": {
+       "$dec": "0"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Mixed (x)",
+      "start": "2026-02-01",
+      "end": "2026-02-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2026-02-15",
+     "result": {
+      "value": {
+       "$dec": "0.001236705416769725451397477"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Mixed (x)",
+      "start": "2026-02-01",
+      "end": "2026-02-15",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-15",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Mixed (x)",
+      "start": "2026-02-15",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-15",
+     "end": "2026-01-01",
+     "result": {
+      "value": {
+       "$dec": "-0.0113636363636363636363636364"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Mixed (x)",
+      "start": "2026-02-15",
+      "end": "2026-01-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-15",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Mixed (x)",
+      "start": "2026-02-15",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-15",
+     "end": "2026-02-01",
+     "result": {
+      "value": {
+       "$dec": "-0.0012351778656126482213438735"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Mixed (x)",
+      "start": "2026-02-15",
+      "end": "2026-02-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-15",
+     "end": "2026-02-15",
+     "result": {
+      "value": {
+       "$dec": "0"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Mixed (x)",
+      "start": "2026-02-15",
+      "end": "2026-02-15",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    }
+   ],
+   "stored": 1
+  },
+  {
+   "why": "unsorted dates",
+   "name": "Unsorted",
+   "source": "x",
+   "csv": "MDEvMDMvMjAyNjsxMTAsMDAKMDEvMDEvMjAyNjsxMDAsMDAKMDEvMDIvMjAyNjsxMDUsMDAK",
+   "outcome": {
+    "ok": {
+     "name": "Unsorted",
+     "currency": "BRL",
+     "points": [
+      [
+       "2026-01-01",
+       "100.00"
+      ],
+      [
+       "2026-02-01",
+       "105.00"
+      ],
+      [
+       "2026-03-01",
+       "110.00"
+      ]
+     ],
+     "source": "x"
+    }
+   },
+   "returns": [
+    {
+     "start": "2025-12-31",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Unsorted (x)",
+      "start": "2025-12-31",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2025-12-31",
+     "end": "2026-01-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Unsorted (x)",
+      "start": "2025-12-31",
+      "end": "2026-01-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2025-12-31",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Unsorted (x)",
+      "start": "2025-12-31",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2025-12-31",
+     "end": "2026-02-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Unsorted (x)",
+      "start": "2025-12-31",
+      "end": "2026-02-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2025-12-31",
+     "end": "2026-03-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Unsorted (x)",
+      "start": "2025-12-31",
+      "end": "2026-03-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Unsorted (x)",
+      "start": "2026-01-01",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2026-01-01",
+     "result": {
+      "value": {
+       "$dec": "0"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Unsorted (x)",
+      "start": "2026-01-01",
+      "end": "2026-01-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Unsorted (x)",
+      "start": "2026-01-01",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2026-02-01",
+     "result": {
+      "value": {
+       "$dec": "0.05"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Unsorted (x)",
+      "start": "2026-01-01",
+      "end": "2026-02-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2026-03-01",
+     "result": {
+      "value": {
+       "$dec": "0.1"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Unsorted (x)",
+      "start": "2026-01-01",
+      "end": "2026-03-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Unsorted (x)",
+      "start": "2026-01-02",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2026-01-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Unsorted (x)",
+      "start": "2026-01-02",
+      "end": "2026-01-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Unsorted (x)",
+      "start": "2026-01-02",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2026-02-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Unsorted (x)",
+      "start": "2026-01-02",
+      "end": "2026-02-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2026-03-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Unsorted (x)",
+      "start": "2026-01-02",
+      "end": "2026-03-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Unsorted (x)",
+      "start": "2026-02-01",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2026-01-01",
+     "result": {
+      "value": {
+       "$dec": "-0.0476190476190476190476190476"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Unsorted (x)",
+      "start": "2026-02-01",
+      "end": "2026-01-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Unsorted (x)",
+      "start": "2026-02-01",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2026-02-01",
+     "result": {
+      "value": {
+       "$dec": "0"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Unsorted (x)",
+      "start": "2026-02-01",
+      "end": "2026-02-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2026-03-01",
+     "result": {
+      "value": {
+       "$dec": "0.047619047619047619047619048"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Unsorted (x)",
+      "start": "2026-02-01",
+      "end": "2026-03-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-03-01",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Unsorted (x)",
+      "start": "2026-03-01",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-03-01",
+     "end": "2026-01-01",
+     "result": {
+      "value": {
+       "$dec": "-0.0909090909090909090909090909"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Unsorted (x)",
+      "start": "2026-03-01",
+      "end": "2026-01-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-03-01",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Unsorted (x)",
+      "start": "2026-03-01",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-03-01",
+     "end": "2026-02-01",
+     "result": {
+      "value": {
+       "$dec": "-0.0454545454545454545454545455"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Unsorted (x)",
+      "start": "2026-03-01",
+      "end": "2026-02-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-03-01",
+     "end": "2026-03-01",
+     "result": {
+      "value": {
+       "$dec": "0"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Unsorted (x)",
+      "start": "2026-03-01",
+      "end": "2026-03-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    }
+   ],
+   "stored": 1
+  },
+  {
+   "why": "a date twice: the last wins",
+   "name": "Duplicate",
+   "source": "x",
+   "csv": "MDEvMDEvMjAyNjsxMDAsMDAKMDEvMDEvMjAyNjsxMjAsMDAKMDEvMDIvMjAyNjsxMzAsMDAK",
+   "outcome": {
+    "ok": {
+     "name": "Duplicate",
+     "currency": "BRL",
+     "points": [
+      [
+       "2026-01-01",
+       "120.00"
+      ],
+      [
+       "2026-02-01",
+       "130.00"
+      ]
+     ],
+     "source": "x"
+    }
+   },
+   "returns": [
+    {
+     "start": "2025-12-31",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Duplicate (x)",
+      "start": "2025-12-31",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2025-12-31",
+     "end": "2026-01-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Duplicate (x)",
+      "start": "2025-12-31",
+      "end": "2026-01-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2025-12-31",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Duplicate (x)",
+      "start": "2025-12-31",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2025-12-31",
+     "end": "2026-02-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Duplicate (x)",
+      "start": "2025-12-31",
+      "end": "2026-02-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Duplicate (x)",
+      "start": "2026-01-01",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2026-01-01",
+     "result": {
+      "value": {
+       "$dec": "0"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Duplicate (x)",
+      "start": "2026-01-01",
+      "end": "2026-01-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Duplicate (x)",
+      "start": "2026-01-01",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2026-02-01",
+     "result": {
+      "value": {
+       "$dec": "0.083333333333333333333333333"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Duplicate (x)",
+      "start": "2026-01-01",
+      "end": "2026-02-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Duplicate (x)",
+      "start": "2026-01-02",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2026-01-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Duplicate (x)",
+      "start": "2026-01-02",
+      "end": "2026-01-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Duplicate (x)",
+      "start": "2026-01-02",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2026-02-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Duplicate (x)",
+      "start": "2026-01-02",
+      "end": "2026-02-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Duplicate (x)",
+      "start": "2026-02-01",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2026-01-01",
+     "result": {
+      "value": {
+       "$dec": "-0.0769230769230769230769230769"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Duplicate (x)",
+      "start": "2026-02-01",
+      "end": "2026-01-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Duplicate (x)",
+      "start": "2026-02-01",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2026-02-01",
+     "result": {
+      "value": {
+       "$dec": "0"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Duplicate (x)",
+      "start": "2026-02-01",
+      "end": "2026-02-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    }
+   ],
+   "stored": 1
+  },
+  {
+   "why": "utf-8 BOM",
+   "name": "BOM",
+   "source": "x",
+   "csv": "77u/ZGF0YTt2YWxvcgowMS8wMS8yMDI2OzEwMCwwMAowMS8wMi8yMDI2OzEwMSwwMAo=",
+   "outcome": {
+    "ok": {
+     "name": "BOM",
+     "currency": "BRL",
+     "points": [
+      [
+       "2026-01-01",
+       "100.00"
+      ],
+      [
+       "2026-02-01",
+       "101.00"
+      ]
+     ],
+     "source": "x"
+    }
+   },
+   "returns": [
+    {
+     "start": "2025-12-31",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice BOM (x)",
+      "start": "2025-12-31",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2025-12-31",
+     "end": "2026-01-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice BOM (x)",
+      "start": "2025-12-31",
+      "end": "2026-01-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2025-12-31",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice BOM (x)",
+      "start": "2025-12-31",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2025-12-31",
+     "end": "2026-02-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice BOM (x)",
+      "start": "2025-12-31",
+      "end": "2026-02-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice BOM (x)",
+      "start": "2026-01-01",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2026-01-01",
+     "result": {
+      "value": {
+       "$dec": "0"
+      },
+      "unit": "ratio",
+      "method": "variação do índice BOM (x)",
+      "start": "2026-01-01",
+      "end": "2026-01-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice BOM (x)",
+      "start": "2026-01-01",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2026-02-01",
+     "result": {
+      "value": {
+       "$dec": "0.01"
+      },
+      "unit": "ratio",
+      "method": "variação do índice BOM (x)",
+      "start": "2026-01-01",
+      "end": "2026-02-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice BOM (x)",
+      "start": "2026-01-02",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2026-01-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice BOM (x)",
+      "start": "2026-01-02",
+      "end": "2026-01-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice BOM (x)",
+      "start": "2026-01-02",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2026-02-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice BOM (x)",
+      "start": "2026-01-02",
+      "end": "2026-02-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice BOM (x)",
+      "start": "2026-02-01",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2026-01-01",
+     "result": {
+      "value": {
+       "$dec": "-0.0099009900990099009900990099"
+      },
+      "unit": "ratio",
+      "method": "variação do índice BOM (x)",
+      "start": "2026-02-01",
+      "end": "2026-01-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice BOM (x)",
+      "start": "2026-02-01",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2026-02-01",
+     "result": {
+      "value": {
+       "$dec": "0"
+      },
+      "unit": "ratio",
+      "method": "variação do índice BOM (x)",
+      "start": "2026-02-01",
+      "end": "2026-02-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    }
+   ],
+   "stored": 1
+  },
+  {
+   "why": "a single point",
+   "name": "Few",
+   "source": "x",
+   "csv": "ZGF0YTt2YWxvcgowMS8wMS8yMDI2OzEwMCwwMAo=",
+   "outcome": {
+    "error": "DomainError",
+    "message": "O arquivo precisa de ao menos duas datas com valores."
+   }
+  },
+  {
+   "why": "empty file",
+   "name": "Empty",
+   "source": "x",
+   "csv": "",
+   "outcome": {
+    "error": "DomainError",
+    "message": "O arquivo precisa de ao menos duas datas com valores."
+   }
+  },
+  {
+   "why": "only a header",
+   "name": "Header",
+   "source": "x",
+   "csv": "ZGF0YTt2YWxvcgo=",
+   "outcome": {
+    "error": "DomainError",
+    "message": "O arquivo precisa de ao menos duas datas com valores."
+   }
+  },
+  {
+   "why": "bad dates",
+   "name": "Invalid dates",
+   "source": "x",
+   "csv": "ZGF0YTt2YWxvcgozMS8wMi8yMDI2OzEsMDAKYWJjOzIsMDAKMDEvMDEvMjAyNjsxMDAsMDAKMDIvMDEvMjAyNjsxMDEsMDAK",
+   "outcome": {
+    "ok": {
+     "name": "Invalid dates",
+     "currency": "BRL",
+     "points": [
+      [
+       "2026-01-01",
+       "100.00"
+      ],
+      [
+       "2026-01-02",
+       "101.00"
+      ]
+     ],
+     "source": "x"
+    }
+   },
+   "returns": [
+    {
+     "start": "2025-12-31",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Invalid dates (x)",
+      "start": "2025-12-31",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2025-12-31",
+     "end": "2026-01-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Invalid dates (x)",
+      "start": "2025-12-31",
+      "end": "2026-01-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2025-12-31",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Invalid dates (x)",
+      "start": "2025-12-31",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Invalid dates (x)",
+      "start": "2026-01-01",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2026-01-01",
+     "result": {
+      "value": {
+       "$dec": "0"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Invalid dates (x)",
+      "start": "2026-01-01",
+      "end": "2026-01-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2026-01-02",
+     "result": {
+      "value": {
+       "$dec": "0.01"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Invalid dates (x)",
+      "start": "2026-01-01",
+      "end": "2026-01-02",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Invalid dates (x)",
+      "start": "2026-01-02",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2026-01-01",
+     "result": {
+      "value": {
+       "$dec": "-0.0099009900990099009900990099"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Invalid dates (x)",
+      "start": "2026-01-02",
+      "end": "2026-01-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2026-01-02",
+     "result": {
+      "value": {
+       "$dec": "0"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Invalid dates (x)",
+      "start": "2026-01-02",
+      "end": "2026-01-02",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    }
+   ],
+   "stored": 1
+  },
+  {
+   "why": "unreadable level in BR format",
+   "name": "Bad value",
+   "source": "x",
+   "csv": "ZGF0YTt2YWxvcgowMS8wMS8yMDI2OzEwMCwwMAowMS8wMi8yMDI2OzEsMiwzCg==",
+   "outcome": {
+    "error": "DomainError",
+    "message": "Valor inválido na linha de 01/02/2026."
+   }
+  },
+  {
+   "why": "unreadable plain level",
+   "name": "Bad plain",
+   "source": "x",
+   "csv": "ZGF0YTt2YWxvcgowMS8wMS8yMDI2OzEwMCwwMAowMS8wMi8yMDI2O2FiYwo=",
+   "outcome": {
+    "error": "DomainError",
+    "message": "Valor inválido na linha de 01/02/2026."
+   }
+  },
+  {
+   "why": "non-finite",
+   "name": "NaN",
+   "source": "x",
+   "csv": "MDEvMDEvMjAyNjsxMDAsMDAKMDEvMDIvMjAyNjtOYU4K",
+   "outcome": {
+    "error": "DomainError",
+    "message": "Valor inválido na linha de 01/02/2026."
+   }
+  },
+  {
+   "why": "non-finite",
+   "name": "Infinity",
+   "source": "x",
+   "csv": "MDEvMDEvMjAyNjsxMDAsMDAKMDEvMDIvMjAyNjtJbmZpbml0eQo=",
+   "outcome": {
+    "error": "DomainError",
+    "message": "Valor inválido na linha de 01/02/2026."
+   }
+  },
+  {
+   "why": "exponents as plain decimals",
+   "name": "Exponent",
+   "source": "x",
+   "csv": "MDEvMDEvMjAyNjsxZTIKMDEvMDIvMjAyNjsxLjVFKzIK",
+   "outcome": {
+    "ok": {
+     "name": "Exponent",
+     "currency": "BRL",
+     "points": [
+      [
+       "2026-01-01",
+       "100"
+      ],
+      [
+       "2026-02-01",
+       "150"
+      ]
+     ],
+     "source": "x"
+    }
+   },
+   "returns": [
+    {
+     "start": "2025-12-31",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Exponent (x)",
+      "start": "2025-12-31",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2025-12-31",
+     "end": "2026-01-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Exponent (x)",
+      "start": "2025-12-31",
+      "end": "2026-01-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2025-12-31",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Exponent (x)",
+      "start": "2025-12-31",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2025-12-31",
+     "end": "2026-02-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Exponent (x)",
+      "start": "2025-12-31",
+      "end": "2026-02-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Exponent (x)",
+      "start": "2026-01-01",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2026-01-01",
+     "result": {
+      "value": {
+       "$dec": "0"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Exponent (x)",
+      "start": "2026-01-01",
+      "end": "2026-01-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Exponent (x)",
+      "start": "2026-01-01",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2026-02-01",
+     "result": {
+      "value": {
+       "$dec": "0.5"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Exponent (x)",
+      "start": "2026-01-01",
+      "end": "2026-02-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Exponent (x)",
+      "start": "2026-01-02",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2026-01-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Exponent (x)",
+      "start": "2026-01-02",
+      "end": "2026-01-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Exponent (x)",
+      "start": "2026-01-02",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2026-02-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Exponent (x)",
+      "start": "2026-01-02",
+      "end": "2026-02-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Exponent (x)",
+      "start": "2026-02-01",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2026-01-01",
+     "result": {
+      "value": {
+       "$dec": "-0.3333333333333333333333333333"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Exponent (x)",
+      "start": "2026-02-01",
+      "end": "2026-01-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Exponent (x)",
+      "start": "2026-02-01",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2026-02-01",
+     "result": {
+      "value": {
+       "$dec": "0"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Exponent (x)",
+      "start": "2026-02-01",
+      "end": "2026-02-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    }
+   ],
+   "stored": 1
+  },
+  {
+   "why": "non positive start",
+   "name": "Zero",
+   "source": "x",
+   "csv": "MDEvMDEvMjAyNjswLDAwCjAxLzAyLzIwMjY7NSwwMAowMS8wMy8yMDI2OzYsMDAK",
+   "outcome": {
+    "ok": {
+     "name": "Zero",
+     "currency": "BRL",
+     "points": [
+      [
+       "2026-01-01",
+       "0.00"
+      ],
+      [
+       "2026-02-01",
+       "5.00"
+      ],
+      [
+       "2026-03-01",
+       "6.00"
+      ]
+     ],
+     "source": "x"
+    }
+   },
+   "returns": [
+    {
+     "start": "2025-12-31",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Zero (x)",
+      "start": "2025-12-31",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2025-12-31",
+     "end": "2026-01-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Zero (x)",
+      "start": "2025-12-31",
+      "end": "2026-01-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2025-12-31",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Zero (x)",
+      "start": "2025-12-31",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2025-12-31",
+     "end": "2026-02-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Zero (x)",
+      "start": "2025-12-31",
+      "end": "2026-02-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2025-12-31",
+     "end": "2026-03-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Zero (x)",
+      "start": "2025-12-31",
+      "end": "2026-03-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Zero (x)",
+      "start": "2026-01-01",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2026-01-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Zero (x)",
+      "start": "2026-01-01",
+      "end": "2026-01-01",
+      "quality": "unavailable",
+      "notes": [
+       "Nível inicial não positivo."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Zero (x)",
+      "start": "2026-01-01",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2026-02-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Zero (x)",
+      "start": "2026-01-01",
+      "end": "2026-02-01",
+      "quality": "unavailable",
+      "notes": [
+       "Nível inicial não positivo."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2026-03-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Zero (x)",
+      "start": "2026-01-01",
+      "end": "2026-03-01",
+      "quality": "unavailable",
+      "notes": [
+       "Nível inicial não positivo."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Zero (x)",
+      "start": "2026-01-02",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2026-01-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Zero (x)",
+      "start": "2026-01-02",
+      "end": "2026-01-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Zero (x)",
+      "start": "2026-01-02",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2026-02-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Zero (x)",
+      "start": "2026-01-02",
+      "end": "2026-02-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2026-03-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Zero (x)",
+      "start": "2026-01-02",
+      "end": "2026-03-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Zero (x)",
+      "start": "2026-02-01",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2026-01-01",
+     "result": {
+      "value": {
+       "$dec": "-1"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Zero (x)",
+      "start": "2026-02-01",
+      "end": "2026-01-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Zero (x)",
+      "start": "2026-02-01",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2026-02-01",
+     "result": {
+      "value": {
+       "$dec": "0"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Zero (x)",
+      "start": "2026-02-01",
+      "end": "2026-02-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2026-03-01",
+     "result": {
+      "value": {
+       "$dec": "0.2"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Zero (x)",
+      "start": "2026-02-01",
+      "end": "2026-03-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-03-01",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Zero (x)",
+      "start": "2026-03-01",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-03-01",
+     "end": "2026-01-01",
+     "result": {
+      "value": {
+       "$dec": "-1"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Zero (x)",
+      "start": "2026-03-01",
+      "end": "2026-01-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-03-01",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Zero (x)",
+      "start": "2026-03-01",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-03-01",
+     "end": "2026-02-01",
+     "result": {
+      "value": {
+       "$dec": "-0.1666666666666666666666666667"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Zero (x)",
+      "start": "2026-03-01",
+      "end": "2026-02-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-03-01",
+     "end": "2026-03-01",
+     "result": {
+      "value": {
+       "$dec": "0"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Zero (x)",
+      "start": "2026-03-01",
+      "end": "2026-03-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    }
+   ],
+   "stored": 1
+  },
+  {
+   "why": "negative start",
+   "name": "Negative",
+   "source": "x",
+   "csv": "MDEvMDEvMjAyNjstMywwMAowMS8wMi8yMDI2OzUsMDAK",
+   "outcome": {
+    "ok": {
+     "name": "Negative",
+     "currency": "BRL",
+     "points": [
+      [
+       "2026-01-01",
+       "-3.00"
+      ],
+      [
+       "2026-02-01",
+       "5.00"
+      ]
+     ],
+     "source": "x"
+    }
+   },
+   "returns": [
+    {
+     "start": "2025-12-31",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Negative (x)",
+      "start": "2025-12-31",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2025-12-31",
+     "end": "2026-01-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Negative (x)",
+      "start": "2025-12-31",
+      "end": "2026-01-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2025-12-31",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Negative (x)",
+      "start": "2025-12-31",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2025-12-31",
+     "end": "2026-02-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Negative (x)",
+      "start": "2025-12-31",
+      "end": "2026-02-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Negative (x)",
+      "start": "2026-01-01",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2026-01-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Negative (x)",
+      "start": "2026-01-01",
+      "end": "2026-01-01",
+      "quality": "unavailable",
+      "notes": [
+       "Nível inicial não positivo."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Negative (x)",
+      "start": "2026-01-01",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2026-02-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Negative (x)",
+      "start": "2026-01-01",
+      "end": "2026-02-01",
+      "quality": "unavailable",
+      "notes": [
+       "Nível inicial não positivo."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Negative (x)",
+      "start": "2026-01-02",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2026-01-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Negative (x)",
+      "start": "2026-01-02",
+      "end": "2026-01-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Negative (x)",
+      "start": "2026-01-02",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2026-02-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Negative (x)",
+      "start": "2026-01-02",
+      "end": "2026-02-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Negative (x)",
+      "start": "2026-02-01",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2026-01-01",
+     "result": {
+      "value": {
+       "$dec": "-1.6"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Negative (x)",
+      "start": "2026-02-01",
+      "end": "2026-01-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Negative (x)",
+      "start": "2026-02-01",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2026-02-01",
+     "result": {
+      "value": {
+       "$dec": "0"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Negative (x)",
+      "start": "2026-02-01",
+      "end": "2026-02-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    }
+   ],
+   "stored": 1
+  },
+  {
+   "why": "rows without a value",
+   "name": "Short rows",
+   "source": "x",
+   "csv": "MDEvMDEvMjAyNgowMS8wMS8yMDI2OzEwMCwwMAo7CjAxLzAyLzIwMjY7MTAxLDAwCngK",
+   "outcome": {
+    "ok": {
+     "name": "Short rows",
+     "currency": "BRL",
+     "points": [
+      [
+       "2026-01-01",
+       "100.00"
+      ],
+      [
+       "2026-02-01",
+       "101.00"
+      ]
+     ],
+     "source": "x"
+    }
+   },
+   "returns": [
+    {
+     "start": "2025-12-31",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Short rows (x)",
+      "start": "2025-12-31",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2025-12-31",
+     "end": "2026-01-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Short rows (x)",
+      "start": "2025-12-31",
+      "end": "2026-01-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2025-12-31",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Short rows (x)",
+      "start": "2025-12-31",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2025-12-31",
+     "end": "2026-02-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Short rows (x)",
+      "start": "2025-12-31",
+      "end": "2026-02-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Short rows (x)",
+      "start": "2026-01-01",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2026-01-01",
+     "result": {
+      "value": {
+       "$dec": "0"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Short rows (x)",
+      "start": "2026-01-01",
+      "end": "2026-01-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Short rows (x)",
+      "start": "2026-01-01",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2026-02-01",
+     "result": {
+      "value": {
+       "$dec": "0.01"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Short rows (x)",
+      "start": "2026-01-01",
+      "end": "2026-02-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Short rows (x)",
+      "start": "2026-01-02",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2026-01-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Short rows (x)",
+      "start": "2026-01-02",
+      "end": "2026-01-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Short rows (x)",
+      "start": "2026-01-02",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2026-02-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Short rows (x)",
+      "start": "2026-01-02",
+      "end": "2026-02-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Short rows (x)",
+      "start": "2026-02-01",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2026-01-01",
+     "result": {
+      "value": {
+       "$dec": "-0.0099009900990099009900990099"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Short rows (x)",
+      "start": "2026-02-01",
+      "end": "2026-01-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Short rows (x)",
+      "start": "2026-02-01",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2026-02-01",
+     "result": {
+      "value": {
+       "$dec": "0"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Short rows (x)",
+      "start": "2026-02-01",
+      "end": "2026-02-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    }
+   ],
+   "stored": 1
+  },
+  {
+   "why": "quoted fields",
+   "name": "Quoted",
+   "source": "x",
+   "csv": "IjAxLzAxLzIwMjYiOyIxMDAsMDAiCiIwMS8wMi8yMDI2IjsiMTAxLDUwIgo=",
+   "outcome": {
+    "ok": {
+     "name": "Quoted",
+     "currency": "BRL",
+     "points": [
+      [
+       "2026-01-01",
+       "100.00"
+      ],
+      [
+       "2026-02-01",
+       "101.50"
+      ]
+     ],
+     "source": "x"
+    }
+   },
+   "returns": [
+    {
+     "start": "2025-12-31",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Quoted (x)",
+      "start": "2025-12-31",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2025-12-31",
+     "end": "2026-01-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Quoted (x)",
+      "start": "2025-12-31",
+      "end": "2026-01-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2025-12-31",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Quoted (x)",
+      "start": "2025-12-31",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2025-12-31",
+     "end": "2026-02-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Quoted (x)",
+      "start": "2025-12-31",
+      "end": "2026-02-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Quoted (x)",
+      "start": "2026-01-01",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2026-01-01",
+     "result": {
+      "value": {
+       "$dec": "0"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Quoted (x)",
+      "start": "2026-01-01",
+      "end": "2026-01-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Quoted (x)",
+      "start": "2026-01-01",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2026-02-01",
+     "result": {
+      "value": {
+       "$dec": "0.015"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Quoted (x)",
+      "start": "2026-01-01",
+      "end": "2026-02-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Quoted (x)",
+      "start": "2026-01-02",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2026-01-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Quoted (x)",
+      "start": "2026-01-02",
+      "end": "2026-01-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Quoted (x)",
+      "start": "2026-01-02",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2026-02-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Quoted (x)",
+      "start": "2026-01-02",
+      "end": "2026-02-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Quoted (x)",
+      "start": "2026-02-01",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2026-01-01",
+     "result": {
+      "value": {
+       "$dec": "-0.0147783251231527093596059113"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Quoted (x)",
+      "start": "2026-02-01",
+      "end": "2026-01-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Quoted (x)",
+      "start": "2026-02-01",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2026-02-01",
+     "result": {
+      "value": {
+       "$dec": "0"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Quoted (x)",
+      "start": "2026-02-01",
+      "end": "2026-02-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    }
+   ],
+   "stored": 1
+  },
+  {
+   "why": "windows line ends",
+   "name": "CRLF",
+   "source": "x",
+   "csv": "ZGF0YTt2YWxvcg0KMDEvMDEvMjAyNjsxMDAsMDANCjAxLzAyLzIwMjY7MTAxLDAwDQo=",
+   "outcome": {
+    "ok": {
+     "name": "CRLF",
+     "currency": "BRL",
+     "points": [
+      [
+       "2026-01-01",
+       "100.00"
+      ],
+      [
+       "2026-02-01",
+       "101.00"
+      ]
+     ],
+     "source": "x"
+    }
+   },
+   "returns": [
+    {
+     "start": "2025-12-31",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice CRLF (x)",
+      "start": "2025-12-31",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2025-12-31",
+     "end": "2026-01-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice CRLF (x)",
+      "start": "2025-12-31",
+      "end": "2026-01-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2025-12-31",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice CRLF (x)",
+      "start": "2025-12-31",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2025-12-31",
+     "end": "2026-02-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice CRLF (x)",
+      "start": "2025-12-31",
+      "end": "2026-02-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice CRLF (x)",
+      "start": "2026-01-01",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2026-01-01",
+     "result": {
+      "value": {
+       "$dec": "0"
+      },
+      "unit": "ratio",
+      "method": "variação do índice CRLF (x)",
+      "start": "2026-01-01",
+      "end": "2026-01-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice CRLF (x)",
+      "start": "2026-01-01",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2026-02-01",
+     "result": {
+      "value": {
+       "$dec": "0.01"
+      },
+      "unit": "ratio",
+      "method": "variação do índice CRLF (x)",
+      "start": "2026-01-01",
+      "end": "2026-02-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice CRLF (x)",
+      "start": "2026-01-02",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2026-01-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice CRLF (x)",
+      "start": "2026-01-02",
+      "end": "2026-01-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice CRLF (x)",
+      "start": "2026-01-02",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2026-02-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice CRLF (x)",
+      "start": "2026-01-02",
+      "end": "2026-02-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice CRLF (x)",
+      "start": "2026-02-01",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2026-01-01",
+     "result": {
+      "value": {
+       "$dec": "-0.0099009900990099009900990099"
+      },
+      "unit": "ratio",
+      "method": "variação do índice CRLF (x)",
+      "start": "2026-02-01",
+      "end": "2026-01-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice CRLF (x)",
+      "start": "2026-02-01",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2026-02-01",
+     "result": {
+      "value": {
+       "$dec": "0"
+      },
+      "unit": "ratio",
+      "method": "variação do índice CRLF (x)",
+      "start": "2026-02-01",
+      "end": "2026-02-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    }
+   ],
+   "stored": 1
+  },
+  {
+   "why": "extra columns",
+   "name": "More columns",
+   "source": "x",
+   "csv": "ZGF0YTt2YWxvcjtvYnMKMDEvMDEvMjAyNjsxMDAsMDA7YQowMS8wMi8yMDI2OzEwMSwwMDtiO2MK",
+   "outcome": {
+    "ok": {
+     "name": "More columns",
+     "currency": "BRL",
+     "points": [
+      [
+       "2026-01-01",
+       "100.00"
+      ],
+      [
+       "2026-02-01",
+       "101.00"
+      ]
+     ],
+     "source": "x"
+    }
+   },
+   "returns": [
+    {
+     "start": "2025-12-31",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice More columns (x)",
+      "start": "2025-12-31",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2025-12-31",
+     "end": "2026-01-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice More columns (x)",
+      "start": "2025-12-31",
+      "end": "2026-01-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2025-12-31",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice More columns (x)",
+      "start": "2025-12-31",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2025-12-31",
+     "end": "2026-02-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice More columns (x)",
+      "start": "2025-12-31",
+      "end": "2026-02-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice More columns (x)",
+      "start": "2026-01-01",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2026-01-01",
+     "result": {
+      "value": {
+       "$dec": "0"
+      },
+      "unit": "ratio",
+      "method": "variação do índice More columns (x)",
+      "start": "2026-01-01",
+      "end": "2026-01-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice More columns (x)",
+      "start": "2026-01-01",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2026-02-01",
+     "result": {
+      "value": {
+       "$dec": "0.01"
+      },
+      "unit": "ratio",
+      "method": "variação do índice More columns (x)",
+      "start": "2026-01-01",
+      "end": "2026-02-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice More columns (x)",
+      "start": "2026-01-02",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2026-01-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice More columns (x)",
+      "start": "2026-01-02",
+      "end": "2026-01-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice More columns (x)",
+      "start": "2026-01-02",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2026-02-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice More columns (x)",
+      "start": "2026-01-02",
+      "end": "2026-02-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice More columns (x)",
+      "start": "2026-02-01",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2026-01-01",
+     "result": {
+      "value": {
+       "$dec": "-0.0099009900990099009900990099"
+      },
+      "unit": "ratio",
+      "method": "variação do índice More columns (x)",
+      "start": "2026-02-01",
+      "end": "2026-01-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice More columns (x)",
+      "start": "2026-02-01",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2026-02-01",
+     "result": {
+      "value": {
+       "$dec": "0"
+      },
+      "unit": "ratio",
+      "method": "variação do índice More columns (x)",
+      "start": "2026-02-01",
+      "end": "2026-02-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    }
+   ],
+   "stored": 1
+  },
+  {
+   "why": "not utf-8",
+   "name": "Latin1",
+   "source": "x",
+   "csv": "ZGF0YTt2YWxvcgowMS8wMS8yMDI2OzEwMCwwMAowMS8wMi8yMDI2OzEwMSwwMArn4287MQo=",
+   "outcome": {
+    "error": "UnicodeDecodeError"
+   }
+  },
+  {
+   "why": "tab separated is not split (counts of ; and , tie)",
+   "name": "Tabs",
+   "source": "x",
+   "csv": "MDEvMDEvMjAyNgkxMDAsMDAKMDEvMDIvMjAyNgkxMDEsMDAK",
+   "outcome": {
+    "error": "DomainError",
+    "message": "O arquivo precisa de ao menos duas datas com valores."
+   }
+  },
+  {
+   "why": "empty name",
+   "name": "",
+   "source": "x",
+   "csv": "MDEvMDEvMjAyNjsxMDAsMDAKMDEvMDIvMjAyNjsxMDEsMDAK",
+   "outcome": {
+    "error": "ValidationError"
+   }
+  },
+  {
+   "why": "name too long",
+   "name": "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+   "source": "x",
+   "csv": "MDEvMDEvMjAyNjsxMDAsMDAKMDEvMDIvMjAyNjsxMDEsMDAK",
+   "outcome": {
+    "error": "ValidationError"
+   }
+  },
+  {
+   "why": "source too long",
+   "name": "Long source",
+   "source": "sssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss",
+   "csv": "MDEvMDEvMjAyNjsxMDAsMDAKMDEvMDIvMjAyNjsxMDEsMDAK",
+   "outcome": {
+    "error": "ValidationError"
+   }
+  },
+  {
+   "why": "unicode names",
+   "name": "Accents",
+   "source": "índice açúcar",
+   "csv": "MDEvMDEvMjAyNjsxMDAsMDAKMDEvMDIvMjAyNjsxMDEsMDAK",
+   "outcome": {
+    "ok": {
+     "name": "Accents",
+     "currency": "BRL",
+     "points": [
+      [
+       "2026-01-01",
+       "100.00"
+      ],
+      [
+       "2026-02-01",
+       "101.00"
+      ]
+     ],
+     "source": "índice açúcar"
+    }
+   },
+   "returns": [
+    {
+     "start": "2025-12-31",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Accents (índice açúcar)",
+      "start": "2025-12-31",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2025-12-31",
+     "end": "2026-01-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Accents (índice açúcar)",
+      "start": "2025-12-31",
+      "end": "2026-01-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2025-12-31",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Accents (índice açúcar)",
+      "start": "2025-12-31",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2025-12-31",
+     "end": "2026-02-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Accents (índice açúcar)",
+      "start": "2025-12-31",
+      "end": "2026-02-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Accents (índice açúcar)",
+      "start": "2026-01-01",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2026-01-01",
+     "result": {
+      "value": {
+       "$dec": "0"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Accents (índice açúcar)",
+      "start": "2026-01-01",
+      "end": "2026-01-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Accents (índice açúcar)",
+      "start": "2026-01-01",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2026-02-01",
+     "result": {
+      "value": {
+       "$dec": "0.01"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Accents (índice açúcar)",
+      "start": "2026-01-01",
+      "end": "2026-02-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Accents (índice açúcar)",
+      "start": "2026-01-02",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2026-01-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Accents (índice açúcar)",
+      "start": "2026-01-02",
+      "end": "2026-01-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Accents (índice açúcar)",
+      "start": "2026-01-02",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2026-02-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Accents (índice açúcar)",
+      "start": "2026-01-02",
+      "end": "2026-02-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Accents (índice açúcar)",
+      "start": "2026-02-01",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2026-01-01",
+     "result": {
+      "value": {
+       "$dec": "-0.0099009900990099009900990099"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Accents (índice açúcar)",
+      "start": "2026-02-01",
+      "end": "2026-01-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Accents (índice açúcar)",
+      "start": "2026-02-01",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2026-02-01",
+     "result": {
+      "value": {
+       "$dec": "0"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Accents (índice açúcar)",
+      "start": "2026-02-01",
+      "end": "2026-02-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    }
+   ],
+   "stored": 1
+  },
+  {
+   "why": "many decimals",
+   "name": "Wide",
+   "source": "x",
+   "csv": "MDEvMDEvMjAyNjsxMDAsMDAwMDAwMDAwMDAwMDAxCjAxLzAyLzIwMjY7MTAwLDAwMDAwMDAwMDAwMDAwMwo=",
+   "outcome": {
+    "ok": {
+     "name": "Wide",
+     "currency": "BRL",
+     "points": [
+      [
+       "2026-01-01",
+       "100.000000000000001"
+      ],
+      [
+       "2026-02-01",
+       "100.000000000000003"
+      ]
+     ],
+     "source": "x"
+    }
+   },
+   "returns": [
+    {
+     "start": "2025-12-31",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Wide (x)",
+      "start": "2025-12-31",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2025-12-31",
+     "end": "2026-01-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Wide (x)",
+      "start": "2025-12-31",
+      "end": "2026-01-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2025-12-31",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Wide (x)",
+      "start": "2025-12-31",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2025-12-31",
+     "end": "2026-02-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Wide (x)",
+      "start": "2025-12-31",
+      "end": "2026-02-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Wide (x)",
+      "start": "2026-01-01",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2026-01-01",
+     "result": {
+      "value": {
+       "$dec": "0"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Wide (x)",
+      "start": "2026-01-01",
+      "end": "2026-01-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Wide (x)",
+      "start": "2026-01-01",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2026-02-01",
+     "result": {
+      "value": {
+       "$dec": "0.000000000000000020000000000"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Wide (x)",
+      "start": "2026-01-01",
+      "end": "2026-02-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Wide (x)",
+      "start": "2026-01-02",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2026-01-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Wide (x)",
+      "start": "2026-01-02",
+      "end": "2026-01-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Wide (x)",
+      "start": "2026-01-02",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2026-02-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Wide (x)",
+      "start": "2026-01-02",
+      "end": "2026-02-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Wide (x)",
+      "start": "2026-02-01",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2026-01-01",
+     "result": {
+      "value": {
+       "$dec": "-0.0000000000000000200000000000"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Wide (x)",
+      "start": "2026-02-01",
+      "end": "2026-01-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Wide (x)",
+      "start": "2026-02-01",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2026-02-01",
+     "result": {
+      "value": {
+       "$dec": "0"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Wide (x)",
+      "start": "2026-02-01",
+      "end": "2026-02-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    }
+   ],
+   "stored": 1
+  },
+  {
+   "why": "division with a long fraction",
+   "name": "Wide2",
+   "source": "x",
+   "csv": "MDEvMDEvMjAyNjszLDAwCjAxLzAyLzIwMjY7NywwMAowMS8wMy8yMDI2OzEsMDAK",
+   "outcome": {
+    "ok": {
+     "name": "Wide2",
+     "currency": "BRL",
+     "points": [
+      [
+       "2026-01-01",
+       "3.00"
+      ],
+      [
+       "2026-02-01",
+       "7.00"
+      ],
+      [
+       "2026-03-01",
+       "1.00"
+      ]
+     ],
+     "source": "x"
+    }
+   },
+   "returns": [
+    {
+     "start": "2025-12-31",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Wide2 (x)",
+      "start": "2025-12-31",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2025-12-31",
+     "end": "2026-01-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Wide2 (x)",
+      "start": "2025-12-31",
+      "end": "2026-01-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2025-12-31",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Wide2 (x)",
+      "start": "2025-12-31",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2025-12-31",
+     "end": "2026-02-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Wide2 (x)",
+      "start": "2025-12-31",
+      "end": "2026-02-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2025-12-31",
+     "end": "2026-03-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Wide2 (x)",
+      "start": "2025-12-31",
+      "end": "2026-03-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Wide2 (x)",
+      "start": "2026-01-01",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2026-01-01",
+     "result": {
+      "value": {
+       "$dec": "0"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Wide2 (x)",
+      "start": "2026-01-01",
+      "end": "2026-01-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Wide2 (x)",
+      "start": "2026-01-01",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2026-02-01",
+     "result": {
+      "value": {
+       "$dec": "1.333333333333333333333333333"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Wide2 (x)",
+      "start": "2026-01-01",
+      "end": "2026-02-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-01",
+     "end": "2026-03-01",
+     "result": {
+      "value": {
+       "$dec": "-0.6666666666666666666666666667"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Wide2 (x)",
+      "start": "2026-01-01",
+      "end": "2026-03-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Wide2 (x)",
+      "start": "2026-01-02",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2026-01-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Wide2 (x)",
+      "start": "2026-01-02",
+      "end": "2026-01-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Wide2 (x)",
+      "start": "2026-01-02",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2026-02-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Wide2 (x)",
+      "start": "2026-01-02",
+      "end": "2026-02-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-01-02",
+     "end": "2026-03-01",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Wide2 (x)",
+      "start": "2026-01-02",
+      "end": "2026-03-01",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Wide2 (x)",
+      "start": "2026-02-01",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2026-01-01",
+     "result": {
+      "value": {
+       "$dec": "-0.5714285714285714285714285714"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Wide2 (x)",
+      "start": "2026-02-01",
+      "end": "2026-01-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Wide2 (x)",
+      "start": "2026-02-01",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2026-02-01",
+     "result": {
+      "value": {
+       "$dec": "0"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Wide2 (x)",
+      "start": "2026-02-01",
+      "end": "2026-02-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-02-01",
+     "end": "2026-03-01",
+     "result": {
+      "value": {
+       "$dec": "-0.8571428571428571428571428571"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Wide2 (x)",
+      "start": "2026-02-01",
+      "end": "2026-03-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-03-01",
+     "end": "2025-12-31",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Wide2 (x)",
+      "start": "2026-03-01",
+      "end": "2025-12-31",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-03-01",
+     "end": "2026-01-01",
+     "result": {
+      "value": {
+       "$dec": "2"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Wide2 (x)",
+      "start": "2026-03-01",
+      "end": "2026-01-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-03-01",
+     "end": "2026-01-02",
+     "result": {
+      "value": null,
+      "unit": "ratio",
+      "method": "variação do índice Wide2 (x)",
+      "start": "2026-03-01",
+      "end": "2026-01-02",
+      "quality": "unavailable",
+      "notes": [
+       "A série local não tem valores exatamente nas datas do período."
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-03-01",
+     "end": "2026-02-01",
+     "result": {
+      "value": {
+       "$dec": "6"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Wide2 (x)",
+      "start": "2026-03-01",
+      "end": "2026-02-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    },
+    {
+     "start": "2026-03-01",
+     "end": "2026-03-01",
+     "result": {
+      "value": {
+       "$dec": "0"
+      },
+      "unit": "ratio",
+      "method": "variação do índice Wide2 (x)",
+      "start": "2026-03-01",
+      "end": "2026-03-01",
+      "quality": "observed",
+      "notes": [
+       "mesma moeda e período"
+      ],
+      "version": "1"
+     }
+    }
+   ],
+   "stored": 1
+  }
+ ]
+}

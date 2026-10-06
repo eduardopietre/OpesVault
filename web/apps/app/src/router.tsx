@@ -19,6 +19,7 @@ import type { ComponentType, ReactNode } from "react";
 import { revealSearch } from "./data/navigation.ts";
 import { SHOW_CATALOG } from "./flags.ts";
 import { PAGES } from "./pages.tsx";
+import { taxReportSearch } from "./pages/imposto/report_search.ts";
 import { reportSearch } from "./pages/visao-geral/report_search.ts";
 import { SignInScreen, SignUpScreen, WelcomeScreen } from "./screens/auth.tsx";
 import { PlaceholderPage } from "./screens/PlaceholderPage.tsx";
@@ -143,6 +144,15 @@ export function createAppRouter({
     component: lazyRouteComponent(() => import("./pages/visao-geral/report_page.tsx"), "MonthlyReportPage"),
   });
 
+  // The report for the income tax return, the same way (Imposto de renda › Mais › Relatório para a declaração).
+  const taxReport = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/imprimir/imposto",
+    beforeLoad: projectOpen,
+    validateSearch: taxReportSearch,
+    component: lazyRouteComponent(() => import("./pages/imposto/report_page.tsx"), "TaxReportPage"),
+  });
+
   const children: AnyRoute[] = [
     index,
     welcome,
@@ -152,6 +162,7 @@ export function createAppRouter({
     newProject,
     setup,
     monthlyReport,
+    taxReport,
     shell.addChildren(pages),
   ];
   if (SHOW_CATALOG) {

@@ -6,6 +6,7 @@
  *   phone < 640: bottom bar with four destinations and "Mais" in a sheet.
  * Page changes slide and fade in briefly. Files dropped anywhere go to Importar e revisar.
  */
+import { useAttention } from "../data/attention.ts";
 import {
   BottomNav,
   CommandPalette,
@@ -35,6 +36,8 @@ import { TopBar } from "./TopBar.tsx";
 import { useUndo } from "./undo.tsx";
 import { Wordmark } from "./Logo.tsx";
 import { SHOW_CATALOG } from "../flags.ts";
+
+const EMPTY_ATTENTION: Readonly<Record<string, number>> = {};
 
 function navItem(page: PageDef, attention: Readonly<Record<string, number>>): NavItem {
   const shortcut = shortcutOf(page);
@@ -66,7 +69,7 @@ export function AppShell() {
   const [help, setHelp] = useState(false);
   const [dragging, setDragging] = useState(false);
 
-  const attention = session.open?.attention ?? {};
+  const attention = useAttention(session.open?.attention ?? EMPTY_ATTENTION);
   const groups: NavGroup[] = SECTIONS.map((section) => ({
     label: section,
     items: PAGES.filter((page) => page.section === section).map((page) => navItem(page, attention)),

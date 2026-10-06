@@ -3,6 +3,7 @@ import { createMemoryHistory } from "@tanstack/react-router";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
+import { attentionCounts } from "../src/data/attention.ts";
 import { App } from "../src/App.tsx";
 import { createAppRouter } from "../src/router.tsx";
 import { DEMO, createFakeServices } from "../src/services/fake.ts";
@@ -60,7 +61,12 @@ describe("the shell", () => {
     render(<App router={router} services={services} session={session} preferences={memoryPreferences()} />);
     await screen.findByRole("heading", { level: 1, name: "Livro financeiro" });
     expect(screen.getByRole("link", { name: "Livro financeiro" }).getAttribute("aria-current")).toBe("page");
-    expect(screen.getByRole("link", { name: "Importar e revisar, 2 itens pedem atenção" })).toBeTruthy();
+    // Counts come from the project itself (notices and items waiting for review).
+    const counts = attentionCounts(open.workspace.ledger, open.workspace.today());
+    const importName = counts["importar"]
+      ? `Importar e revisar, ${counts["importar"]} itens pedem atenção`
+      : "Importar e revisar";
+    expect(screen.getByRole("link", { name: importName })).toBeTruthy();
     expect(screen.getByText("Sincronizado")).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Bloquear o projeto" }));
     await screen.findByRole("heading", { name: "Casa está bloqueado" });

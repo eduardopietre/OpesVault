@@ -44,9 +44,13 @@ export function portFrom(value: string | null): number {
 }
 
 /** The model this project asks, on this device's port; null when the AI is off. */
-export function aiClientFor(ledger: Ledger, port: number = ai.ollama.DEFAULT_PORT): ai.ollama.OllamaClient | null {
+export function aiClientFor(
+  ledger: Ledger,
+  port: number = ai.ollama.DEFAULT_PORT,
+  transport: Transport = aiTransport(),
+): ai.ollama.OllamaClient | null {
   try {
-    return importing.aiSuggestions.clientFromSettings(ledger, aiTransport(), ai.ollama.localUrl(port));
+    return importing.aiSuggestions.clientFromSettings(ledger, transport, ai.ollama.localUrl(port));
   } catch (error) {
     if (error instanceof ai.ollama.AiUnavailable) return null;
     throw error;

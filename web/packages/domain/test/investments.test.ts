@@ -96,6 +96,8 @@ describe("docs/06 examples", () => {
     inv.redeem(f.ledger, pos.id, d("2026-06-30"), "12000", f.bank, { tax_withheld: "300", fees: "20", final: true });
     expect(queries.balance(f.ledger, f.bank).eq(before.add("11680.00"))).toBe(true);
     expect(inv.remainingCost(f.ledger, pos.id).isZero()).toBe(true);
+    // A total redemption closes a value-mode position.
+    expect(inv.position(f.ledger, pos.id).closed).toBe(true);
     expect(eq(realized(f.ledger, pos.id).value, "2000.00")).toBe(true);
   });
 

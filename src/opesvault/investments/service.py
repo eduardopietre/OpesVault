@@ -412,8 +412,11 @@ def redeem(
                 occurred_on=on,
             )
         )
+    # Compared with the cost remaining BEFORE this redemption: after it is posted the remaining cost
+    # is already reduced, so a total redemption must be recognised first.
+    remaining_before = remaining_cost(ledger, position_id)
     created = [ledger.add_operation(op) for op in operations]
-    if final and cost == remaining_cost(ledger, position_id) and pos.mode is TrackingMode.VALUE:
+    if final and cost == remaining_before and pos.mode is TrackingMode.VALUE:
         ledger.put("position", pos.model_copy(update={"closed": True}), reason="resgate total")
     event = InvestmentEvent(
         position_id=position_id,

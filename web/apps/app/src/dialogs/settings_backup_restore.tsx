@@ -8,8 +8,9 @@ import { useState } from "react";
 import type { BackupProgress, RestoredProject } from "../services/types.ts";
 import { useServices } from "../session.tsx";
 import { Caption } from "./livro_form.tsx";
-import { progressText, sizeText } from "./settings_backup_export.tsx";
+import { progressText } from "./settings_backup_export.tsx";
 import { BackupCheckSummary } from "./settings_backup_verify.tsx";
+import { FilePicker } from "./settings_file.tsx";
 import { RecoveryKeyBox, SettingsDialog } from "./settings_form.tsx";
 
 export interface RestoreBackupDialogProps {
@@ -97,20 +98,12 @@ export function RestoreBackupDialog({ open, onClose, onOpenProject }: RestoreBac
         setRestored(result);
       }}
     >
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="backup-restore-file" className="text-body font-medium">
-          Arquivo de backup
-        </label>
-        <input
-          id="backup-restore-file"
-          type="file"
-          onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-          className="block w-full min-w-0 rounded-md border border-separator-strong bg-raised p-1.5 text-body file:mr-3 file:rounded-sm file:border-0 file:bg-accent-soft file:px-3 file:py-1 file:text-body file:font-medium file:text-accent"
-        />
-        <p className="text-caption text-secondary">
-          {file ? `${file.name} · ${sizeText(file.size)}` : "O arquivo é lido neste navegador e não é enviado."}
-        </p>
-      </div>
+      <FilePicker
+        label="Arquivo de backup"
+        file={file}
+        onFile={setFile}
+        empty="O arquivo é lido neste navegador e não é enviado."
+      />
       <TextField
         label="Senha do arquivo"
         type="password"

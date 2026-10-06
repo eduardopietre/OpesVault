@@ -137,7 +137,7 @@ export function RecoveryKeyBox({ label, value }: { label: string; value: string 
     <div>
       <output
         aria-label={label}
-        className="grid grid-cols-2 gap-2 rounded-lg border border-separator bg-window p-4 font-mono text-headline tracking-wider tablet:grid-cols-3"
+        className="grid grid-cols-3 gap-2 rounded-lg border border-separator bg-window p-4 font-mono text-headline tracking-wider"
       >
         {value.split("-").map((group, index) => (
           <span key={index} className="text-center">

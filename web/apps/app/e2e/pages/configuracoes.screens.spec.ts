@@ -50,38 +50,48 @@ for (const size of SIZES) {
               .getByText(/Ollama 0\.35\.1 respondeu/)
               .waitFor({ timeout: 8000 })
               .catch(() => undefined);
-            await page.getByRole("button", { name: /Como liberar este endereço/ }).click();
+            await page.getByRole("button", { name: /Liberar este endereço/ }).click();
           }
           await shot(page, `${id}-${suffix}`);
         }
         // dialogs
         await page.getByRole("tab", { name: "Segurança", exact: true }).click();
         await page.getByRole("button", { name: "Trocar senha…" }).click();
-        await page.getByLabel("Nova senha", { exact: true }).fill("curta");
+        const password = page.getByRole("dialog", { name: "Trocar a senha do projeto" });
+        await password.getByLabel("Nova senha", { exact: true }).fill("curta");
         await shot(page, `dialogo-senha-${suffix}`, false);
         await page.keyboard.press("Escape");
+        await password.waitFor({ state: "hidden" });
         await page.getByRole("button", { name: "Gerar nova chave…" }).click();
-        await page.getByLabel("Senha do projeto").fill(DEMO.projectPassword);
-        await page.getByRole("button", { name: "Gerar nova chave", exact: true }).click();
-        await page.getByRole("dialog", { name: "Guarde a nova chave de recuperação" }).waitFor();
+        const ask = page.getByRole("dialog", { name: "Gerar nova chave de recuperação" });
+        await ask.getByLabel("Senha do projeto").fill(DEMO.projectPassword);
+        await ask.getByRole("button", { name: "Gerar nova chave", exact: true }).click();
+        const shown = page.getByRole("dialog", { name: "Guarde a nova chave de recuperação" });
+        await shown.waitFor();
         await shot(page, `dialogo-chave-${suffix}`, false);
-        await page.getByRole("checkbox", { name: /Já guardei a nova chave/ }).click();
-        await page.getByRole("button", { name: "Concluir" }).click();
+        await shown.getByRole("checkbox", { name: /Já guardei a nova chave/ }).click();
+        await shown.getByRole("button", { name: "Concluir" }).click();
+        await shown.waitFor({ state: "hidden" });
         await page.getByRole("tab", { name: "Backup e salvamento", exact: true }).click();
         await page.getByRole("button", { name: "Fazer backup agora…" }).click();
+        const backup = page.getByRole("dialog", { name: "Fazer backup agora" });
         await shot(page, `dialogo-backup-${suffix}`, false);
-        await page.getByLabel("Senha do projeto").fill(DEMO.projectPassword);
-        await page.getByRole("button", { name: "Gerar backup" }).click();
-        await page.getByRole("dialog", { name: "Backup pronto" }).waitFor({ timeout: 20_000 });
+        await backup.getByLabel("Senha do projeto").fill(DEMO.projectPassword);
+        await backup.getByRole("button", { name: "Gerar backup" }).click();
+        const ready = page.getByRole("dialog", { name: "Backup pronto" });
+        await ready.waitFor({ timeout: 20_000 });
         await shot(page, `dialogo-backup-pronto-${suffix}`, false);
-        await page.getByRole("button", { name: "Fechar" }).click();
+        await ready.getByRole("button", { name: "Fechar" }).click();
+        await ready.waitFor({ state: "hidden" });
         await shot(page, `backup-feito-${suffix}`);
         await page.getByRole("button", { name: "Verificar arquivo…" }).click();
         await shot(page, `dialogo-verificar-${suffix}`, false);
         await page.keyboard.press("Escape");
+        await page.getByRole("dialog", { name: "Verificar arquivo de backup" }).waitFor({ state: "hidden" });
         await page.getByRole("button", { name: "Restaurar backup…" }).click();
         await shot(page, `dialogo-restaurar-${suffix}`, false);
         await page.keyboard.press("Escape");
+        await page.getByRole("dialog", { name: "Restaurar backup" }).waitFor({ state: "hidden" });
         await page.getByRole("tab", { name: "Privacidade deste aparelho", exact: true }).click();
         await page.getByRole("button", { name: "Esquecer este aparelho…" }).click();
         await shot(page, `dialogo-esquecer-${suffix}`, false);

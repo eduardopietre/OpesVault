@@ -204,7 +204,7 @@ describe("IA local", () => {
     setAiTransport(() => Promise.reject(new TypeError("Failed to fetch")));
     const { user } = await openSettings();
     await goTab(user, "IA local");
-    const guide = screen.getByRole("button", { name: /Como liberar este endereço no Ollama/ });
+    const guide = screen.getByRole("button", { name: /Liberar este endereço no Ollama/ });
     expect(guide.getAttribute("aria-expanded")).toBe("false");
     await user.click(screen.getByRole("button", { name: "Verificar Ollama" }));
     expect(

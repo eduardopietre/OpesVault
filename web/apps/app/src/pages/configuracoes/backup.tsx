@@ -30,7 +30,6 @@ export function BackupTab() {
     <TabColumn>
       <Block
         title="Backup do projeto"
-        scope="device"
         description="Um arquivo único com todo o projeto, lançamentos e documentos, cifrado neste navegador com a senha do projeto. Ele abre offline, sem o servidor, e não mostra nada sem a senha, nem o nome do projeto."
         actions={
           <>

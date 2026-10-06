@@ -8,10 +8,21 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { DEMO, SCHEMES, SIZES, animationsDone, expectNoHorizontalOverflow, openDemo, settle, watchErrors } from "../helpers.ts";
+import {
+  DEMO,
+  SCHEMES,
+  SIZES,
+  animationsDone,
+  expectNoHorizontalOverflow,
+  openDemo,
+  settle,
+  watchErrors,
+} from "../helpers.ts";
 
 async function audit(page: Page, label: string) {
   await page.mouse.move(1, 1); // a hovered button is another color: audit the resting state
+  // A notice fading in or out is half transparent: it is measured once it is gone (they dismiss themselves).
+  await expect(page.locator('section[aria-label="Avisos"] [data-tone]')).toHaveCount(0, { timeout: 15_000 });
   await settle(page, 250);
   await animationsDone(page);
   const result = await new AxeBuilder({ page })
@@ -42,7 +53,8 @@ async function openDialog(page: Page, name: string | RegExp, label: string): Pro
   return dialog;
 }
 
-const press = (scope: Locator | Page, name: string | RegExp) => scope.getByRole("button", { name, exact: typeof name === "string" }).click();
+const press = (scope: Locator | Page, name: string | RegExp) =>
+  scope.getByRole("button", { name, exact: typeof name === "string" }).click();
 
 /** Answers the requests to the local Ollama like a real one would, with the CORS header the browser needs. */
 async function fakeOllama(page: Page, ps: { size: number; size_vram: number } | null) {
@@ -62,7 +74,7 @@ async function fakeOllama(page: Page, ps: { size: number; size_vram: number } | 
         : url.pathname === "/api/tags"
           ? { models: [{ name: "gemma4:12b", digest: "sha256:0123456789abcdef" }, { name: "llama3.2:3b" }] }
           : url.pathname === "/api/ps"
-            ? { models: ps ? [{ name: "gemma4:12b", ...ps }] : [] }
+            ? { models: ps ? [{ name: "llama3.2:3b", ...ps }] : [] }
             : { done: true };
     await route.fulfill({ status: 200, headers, body: JSON.stringify(body) });
   });
@@ -99,7 +111,10 @@ for (const size of SIZES) {
         await expect(page.getByRole("list", { name: "Integrantes do projeto" }).getByText("Ana")).toBeVisible();
         await press(page, "Gerir integrantes em Contas e cartões");
         await expect(page.getByRole("heading", { level: 1, name: "Contas e cartões" })).toBeVisible();
-        await expect(page.getByRole("tab", { name: "Integrantes", exact: true })).toHaveAttribute("aria-selected", "true");
+        await expect(page.getByRole("tab", { name: "Integrantes", exact: true })).toHaveAttribute(
+          "aria-selected",
+          "true",
+        );
         expect(errors).toEqual([]);
       });
 
@@ -108,7 +123,10 @@ for (const size of SIZES) {
         await fakeOllama(page, { size: 8_000_000_000, size_vram: 4_000_000_000 });
         await openDemo(page, "/configuracoes");
         await goTab(page, "IA local");
-        await expect(page.getByRole("switch", { name: "Usar o Ollama local para sugestões" })).toHaveAttribute("aria-checked", "true");
+        await expect(page.getByRole("switch", { name: "Usar o Ollama local para sugestões" })).toHaveAttribute(
+          "aria-checked",
+          "true",
+        );
         await expectNoHorizontalOverflow(page);
         await audit(page, "ia local");
 
@@ -140,7 +158,7 @@ for (const size of SIZES) {
         await audit(page, "ia local verificada");
 
         // the guide carries this app's exact origin
-        await page.getByRole("button", { name: /Como liberar este endereço no Ollama/ }).click();
+        await page.getByRole("button", { name: /Liberar este endereço no Ollama/ }).click();
         const origin = new URL(page.url()).origin;
         await expect(page.getByText(`setx OLLAMA_ORIGINS "${origin}"`)).toBeVisible();
         await expect(page.getByText(`launchctl setenv OLLAMA_ORIGINS "${origin}"`)).toBeVisible();
@@ -155,8 +173,13 @@ for (const size of SIZES) {
         await openDemo(page, "/configuracoes");
         await goTab(page, "IA local");
         await press(page, "Verificar Ollama");
-        await expect(page.getByText(/Ollama indisponível\. Abra o Ollama e confira se ele aceita este endereço/)).toBeVisible();
-        await expect(page.getByRole("button", { name: /Como liberar este endereço no Ollama/ })).toHaveAttribute("aria-expanded", "true");
+        await expect(
+          page.getByText(/Ollama indisponível\. Abra o Ollama e confira se ele aceita este endereço/),
+        ).toBeVisible();
+        await expect(page.getByRole("button", { name: /Liberar este endereço no Ollama/ })).toHaveAttribute(
+          "aria-expanded",
+          "true",
+        );
         await expectNoHorizontalOverflow(page);
         await audit(page, "ollama indisponível");
       });
@@ -207,7 +230,7 @@ for (const size of SIZES) {
         // the idle lock is a device preference, written at once; there is no "off"
         await page.getByRole("combobox", { name: "Bloquear após" }).click();
         await expect(page.getByRole("option", { name: /Desligado/ })).toHaveCount(0);
-        await page.getByRole("option", { name: "5 minutos" }).click();
+        await page.getByRole("option", { name: "5 minutos", exact: true }).click();
         await expect(page.getByText(/bloqueia após 5 minutos sem uso neste aparelho/).first()).toBeVisible();
         await expect(page.getByRole("combobox", { name: "Bloquear após" })).toContainText("5 minutos");
         await audit(page, "segurança com bloqueio");
@@ -304,21 +327,28 @@ test.describe("links and the rest of the flow", () => {
     if (await all.isVisible()) await all.click();
     await page.getByRole("button", { name: /^Abrir Configurações: Faça um backup do cofre/ }).click();
     await expect(page.getByRole("heading", { level: 1, name: "Configurações" })).toBeVisible();
-    await expect(page.getByRole("tab", { name: "Backup e salvamento", exact: true })).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("tab", { name: "Backup e salvamento", exact: true })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
   });
 
-  test("forgetting the device clears the preferences, ends the session and goes to the welcome screen", async ({ page }) => {
+  test("forgetting the device clears the preferences, ends the session and goes to the welcome screen", async ({
+    page,
+  }) => {
     await openDemo(page, "/configuracoes");
     await goTab(page, "Segurança");
     await page.getByRole("combobox", { name: "Bloquear após" }).click();
-    await page.getByRole("option", { name: "5 minutos" }).click();
+    await page.getByRole("option", { name: "5 minutos", exact: true }).click();
     expect(await page.evaluate(() => localStorage.getItem("opesvault:seguranca/bloqueio"))).toBe("5");
     await goTab(page, "Privacidade deste aparelho");
     await press(page, "Esquecer este aparelho…");
     const ask = page.getByRole("alertdialog", { name: "Esquecer este aparelho?" });
     await press(ask, "Esquecer este aparelho");
     await expect(page.getByRole("heading", { level: 1, name: "Boas-vindas ao OpesVault" })).toBeVisible();
-    expect(await page.evaluate(() => Object.keys(localStorage).filter((key) => key.startsWith("opesvault:")))).toEqual([]);
+    expect(await page.evaluate(() => Object.keys(localStorage).filter((key) => key.startsWith("opesvault:")))).toEqual(
+      [],
+    );
   });
 
   test("a backup is downloaded, verified, refused when altered and restored as a new project", async ({ page }) => {

@@ -54,7 +54,11 @@ export function Note({ children, className }: { children: ReactNode; className?:
   return <p className={cn("max-w-[68ch] text-caption text-secondary", className)}>{children}</p>;
 }
 
-/** The tab's column: a readable width, blocks stacked. */
+/** The blocks of a tab: one readable column, two columns that balance themselves on wide screens (docs/18 §5.1). */
 export function TabColumn({ children }: { children: ReactNode }) {
-  return <div className="flex max-w-[880px] flex-col gap-4">{children}</div>;
+  return (
+    <div className="max-w-[880px] wide:max-w-[1240px] wide:columns-2 wide:gap-4 [&>*]:mb-4 [&>*]:break-inside-avoid">
+      {children}
+    </div>
+  );
 }

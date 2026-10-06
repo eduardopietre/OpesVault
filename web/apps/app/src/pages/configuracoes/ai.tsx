@@ -165,7 +165,7 @@ export function AiTab() {
               event.preventDefault();
               commitModel(model);
             }}
-            className="flex flex-col gap-3 tablet:flex-row tablet:items-end"
+            className="flex flex-col gap-3 tablet:flex-row tablet:items-start"
           >
             <TextField
               label="Modelo"
@@ -203,7 +203,7 @@ export function AiTab() {
         scope="device"
         description="Onde o Ollama escuta neste computador e se ele responde. O endereço é sempre 127.0.0.1; só a porta muda."
       >
-        <form onSubmit={submitPort} className="flex flex-col gap-3 tablet:flex-row tablet:items-end">
+        <form onSubmit={submitPort}>
           <TextField
             label="Porta do Ollama"
             value={portText}
@@ -215,8 +215,10 @@ export function AiTab() {
             inputMode="numeric"
             error={portError}
             hint="Mude só se o Ollama foi configurado em outra porta (OLLAMA_HOST=127.0.0.1:<porta>). Gravada na hora, neste aparelho."
-            fieldClassName="tablet:w-[240px]"
+            fieldClassName="tablet:max-w-[320px]"
           />
+        </form>
+        <div>
           <Button
             icon={<Stethoscope className="size-4" />}
             busy={checking}
@@ -225,7 +227,7 @@ export function AiTab() {
           >
             Verificar Ollama
           </Button>
-        </form>
+        </div>
         {status ? (
           <p
             role="status"
@@ -239,11 +241,11 @@ export function AiTab() {
           </p>
         ) : null}
         <Collapsible
-          title="Como liberar este endereço no Ollama (OLLAMA_ORIGINS)"
+          title="Liberar este endereço no Ollama"
           level={3}
           open={guideOpen}
           onOpenChange={setGuideOpen}
-          description="O navegador só deixa esta página falar com o Ollama se ele aceitar o endereço da página."
+          description="O Ollama precisa aceitar o endereço desta página (variável OLLAMA_ORIGINS): o navegador não deixa falar com ele de outro jeito."
         >
           <div className="flex flex-col gap-4">
             <div>

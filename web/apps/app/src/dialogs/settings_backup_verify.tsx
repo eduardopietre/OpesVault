@@ -4,12 +4,13 @@
  * hashes. The result says in words what the file holds and whether it can be trusted.
  */
 import { TextField } from "@opesvault/ui";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { formatDateTimeBr } from "../pages/configuracoes/rows.ts";
 import type { BackupCheck, BackupProgress } from "../services/types.ts";
 import { useServices } from "../session.tsx";
 import { Caption } from "./livro_form.tsx";
 import { progressText, sizeText } from "./settings_backup_export.tsx";
+import { FilePicker } from "./settings_file.tsx";
 import { SettingsDialog } from "./settings_form.tsx";
 
 /** The sentence that says whether a checked file is sound, and what is missing from it. */
@@ -87,7 +88,6 @@ export function VerifyBackupDialog({ open, onClose }: { open: boolean; onClose: 
   const [password, setPassword] = useState("");
   const [progress, setProgress] = useState<BackupProgress | null>(null);
   const [check, setCheck] = useState<BackupCheck | null>(null);
-  const picker = useRef<HTMLInputElement>(null);
   const close = () => {
     setFile(null);
     setPassword("");
@@ -128,21 +128,12 @@ export function VerifyBackupDialog({ open, onClose }: { open: boolean; onClose: 
         setCheck(result);
       }}
     >
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="backup-verify-file" className="text-body font-medium">
-          Arquivo de backup
-        </label>
-        <input
-          ref={picker}
-          id="backup-verify-file"
-          type="file"
-          onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-          className="block w-full min-w-0 rounded-md border border-separator-strong bg-raised p-1.5 text-body file:mr-3 file:rounded-sm file:border-0 file:bg-accent-soft file:px-3 file:py-1 file:text-body file:font-medium file:text-accent"
-        />
-        <p className="text-caption text-secondary">
-          {file ? `${file.name} · ${sizeText(file.size)}` : "O arquivo é lido neste navegador e não é enviado."}
-        </p>
-      </div>
+      <FilePicker
+        label="Arquivo de backup"
+        file={file}
+        onFile={setFile}
+        empty="O arquivo é lido neste navegador e não é enviado."
+      />
       <TextField
         label="Senha do arquivo"
         type="password"

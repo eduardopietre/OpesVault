@@ -11,7 +11,10 @@ export interface ChartSeries {
   id: string;
   name: string;
   values: readonly (string | null)[];
-  kind?: "bar" | "line" | "area";
+  /** "scatter": markers only (events on a date, such as contributions), never joined by a line. */
+  kind?: "bar" | "line" | "area" | "scatter";
+  /** A line joins its observations across categories where it has no value (observed points, not daily prices). */
+  connect?: boolean;
   /** "right" puts a series of another order of magnitude on the secondary scale (docs/16 §4 rule 13). */
   axis?: "left" | "right";
   /** Bars with the same stack id pile up. */

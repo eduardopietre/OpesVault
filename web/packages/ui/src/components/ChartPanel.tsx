@@ -86,7 +86,11 @@ export function chartOption(whole: ChartData, reduceMotion: boolean): ChartOptio
       borderWidth: 1,
       padding: [8, 10],
       textStyle: { color: text, fontFamily: font, fontSize: 12 },
-      axisPointer: { type: chart.series.some((s) => s.kind !== "line" && s.kind !== "area") ? "shadow" : "line" },
+      axisPointer: {
+        type: chart.series.some((s) => s.kind !== "line" && s.kind !== "area" && s.kind !== "scatter")
+          ? "shadow"
+          : "line",
+      },
       formatter: (params: unknown) => {
         const list = (Array.isArray(params) ? params : [params]) as { dataIndex: number; seriesIndex: number }[];
         const first = list[0];
@@ -95,6 +99,8 @@ export function chartOption(whole: ChartData, reduceMotion: boolean): ChartOptio
         for (const item of list) {
           const series = chart.series[item.seriesIndex];
           if (!series) continue;
+          // markers exist only on their own dates: a line "Aporte: —" on every other date is noise
+          if (series.kind === "scatter" && (series.values[item.dataIndex] ?? null) === null) continue;
           lines.push(`${series.name}: ${formatValue(series.values[item.dataIndex] ?? null, unitOf(series.axis))}`);
         }
         return lines.join("\n");
@@ -114,6 +120,18 @@ export function chartOption(whole: ChartData, reduceMotion: boolean): ChartOptio
       // Drawing needs pixel positions: the exact strings stay in the table and the tooltip.
       const data = series.values.map((value) => (value === null ? null : Number(value)));
       const yAxisIndex = series.axis === "right" ? 1 : 0;
+      if (series.kind === "scatter") {
+        return {
+          type: "scatter" as const,
+          name: series.name,
+          data,
+          yAxisIndex,
+          symbol: "diamond",
+          symbolSize: 12,
+          itemStyle: { borderColor: raised, borderWidth: 1.5 },
+          emphasis: { focus: "series" as const },
+        };
+      }
       if (series.kind === "line" || series.kind === "area") {
         return {
           type: "line" as const,
@@ -123,7 +141,7 @@ export function chartOption(whole: ChartData, reduceMotion: boolean): ChartOptio
           showSymbol: true,
           symbolSize: 8,
           lineStyle: { width: 2 },
-          connectNulls: false,
+          connectNulls: series.connect === true,
           ...(series.kind === "area" ? { areaStyle: { opacity: 0.12 } } : {}),
           emphasis: { focus: "series" as const },
         };

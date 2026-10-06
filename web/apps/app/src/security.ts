@@ -41,8 +41,13 @@ interface TrustedTypePolicyFactoryLike {
   ): unknown;
 }
 
+/** A module worker bundled with this app (`something.worker.ts`, emitted as `assets/something.worker-<hash>.js`). */
+export function isOwnWorker(url: URL): boolean {
+  return url.origin === location.origin && /\/[\w-]+\.worker(-[\w-]+)?\.(js|ts)$/.test(url.pathname);
+}
+
 /**
- * The single Trusted Types policy: it lets through only the service worker script of this app and the
+ * The single Trusted Types policy: it lets through only the service worker script and the bundled module workers of this app, and the
  * empty string as HTML (the chart library clears its container with `innerHTML = ""`). Any other string
  * reaching a script sink (innerHTML, script src, eval-like) is refused by the browser.
  */
@@ -57,7 +62,9 @@ export function installTrustedTypes(serviceWorkerUrl: string): void {
         throw new TypeError("HTML refused by the Trusted Types policy");
       },
       createScriptURL: (input) => {
-        if (new URL(input, location.href).href === allowed) return input;
+        const url = new URL(input, location.href);
+        if (url.href === allowed) return input;
+        if (isOwnWorker(url)) return input;
         throw new TypeError("Script URL refused by the Trusted Types policy");
       },
     });

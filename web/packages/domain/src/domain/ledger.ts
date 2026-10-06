@@ -357,7 +357,8 @@ export class Ledger {
     if (before !== undefined && !reason) throw new DomainError("Alterações exigem um motivo.");
     collection.set(entity.id, entity);
     const defaultAction = before !== undefined ? HistoryAction.UPDATE : HistoryAction.CREATE;
-    this.record(kind, entity, options.action ?? defaultAction, before, reason, entity.version ?? 1);
+    // a rule's version is text ("1"), the history's is a number
+    this.record(kind, entity, options.action ?? defaultAction, before, reason, Number(entity.version ?? 1));
     return entity;
   }
 

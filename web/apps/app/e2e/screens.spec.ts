@@ -50,6 +50,27 @@ for (const size of SIZES) {
         await page.screenshot({ path: `${OUT}shell-bloqueio-${suffix}.png` });
       });
 
+      test("visão geral e calendário", async ({ page }) => {
+        await openDemo(page, "/visao-geral");
+        await settle(page, 1200);
+        await page.screenshot({ path: `${OUT}visao-geral-${suffix}.png` });
+        // The content scrolls inside the shell: the rest of the page, after the first screen.
+        const scrollDown = async () => {
+          await page.evaluate(() => document.getElementById("conteudo")?.scrollTo(0, 1e6));
+          await settle(page, 600);
+        };
+        await scrollDown();
+        await page.screenshot({ path: `${OUT}visao-geral-fim-${suffix}.png` });
+        await openDemo(page, "/calendario");
+        await settle(page, 800);
+        await page.screenshot({ path: `${OUT}calendario-${suffix}.png` });
+        await scrollDown();
+        await page.screenshot({ path: `${OUT}calendario-fim-${suffix}.png` });
+        await openDemo(page, "/imprimir/relatorio-mensal");
+        await settle(page);
+        await page.screenshot({ path: `${OUT}relatorio-mensal-${suffix}.png`, fullPage: true });
+      });
+
       test("início", async ({ page }) => {
         await page.goto("/boas-vindas");
         await settle(page);

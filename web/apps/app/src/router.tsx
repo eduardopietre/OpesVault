@@ -19,6 +19,7 @@ import type { ComponentType, ReactNode } from "react";
 import { revealSearch } from "./data/navigation.ts";
 import { SHOW_CATALOG } from "./flags.ts";
 import { PAGES } from "./pages.tsx";
+import { reportSearch } from "./pages/visao-geral/report_search.ts";
 import { SignInScreen, SignUpScreen, WelcomeScreen } from "./screens/auth.tsx";
 import { PlaceholderPage } from "./screens/PlaceholderPage.tsx";
 import { CreateProjectScreen, ProjectsScreen, SetupScreen } from "./screens/projects.tsx";
@@ -133,7 +134,26 @@ export function createAppRouter({
     });
   });
 
-  const children: AnyRoute[] = [index, welcome, signIn, signUp, projects, newProject, setup, shell.addChildren(pages)];
+  // The month's report as a print view, outside the shell (Visão geral › Mais › Relatório do mês em PDF).
+  const monthlyReport = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/imprimir/relatorio-mensal",
+    beforeLoad: projectOpen,
+    validateSearch: reportSearch,
+    component: lazyRouteComponent(() => import("./pages/visao-geral/report_page.tsx"), "MonthlyReportPage"),
+  });
+
+  const children: AnyRoute[] = [
+    index,
+    welcome,
+    signIn,
+    signUp,
+    projects,
+    newProject,
+    setup,
+    monthlyReport,
+    shell.addChildren(pages),
+  ];
   if (SHOW_CATALOG) {
     children.push(
       createRoute({

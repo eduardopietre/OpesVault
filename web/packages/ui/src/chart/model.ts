@@ -16,6 +16,10 @@ export interface ChartSeries {
   axis?: "left" | "right";
   /** Bars with the same stack id pile up. */
   stack?: string;
+  /** Only in the table of values, not drawn (keeps the chart readable). */
+  hidden?: boolean;
+  /** False for positions (a balance): the table gives no total or mean for it, even in a flow chart. */
+  summable?: boolean;
 }
 
 export interface ChartData {
@@ -66,7 +70,7 @@ export function tableRows(chart: ChartData): TableRow[] {
       summary: true,
       cells: chart.series.map((series) => {
         const values = known(series);
-        return values.length ? formatValue(sumDecimals(values), unitOf(series)) : "—";
+        return values.length && series.summable !== false ? formatValue(sumDecimals(values), unitOf(series)) : "—";
       }),
     });
     rows.push({
@@ -74,7 +78,9 @@ export function tableRows(chart: ChartData): TableRow[] {
       label: "Média",
       index: null,
       summary: true,
-      cells: chart.series.map((series) => formatValue(meanDecimals(known(series)), unitOf(series))),
+      cells: chart.series.map((series) =>
+        series.summable === false ? "—" : formatValue(meanDecimals(known(series)), unitOf(series)),
+      ),
     });
   }
   return rows;

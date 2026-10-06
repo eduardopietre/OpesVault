@@ -295,7 +295,9 @@ export function AppShell() {
             transition={preset.enter.transition}
             className="mx-auto w-full max-w-[1680px] px-4 pt-5 pb-10 tablet:px-6 tablet:pt-6 wide:px-8"
           >
-            <Outlet />
+            {/* Closing the project or signing out: the page goes before the route guard redirects, and no
+                screen may render without its project. */}
+            {session.open ? <Outlet /> : null}
           </motion.div>
         </main>
       </div>

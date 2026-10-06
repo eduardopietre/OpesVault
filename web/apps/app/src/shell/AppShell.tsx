@@ -31,6 +31,7 @@ import { SIDEBAR_KEY } from "../preferences.ts";
 import { syncStateOf, useSession, useSessionActions } from "../session.tsx";
 import { useTheme } from "../theme.tsx";
 import { HelpDialog } from "./HelpDialog.tsx";
+import { addDroppedFiles } from "../data/dropped_files.ts";
 import { useShortcuts } from "./shortcuts.ts";
 import { TopBar } from "./TopBar.tsx";
 import { useUndo } from "./undo.tsx";
@@ -212,7 +213,8 @@ export function AppShell() {
     if (!event.dataTransfer.types.includes("Files")) return;
     event.preventDefault();
     setDragging(false);
-    const count = event.dataTransfer.files.length;
+    // The files wait in a shared store: Importar e revisar takes them once, whether it was already open or not.
+    const count = addDroppedFiles(Array.from(event.dataTransfer.files));
     go("importar");
     notify(
       count === 1 ? "1 arquivo recebido em Importar e revisar." : `${count} arquivos recebidos em Importar e revisar.`,

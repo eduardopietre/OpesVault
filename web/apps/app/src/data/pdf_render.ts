@@ -96,3 +96,49 @@ export async function renderPdf(
   }
   return { pages: document.numPages, destroy: () => void task.destroy() };
 }
+
+// ── one page at a time, with its size in PDF points (the conference draws the evidence over it) ──
+
+export interface PageDrawing {
+  canvas: HTMLCanvasElement;
+  /** The page's size in PDF points, the unit of an item's evidence box. */
+  points: { width: number; height: number };
+}
+
+export interface OpenPdf {
+  pages: number;
+  /** Draws page `number` (1-based) to a new canvas as wide as `width` CSS pixels. */
+  draw(number: number, width: number): Promise<PageDrawing>;
+  destroy(): void;
+}
+
+/**
+ * Opens a PDF to show it one page at a time. `password` is used for this one call and not kept; a protected
+ * file without it (or with a wrong one) throws `PdfPasswordRequired`.
+ */
+export async function openPdf(data: Uint8Array, password?: string): Promise<OpenPdf> {
+  const pdfjs = await loadPdfJs();
+  const task = pdfjs.getDocument({ data: data.slice(), ...(password ? { password } : {}) });
+  const document = await task.promise.catch((error: unknown) => {
+    void task.destroy();
+    if (error instanceof Error && error.name === "PasswordException") {
+      throw new PdfPasswordRequired((error as { code?: number }).code === 2);
+    }
+    throw error;
+  });
+  return {
+    pages: document.numPages,
+    async draw(number, width) {
+      const page = await document.getPage(Math.min(Math.max(1, number), document.numPages));
+      const base = page.getViewport({ scale: 1 });
+      const pixelRatio = Math.min(globalThis.devicePixelRatio || 1, 2);
+      const viewport = page.getViewport({ scale: (Math.max(width, 200) / base.width) * pixelRatio });
+      const canvas = globalThis.document.createElement("canvas");
+      canvas.width = Math.floor(viewport.width);
+      canvas.height = Math.floor(viewport.height);
+      await page.render({ canvas, viewport }).promise;
+      return { canvas, points: { width: base.width, height: base.height } };
+    },
+    destroy: () => void task.destroy(),
+  };
+}

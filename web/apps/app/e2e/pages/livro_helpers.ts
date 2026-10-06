@@ -34,6 +34,7 @@ export async function fakeOllama(page: Page, options: { category?: string } = {}
     if (url.pathname === "/api/tags") {
       return json({ models: [{ name: "gemma4:12b", digest: "sha256:0123456789abcdef" }] });
     }
+    if (url.pathname === "/api/show") return json({ capabilities: ["completion", "tools"] });
     if (url.pathname === "/api/ps") return json({ models: [] });
     if (url.pathname === "/api/generate") return json({ done: true });
     if (url.pathname === "/api/chat") {

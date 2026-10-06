@@ -82,8 +82,12 @@ export async function recordAddresses(page: Page): Promise<() => Promise<string[
 }
 
 /**
- * Waits until every running animation (Web Animations: motion, CSS transitions) has finished, so an
- * accessibility audit never measures the contrast of text halfway through a fade.
+ * Waits until nothing on the page is still moving or fading, so an accessibility audit never measures the
+ * contrast of text halfway through a fade. Two sources: Web Animations (CSS transitions and motion's own) are
+ * awaited through `document.getAnimations()`; but motion drives its springs from script, which that list does not
+ * show, so the page must also hold still: no element that is partly transparent (a fade in or out, a toast
+ * coming or going) may change its opacity, nor a moving panel its position, over a dozen consecutive frames.
+ * Elements that are meant to be partly transparent (a disabled button) hold still, so they do not wait.
  */
 export async function animationsDone(page: Page): Promise<void> {
   await page.evaluate(async () => {
@@ -91,11 +95,38 @@ export async function animationsDone(page: Page): Promise<void> {
       const running = document
         .getAnimations()
         .filter((a) => a.playState === "running" && a.effect?.getTiming().iterations !== Infinity);
-      if (!running.length) return;
+      if (!running.length) break;
       await Promise.race([
         Promise.all(running.map((a) => a.finished.catch(() => undefined))),
         new Promise((r) => setTimeout(r, 2000)),
       ]);
+    }
+    const frame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    const picture = () => {
+      const parts: string[] = [];
+      for (const element of document.querySelectorAll<HTMLElement>("body *")) {
+        const style = getComputedStyle(element);
+        const opacity = Number(style.opacity);
+        const moving = style.transform !== "none" && element.closest("[data-state], dialog, [role='status']") !== null;
+        // Motion writes its fade as an inline opacity: an element still at 0 and waiting for its (staggered) turn
+        // counts too, or the picture is "still" a moment before it starts to fade in.
+        const inline = Number(element.style.opacity);
+        const waiting = element.style.opacity !== "" && inline < 1 && getComputedStyle(element).visibility !== "hidden";
+        if ((opacity > 0 && opacity < 1) || moving || waiting) {
+          const rect = element.getBoundingClientRect();
+          parts.push(`${opacity.toFixed(3)}|${style.transform}|${Math.round(rect.left)},${Math.round(rect.top)}`);
+        }
+      }
+      return parts.join(";");
+    };
+    const deadline = performance.now() + 4000;
+    let before = picture();
+    let still = 0;
+    while (still < 12 && performance.now() < deadline) {
+      await frame();
+      const now = picture();
+      still = now === before ? still + 1 : 0;
+      before = now;
     }
   });
 }

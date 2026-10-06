@@ -68,4 +68,14 @@ and get plain unit tests (the desktop's `pages/tax/rows.py` pattern).
 3. Screenshots: add the page to the `screens` project and look at them (Read the PNGs) in light/dark at
    1920, 1280, 900 and 390 wide; fix what looks wrong.
 
-`pnpm check` and `pnpm --filter @opesvault/app e2e` must pass before every commit.
+4. Nothing to write for the generic rules: `e2e/every_screen.spec.ts` (successor of `test_every_screen.py`) visits
+   every destination in `src/pages.tsx` and every print view by itself at four sizes, clicks every enabled
+   control by role (a new page, tab or button is covered the day it exists), answers every dialog, and fails on
+   a console error, sideways scroll, more than one undo step per action (or a Ctrl+Z that does not revert it), a
+   stuck modal or a request outside the origin. If a dialog it opens needs data it cannot guess, it is closed
+   and listed in the run's `[walk]` line (`WALK_TRACE=1` prints each click). `e2e/keyboard_flows.spec.ts` does the
+   main flows with the keyboard only; a new flow that matters to keyboard users goes there. The undo numbers come
+   from `window.__opesvaultTest`, which only the development and e2e builds define (`data/bridge.tsx`).
+
+`pnpm check` and `pnpm --filter @opesvault/app e2e` must pass before every commit (Playwright runs with no
+retries: a test that fails once is a bug or a flake to fix, never to retry).

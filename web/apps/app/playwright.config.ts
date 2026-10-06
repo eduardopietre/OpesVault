@@ -11,11 +11,12 @@ const PORT = Number(process.env["E2E_PORT"] ?? 4317);
 export default defineConfig({
   testDir: "e2e",
   outputDir: "build/test-results",
-  timeout: 60_000,
+  // The long "every command and dialog" tests do a whole page's work in one test; on a loaded machine they need room.
+  timeout: 120_000,
   fullyParallel: true,
   // Whole-app e2e is CPU heavy; with more workers, timings and mid-animation states turn into flakes.
   workers: process.env.CI ? 2 : 3,
-  retries: 1,
+  retries: 0,
   reporter: [["list"]],
   use: {
     ...devices["Desktop Chrome"],

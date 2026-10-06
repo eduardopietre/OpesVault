@@ -24,6 +24,7 @@ import { RecoverProjectDialog } from "../dialogs/settings_recover.tsx";
 import { RestoreBackupDialog } from "../dialogs/settings_backup_restore.tsx";
 import type { ProjectSummary } from "../services/types.ts";
 import { useServices, useSession, useSessionActions } from "../session.tsx";
+import { markScreenShown } from "../shell/entry_focus.ts";
 import { AuthLayout } from "./AuthLayout.tsx";
 import { MIN_PASSWORD, messageOf } from "./auth.tsx";
 
@@ -48,6 +49,10 @@ export function ProjectsScreen() {
   const [busy, setBusy] = useState(false);
   const [recovering, setRecovering] = useState<ProjectSummary | null>(null);
   const [restoring, setRestoring] = useState(false);
+
+  useEffect(() => {
+    markScreenShown();
+  }, []);
 
   useEffect(() => {
     let alive = true;

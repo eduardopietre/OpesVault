@@ -1,11 +1,12 @@
 /** Pieces the Investimentos end-to-end specs share. */
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type Locator, type Page } from "@playwright/test";
-import { expectNoHorizontalOverflow, settle } from "../helpers.ts";
+import { animationsDone, expectNoHorizontalOverflow, settle } from "../helpers.ts";
 
 export async function audit(page: Page, label: string) {
   await page.mouse.move(1, 1); // a hovered button is another color: audit the resting state
   await settle(page, 250);
+  await animationsDone(page);
   const result = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
     .analyze();

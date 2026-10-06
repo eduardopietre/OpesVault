@@ -1,6 +1,6 @@
 import { memoryPreferences } from "@opesvault/ui";
 import { createMemoryHistory } from "@tanstack/react-router";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { attentionCounts } from "../src/data/attention.ts";
@@ -73,6 +73,34 @@ describe("the shell", () => {
     expect(session.get().open).toBeNull();
     expect(screen.queryByRole("heading", { name: "Livro financeiro" })).toBeNull();
   });
+});
+
+describe("views outside the shell", () => {
+  // Found by the every-screen e2e: a locked project has no workspace, and these views read it, so they left a
+  // blank page with no way to unlock. They show the lock screen like the shell does.
+  for (const path of ["/imprimir/relatorio-mensal", "/imprimir/relatorio-anual", "/imprimir/imposto", "/comecar"]) {
+    it(`${path} shows the lock screen while the project is locked, and the view after unlocking`, async () => {
+      const user = userEvent.setup();
+      const services = createFakeServices({ seed: true });
+      const session = new SessionStore();
+      const account = await services.signIn(DEMO.email, DEMO.password);
+      const open = await services.openProject(services.demoProjectId!, DEMO.projectPassword);
+      session.update({ account, open, operatorId: open.members[0]?.id ?? null });
+      const router = createAppRouter({ session, history: createMemoryHistory({ initialEntries: [path] }) });
+      render(<App router={router} services={services} session={session} preferences={memoryPreferences()} />);
+      await waitFor(() => expect(session.get().open).not.toBeNull());
+      await screen.findAllByRole("heading", { level: 1 });
+      await act(async () => {
+        await services.lock();
+        session.update({ open: null, locked: true, lockedName: "Casa" });
+      });
+      await screen.findByRole("heading", { name: "Casa está bloqueado" });
+      expect(screen.queryByText("Pão de Açúcar")).toBeNull();
+      await user.type(screen.getByLabelText("Senha do projeto"), DEMO.projectPassword);
+      await user.click(screen.getByRole("button", { name: "Desbloquear" }));
+      await waitFor(() => expect(screen.queryByRole("heading", { name: "Casa está bloqueado" })).toBeNull());
+    });
+  }
 });
 
 describe("theme", () => {

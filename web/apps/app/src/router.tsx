@@ -27,8 +27,20 @@ import { PlaceholderPage } from "./screens/PlaceholderPage.tsx";
 import { CreateProjectScreen, ProjectsScreen, SetupScreen } from "./screens/projects.tsx";
 import type { SessionStore } from "./session.tsx";
 import { AppShell } from "./shell/AppShell.tsx";
+import { PrintGate } from "./shell/PrintGate.tsx";
 
 const SCREENS = import.meta.glob<{ Page: ComponentType }>("./pages/*/index.tsx");
+
+/** A print view behind the lock screen (it lives outside the shell). */
+function gated(View: ComponentType): () => ReactNode {
+  return function Gated() {
+    return (
+      <PrintGate>
+        <View />
+      </PrintGate>
+    );
+  };
+}
 
 export interface RouterContext {
   session: SessionStore;
@@ -115,7 +127,7 @@ export function createAppRouter({
     getParentRoute: () => rootRoute,
     path: "/comecar",
     beforeLoad: projectOpen,
-    component: () => <SetupScreen />,
+    component: gated(() => <SetupScreen />),
   });
 
   const shell = createRoute({
@@ -142,7 +154,7 @@ export function createAppRouter({
     path: "/imprimir/relatorio-mensal",
     beforeLoad: projectOpen,
     validateSearch: reportSearch,
-    component: lazyRouteComponent(() => import("./pages/visao-geral/report_page.tsx"), "MonthlyReportPage"),
+    component: gated(lazyRouteComponent(() => import("./pages/visao-geral/report_page.tsx"), "MonthlyReportPage")),
   });
 
   // The year-end closing as a print view (Relatórios › Fechamento do ano › Relatório anual (PDF)…).
@@ -151,7 +163,7 @@ export function createAppRouter({
     path: "/imprimir/relatorio-anual",
     beforeLoad: projectOpen,
     validateSearch: annualSearch,
-    component: lazyRouteComponent(() => import("./pages/relatorios/annual_page.tsx"), "AnnualReportPage"),
+    component: gated(lazyRouteComponent(() => import("./pages/relatorios/annual_page.tsx"), "AnnualReportPage")),
   });
 
   // The report for the income tax return, the same way (Imposto de renda › Mais › Relatório para a declaração).
@@ -160,7 +172,7 @@ export function createAppRouter({
     path: "/imprimir/imposto",
     beforeLoad: projectOpen,
     validateSearch: taxReportSearch,
-    component: lazyRouteComponent(() => import("./pages/imposto/report_page.tsx"), "TaxReportPage"),
+    component: gated(lazyRouteComponent(() => import("./pages/imposto/report_page.tsx"), "TaxReportPage")),
   });
 
   const children: AnyRoute[] = [

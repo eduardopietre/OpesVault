@@ -11,6 +11,7 @@ pnpm dev                   # the app (Vite)
 pnpm server                # the self-hosted server (development)
 pnpm --filter @opesvault/app e2e        # end-to-end tests of the production build (fake services)
 pnpm --filter @opesvault/app e2e:real   # the same build against the real server and SQLite (sign up, project, sync, plaintext scan)
+pnpm --filter @opesvault/app perf       # a generated 50 000-entry project: opening, memory, Livro (build/perf/results.json, ~6 min)
 pnpm --filter @opesvault/server build   # the server as one bundle (dist/server.mjs)
 docker compose up -d --build            # server + app behind Caddy (docs/20)
 uv run python -m scripts.golden.generate   # from the repository root: reference files from the Python domain

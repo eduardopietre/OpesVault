@@ -30,6 +30,7 @@ Web (branch `web`, pasta `web/`; ver `web/README.md` e `web/PORTING.md`):
 cd web && pnpm install && pnpm check              # formatação, lint, tipos e testes da web
 pnpm dev                                          # app com serviços falsos e projeto de demonstração
 pnpm --filter @opesvault/app e2e                  # Playwright (Chromium já instalado; nunca "playwright install")
+pnpm --filter @opesvault/app perf                 # desempenho com 50 mil lançamentos (build/perf/results.json, ~6 min)
 docker compose up --build                         # servidor + app atrás do Caddy (web/docker-compose.yml)
 uv run python -m scripts.golden.generate [NOME]   # arquivos de referência do domínio Python para a paridade
 ```

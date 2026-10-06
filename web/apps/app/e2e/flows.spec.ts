@@ -46,16 +46,29 @@ for (const viewport of [
     await page.getByRole("button", { name: "Adicionar", exact: true }).click();
     await page.getByRole("button", { name: "Próximo: Contas" }).click();
     await page.getByLabel("Nome da conta").fill("Banco, corrente");
-    await page.getByLabel("Saldo hoje").fill("1.500,00");
+    await page.getByLabel("Saldo de abertura (opcional)").fill("1.500,00");
+    await page.getByRole("checkbox", { name: "Davi" }).check();
     await page.getByRole("button", { name: "Próximo: Cartões" }).click();
+    await page.getByLabel("Nome do cartão").fill("Cartão Azul");
+    await page.getByLabel("4 últimos dígitos").fill("4321");
     await page.getByRole("button", { name: "Próximo: Conclusão" }).click();
-    // A filled-in account counts without "Adicionar conta".
+    // A filled-in account and card count without "Adicionar conta" or "Adicionar cartão".
     await expect(page.locator("dd").nth(1)).toHaveText("1");
+    await expect(page.locator("dd").nth(2)).toHaveText("1");
     await page.getByRole("button", { name: "Abrir o projeto" }).click();
 
     await expect(page).toHaveURL(/\/visao-geral$/);
     await expect(page.getByRole("heading", { level: 1, name: "Visão geral" })).toBeVisible();
     await expect(page.getByRole("status").filter({ hasText: "Sincronizado" })).toBeVisible();
+    // What the assistant collected is in the project: the account with its opening balance and the card.
+    await page
+      .getByRole("link", { name: /^Contas/ })
+      .first()
+      .click();
+    await page.getByRole("tab", { name: "Todas as contas" }).click();
+    await expect(page.getByRole("grid", { name: "Contas" }).getByText("Banco, corrente")).toBeVisible();
+    await expect(page.getByRole("grid", { name: "Contas" }).getByText("Cartão Azul")).toBeVisible();
+    await expect(page.getByRole("grid", { name: "Contas" }).getByText("R$ 1.500,00").first()).toBeVisible();
 
     await page.getByRole("button", { name: "Bloquear o projeto" }).click();
     await expect(page.getByRole("heading", { name: "Apartamento está bloqueado" })).toBeVisible();

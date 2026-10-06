@@ -3,9 +3,11 @@
  * its shared password and the recovery key shown once (docs/18 §3.2), and the first-run assistant
  * (integrantes, contas, cartões, conclusão).
  */
+import { AccountSubtype, DomainError, dom } from "@opesvault/domain";
 import {
   Button,
   Checkbox,
+  DateField,
   Dialog,
   EmptyState,
   ElidedText,
@@ -13,6 +15,7 @@ import {
   Select,
   Skeleton,
   TextField,
+  formatBrDate,
   notify,
   useMotionPreset,
 } from "@opesvault/ui";
@@ -20,6 +23,8 @@ import { useNavigate } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "motion/react";
 import { ChevronRight, Copy, FolderPlus, History, Plus, Trash2, Users } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
+import { ASSET_SUBTYPES, LIABILITY_SUBTYPES, SUBTYPE_LABELS } from "../dialogs/accounts_labels.ts";
+import { readDate, readMoney } from "../dialogs/livro_form.tsx";
 import { RecoverProjectDialog } from "../dialogs/settings_recover.tsx";
 import { RestoreBackupDialog } from "../dialogs/settings_backup_restore.tsx";
 import type { ProjectSummary } from "../services/types.ts";
@@ -403,56 +408,121 @@ export function CreateProjectScreen() {
 
 interface SetupAccount {
   name: string;
-  kind: string;
+  subtype: AccountSubtype;
+  holders: string[];
+  institution: string;
   balance: string;
+  date: string;
 }
 
 interface SetupCard {
   name: string;
+  holder: string;
+  last4: string;
   closing: string;
   due: string;
-}
-
-export interface SetupData {
-  members: string[];
-  accounts: SetupAccount[];
-  cards: SetupCard[];
+  /** The account that pays the bill ("" for none yet). */
+  payer: string;
 }
 
 const STEPS = ["Integrantes", "Contas", "Cartões", "Conclusão"] as const;
-const ACCOUNT_KINDS = [
-  { id: "corrente", label: "Conta corrente" },
-  { id: "poupanca", label: "Poupança" },
-  { id: "investimentos", label: "Conta de investimentos" },
-  { id: "carteira", label: "Dinheiro em espécie" },
-];
+const SUBTYPE_OPTIONS = [...ASSET_SUBTYPES, ...LIABILITY_SUBTYPES].map((id) => ({
+  id,
+  label: SUBTYPE_LABELS[id] ?? id,
+}));
 const DAYS = Array.from({ length: 31 }, (_, i) => ({ id: String(i + 1), label: `Dia ${i + 1}` }));
 
-/** Fills the new project's first records. The data goes to the domain in W4; now it is only collected. */
-export function SetupScreen({ onFinish }: { onFinish?: (data: SetupData) => void }) {
+/** The plan the domain applies (desktop `SetupWizard` → `onboarding.apply_setup`). Throws DomainError on bad input. */
+export function setupPlanOf(
+  existing: readonly string[],
+  members: readonly string[],
+  accounts: readonly SetupAccount[],
+  cards: readonly SetupCard[],
+): dom.onboarding.SetupPlan {
+  const known = new Set(existing.map((name) => name.toLocaleLowerCase("pt-BR")));
+  return dom.onboarding.setupPlan({
+    members: members.filter((name) => !known.has(name.toLocaleLowerCase("pt-BR"))),
+    accounts: accounts.map((a) => {
+      const balance = readMoney(a.balance, { allowEmpty: true });
+      return dom.onboarding.accountPlan(
+        a.name,
+        a.subtype,
+        a.holders,
+        a.institution.trim() || null,
+        balance,
+        balance === null ? null : readDate(a.date, `A data do saldo de ${a.name.trim()}`),
+      );
+    }),
+    cards: cards.map((c) =>
+      dom.onboarding.cardPlan(c.name, c.holder, c.last4.trim(), Number(c.closing), Number(c.due), c.payer || null),
+    ),
+  });
+}
+
+/**
+ * Fills the new project's first records: integrantes, contas (titulares, saldo de abertura) e cartões. Everything is
+ * checked before anything is written (`onboarding.applySetup`), and it is one step of undo.
+ */
+export function SetupScreen() {
   const session = useSession();
   const navigate = useNavigate();
   const preset = useMotionPreset();
+  const existing = session.open?.members.map((member) => member.name) ?? [];
+  const today = session.open?.workspace.today();
+  const todayText = today ? formatBrDate(today) : "";
+  const blankAccount = (): SetupAccount => ({
+    name: "",
+    subtype: AccountSubtype.CHECKING,
+    holders: [],
+    institution: "",
+    balance: "",
+    date: todayText,
+  });
+  const blankCard = (holder = ""): SetupCard => ({ name: "", holder, last4: "", closing: "1", due: "10", payer: "" });
   const [step, setStep] = useState(0);
-  const [members, setMembers] = useState<string[]>(() => session.open?.members.map((member) => member.name) ?? []);
+  const [members, setMembers] = useState<string[]>(() => existing);
   const [member, setMember] = useState("");
   const [accounts, setAccounts] = useState<SetupAccount[]>([]);
-  const [account, setAccount] = useState<SetupAccount>({ name: "", kind: "corrente", balance: "" });
+  const [account, setAccount] = useState<SetupAccount>(blankAccount);
   const [cards, setCards] = useState<SetupCard[]>([]);
-  const [card, setCard] = useState<SetupCard>({ name: "", closing: "1", due: "10" });
+  const [card, setCard] = useState<SetupCard>(() => blankCard(existing[0] ?? ""));
+  const [error, setError] = useState<string | null>(null);
 
   // A filled-in form counts even without "Adicionar" (docs/16 §5, Assistente).
   const allAccounts = account.name.trim() ? [...accounts, account] : accounts;
   const allCards = card.name.trim() ? [...cards, card] : cards;
   const allMembers = member.trim() ? [...members, member.trim()] : members;
+  const memberOptions = allMembers.map((name) => ({ id: name, label: name }));
+  const payerOptions = [
+    { id: "", label: "Escolher depois" },
+    ...allAccounts.filter((a) => a.name.trim()).map((a) => ({ id: a.name.trim(), label: a.name.trim() })),
+  ];
 
-  const finish = () => {
-    onFinish?.({ members: allMembers, accounts: allAccounts, cards: allCards });
-    notify("Projeto pronto. Bom começo!", { tone: "positive" });
+  const leave = (message: string) => {
+    notify(message, { tone: "positive" });
     void navigate({ to: "/visao-geral" });
   };
 
-  const list = (items: string[], remove: (index: number) => void, what: string) =>
+  const finish = () => {
+    const workspace = session.open?.workspace;
+    if (!workspace) return;
+    try {
+      const plan = setupPlanOf(existing, allMembers, allAccounts, allCards);
+      const result = workspace.act((ledger) => dom.onboarding.applySetup(ledger, plan));
+      const parts = [
+        result.members ? `${result.members} integrante(s)` : "",
+        result.accounts ? `${result.accounts} conta(s)` : "",
+        result.cards ? `${result.cards} cartão(ões)` : "",
+      ].filter(Boolean);
+      leave(parts.length ? `Projeto pronto: ${parts.join(", ")}. Bom começo!` : "Projeto pronto. Bom começo!");
+    } catch (failure) {
+      if (failure instanceof DomainError) setError(failure.message);
+      else throw failure;
+    }
+  };
+
+  /** `fixed`: the first items are already in the project and cannot be removed here. */
+  const list = (items: string[], remove: (index: number) => void, what: string, fixed = 0) =>
     items.length ? (
       <ul className="mb-4 flex flex-col gap-1.5">
         {items.map((item, index) => (
@@ -461,19 +531,29 @@ export function SetupScreen({ onFinish }: { onFinish?: (data: SetupData) => void
             className="flex items-center justify-between gap-2 rounded-md bg-window px-3 py-1.5 text-body"
           >
             <ElidedText>{item}</ElidedText>
-            <Button
-              size="sm"
-              variant="ghost"
-              icon={<Trash2 className="size-3.5" />}
-              onClick={() => remove(index)}
-              aria-label={`Remover ${what} ${item}`}
-            >
-              Remover
-            </Button>
+            {index < fixed ? (
+              <span className="text-caption text-secondary">já no projeto</span>
+            ) : (
+              <Button
+                size="sm"
+                variant="ghost"
+                icon={<Trash2 className="size-3.5" />}
+                onClick={() => remove(index)}
+                aria-label={`Remover ${what} ${item}`}
+              >
+                Remover
+              </Button>
+            )}
           </li>
         ))}
       </ul>
     ) : null;
+
+  const toggleHolder = (name: string, checked: boolean) =>
+    setAccount({
+      ...account,
+      holders: checked ? [...account.holders, name] : account.holders.filter((h) => h !== name),
+    });
 
   return (
     <AuthLayout wide>
@@ -505,7 +585,12 @@ export function SetupScreen({ onFinish }: { onFinish?: (data: SetupData) => void
               <p className="mt-1 mb-4 text-body text-secondary">
                 Integrantes aparecem nos rateios e no histórico. O papel identifica, não dá acesso.
               </p>
-              {list(members, (index) => setMembers(members.filter((_, i) => i !== index)), "integrante")}
+              {list(
+                members,
+                (index) => setMembers(members.filter((_, i) => i !== index)),
+                "integrante",
+                existing.length,
+              )}
               <div className="flex items-end gap-2">
                 <TextField label="Nome do integrante" value={member} onChange={setMember} fieldClassName="flex-1" />
                 <Button
@@ -524,7 +609,9 @@ export function SetupScreen({ onFinish }: { onFinish?: (data: SetupData) => void
               <h2 id="passo-contas" className="text-headline font-semibold">
                 Contas
               </h2>
-              <p className="mt-1 mb-4 text-body text-secondary">Uma por vez. O saldo de hoje é o ponto de partida.</p>
+              <p className="mt-1 mb-4 text-body text-secondary">
+                Uma por vez. O saldo de abertura é o ponto de partida; sem ele, o saldo fica desconhecido, não zero.
+              </p>
               {list(
                 accounts.map((a) => a.name),
                 (index) => setAccounts(accounts.filter((_, i) => i !== index)),
@@ -539,23 +626,48 @@ export function SetupScreen({ onFinish }: { onFinish?: (data: SetupData) => void
                 />
                 <Select
                   label="Tipo"
-                  options={ACCOUNT_KINDS}
-                  value={account.kind}
-                  onChange={(kind) => setAccount({ ...account, kind })}
+                  options={SUBTYPE_OPTIONS}
+                  value={account.subtype}
+                  onChange={(subtype) => setAccount({ ...account, subtype: subtype as AccountSubtype })}
+                />
+                <TextField
+                  label="Instituição (opcional)"
+                  value={account.institution}
+                  onChange={(institution) => setAccount({ ...account, institution })}
                 />
                 <MoneyField
-                  label="Saldo hoje"
+                  label="Saldo de abertura (opcional)"
                   value={account.balance}
                   onChange={(balance) => setAccount({ ...account, balance })}
                 />
+                <DateField
+                  label="Data do saldo"
+                  value={account.date}
+                  onChange={(date) => setAccount({ ...account, date })}
+                />
               </div>
+              {allMembers.length > 0 ? (
+                <fieldset className="mt-3">
+                  <legend className="mb-1.5 text-caption text-secondary">Titulares</legend>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+                    {allMembers.map((name) => (
+                      <Checkbox
+                        key={name}
+                        label={name}
+                        checked={account.holders.includes(name)}
+                        onCheckedChange={(checked) => toggleHolder(name, checked)}
+                      />
+                    ))}
+                  </div>
+                </fieldset>
+              ) : null}
               <Button
                 className="mt-3"
                 icon={<Plus className="size-4" />}
                 disabled={!account.name.trim()}
                 onClick={() => {
                   setAccounts([...accounts, account]);
-                  setAccount({ name: "", kind: "corrente", balance: "" });
+                  setAccount(blankAccount());
                 }}
               >
                 Adicionar conta
@@ -581,6 +693,19 @@ export function SetupScreen({ onFinish }: { onFinish?: (data: SetupData) => void
                   onChange={(value) => setCard({ ...card, name: value })}
                 />
                 <Select
+                  label="Portador"
+                  options={memberOptions}
+                  value={card.holder}
+                  onChange={(holder) => setCard({ ...card, holder })}
+                />
+                <TextField
+                  label="4 últimos dígitos"
+                  value={card.last4}
+                  inputMode="numeric"
+                  maxLength={4}
+                  onChange={(last4) => setCard({ ...card, last4: last4.replace(/\D/g, "") })}
+                />
+                <Select
                   label="Fechamento"
                   options={DAYS}
                   value={card.closing}
@@ -592,6 +717,12 @@ export function SetupScreen({ onFinish }: { onFinish?: (data: SetupData) => void
                   value={card.due}
                   onChange={(due) => setCard({ ...card, due })}
                 />
+                <Select
+                  label="Pago pela conta"
+                  options={payerOptions}
+                  value={card.payer}
+                  onChange={(payer) => setCard({ ...card, payer })}
+                />
               </div>
               <Button
                 className="mt-3"
@@ -599,7 +730,7 @@ export function SetupScreen({ onFinish }: { onFinish?: (data: SetupData) => void
                 disabled={!card.name.trim()}
                 onClick={() => {
                   setCards([...cards, card]);
-                  setCard({ name: "", closing: "1", due: "10" });
+                  setCard(blankCard(card.holder));
                 }}
               >
                 Adicionar cartão
@@ -629,12 +760,26 @@ export function SetupScreen({ onFinish }: { onFinish?: (data: SetupData) => void
           )}
         </motion.div>
       </AnimatePresence>
+      {error ? (
+        <p role="alert" className="mt-4 rounded-md bg-negative-soft px-3 py-2 text-body text-negative">
+          {error}
+        </p>
+      ) : null}
       <div className="mt-6 flex flex-col-reverse gap-2 border-t border-separator pt-4 tablet:flex-row tablet:justify-between">
-        <Button variant="ghost" onClick={() => (step === 0 ? finish() : setStep(step - 1))}>
+        <Button
+          variant="ghost"
+          onClick={() => (step === 0 ? leave("Projeto pronto. Bom começo!") : (setError(null), setStep(step - 1)))}
+        >
           {step === 0 ? "Pular o assistente" : "Voltar"}
         </Button>
         {step < STEPS.length - 1 ? (
-          <Button variant="primary" onClick={() => setStep(step + 1)}>
+          <Button
+            variant="primary"
+            onClick={() => {
+              setError(null);
+              setStep(step + 1);
+            }}
+          >
             Próximo: {STEPS[step + 1]}
           </Button>
         ) : (

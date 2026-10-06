@@ -71,25 +71,20 @@ test("sign up, create a project, add an expense, reload, unlock and see it; the 
   await page.getByRole("button", { name: "Adicionar", exact: true }).click();
   await page.getByRole("button", { name: "Próximo: Contas" }).click();
   await page.getByLabel("Nome da conta").fill(BANK);
-  await page.getByLabel("Saldo hoje").fill("1.500,00");
+  await page.getByLabel("Saldo de abertura (opcional)").fill("1.500,00");
   await page.getByRole("button", { name: "Próximo: Cartões" }).click();
   await page.getByRole("button", { name: "Próximo: Conclusão" }).click();
   await page.getByRole("button", { name: "Abrir o projeto" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Visão geral" })).toBeVisible();
 
   // In-app navigation: a page load would drop the keys and lock the project.
-  // (The first-run assistant does not create the accounts it collects yet: docs/18 W12 open issue.)
+  // The account the first-run assistant collected is in the project.
   await page
     .getByRole("link", { name: /^Contas/ })
     .first()
     .click();
   await page.getByRole("tab", { name: "Todas as contas" }).click();
-  await page.getByRole("button", { name: "Nova conta…" }).click();
-  const account = page.getByRole("dialog", { name: "Nova conta" });
-  await account.getByLabel(/^Nome\s*\*?$/).fill(BANK);
-  await account.getByLabel("Saldo de abertura").fill("1.500,00");
-  await account.getByRole("button", { name: "Salvar conta" }).click();
-  await expect(account).toBeHidden();
+  await expect(page.getByRole("grid", { name: "Contas" }).getByText(BANK)).toBeVisible();
   await page.getByRole("link", { name: "Livro financeiro", exact: true }).first().click();
   await expect(page).toHaveURL(/\/livro/);
   await page.getByRole("button", { name: "Novo lançamento" }).click();

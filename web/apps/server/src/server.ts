@@ -39,6 +39,8 @@ export async function startServer(config: ServerConfig, options: StartOptions = 
     service,
     secureCookies: config.secureCookies,
     trustProxy: config.trustProxy,
+    requestsPerMinute: config.requestsPerMinute,
+    sensitivePerMinute: config.sensitivePerMinute,
     site: config.staticDir ? new StaticSite(config.staticDir) : null,
     ...(options.log ? { log: options.log } : {}),
   });

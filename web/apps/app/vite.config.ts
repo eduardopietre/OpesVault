@@ -1,5 +1,6 @@
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
+import { createHash } from "node:crypto";
 import { defineConfig, type Plugin } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 import { cspMeta } from "./src/security.ts";
@@ -22,11 +23,48 @@ function contentSecurityPolicy(): Plugin {
   };
 }
 
+/**
+ * Subresource Integrity for the entry scripts, styles and preloads that `index.html` loads (docs/19 §12):
+ * a file changed on the server or in transit no longer runs. Lazy chunks reached by `import()` carry no
+ * integrity attribute (the browser has no per-import hook without an inline import map, which the CSP forbids);
+ * they are same-origin, covered by the CSP, and precached by the service worker.
+ */
+function subresourceIntegrity(): Plugin {
+  return {
+    name: "opesvault-sri",
+    apply: "build",
+    enforce: "post",
+    transformIndexHtml: {
+      order: "post",
+      handler(html, context) {
+        const bundle = context.bundle;
+        if (!bundle) return html;
+        const digest = (path: string): string | null => {
+          const item = bundle[path.replace(/^\//, "")];
+          if (!item) return null;
+          const data = item.type === "chunk" ? item.code : item.source;
+          return `sha384-${createHash("sha384").update(data).digest("base64")}`;
+        };
+        return html.replace(/<(script|link)\b([^>]*)>/g, (tag, name: string, attrs: string) => {
+          if (/\bintegrity=/.test(attrs)) return tag;
+          const target = /\b(?:src|href)="(\/assets\/[^"]+)"/.exec(attrs)?.[1];
+          if (!target) return tag;
+          if (name === "link" && !/\brel="(?:stylesheet|modulepreload)"/.test(attrs)) return tag;
+          const integrity = digest(target);
+          if (integrity === null) throw new Error(`SRI: ${target} is not in the bundle`);
+          return tag.replace(/\s*(\/?)>$/, ` integrity="${integrity}"$1>`);
+        });
+      },
+    },
+  };
+}
+
 export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
     contentSecurityPolicy(),
+    subresourceIntegrity(),
     VitePWA({
       strategies: "generateSW",
       registerType: "prompt",

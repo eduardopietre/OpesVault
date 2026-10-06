@@ -15,6 +15,7 @@ import { bodyLimit } from "hono/body-limit";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { matchedRoutes } from "hono/route";
 import { z } from "zod";
+import { RateLimiter } from "./rate_limit.ts";
 import { securityHeaders } from "./security.ts";
 import { SESSION_MS, type Me, type Service } from "./service.ts";
 import type { StaticSite } from "./static.ts";
@@ -35,6 +36,10 @@ export interface AppOptions {
   readonly service: Service;
   readonly secureCookies: boolean;
   readonly trustProxy: boolean;
+  /** Every API request per IP per minute (excluding /health). */
+  readonly requestsPerMinute?: number;
+  /** Lookups per IP per minute (login salt), and project creations and member additions per account per minute. */
+  readonly sensitivePerMinute?: number;
   readonly site?: StaticSite | null;
   readonly log?: (entry: LogEntry) => void;
 }
@@ -192,6 +197,22 @@ export function createApp(options: AppOptions): Hono {
     }
   };
 
+  const now = (): number => service.now();
+  const everyRequest = new RateLimiter(options.requestsPerMinute ?? 600, 60_000, now);
+  const lookups = new RateLimiter(options.sensitivePerMinute ?? 60, 60_000, now);
+  const accountActions = new RateLimiter(options.sensitivePerMinute ?? 60, 60_000, now);
+
+  // A generous ceiling for the whole API (a household behind one address syncs several tabs), so that
+  // no route is an open door for scraping or flooding; sign-in and sign-up have tighter limits in the service.
+  app.use("/api/*", async (c, next) => {
+    if (c.req.path !== "/api/v1/health" && !everyRequest.hit(clientIp(c))) throw new BackendError("rate_limited");
+    await next();
+  });
+
+  const limitAccountAction = (account: Me, action: string): void => {
+    if (!accountActions.hit(`${action}\n${account.id}`)) throw new BackendError("rate_limited");
+  };
+
   const me = async (c: Context): Promise<Me> => {
     const account = await service.sessionOf(getCookie(c, cookieName));
     if (account === null) throw new BackendError("unauthorized");
@@ -214,7 +235,12 @@ export function createApp(options: AppOptions): Hono {
 
   // accounts
   // POST so that the email never appears in a URL (proxy logs, history).
-  api.post("/auth/salt", async (c) => c.json({ salt: service.loginSalt((await parseBody(c, Schemas.salt)).email) }));
+  api.post("/auth/salt", async (c) => {
+    // The answer is the same whether or not the account exists, but each call still costs an HMAC and
+    // a probe of many emails is not a normal use: limit per IP.
+    if (!lookups.hit(clientIp(c))) throw new BackendError("rate_limited");
+    return c.json({ salt: service.loginSalt((await parseBody(c, Schemas.salt)).email) });
+  });
   api.post("/auth/signup", async (c) => {
     const body = await parseBody(c, Schemas.auth);
     const { session, token } = await service.signUp(body.email, body.loginSecret, clientIp(c));
@@ -241,6 +267,7 @@ export function createApp(options: AppOptions): Hono {
   api.get("/projects", async (c) => c.json({ projects: await service.listProjects(await me(c)) }));
   api.post("/projects", async (c) => {
     const account = await me(c);
+    limitAccountAction(account, "create-project");
     const body = await parseBody(c, Schemas.createProject);
     return c.json(await service.createProject(account, body.projectId, body.sealedName, body.envelope));
   });
@@ -263,6 +290,8 @@ export function createApp(options: AppOptions): Hono {
   api.post("/projects/:projectId/members", async (c) => {
     const account = await me(c);
     await service.requireMember(account, c.req.param("projectId"));
+    // "no such account" is an answer about other people's accounts: slow down a probe of many emails.
+    limitAccountAction(account, "add-member");
     const body = await parseBody(c, Schemas.member);
     return c.json(await service.addMember(account, c.req.param("projectId"), body.email));
   });

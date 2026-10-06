@@ -18,6 +18,8 @@ export function testConfig(dataDir: string, overrides: Partial<ServerConfig> = {
     scryptN: 1 << 10,
     ipAttemptsPerMinute: 10_000,
     emailFailuresPer15Minutes: 10_000,
+    requestsPerMinute: 1_000_000,
+    sensitivePerMinute: 1_000_000,
     ...overrides,
   };
 }

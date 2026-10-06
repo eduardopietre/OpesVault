@@ -1,31 +1,8 @@
-/**
- * Security headers for every response (docs/18 §3.7, docs/19 §12).
- *
- * - CSP without 'unsafe-inline' or 'unsafe-eval'. 'wasm-unsafe-eval' allows compiling WebAssembly
- *   only (Argon2id runs in WebAssembly); it does not allow eval of JavaScript.
- * - connect-src allows the local Ollama over loopback (docs/18 §3.6).
- * - Trusted Types are required for every DOM sink that takes script.
- */
+import { cspHeader } from "@opesvault/vault";
+
+/** Security headers for every response (docs/18 §3.7, docs/19 §12). The CSP comes from `@opesvault/vault`: one source, also used by the app build. */
 export function contentSecurityPolicy(secure: boolean): string {
-  const directives = [
-    "default-src 'none'",
-    "script-src 'self' 'wasm-unsafe-eval'",
-    "style-src 'self'",
-    "img-src 'self' data: blob:",
-    "font-src 'self'",
-    "connect-src 'self' http://localhost:* http://127.0.0.1:*",
-    "worker-src 'self' blob:",
-    "manifest-src 'self'",
-    "media-src 'self' blob:",
-    "frame-src 'none'",
-    "object-src 'none'",
-    "base-uri 'none'",
-    "form-action 'self'",
-    "frame-ancestors 'none'",
-    "require-trusted-types-for 'script'",
-  ];
-  if (secure) directives.push("upgrade-insecure-requests");
-  return directives.join("; ");
+  return cspHeader(secure);
 }
 
 const PERMISSIONS_POLICY = [

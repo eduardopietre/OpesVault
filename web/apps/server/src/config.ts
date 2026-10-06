@@ -29,6 +29,10 @@ export interface ServerConfig {
   readonly ipAttemptsPerMinute: number;
   /** Failed sign-ins per email per 15 minutes. */
   readonly emailFailuresPer15Minutes: number;
+  /** Every API request per IP per minute. */
+  readonly requestsPerMinute: number;
+  /** Login-salt lookups per IP, project creations and member additions per account, per minute. */
+  readonly sensitivePerMinute: number;
 }
 
 function flag(value: string | undefined, fallback: boolean): boolean {
@@ -74,5 +78,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     scryptN: 1 << 15,
     ipAttemptsPerMinute: 30,
     emailFailuresPer15Minutes: 10,
+    requestsPerMinute: 600,
+    sensitivePerMinute: 60,
   };
 }

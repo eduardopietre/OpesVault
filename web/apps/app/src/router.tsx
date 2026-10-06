@@ -20,6 +20,7 @@ import { revealSearch } from "./data/navigation.ts";
 import { SHOW_CATALOG } from "./flags.ts";
 import { PAGES } from "./pages.tsx";
 import { annualSearch } from "./pages/relatorios/annual_search.ts";
+import { taxReportSearch } from "./pages/imposto/report_search.ts";
 import { reportSearch } from "./pages/visao-geral/report_search.ts";
 import { SignInScreen, SignUpScreen, WelcomeScreen } from "./screens/auth.tsx";
 import { PlaceholderPage } from "./screens/PlaceholderPage.tsx";
@@ -153,6 +154,15 @@ export function createAppRouter({
     component: lazyRouteComponent(() => import("./pages/relatorios/annual_page.tsx"), "AnnualReportPage"),
   });
 
+  // The report for the income tax return, the same way (Imposto de renda › Mais › Relatório para a declaração).
+  const taxReport = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/imprimir/imposto",
+    beforeLoad: projectOpen,
+    validateSearch: taxReportSearch,
+    component: lazyRouteComponent(() => import("./pages/imposto/report_page.tsx"), "TaxReportPage"),
+  });
+
   const children: AnyRoute[] = [
     index,
     welcome,
@@ -163,6 +173,7 @@ export function createAppRouter({
     setup,
     monthlyReport,
     annualReport,
+    taxReport,
     shell.addChildren(pages),
   ];
   if (SHOW_CATALOG) {

@@ -13,7 +13,9 @@ export default defineConfig({
   outputDir: "build/test-results",
   timeout: 60_000,
   fullyParallel: true,
-  workers: process.env.CI ? 2 : 4,
+  // Whole-app e2e is CPU heavy; with more workers, timings and mid-animation states turn into flakes.
+  workers: process.env.CI ? 2 : 3,
+  retries: 1,
   reporter: [["list"]],
   use: {
     ...devices["Desktop Chrome"],

@@ -3,7 +3,7 @@
  * object and, when asked, to the action ("pay this bill"). The target page reads `ref` and `act` from
  * its URL with `useReveal()`, shows the object and runs the action once.
  */
-import { useNavigate, useRouterState } from "@tanstack/react-router";
+import { useMatch, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef } from "react";
 import { PAGES } from "../pages.tsx";
 
@@ -44,15 +44,19 @@ export function useReveal(onReveal: (ref: string | undefined, act: string | unde
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const navigate = useNavigate();
   const handled = useRef<string | null>(null);
+  // The route this page is rendered in: a link leaving it for another page (still mounted while the
+  // router transitions) carries a `ref` meant for the destination, which this page must not consume.
+  const own = useMatch({ strict: false, select: (match) => match.pathname });
   const callback = useRef(onReveal);
   useEffect(() => {
     callback.current = onReveal;
   });
   useEffect(() => {
+    if (pathname !== own) return;
     const key = `${search.ref ?? ""}|${search.act ?? ""}`;
     if (key === "|" || handled.current === key) return;
     handled.current = key;
     callback.current(search.ref, search.act);
     void navigate({ to: pathname, search: {}, replace: true });
-  }, [search.ref, search.act, pathname, navigate]);
+  }, [search.ref, search.act, pathname, own, navigate]);
 }

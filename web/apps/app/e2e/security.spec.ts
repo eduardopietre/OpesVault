@@ -374,7 +374,7 @@ test.describe("hostile strings in the other free-text places", () => {
 // ── a hostile PDF ────────────────────────────────────────────────────────────────────────────────
 
 test.describe("a hostile PDF", () => {
-  test.use({ viewport: { width: 1280, height: 800 } });
+  test.use({ viewport: { width: 1920, height: 1080 } });
   test.setTimeout(180_000);
 
   test("goes through Importar without executing, requesting anything or hanging", async ({ page }) => {

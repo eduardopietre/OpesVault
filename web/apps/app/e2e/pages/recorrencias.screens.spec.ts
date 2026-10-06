@@ -5,7 +5,7 @@
 import { fileURLToPath } from "node:url";
 import { test, type Page } from "@playwright/test";
 import { SCHEMES, SIZES, openDemo, settle } from "../helpers.ts";
-import { createRule, dialogOf, recordRepeatingCharge, tableOf } from "./recorrencias_helpers.ts";
+import { dialogOf, tableOf } from "./recorrencias_helpers.ts";
 
 const OUT = fileURLToPath(new URL("../../../../build/telas/", import.meta.url));
 
@@ -46,16 +46,15 @@ for (const size of SIZES) {
       });
 
       test("recorrências com vínculo e cobranças que se repetem", async ({ page }) => {
+        // the web demonstration has the condominium fee to link and a charge that repeats (data/demo_extra.ts)
         await openDemo(page, "/recorrencias");
         await tableOf(page, "Previsões").waitFor();
-        await createRule(page, "Posto Shell", "145,00", "Despesa: Transporte");
-        await tableOf(page, "Previsões").locator("[data-row-id]", { hasText: "Posto Shell" }).first().click();
+        await tableOf(page, "Previsões").locator("[data-row-id]", { hasText: "Condomínio" }).first().click();
         await page.getByRole("button", { name: "Vincular realizado…" }).click();
         await dialogOf(page, "Vincular realizado").waitFor();
         await settle(page);
         await page.screenshot({ path: `${OUT}recorrencias-vincular-${suffix}.png` });
         await dialogOf(page, "Vincular realizado").getByRole("button", { name: "Vincular", exact: true }).click();
-        await recordRepeatingCharge(page, "Streaming Plus", "39,90");
         await tableOf(page, "Cobranças que parecem recorrentes").waitFor();
         await settle(page, 700);
         await scrollDown(page);

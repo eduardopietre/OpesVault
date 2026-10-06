@@ -16,7 +16,7 @@ import {
   settle,
   watchErrors,
 } from "../helpers.ts";
-import { createRule, dialogOf, menuItem, pick, recordRepeatingCharge, tableOf } from "./recorrencias_helpers.ts";
+import { dialogOf, menuItem, pick, tableOf } from "./recorrencias_helpers.ts";
 
 async function audit(page: Page, label: string) {
   await page.mouse.move(1, 1); // a hovered button is another color: audit the resting state
@@ -53,7 +53,7 @@ for (const size of SIZES) {
         await expect(forecasts.getByText("Atrasada").first()).toBeVisible();
         await expect(forecasts.getByText("Prevista").first()).toBeVisible();
         await expect(tableOf(page, "Assinaturas e contas fixas")).toBeVisible();
-        await expect(page.getByText(/1 regra\(s\) ativa\(s\)/)).toBeVisible();
+        await expect(page.getByText(/2 regra\(s\) ativa\(s\)/)).toBeVisible();
         await settle(page);
         await expectNoHorizontalOverflow(page);
         await audit(page, "recorrências");
@@ -82,7 +82,8 @@ for (const size of SIZES) {
         // Pausar / Retomar
         await page.getByRole("button", { name: "Pausar", exact: true }).click();
         await expect(rules.getByText("Pausada").first()).toBeVisible();
-        await expect(page.getByText(/Nenhuma previsão no período/)).toBeVisible();
+        // the paused rule leaves the forecasts: the late ones were its own
+        await expect(forecasts.getByText("Atrasada")).toHaveCount(0);
         await audit(page, "regra pausada");
         await page.getByRole("button", { name: "Retomar", exact: true }).click();
         await expect(forecasts.getByText("Atrasada").first()).toBeVisible();
@@ -97,8 +98,12 @@ for (const size of SIZES) {
         await expect(forecasts.getByText("Pulada")).toBeVisible();
         await page.getByRole("button", { name: "Desfazer", exact: true }).click();
         await expect(forecasts.getByText("Pulada")).toHaveCount(0);
+        // the condominium fee due today has one compatible entry: it is offered, and refusing links nothing
         await menuItem(page, "Vincular sugestões únicas");
-        await expect(page.getByText("Nenhuma previsão com um único lançamento compatível.").first()).toBeVisible();
+        const offer = page.getByRole("alertdialog");
+        await expect(offer.getByText(/Condomínio ← Condomínio/)).toBeVisible();
+        await offer.getByRole("button", { name: "Cancelar" }).click();
+        await expect(offer).toHaveCount(0);
         await menuItem(page, "Projeção de compromissos (Relatórios)");
         await expect
           .poll(async () => (await addresses()).some((url) => /\/relatorios\?.*ref=projected_balance/.test(url)))
@@ -174,7 +179,7 @@ for (const size of SIZES) {
   }
 }
 
-test.describe("recorrências: the flows that need data the demonstration lacks", () => {
+test.describe("recorrências: linking and the charges that repeat, on the web demonstration's own data", () => {
   test.use({ viewport: { width: 1920, height: 1080 }, contextOptions: { reducedMotion: "reduce" } });
 
   test("links a forecast, links the single candidates, and creates a rule from a repeating charge", async ({
@@ -183,52 +188,55 @@ test.describe("recorrências: the flows that need data the demonstration lacks",
     const errors = watchErrors(page);
     await openDemo(page, "/recorrencias");
     const forecasts = tableOf(page, "Previsões");
-    // the demonstration records "Posto Shell" and "Mercado do mês" today: two rules due today find them
-    await createRule(page, "Posto Shell", "145,00", "Despesa: Transporte");
-    await forecasts.locator("[data-row-id]", { hasText: "Posto Shell" }).first().click();
+    const due = forecasts.locator("[data-row-id]", { hasText: "Condomínio" }).first();
+    // the condominium fee is due today and the entry that paid it is in the book
+    await due.click();
     await page.getByRole("button", { name: "Vincular realizado…" }).click();
     let dialog = dialogOf(page, "Vincular realizado");
     await expect(dialog.getByRole("radio")).toHaveCount(1);
-    await expect(dialog.getByText(/Posto Shell/).first()).toBeVisible();
+    await expect(dialog.getByText(/Condomínio/).first()).toBeVisible();
     await audit(page, "vincular realizado");
     await dialog.getByRole("button", { name: "Vincular", exact: true }).click();
     await expect(dialog).toBeHidden();
-    await expect(forecasts.locator("[data-row-id]", { hasText: "Posto Shell" }).getByText("Realizada")).toBeVisible();
+    await expect(due.getByText("Realizada")).toBeVisible();
     await expect(tableOf(page, "Assinaturas e contas fixas").getByText("Como previsto")).toBeVisible();
+    await page
+      .getByRole("button", { name: /^Desfazer/ })
+      .first()
+      .click();
+    await expect(due.getByText("Realizada")).toHaveCount(0);
 
-    await createRule(page, "Mercado do mês", "560,00", "Despesa: Alimentação");
+    // the same link as a suggestion: nothing changes until it is confirmed
     await menuItem(page, "Vincular sugestões únicas");
     const ask = page.getByRole("alertdialog");
-    await expect(ask.getByText(/Mercado do mês ← Mercado do mês/)).toBeVisible();
+    await expect(ask.getByText(/Condomínio ← Condomínio/)).toBeVisible();
     await audit(page, "vincular sugestões");
     await ask.getByRole("button", { name: "Cancelar" }).click();
     await menuItem(page, "Vincular sugestões únicas");
     await page.getByRole("alertdialog").getByRole("button", { name: "Vincular", exact: true }).click();
     await expect(page.getByText("1 previsão(ões) vinculada(s).").first()).toBeVisible();
-    await expect(
-      forecasts.locator("[data-row-id]", { hasText: "Mercado do mês" }).getByText("Realizada"),
-    ).toBeVisible();
-    await page.getByRole("button", { name: "Desfazer", exact: true }).click();
-    await expect(forecasts.locator("[data-row-id]", { hasText: "Mercado do mês" }).getByText("Realizada")).toHaveCount(
-      0,
-    );
+    await expect(due.getByText("Realizada")).toBeVisible();
+    await page
+      .getByRole("button", { name: /^Desfazer/ })
+      .first()
+      .click();
+    await expect(due.getByText("Realizada")).toHaveCount(0);
 
     // a charge that repeats for three months in a row is offered; the rule is created from it
-    await recordRepeatingCharge(page, "Streaming Plus", "39,90");
     const candidates = tableOf(page, "Cobranças que parecem recorrentes");
-    await expect(candidates.getByText("Streaming Plus")).toBeVisible();
+    await expect(candidates.getByText("Academia Fit")).toBeVisible();
     await audit(page, "cobranças que parecem recorrentes");
     await page.getByRole("button", { name: "Criar recorrência…" }).click();
     await expect(page.getByText("Selecione uma cobrança.").first()).toBeVisible();
-    await candidates.getByText("Streaming Plus").click();
+    await candidates.getByText("Academia Fit").click();
     await page.getByRole("button", { name: "Criar recorrência…" }).click();
     dialog = dialogOf(page, "Nova recorrência");
-    await expect(dialog.getByLabel("Descrição")).toHaveValue("Streaming Plus");
-    await expect(dialog.getByLabel("Valor esperado")).toHaveValue("39,90");
+    await expect(dialog.getByLabel("Descrição")).toHaveValue("Academia Fit");
+    await expect(dialog.getByLabel("Valor esperado")).toHaveValue("119,90");
     await dialog.getByRole("button", { name: "Criar recorrência" }).click();
     await expect(dialog).toBeHidden();
     await expect(candidates).toHaveCount(0);
-    await expect(tableOf(page, "Regras de recorrência").getByText("Streaming Plus")).toBeVisible();
+    await expect(tableOf(page, "Regras de recorrência").getByText("Academia Fit")).toBeVisible();
     expect(errors).toEqual([]);
   });
 });

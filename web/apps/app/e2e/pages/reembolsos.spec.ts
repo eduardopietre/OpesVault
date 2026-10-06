@@ -12,7 +12,6 @@ import {
   settle,
   watchErrors,
 } from "../helpers.ts";
-import { shareAnExpense } from "./sharing_helpers.ts";
 import { audit, goTo, tableOf } from "../helpers.ts";
 
 for (const size of SIZES) {
@@ -26,7 +25,7 @@ for (const size of SIZES) {
         const addresses = await recordAddresses(page);
         await openDemo(page, "/livro");
         await expect(page.locator("[data-row-id]").first()).toBeVisible();
-        await shareAnExpense(page);
+        // the demonstration already has a debt between members (a card purchase of Ana's that is Bruno's expense)
         await goTo(page, "b", /\/reembolsos$/);
         await expect(page.getByRole("heading", { level: 1, name: "Reembolsos e acertos" })).toBeVisible();
 
@@ -35,9 +34,7 @@ for (const size of SIZES) {
         await expect(reimbursements).toBeVisible();
         await expect(reimbursements.getByText("Recebido em parte").first()).toBeVisible();
         await expect(balances.getByText("Bruno").first()).toBeVisible();
-        await expect(
-          tableOf(page, "Despesas que formam o saldo", phone).getByText("Restaurante Bom Prato"),
-        ).toBeVisible();
+        await expect(tableOf(page, "Despesas que formam o saldo", phone).getByText("Presente do Bruno")).toBeVisible();
         await settle(page);
         await expectNoHorizontalOverflow(page);
         await audit(page, "reembolsos");
@@ -115,7 +112,7 @@ for (const size of SIZES) {
         await expect(page.getByRole("heading", { level: 1, name: "Livro financeiro" })).toBeVisible();
         await page.goBack();
         await expect(page.getByRole("heading", { level: 1, name: "Reembolsos e acertos" })).toBeVisible();
-        await tableOf(page, "Despesas que formam o saldo", phone).getByText("Restaurante Bom Prato").click();
+        await tableOf(page, "Despesas que formam o saldo", phone).getByText("Presente do Bruno").click();
         await page
           .getByText("Selecionado:")
           .locator("xpath=../..")
@@ -138,14 +135,14 @@ for (const size of SIZES) {
         expect(errors).toEqual([]);
       });
 
-      test("the demonstration alone shows only its reimbursement", async ({ page }) => {
+      test("the demonstration shows its reimbursement and the debt between members", async ({ page }) => {
         const errors = watchErrors(page);
         await openDemo(page, "/reembolsos");
-        // the demonstration has a reimbursement and no balance: the balance section is not shown
         await expect(page.getByRole("heading", { name: "Reembolsos", exact: true })).toBeVisible();
-        await expect(page.getByRole("heading", { name: "Acertos entre integrantes" })).toHaveCount(0);
+        await expect(page.getByRole("heading", { name: "Acertos entre integrantes" })).toBeVisible();
+        await expect(tableOf(page, "Saldos entre integrantes", phone).getByText("Bruno").first()).toBeVisible();
         await expectNoHorizontalOverflow(page);
-        await audit(page, "só reembolsos");
+        await audit(page, "reembolsos e saldo");
         expect(errors).toEqual([]);
       });
 

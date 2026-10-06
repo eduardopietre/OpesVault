@@ -44,7 +44,7 @@ describe("demonstration extras", () => {
     const ledger = await demo(true);
     const sales = tax.variableIncome.trades(ledger);
     expect(sales).toHaveLength(1);
-    expect(tax.variableIncome.tradeResult(sales[0]!).toFixed()).toBe("253.14");
+    expect(tax.variableIncome.tradeResult(sales[0]!).toFixed()).toBe("45.14");
     const card = [...ledger.cards.values()][0]!;
     const [bill] = dom.cards.bills(ledger, card.id, [ymOf(TODAY)]);
     expect(bill!.total.toFixed()).toBe("329.90");

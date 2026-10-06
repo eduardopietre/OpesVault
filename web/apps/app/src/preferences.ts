@@ -10,6 +10,27 @@ const PREFIX = "opesvault:";
 export function devicePreferences(): PreferenceStore {
   const fallback = memoryPreferences();
   return {
+    keys() {
+      const found = new Set(fallback.keys?.() ?? []);
+      try {
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key?.startsWith(PREFIX)) found.add(key.slice(PREFIX.length));
+        }
+      } catch {
+        // Storage unavailable: only the in-memory values exist.
+      }
+      return [...found].sort();
+    },
+    clear() {
+      for (const key of this.keys?.() ?? []) this.set(key, null);
+      fallback.clear?.();
+      try {
+        sessionStorage.removeItem(PREFIX + "aba");
+      } catch {
+        // Nothing to forget.
+      }
+    },
     get(key) {
       try {
         return localStorage.getItem(PREFIX + key) ?? fallback.get(key);
@@ -27,6 +48,16 @@ export function devicePreferences(): PreferenceStore {
       }
     },
   };
+}
+
+/** Minutes without use before the project locks on this device (docs/19 §9.1); a device preference. */
+export const IDLE_LOCK_KEY = "seguranca/bloqueio";
+export const IDLE_LOCK_CHOICES = [1, 5, 15, 30, 60, 120] as const;
+export const IDLE_LOCK_DEFAULT = 15;
+
+export function readIdleLock(store: PreferenceStore): number {
+  const value = Number(store.get(IDLE_LOCK_KEY));
+  return (IDLE_LOCK_CHOICES as readonly number[]).includes(value) ? value : IDLE_LOCK_DEFAULT;
 }
 
 export const THEME_KEY = "aparencia/tema";

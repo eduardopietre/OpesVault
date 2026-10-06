@@ -63,6 +63,12 @@ export interface SessionActions {
   signOut(): Promise<void>;
   openProject(id: string, password: string): Promise<void>;
   closeProject(): Promise<void>;
+  /** Opens a project with its recovery key, setting a new password. */
+  recoverProject(id: string, recoveryKey: string, newPassword: string): Promise<void>;
+  /** Renames the open project; the top bar follows. */
+  renameProject(name: string): Promise<void>;
+  /** Forgets this device's local copy and ends the session (the page clears the preferences). */
+  forgetDevice(): Promise<void>;
   lock(): Promise<void>;
   unlock(password: string): Promise<void>;
   setOperator(id: string): void;
@@ -115,6 +121,25 @@ export function sessionActions(services: AppServices, store: SessionStore): Sess
       open.workspace.setOperator(operatorName(open, operatorId));
       store.update({ open, locked: false, lockedName: null, sync: "synced", operatorId });
       watch();
+    },
+    async recoverProject(id, recoveryKey, newPassword) {
+      const open = await services.recoverProject(id, recoveryKey, newPassword);
+      const operatorId = open.members[0]?.id ?? null;
+      open.workspace.setOperator(operatorName(open, operatorId));
+      store.update({ open, locked: false, lockedName: null, sync: "synced", operatorId });
+      watch();
+    },
+    async renameProject(name) {
+      const project = await services.renameProject(name);
+      const open = store.get().open;
+      if (open) store.update({ open: { ...open, project } });
+    },
+    async forgetDevice() {
+      unwatch?.();
+      unwatch = null;
+      await services.forgetDevice();
+      forget();
+      store.update({ ...EMPTY, online: store.get().online });
     },
     async closeProject() {
       unwatch?.();

@@ -7,10 +7,14 @@
  */
 import { HttpBackend } from "@opesvault/backend-http";
 import { formatDateBr, type IsoDate } from "@opesvault/domain";
-import type { KdfParams } from "@opesvault/crypto";
+import { BackupError, blobSource, type KdfParams } from "@opesvault/crypto";
 import {
   BackendError,
   ProjectVault,
+  exportBackup as vaultExportBackup,
+  restoreBackup as vaultRestoreBackup,
+  verifyBackup as vaultVerifyBackup,
+  watchActivity,
   type ProjectVaultOptions,
   type SyncBackend,
   VaultCache,
@@ -19,6 +23,7 @@ import {
   signIn as vaultSignIn,
   signUp as vaultSignUp,
 } from "@opesvault/vault";
+import { backupFileName, checkOf, documentBlobRefs } from "../data/backup.ts";
 import { Workspace } from "../data/workspace.ts";
 import {
   ServiceError,
@@ -43,6 +48,18 @@ export interface RealServicesOptions {
   readonly vaultOptions?: Partial<Pick<ProjectVaultOptions, "timers" | "pushDelayMs" | "retryMs" | "pollMs">>;
 }
 
+const BACKUP_MESSAGES: Record<BackupError["code"], string> = {
+  not_a_backup: "Este arquivo não é um backup do OpesVault.",
+  unsupported_version:
+    "Este backup foi feito por uma versão mais nova do aplicativo. Atualize o aplicativo e tente de novo.",
+  invalid_params: "O cabeçalho do backup pede valores que este aplicativo não aceita.",
+  wrong_password:
+    "Senha incorreta para este arquivo. É a senha que o projeto tinha quando o backup foi feito, ou o cabeçalho foi alterado.",
+  empty_password: "Digite a senha.",
+  corrupted: "O arquivo está danificado, incompleto ou foi alterado. Nada dele foi usado.",
+  invalid_content: "O conteúdo do arquivo não confere com o formato de backup. Nada dele foi usado.",
+};
+
 /** The user-facing message for a failure of the vault or the server. */
 export function serviceError(error: unknown): ServiceError {
   if (error instanceof ServiceError) return error;
@@ -55,6 +72,11 @@ export function serviceError(error: unknown): ServiceError {
         return new ServiceError("bad-recovery-key", "Chave de recuperação incorreta. Confira os grupos digitados.");
       case "empty_password":
         return new ServiceError("empty-password", "Digite a senha.");
+      case "conflict":
+        return new ServiceError(
+          "conflict",
+          "A senha ou a chave de recuperação foi trocada em outro aparelho agora há pouco. Tente de novo.",
+        );
       case "read_only":
       case "no_lease":
         return new ServiceError("read-only", "Outra aba ou aparelho está editando este projeto.");
@@ -64,6 +86,7 @@ export function serviceError(error: unknown): ServiceError {
         return new ServiceError(error.code, "Não foi possível concluir. Tente de novo.");
     }
   }
+  if (error instanceof BackupError) return new ServiceError(`backup-${error.code}`, BACKUP_MESSAGES[error.code]);
   if (error instanceof BackendError) {
     switch (error.code) {
       case "unauthorized":
@@ -112,6 +135,8 @@ export function createRealServices(options: RealServicesOptions = {}): AppServic
   let summary: ProjectSummary | null = null;
   let unsubscribeVault: (() => void) | null = null;
   const syncListeners = new Set<(status: ProjectSyncStatus) => void>();
+  let idleMs: number | null = options.idleLockMs === undefined ? 15 * 60_000 : options.idleLockMs;
+  let unwatchActivity: (() => void) | null = null;
 
   const report = () => {
     const status: ProjectSyncStatus = vault ? vault.getSnapshot().status : "locked";
@@ -129,6 +154,13 @@ export function createRealServices(options: RealServicesOptions = {}): AppServic
     members,
   });
 
+  const requireOpen = (): { vault: ProjectVault; summary: ProjectSummary } => {
+    if (!vault || !vault.unlocked || !summary) {
+      throw new ServiceError("not-open", "Abra um projeto para fazer isso.");
+    }
+    return { vault, summary };
+  };
+
   const makeVault = (projectId: string) =>
     theCache().then(
       (c) =>
@@ -139,7 +171,7 @@ export function createRealServices(options: RealServicesOptions = {}): AppServic
           ...(options.holder ? { holder: options.holder } : {}),
           ...(options.kdf ? { kdf: options.kdf } : {}),
           ...options.vaultOptions,
-          idleLockMs: options.idleLockMs ?? 15 * 60_000,
+          idleLockMs: idleMs,
         }),
     );
 
@@ -168,6 +200,8 @@ export function createRealServices(options: RealServicesOptions = {}): AppServic
       offVault();
       offRemote();
     };
+    unwatchActivity?.();
+    unwatchActivity = typeof window === "undefined" ? null : watchActivity(window, () => v.touch());
     vault = v;
     workspace = ws;
     summary = { ...projectSummary, name };
@@ -178,6 +212,8 @@ export function createRealServices(options: RealServicesOptions = {}): AppServic
   const detach = async (close: boolean) => {
     unsubscribeVault?.();
     unsubscribeVault = null;
+    unwatchActivity?.();
+    unwatchActivity = null;
     await workspace?.settled();
     if (vault) await vault.lock();
     workspace = null;
@@ -233,7 +269,7 @@ export function createRealServices(options: RealServicesOptions = {}): AppServic
           ...(options.holder ? { holder: options.holder } : {}),
           ...(options.kdf ? { kdf: options.kdf } : {}),
           ...options.vaultOptions,
-          idleLockMs: options.idleLockMs ?? 15 * 60_000,
+          idleLockMs: idleMs,
         });
         const project: ProjectSummary = {
           id: created.projectId,
@@ -283,6 +319,108 @@ export function createRealServices(options: RealServicesOptions = {}): AppServic
     watchSync(listener) {
       syncListeners.add(listener);
       return () => syncListeners.delete(listener);
+    },
+
+    async renameProject(name) {
+      return guard(async () => {
+        const open = requireOpen();
+        const trimmed = name.trim();
+        if (!trimmed) throw new ServiceError("empty-name", "Dê um nome ao projeto.");
+        await open.vault.rename(trimmed);
+        summary = { ...open.summary, name: trimmed };
+        return summary;
+      });
+    },
+    async changePassword(currentPassword, newPassword) {
+      return guard(async () => requireOpen().vault.changePassword(currentPassword, newPassword));
+    },
+    async regenerateRecoveryKey(password) {
+      return guard(async () => requireOpen().vault.regenerateRecoveryKey(password));
+    },
+    async recoverProject(projectId, recoveryKey, newPassword) {
+      return guard(async () => {
+        await detach(true);
+        const v = await makeVault(projectId);
+        await v.unlockWithRecovery(recoveryKey, newPassword);
+        const listed = (await backend.listProjects()).find((p) => p.projectId === projectId);
+        const members = await backend.listMembers(projectId).catch(() => []);
+        const base = listed
+          ? summaryOf(listed, null, members.length)
+          : { id: projectId, name: "Projeto", updatedAt: new Date().toISOString(), members: members.length };
+        return attach(v, base);
+      });
+    },
+    setIdleLock(minutes) {
+      idleMs = minutes > 0 ? minutes * 60_000 : null;
+      vault?.setIdleLock(idleMs);
+    },
+    async exportBackup(password, onProgress) {
+      return guard(async () => {
+        const { vault: v } = requireOpen();
+        const parts: Uint8Array<ArrayBuffer>[] = [];
+        const result = await vaultExportBackup(v, password, (chunk) => void parts.push(chunk), {
+          blobRefsOf: documentBlobRefs,
+          ...(options.kdf ? { kdf: options.kdf } : {}),
+          ...(onProgress ? { onProgress } : {}),
+        });
+        return {
+          blob: new Blob(parts, { type: "application/octet-stream" }),
+          fileName: backupFileName(new Date(result.createdAt)),
+          createdAt: result.createdAt,
+          records: result.records,
+          documents: result.documents,
+          documentBytes: result.documentBytes,
+          missing: result.missing.length,
+        };
+      });
+    },
+    async verifyBackup(file, password, onProgress) {
+      return guard(async () =>
+        checkOf(
+          await vaultVerifyBackup(blobSource(file), password, {
+            blobRefsOf: documentBlobRefs,
+            ...(onProgress ? { onProgress } : {}),
+          }),
+        ),
+      );
+    },
+    async restoreBackup(file, password, name, onProgress) {
+      return guard(async () => {
+        const restored = await vaultRestoreBackup({
+          source: blobSource(file),
+          password,
+          backend,
+          cache: await theCache(),
+          ...(name.trim() ? { name } : {}),
+          blobRefsOf: documentBlobRefs,
+          ...(options.kdf ? { kdf: options.kdf } : {}),
+          ...(onProgress ? { onProgress } : {}),
+          vaultOptions: {
+            ...(options.holder ? { holder: options.holder } : {}),
+            ...options.vaultOptions,
+          },
+        });
+        const project: ProjectSummary = {
+          id: restored.projectId,
+          name: restored.name,
+          updatedAt: new Date().toISOString(),
+          members: 1,
+        };
+        return { project, recoveryKey: restored.recoveryKey, check: checkOf(restored.report) };
+      });
+    },
+    async pendingChanges() {
+      if (!vault || !vault.unlocked) return 0;
+      await vault.syncNow().catch(() => undefined);
+      return vault.getSnapshot().pending;
+    },
+    async forgetDevice() {
+      return guard(async () => {
+        await detach(true);
+        await (await theCache()).forgetAll();
+        await backend.signOut().catch(() => undefined);
+        account = null;
+      });
     },
   };
 }

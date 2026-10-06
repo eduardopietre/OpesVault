@@ -328,14 +328,14 @@ describe("restoring a backup", () => {
     );
   });
 
-  it("restores with the file's own name by default and with the file's password (not the project's current one)", async () => {
+  it("restores with the file's own name plus a restored mark and with the file's password, not the current one", async () => {
     const { vault, dev } = await owner("Casa");
     await vault.stage([op("1", "Mercado")]);
     const { file } = await backupOf(vault);
     await vault.changePassword(PASSWORD, "senha nova do projeto");
     // The old backup still opens with the old password (docs/03 §7); the restored project takes that one.
     const restored = await restore(dev, file);
-    expect(restored.name).toBe("Casa");
+    expect(restored.name).toBe("Casa (restaurado)");
     const copy = await reopen(dev, restored.projectId, PASSWORD);
     expect(copy.get("operation", "1")).toBeDefined();
     await expect(reopen(dev, restored.projectId, "senha nova do projeto")).rejects.toEqual(

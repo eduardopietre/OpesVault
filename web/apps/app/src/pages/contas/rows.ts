@@ -75,16 +75,18 @@ export type Reveal =
   | { kind: "check"; accountId: Id }
   | { kind: "account"; accountId: Id }
   | { kind: "card"; cardId: Id }
-  | { kind: "bank"; bankId: Id };
+  | { kind: "bank"; bankId: Id }
+  | { kind: "members" };
 
 /**
  * The `ref` of a link (docs `data/links.ts`): "<cardId>:<YYYY-MM>" a bill, "loan:<planId>:<number>" an
  * installment, "check:<accountId>" an account with a balance that differs from the bank, "conta:<id>" an
- * account, "cartao:<id>" a card; a bare id is looked up (a card, a financing, a bank account, an account).
+ * account, "cartao:<id>" a card, "integrantes" the members tab; a bare id is looked up (a card, a financing, a bank account, an account).
  */
 export function parseReveal(ref: string | undefined, ledger: Ledger): Reveal | null {
   if (!ref) return null;
   const [head, second, third] = ref.split(":");
+  if (head === "integrantes" && second === undefined) return { kind: "members" };
   if (head === "loan" && second) {
     const number = third === undefined ? null : Number(third);
     return { kind: "loan", planId: second, number: number !== null && Number.isInteger(number) ? number : null };

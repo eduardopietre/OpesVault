@@ -7,6 +7,10 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 export interface PreferenceStore {
   get(key: string): string | null;
   set(key: string, value: string | null): void;
+  /** The keys kept on this device (to say what it stores). */
+  keys?(): readonly string[];
+  /** Forgets every value (the "forget this device" command). */
+  clear?(): void;
 }
 
 /** A store that forgets everything (tests, catalog, and when storage is unavailable). */
@@ -18,6 +22,8 @@ export function memoryPreferences(initial: Record<string, string> = {}): Prefere
       if (value === null) values.delete(key);
       else values.set(key, value);
     },
+    keys: () => [...values.keys()],
+    clear: () => values.clear(),
   };
 }
 

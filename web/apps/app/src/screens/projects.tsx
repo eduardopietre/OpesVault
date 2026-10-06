@@ -18,8 +18,10 @@ import {
 } from "@opesvault/ui";
 import { useNavigate } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "motion/react";
-import { ChevronRight, Copy, FolderPlus, Plus, Trash2, Users } from "lucide-react";
+import { ChevronRight, Copy, FolderPlus, History, Plus, Trash2, Users } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
+import { RecoverProjectDialog } from "../dialogs/settings_recover.tsx";
+import { RestoreBackupDialog } from "../dialogs/settings_backup_restore.tsx";
 import type { ProjectSummary } from "../services/types.ts";
 import { useServices, useSession, useSessionActions } from "../session.tsx";
 import { AuthLayout } from "./AuthLayout.tsx";
@@ -44,6 +46,8 @@ export function ProjectsScreen() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [recovering, setRecovering] = useState<ProjectSummary | null>(null);
+  const [restoring, setRestoring] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -55,6 +59,14 @@ export function ProjectsScreen() {
       alive = false;
     };
   }, [services]);
+
+  /** A restored project exists from now on: the list shows it. */
+  const reload = () => {
+    services
+      .listProjects()
+      .then(setProjects)
+      .catch((failure: unknown) => setLoadError(messageOf(failure)));
+  };
 
   const open = async (event: FormEvent) => {
     event.preventDefault();
@@ -85,13 +97,18 @@ export function ProjectsScreen() {
             {session.account ? `Conta de ${session.account.name}.` : ""} Escolha um projeto para abrir com a senha dele.
           </p>
         </div>
-        <Button
-          variant="primary"
-          icon={<Plus className="size-4" />}
-          onClick={() => void navigate({ to: "/projetos/novo" })}
-        >
-          Novo projeto
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button icon={<History className="size-4" />} onClick={() => setRestoring(true)}>
+            Restaurar backup…
+          </Button>
+          <Button
+            variant="primary"
+            icon={<Plus className="size-4" />}
+            onClick={() => void navigate({ to: "/projetos/novo" })}
+          >
+            Novo projeto
+          </Button>
+        </div>
       </div>
       <div className="mt-6" aria-busy={projects === null && !loadError}>
         {loadError ? (
@@ -168,6 +185,16 @@ export function ProjectsScreen() {
         onSubmit={open}
         footer={
           <>
+            <Button
+              variant="ghost"
+              className="tablet:mr-auto"
+              onClick={() => {
+                setRecovering(opening);
+                setOpening(null);
+              }}
+            >
+              Esqueci a senha
+            </Button>
             <Button onClick={() => setOpening(null)}>Cancelar</Button>
             <Button type="submit" variant="primary" busy={busy}>
               Abrir projeto
@@ -185,6 +212,24 @@ export function ProjectsScreen() {
           autoFocus
         />
       </Dialog>
+      <RecoverProjectDialog
+        open={recovering !== null}
+        onClose={() => setRecovering(null)}
+        projectId={recovering?.id ?? ""}
+        projectName={recovering?.name ?? ""}
+        onOpened={() => void navigate({ to: "/visao-geral" })}
+      />
+      <RestoreBackupDialog
+        open={restoring}
+        onClose={() => {
+          setRestoring(false);
+          reload();
+        }}
+        onOpenProject={async (restored, restoredPassword) => {
+          await actions.openProject(restored.project.id, restoredPassword);
+          await navigate({ to: "/visao-geral" });
+        }}
+      />
     </AuthLayout>
   );
 }

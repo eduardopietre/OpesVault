@@ -3,7 +3,7 @@ import "@opesvault/ui/styles.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App.tsx";
-import { devicePreferences, tabHolder } from "./preferences.ts";
+import { devicePreferences, readIdleLock, tabHolder } from "./preferences.ts";
 import { UpdatePrompt } from "./pwa/UpdatePrompt.tsx";
 import { createAppRouter } from "./router.tsx";
 import { installTrustedTypes } from "./security.ts";
@@ -15,8 +15,11 @@ import { SessionStore, sessionActions } from "./session.tsx";
 installTrustedTypes(`${import.meta.env.BASE_URL}sw.js`);
 
 async function start() {
+  const preferences = devicePreferences();
+  const idleMinutes = readIdleLock(preferences);
   const fake = USE_FAKE_SERVICES ? createFakeServices({ seed: true, latency: import.meta.env.DEV ? 250 : 120 }) : null;
-  const services = fake ?? createRealServices({ holder: tabHolder() });
+  fake?.setIdleLock(idleMinutes);
+  const services = fake ?? createRealServices({ holder: tabHolder(), idleLockMs: idleMinutes * 60_000 });
   const session = new SessionStore();
   const online = () => session.update({ online: navigator.onLine });
   window.addEventListener("online", online);
@@ -38,7 +41,7 @@ async function start() {
   if (!root) return;
   createRoot(root).render(
     <StrictMode>
-      <App router={router} services={services} session={session} preferences={devicePreferences()} />
+      <App router={router} services={services} session={session} preferences={preferences} />
     </StrictMode>,
   );
 }

@@ -56,6 +56,58 @@ export class ServiceError extends Error {
   }
 }
 
+/** Progress of a backup operation (records, documents, restoring); `total` is 0 when not known. */
+export interface BackupProgress {
+  phase: "records" | "documents" | "checking" | "restoring";
+  done: number;
+  total: number;
+}
+
+export interface BackupFile {
+  /** The sealed file: nothing in it is readable without the password. */
+  blob: Blob;
+  /** Neutral name, without the project's name. */
+  fileName: string;
+  /** ISO instant written in the file. */
+  createdAt: string;
+  records: number;
+  documents: number;
+  documentBytes: number;
+  /** Documents the records cite but the server did not have. */
+  missing: number;
+}
+
+/** What a backup file holds, after decrypting and checking all of it. */
+export interface BackupCheck {
+  /** Format version of the file. */
+  version: number;
+  createdAt: string;
+  projectName: string;
+  fileBytes: number;
+  records: number;
+  /** Records by kind. */
+  byKind: Readonly<Record<string, number>>;
+  documents: number;
+  documentBytes: number;
+  /** Documents the backup was made without. */
+  missing: number;
+  /** Records pointing to documents that are not in the file. */
+  dangling: number;
+  /** Documents whose bytes do not match their record. */
+  hashMismatches: number;
+  orphans: number;
+  /** Argon2id parameters the file asks for (memory in KiB). */
+  kdf: { memoryKiB: number; iterations: number; parallelism: number };
+}
+
+export interface RestoredProject {
+  /** The new project (a different one from any existing project). */
+  project: ProjectSummary;
+  /** Of the new project; shown once. */
+  recoveryKey: string;
+  check: BackupCheck;
+}
+
 export interface AppServices {
   signIn(email: string, password: string): Promise<Account>;
   signUp(input: { name: string; email: string; password: string }): Promise<Account>;
@@ -74,4 +126,31 @@ export interface AppServices {
    * unsubscribe function. The fake services report "synced" once.
    */
   watchSync(listener: (status: ProjectSyncStatus) => void): () => void;
+
+  // ── Configurações (docs/18 W11) ──────────────────────────────────────────────────────────────
+  /** Renames the open project (the name is sealed in the browser; the server never reads it). */
+  renameProject(name: string): Promise<ProjectSummary>;
+  /** Needs the current password; every member uses the new one from then on. */
+  changePassword(currentPassword: string, newPassword: string): Promise<void>;
+  /** Needs the password; returns the new key, to show once. The previous key stops working. */
+  regenerateRecoveryKey(password: string): Promise<string>;
+  /** Opens a project with its recovery key and sets a new password (from the projects screen). */
+  recoverProject(projectId: string, recoveryKey: string, newPassword: string): Promise<OpenProject>;
+  /** Idle lock of this device, in minutes: applies at once to the open project and to the next ones. */
+  setIdleLock(minutes: number): void;
+  /** Backup of the whole open project, protected by the project's password (asked again). */
+  exportBackup(password: string, onProgress?: (progress: BackupProgress) => void): Promise<BackupFile>;
+  /** Decrypts and checks a backup file without restoring it. */
+  verifyBackup(file: Blob, password: string, onProgress?: (progress: BackupProgress) => void): Promise<BackupCheck>;
+  /** Restores a backup as a NEW project (never over an existing one), with the file's password. */
+  restoreBackup(
+    file: Blob,
+    password: string,
+    name: string,
+    onProgress?: (progress: BackupProgress) => void,
+  ): Promise<RestoredProject>;
+  /** Tries to send what is waiting and says how many changes still are (they are lost if this device is forgotten). */
+  pendingChanges(): Promise<number>;
+  /** Locks, forgets the local copy (encrypted data, edit queue) of every project and ends the session. */
+  forgetDevice(): Promise<void>;
 }

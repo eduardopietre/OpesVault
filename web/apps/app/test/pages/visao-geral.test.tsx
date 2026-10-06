@@ -7,6 +7,7 @@ import { alertLink, filterRef } from "../../src/data/links.ts";
 import { pageById } from "../../src/pages.tsx";
 import { ALERTS_HIDDEN_KEY } from "../../src/pages/visao-geral/index.tsx";
 import { cellText, monthlyReportData } from "../../src/pages/visao-geral/report.ts";
+import { backupNotices } from "../../src/pages/configuracoes/backup_state.ts";
 import { MAX_VISIBLE } from "../../src/pages/visao-geral/alerts_panel.tsx";
 import {
   categoryRows,
@@ -108,7 +109,11 @@ describe("Visão geral", () => {
       const user = userEvent.setup();
       const { workspace } = await mountPage("/visao-geral");
       await heading();
-      const alerts = dom.alerts.alerts(workspace.ledger, workspace.today());
+      // the demonstration was never backed up on this device: that notice comes after the project's own
+      const alerts = [
+        ...dom.alerts.alerts(workspace.ledger, workspace.today()),
+        ...backupNotices(null, workspace.today(), true),
+      ];
       const panel = screen.getByRole("region", { name: "Atenção" });
       expect(within(panel).getAllByRole("listitem")).toHaveLength(MAX_VISIBLE);
       await user.click(within(panel).getByRole("button", { name: `Mostrar todos (${alerts.length})` }));

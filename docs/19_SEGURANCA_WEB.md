@@ -10,14 +10,14 @@ Vale para tudo que toca dados do projeto na web: senha do projeto, senha da cont
 
 **Zero-knowledge:** a senha do projeto, a chave do projeto e o conteúdo dos registros nunca saem do navegador em claro. O servidor autentica contas, guarda texto cifrado e sincroniza. Isso protege contra:
 
-| Quem | O que consegue | O que não consegue |
-|---|---|---|
-| Operador do servidor, ou quem copiar o banco, o volume `/data` ou um backup dele | Ver os metadados da §7; apagar, reter ou devolver versões antigas de registros (§11) | Ler registros, anexos, nomes de projeto ou a senha; alterar um registro sem que a alteração seja detectada; mover um registro de lugar ou de projeto |
-| Quem observa a rede | Com TLS (Caddy, `20`): só tamanhos e horários | Ler ou alterar o tráfego |
-| Aparelho roubado ou perdido, **bloqueado** | Ler o IndexedDB: texto cifrado, envelope, cursor e e-mail da sessão (cookie) | Abrir o projeto sem a senha; o Argon2id (§3) encarece cada tentativa |
-| Aparelho roubado ou perdido, **desbloqueado** | Tudo o que a aba mostra, enquanto não houver bloqueio por inatividade (§9) | — |
-| Script injetado na aba (XSS, dependência comprometida, extensão do navegador) | Enquanto o projeto está desbloqueado, **tudo**: ler os registros em memória, usar as chaves (mesmo não extraíveis) para decifrar e cifrar, capturar a senha quando digitada | Ler os bytes das chaves de trabalho (`CryptoKey` não extraível), mas isso não o impede de usá-las |
-| Integrante removido | Continua sabendo a senha compartilhada e pode ter guardado a chave do projeto e cópias do texto cifrado | Obter registros novos do servidor (perde o acesso na hora) |
+| Quem                                                                             | O que consegue                                                                                                                                                              | O que não consegue                                                                                                                                   |
+| -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Operador do servidor, ou quem copiar o banco, o volume `/data` ou um backup dele | Ver os metadados da §7; apagar, reter ou devolver versões antigas de registros (§11)                                                                                        | Ler registros, anexos, nomes de projeto ou a senha; alterar um registro sem que a alteração seja detectada; mover um registro de lugar ou de projeto |
+| Quem observa a rede                                                              | Com TLS (Caddy, `20`): só tamanhos e horários                                                                                                                               | Ler ou alterar o tráfego                                                                                                                             |
+| Aparelho roubado ou perdido, **bloqueado**                                       | Ler o IndexedDB: texto cifrado, envelope, cursor e e-mail da sessão (cookie)                                                                                                | Abrir o projeto sem a senha; o Argon2id (§3) encarece cada tentativa                                                                                 |
+| Aparelho roubado ou perdido, **desbloqueado**                                    | Tudo o que a aba mostra, enquanto não houver bloqueio por inatividade (§9)                                                                                                  | —                                                                                                                                                    |
+| Script injetado na aba (XSS, dependência comprometida, extensão do navegador)    | Enquanto o projeto está desbloqueado, **tudo**: ler os registros em memória, usar as chaves (mesmo não extraíveis) para decifrar e cifrar, capturar a senha quando digitada | Ler os bytes das chaves de trabalho (`CryptoKey` não extraível), mas isso não o impede de usá-las                                                    |
+| Integrante removido                                                              | Continua sabendo a senha compartilhada e pode ter guardado a chave do projeto e cópias do texto cifrado                                                                     | Obter registros novos do servidor (perde o acesso na hora)                                                                                           |
 
 Não se promete proteção contra malware no aparelho, extensões maliciosas do navegador, keylogger, captura de tela ou inspeção da aba desbloqueada, como no `03` §1. Senha compartilhada não isola integrantes (`03` §1, `18` §1): qualquer integrante com a senha lê e altera tudo.
 
@@ -27,13 +27,13 @@ Não se promete proteção contra malware no aparelho, extensões maliciosas do 
 
 Nada caseiro (`03` §2): WebCrypto para HKDF, AES-GCM e HMAC; `hash-wasm` (implementação de referência do Argon2 compilada para WebAssembly) para o Argon2id.
 
-| Uso | Primitiva | Parâmetros |
-|---|---|---|
-| Senha do projeto e senha da conta | Argon2id (RFC 9106) | **64 MiB, 3 passadas, 1 via, saída de 32 bytes, sal de 16 bytes** — adotado provisoriamente, revisável (`18` §8: medir no celular mais fraco) |
-| Derivação de chaves | HKDF-SHA256 (RFC 5869) | `info` com rótulo e versão (§4) |
-| Cifra | AES-256-GCM (NIST SP 800-38D) | Nonce de 96 bits aleatório por cifração; etiqueta de 128 bits |
-| Id opaco de registro | HMAC-SHA256 | Truncado a 128 bits (32 hexadecimais) |
-| Aleatoriedade | `crypto.getRandomValues` | — |
+| Uso                               | Primitiva                     | Parâmetros                                                                                                                                    |
+| --------------------------------- | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Senha do projeto e senha da conta | Argon2id (RFC 9106)           | **64 MiB, 3 passadas, 1 via, saída de 32 bytes, sal de 16 bytes** — adotado provisoriamente, revisável (`18` §8: medir no celular mais fraco) |
+| Derivação de chaves               | HKDF-SHA256 (RFC 5869)        | `info` com rótulo e versão (§4)                                                                                                               |
+| Cifra                             | AES-256-GCM (NIST SP 800-38D) | Nonce de 96 bits aleatório por cifração; etiqueta de 128 bits                                                                                 |
+| Id opaco de registro              | HMAC-SHA256                   | Truncado a 128 bits (32 hexadecimais)                                                                                                         |
+| Aleatoriedade                     | `crypto.getRandomValues`      | —                                                                                                                                             |
 
 - Os parâmetros do Argon2id viajam com cada envelope, então podem subir depois sem quebrar envelopes antigos. Ao abrir, o app só aceita parâmetros entre 8 MiB e 1 GiB, 1 a 16 passadas e 1 a 4 vias; fora disso recusa antes de derivar (um envelope hostil não esgota a memória da aba).
 - Senhas são normalizadas em Unicode NFC antes de virar bytes, para que a mesma senha digitada em sistemas diferentes abra o projeto. Senha nova vazia é recusada.
@@ -118,15 +118,15 @@ Projeto, registro e anexo: 128 bits em 32 hexadecimais minúsculos. O id do proj
 
 ## 7. O que o servidor vê
 
-| Vê | Não vê |
-|---|---|
-| E-mail de cada conta, data de criação, IPs e horários das requisições | Senha da conta (só um derivado, guardado com scrypt) |
-| Quais contas são integrantes de cada projeto e quem é dono | Senha do projeto, chave do projeto, chave de recuperação |
-| Quantidade de registros por projeto, tamanho aproximado de cada um (múltiplos de 64 bytes) e quando muda | Tipo, id real e conteúdo dos registros |
-| Quais registros mudam juntos (um envio) e com que frequência | Nome do projeto |
-| Quantidade, tamanho e horário dos anexos | Conteúdo dos anexos |
-| Quem tem a concessão de edição e o rótulo da aba (aleatório) | O que está sendo editado |
-| Parâmetros do Argon2id e sais (públicos por projeto) | |
+| Vê                                                                                                       | Não vê                                                   |
+| -------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| E-mail de cada conta, data de criação, IPs e horários das requisições                                    | Senha da conta (só um derivado, guardado com scrypt)     |
+| Quais contas são integrantes de cada projeto e quem é dono                                               | Senha do projeto, chave do projeto, chave de recuperação |
+| Quantidade de registros por projeto, tamanho aproximado de cada um (múltiplos de 64 bytes) e quando muda | Tipo, id real e conteúdo dos registros                   |
+| Quais registros mudam juntos (um envio) e com que frequência                                             | Nome do projeto                                          |
+| Quantidade, tamanho e horário dos anexos                                                                 | Conteúdo dos anexos                                      |
+| Quem tem a concessão de edição e o rótulo da aba (aleatório)                                             | O que está sendo editado                                 |
+| Parâmetros do Argon2id e sais (públicos por projeto)                                                     |                                                          |
 
 Isso é limitação conhecida, como as do `03` §1: o padrão de uso pode revelar, por exemplo, que um projeto recebe muitos lançamentos no começo do mês.
 
@@ -208,12 +208,12 @@ bloco i   = AES-256-GCM(chave, texto claro de exatamente "tamanho do bloco" byte
 
 Os números são big-endian. O texto claro é um fluxo de **quadros** cortado em blocos de 1 MiB (padrão; aceito de 256 B a 16 MiB), de modo que um registro ou um anexo pode atravessar blocos e a memória nunca guarda mais que um bloco e o quadro em montagem:
 
-| Quadro | Conteúdo |
-|---|---|
-| `0x01` META (sempre o primeiro) | tamanho u32 ‖ JSON `{format, createdAt, projectName, app}` |
-| `0x02` registro | tamanho u32 ‖ JSON `{kind, id, payload}` (o `(tipo, id, JSON)` do `Ledger`, em claro dentro da cifra) |
-| `0x03` anexo | id do anexo (16 bytes) ‖ tamanho u32 ‖ bytes do anexo (já decifrados do cofre) |
-| `0xFF` END (sempre o último) | tamanho u32 ‖ JSON `{records, blobs, missing}`; `missing` lista anexos que os registros citam mas o servidor não tinha |
+| Quadro                          | Conteúdo                                                                                                               |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `0x01` META (sempre o primeiro) | tamanho u32 ‖ JSON `{format, createdAt, projectName, app}`                                                             |
+| `0x02` registro                 | tamanho u32 ‖ JSON `{kind, id, payload}` (o `(tipo, id, JSON)` do `Ledger`, em claro dentro da cifra)                  |
+| `0x03` anexo                    | id do anexo (16 bytes) ‖ tamanho u32 ‖ bytes do anexo (já decifrados do cofre)                                         |
+| `0xFF` END (sempre o último)    | tamanho u32 ‖ JSON `{records, blobs, missing}`; `missing` lista anexos que os registros citam mas o servidor não tinha |
 
 Ordem gravada: META, todos os registros, todos os anexos, END.
 

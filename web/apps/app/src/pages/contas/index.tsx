@@ -74,6 +74,9 @@ export function Page() {
         setPending({ tab: "bancarias", seq, value: target.bankId });
         setTab("bancarias");
         break;
+      case "members":
+        setTab("integrantes");
+        break;
     }
   });
 

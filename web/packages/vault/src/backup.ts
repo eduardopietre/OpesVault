@@ -63,24 +63,30 @@ export interface BackupSummary {
   readonly fileBytes: number;
 }
 
-export async function exportBackup(
-  vault: ProjectVault,
+/** What a backup is made of: the records, the way to read an attachment, and the project's name. */
+export interface BackupContent {
+  readonly name: string;
+  readonly records: Iterable<PlainRecord>;
+  /** The attachment's bytes, or null when it does not exist (a reference that was already dangling). */
+  blob(id: string): Promise<Uint8Array | null>;
+}
+
+/** Writes a backup of `content`, protected by `password`; the sealed chunks go to `emit` in order. */
+export async function writeBackup(
+  content: BackupContent,
   password: string,
   emit: (chunk: Bytes) => void | Promise<void>,
   options: BackupExportOptions = {},
 ): Promise<BackupSummary> {
-  if (!vault.unlocked) throw new VaultError("locked");
-  await vault.checkPassword(password);
   const refsOf = options.blobRefsOf ?? (() => []);
   const createdAt = (options.now?.() ?? new Date()).toISOString();
-  const records = [...vault.records.values()];
+  const records = [...content.records];
   const blobIds = new Set<string>();
   for (const record of records) for (const ref of refsOf(record)) blobIds.add(ref.id);
-  const name = vault.getSnapshot().name ?? "Projeto";
   const writer = await BackupWriter.create(
     password,
     emit,
-    { createdAt, projectName: name },
+    { createdAt, projectName: content.name },
     {
       ...(options.kdf ? { kdf: options.kdf } : {}),
       ...(options.chunkBytes ? { chunkBytes: options.chunkBytes } : {}),
@@ -98,17 +104,10 @@ export async function exportBackup(
   let documents = 0;
   let documentBytes = 0;
   for (const id of blobIds) {
-    let data: Uint8Array;
-    try {
-      data = await vault.getBlob(id);
-    } catch (error) {
-      // An attachment the server does not have is recorded as missing; anything else (offline, locked) stops
-      // the backup, because it would be incomplete for a reason the person can fix.
-      if (error instanceof BackendError && error.code === "not_found") {
-        missing.push(id);
-        continue;
-      }
-      throw error;
+    const data = await content.blob(id);
+    if (data === null) {
+      missing.push(id);
+      continue;
     }
     await writer.writeBlob(id, data);
     documents += 1;
@@ -117,6 +116,38 @@ export async function exportBackup(
   }
   await writer.finish(missing);
   return { createdAt, records: records.length, documents, documentBytes, missing, fileBytes: writer.emittedBytes };
+}
+
+/**
+ * Backs up the open project. Asks for the password again: it is checked against the envelope and is the one
+ * that protects the file. An attachment the server does not have becomes `missing`; any other failure to
+ * read one (offline, locked) stops the backup, since it would be incomplete for a reason the person can fix.
+ */
+export async function exportBackup(
+  vault: ProjectVault,
+  password: string,
+  emit: (chunk: Bytes) => void | Promise<void>,
+  options: BackupExportOptions = {},
+): Promise<BackupSummary> {
+  if (!vault.unlocked) throw new VaultError("locked");
+  await vault.checkPassword(password);
+  return writeBackup(
+    {
+      name: vault.getSnapshot().name ?? "Projeto",
+      records: vault.records.values(),
+      blob: async (id) => {
+        try {
+          return await vault.getBlob(id);
+        } catch (error) {
+          if (error instanceof BackendError && error.code === "not_found") return null;
+          throw error;
+        }
+      },
+    },
+    password,
+    emit,
+    options,
+  );
 }
 
 export interface BackupReport {
@@ -141,7 +172,7 @@ export interface BackupReport {
   readonly orphans: number;
 }
 
-interface ScanHandlers {
+export interface ScanHandlers {
   record?(record: PlainRecord): Promise<void> | void;
   blob?(id: string, data: Bytes): Promise<void> | void;
 }
@@ -236,13 +267,24 @@ export async function verifyBackup(
   return scan(reader, source, options.blobRefsOf ?? (() => []), {}, options.onProgress);
 }
 
+/** Reads the whole file, handing every record and attachment to `handlers`, and returns the report. */
+export async function readBackup(
+  source: ByteSource,
+  password: string,
+  options: BackupVerifyOptions,
+  handlers: ScanHandlers,
+): Promise<BackupReport> {
+  const reader = await BackupReader.open(source, password);
+  return scan(reader, source, options.blobRefsOf ?? (() => []), handlers, options.onProgress);
+}
+
 export interface BackupRestoreOptions extends BackupVerifyOptions {
   readonly source: ByteSource;
   /** The password of the file; the restored project uses it too (change it in Configurações if wanted). */
   readonly password: string;
   readonly backend: SyncBackend;
   readonly cache: VaultCache;
-  /** Name of the new project; the file's own name by default. */
+  /** Name of the new project; the file's own name followed by "(restaurado)" by default. */
   readonly name?: string;
   /** Tests only: cheaper key derivation for the new project's envelope. */
   readonly kdf?: KdfParams;
@@ -270,7 +312,7 @@ export async function restoreBackup(options: BackupRestoreOptions): Promise<Back
   const reader = await BackupReader.open(options.source, options.password);
   const report = await scan(reader, options.source, refsOf, {}, options.onProgress);
   reader.rewind();
-  const name = (options.name ?? report.projectName).trim() || "Projeto restaurado";
+  const name = options.name?.trim() || `${report.projectName} (restaurado)`;
   const { vault, recoveryKey } = await ProjectVault.create({
     backend: options.backend,
     cache: options.cache,

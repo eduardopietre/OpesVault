@@ -35,7 +35,7 @@ for (const viewport of [
 
     await expect(page.getByRole("heading", { name: "Guarde a chave de recuperação" })).toBeVisible();
     const key = await page.getByLabel("Chave de recuperação", { exact: true }).textContent();
-    expect(key?.replace(/\s/g, "")).toMatch(/^[A-Z0-9]{32}$/);
+    expect(key?.replace(/\s/g, "")).toMatch(/^[A-Z0-9]{36}$/);
     const proceed = page.getByRole("button", { name: "Continuar" });
     await expect(proceed).toBeDisabled();
     await page.getByLabel("Guardei a chave de recuperação num lugar seguro").check();

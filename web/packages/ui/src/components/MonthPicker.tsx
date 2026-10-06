@@ -8,6 +8,7 @@ import { useState, type KeyboardEvent } from "react";
 import { cn } from "../cn.ts";
 import { addMonths, formatMonth, monthName, type Month } from "../format.ts";
 import { IconButton } from "./Button.tsx";
+import { usePortalContainer } from "./portal.ts";
 
 export interface MonthPickerProps {
   value: Month;
@@ -24,6 +25,7 @@ const index = (m: Month) => m.year * 12 + m.month - 1;
 export function MonthPicker({ value, onChange, label = "Mês", min, max, className }: MonthPickerProps) {
   const [open, setOpen] = useState(false);
   const [year, setYear] = useState(value.year);
+  const [anchorRef, container] = usePortalContainer();
   const allowed = (m: Month) => (!min || index(m) >= index(min)) && (!max || index(m) <= index(max));
   const step = (delta: number) => {
     const next = addMonths(value, delta);
@@ -61,6 +63,7 @@ export function MonthPicker({ value, onChange, label = "Mês", min, max, classNa
       >
         <Popover.Trigger asChild>
           <button
+            ref={anchorRef}
             type="button"
             aria-label={`${label}: ${formatMonth(value)}. Escolher outro mês`}
             className="h-8 min-w-[168px] rounded-md border border-separator-strong bg-raised px-3 text-body font-medium text-text shadow-sm first-letter:uppercase hover:bg-hover"
@@ -68,7 +71,7 @@ export function MonthPicker({ value, onChange, label = "Mês", min, max, classNa
             {formatMonth(value)}
           </button>
         </Popover.Trigger>
-        <Popover.Portal>
+        <Popover.Portal {...(container ? { container } : {})}>
           <Popover.Content
             sideOffset={6}
             collisionPadding={8}

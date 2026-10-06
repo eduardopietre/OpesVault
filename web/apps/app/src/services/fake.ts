@@ -2,7 +2,7 @@
  * In-memory AppServices for development, the catalog and tests. Nothing leaves the tab and nothing is
  * encrypted: it only imitates the answers of the real services so every screen can be walked through.
  */
-import { demoSession, Ledger, newId, session as sessions } from "@opesvault/domain";
+import { dom, demoSession, Ledger, newId, session as sessions } from "@opesvault/domain";
 import { browserExtractor } from "../data/pdf.ts";
 import { Workspace } from "../data/workspace.ts";
 import {
@@ -112,7 +112,13 @@ export function createFakeServices(options: FakeOptions = {}): AppServices & { r
       members: 2,
       attention: { "visao-geral": 3, importar: 2 },
       workspace: null,
-      build: async () => new Workspace(await demoSession({ extractor: browserExtractor() })),
+      build: async () => {
+        const session = await demoSession({ extractor: browserExtractor() });
+        // The demonstration has the local AI chosen, so its screens can be walked through (the requests
+        // go to 127.0.0.1 only when someone asks; tests and the e2e build answer them themselves).
+        dom.settings.updateSettings(session.ledger, { ai_enabled: true, ai_model: "gemma4:12b" });
+        return new Workspace(session);
+      },
     };
     account.projects.push(project.id);
     accounts.set(account.email, account);

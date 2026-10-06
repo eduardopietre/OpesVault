@@ -10,6 +10,7 @@ import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type R
 import { cn } from "../cn.ts";
 import { searchKey } from "../format.ts";
 import { Field, inputClass } from "./fields.tsx";
+import { usePortalContainer } from "./portal.ts";
 
 export interface SelectOption {
   id: string;
@@ -143,6 +144,7 @@ export function Select({
   const listId = useId();
   const typed = useRef({ text: "", at: 0 });
   const current = optionById(options, value);
+  const [anchorRef, container] = usePortalContainer();
 
   const show = (start?: number) => {
     setActive(
@@ -197,6 +199,7 @@ export function Select({
         <Popover.Root open={open} onOpenChange={(next) => (next ? show() : setOpen(false))}>
           <Popover.Trigger asChild>
             <button
+              ref={anchorRef}
               id={id}
               type="button"
               role="combobox"
@@ -216,7 +219,7 @@ export function Select({
               <ChevronsUpDown aria-hidden="true" className="size-4 shrink-0 text-secondary" />
             </button>
           </Popover.Trigger>
-          <Popover.Portal>
+          <Popover.Portal {...(container ? { container } : {})}>
             <Popover.Content
               align="start"
               sideOffset={4}
@@ -262,6 +265,7 @@ export function Combobox({
   className,
 }: ComboboxProps) {
   const current = optionById(options, value);
+  const [anchorRef, container] = usePortalContainer();
   const [query, setQuery] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
@@ -311,6 +315,7 @@ export function Combobox({
                 className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-secondary"
               />
               <input
+                ref={anchorRef}
                 id={id}
                 role="combobox"
                 aria-autocomplete="list"
@@ -339,7 +344,7 @@ export function Combobox({
               />
             </div>
           </Popover.Anchor>
-          <Popover.Portal>
+          <Popover.Portal {...(container ? { container } : {})}>
             <Popover.Content
               align="start"
               sideOffset={4}

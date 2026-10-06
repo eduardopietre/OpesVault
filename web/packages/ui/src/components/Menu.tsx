@@ -7,6 +7,7 @@ import { DropdownMenu } from "radix-ui";
 import type { ReactNode } from "react";
 import { cn } from "../cn.ts";
 import { Button, type ButtonVariant } from "./Button.tsx";
+import { usePortalContainer } from "./portal.ts";
 
 export type MenuEntry =
   | {
@@ -34,9 +35,18 @@ const itemClass =
   "relative flex h-8 cursor-default select-none items-center gap-2 rounded-md px-2 text-body text-text outline-none " +
   "data-[highlighted]:bg-selection data-[highlighted]:text-accent-text data-[disabled]:text-tertiary [&_svg]:size-4";
 
-export function MenuContent({ items, align = "end" }: { items: readonly MenuEntry[]; align?: "start" | "end" }) {
+export function MenuContent({
+  items,
+  align = "end",
+  container,
+}: {
+  items: readonly MenuEntry[];
+  align?: "start" | "end";
+  /** Where to render (the open <dialog> that holds the trigger); the body by default. */
+  container?: HTMLElement | undefined;
+}) {
   return (
-    <DropdownMenu.Portal>
+    <DropdownMenu.Portal {...(container ? { container } : {})}>
       <DropdownMenu.Content
         align={align}
         sideOffset={6}
@@ -107,11 +117,13 @@ export interface MenuButtonProps {
 
 /** A button that opens a menu of commands ("Mais", "Exportar"). */
 export function MenuButton({ label, items, variant = "secondary", icon, align = "end", trigger }: MenuButtonProps) {
+  const [anchorRef, container] = usePortalContainer();
   return (
     <DropdownMenu.Root modal={false}>
       <DropdownMenu.Trigger asChild>
         {trigger ?? (
           <Button
+            ref={anchorRef}
             variant={variant}
             icon={icon}
             trailing={<ChevronDown aria-hidden="true" className="size-4 opacity-70" />}
@@ -120,7 +132,7 @@ export function MenuButton({ label, items, variant = "secondary", icon, align = 
           </Button>
         )}
       </DropdownMenu.Trigger>
-      <MenuContent items={items} align={align} />
+      <MenuContent items={items} align={align} container={container} />
     </DropdownMenu.Root>
   );
 }

@@ -17,6 +17,7 @@ export * from "./components/Overlay.tsx";
 export * from "./components/Dialog.tsx";
 export * from "./components/Toast.tsx";
 export * from "./components/Menu.tsx";
+export * from "./components/portal.ts";
 export * from "./components/Tabs.tsx";
 export * from "./components/fields.tsx";
 export * from "./components/Select.tsx";

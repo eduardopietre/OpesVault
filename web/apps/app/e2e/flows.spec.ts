@@ -65,10 +65,16 @@ for (const viewport of [
       .getByRole("link", { name: /^Contas/ })
       .first()
       .click();
+    await expect(page.getByText("2 contas · 1 cartão · 2 integrantes")).toBeVisible(); // the card has its own account
     await page.getByRole("tab", { name: "Todas as contas" }).click();
-    await expect(page.getByRole("grid", { name: "Contas" }).getByText("Banco, corrente")).toBeVisible();
-    await expect(page.getByRole("grid", { name: "Contas" }).getByText("Cartão Azul")).toBeVisible();
-    await expect(page.getByRole("grid", { name: "Contas" }).getByText("R$ 1.500,00").first()).toBeVisible();
+    const accounts = page.getByRole("tabpanel", { name: "Todas as contas" });
+    await expect(accounts.getByText("Banco, corrente").first()).toBeVisible();
+    await expect(accounts.getByText("R$ 1.500,00").first()).toBeVisible();
+    await page
+      .getByRole("link", { name: /^Visão geral/ })
+      .first()
+      .click();
+    await expect(page.getByRole("heading", { level: 1, name: "Visão geral" })).toBeVisible();
 
     await page.getByRole("button", { name: "Bloquear o projeto" }).click();
     await expect(page.getByRole("heading", { name: "Apartamento está bloqueado" })).toBeVisible();

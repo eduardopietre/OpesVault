@@ -85,7 +85,8 @@ test.describe("calendário: every action", () => {
       .first()
       .click();
     await expect(page).toHaveURL(/\/contas/);
-    expect(decodeURIComponent(page.url())).toContain("act=pagar");
+    // "ready to pay": Contas consumes the link's act=pagar at once and opens the payment form.
+    await expect(page.getByRole("dialog", { name: /^Pagar (fatura|parcela)/ })).toBeVisible();
     // Double click opens too.
     await openDemo(page, "/calendario");
     await page.getByRole("grid", { name: "Vencimentos" }).getByRole("row").nth(1).dblclick();

@@ -4,7 +4,7 @@
  */
 import "fake-indexeddb/auto";
 import { IDBFactory, IDBKeyRange } from "fake-indexeddb";
-import { AccountType, queries, type IsoDate } from "@opesvault/domain";
+import { AccountType, dom, queries, type IsoDate } from "@opesvault/domain";
 import { MemoryServer, VaultCache } from "@opesvault/vault";
 import { describe, expect, it } from "vitest";
 import { createRealServices } from "../src/services/real.ts";
@@ -91,6 +91,50 @@ describe("real services", () => {
     expect(queries.balance(other.workspace.ledger, bank.id).toFixed()).toBe("876.55");
     expect([...other.workspace.ledger.operations.values()].some((o) => o.description === "Engano")).toBe(false);
 
+    await a.closeProject();
+    await b.closeProject();
+  }, 30_000);
+
+  it("attachments travel as encrypted blobs and are fetched only when needed", async () => {
+    const server = new MemoryServer();
+    const a = device(server, "tab-a");
+    await a.signUp({ name: "Ana", email: "ana@example.com", password: "senha da conta" });
+    const created = await a.createProject({ name: "Casa", password: "senha do projeto" });
+    const ws = (await a.openProject(created.project.id, "senha do projeto")).workspace;
+    const cash = ws.ledger.categories(AccountType.EXPENSE)[0]!.id;
+    const bank = ws.act((l) =>
+      l.addAccount({
+        id: crypto.randomUUID(),
+        name: "Banco",
+        type: "asset",
+        subtype: "checking",
+        currency: "BRL",
+        institution: null,
+        masked_number: null,
+        holders: [],
+        parent_id: null,
+        archived: false,
+      }),
+    );
+    const op = ws.act((l) => l.recordExpense(bank.id, cash, "10.00", "2026-01-05" as IsoDate, "Farmácia"));
+    const pdf = new TextEncoder().encode("%PDF-1.4\nrecibo secreto\n%%EOF");
+    ws.act((_l, session) => dom.attachments.attach(session, op.id, "recibo.pdf", pdf));
+    await ws.settled();
+    expect(ws.unsentDocuments).toBe(0);
+    expect(JSON.stringify(server)).not.toContain("recibo");
+
+    const b = device(server, "tab-b");
+    await b.signIn("ana@example.com", "senha da conta");
+    await until(async () => {
+      const other = await b.openProject(created.project.id, "senha do projeto");
+      return other.workspace.session.documents.length === 1;
+    });
+    const other = (await b.openProject(created.project.id, "senha do projeto")).workspace;
+    const id = other.session.documents[0]!.meta.id;
+    expect(other.hasDocument(id)).toBe(false);
+    expect(() => other.session.document(id).data).toThrow();
+    expect(new TextDecoder().decode(await other.loadDocument(id))).toContain("recibo secreto");
+    expect(other.session.document(id).data.length).toBe(pdf.length);
     await a.closeProject();
     await b.closeProject();
   }, 30_000);

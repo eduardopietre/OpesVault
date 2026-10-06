@@ -357,7 +357,11 @@ Atualizado a cada fase. Detalhes técnicos em `web/README.md` e `web/PORTING.md`
 | W5 | Concluída | Exemplos A–F do `06`, XIRR/TWR/Dietz dígito a dígito, imposto, catálogos e contas bancárias |
 | W6 | Concluída | Texto do pdf.js idêntico ao do pdfplumber nos sintéticos; parsers, fluxo de revisão, IA e fuzzing |
 | W7 | Concluída | Componentes, shell, quatro faixas, animações, PWA; e2e sem erros nem transbordamento em 5 tamanhos, claro e escuro, axe sem violações |
-| Integração | Em andamento | Avisos, calendário, gráficos, exportações, notas de corretagem, informes, Assistente e projeto de demonstração |
+| Integração do domínio | Concluída | Avisos, calendário, gráficos, exportações, notas de corretagem, informes, Assistente e projeto de demonstração, com paridade (2 036 testes no total) |
+| W8 | Concluída | Visão geral (com relatório do mês para impressão), Orçamento, Calendário e Livro financeiro |
+| W9 | Concluída | Contas e cartões (8 abas), Recorrências, Metas, Reembolsos e acertos, Documentos |
+| W10 | Concluída | Investimentos (XIRR num Web Worker), Relatórios (13 relatórios, relatório anual para impressão), Imposto de renda (12 diálogos, informes, relatório para a declaração) |
+| W11 | Concluída | Importar e revisar (leitura num Web Worker), Assistente (aprovação de cada alteração), Configurações e backup cifrado (`19` §13); 501 testes de ponta a ponta em 5 tamanhos, claro e escuro |
 
 Notas desta etapa:
 - O app usa o domínio por um `Workspace` (`apps/app/src/data/`): cada ação do usuário é um passo de desfazer e só os registros alterados vão, cifrados, ao cofre. Com a sincronização automática, o desfazer vale para a sessão da aba, mesmo depois de sincronizado (o estado anterior é enviado como nova alteração).

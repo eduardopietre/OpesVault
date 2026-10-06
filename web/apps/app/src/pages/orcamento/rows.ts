@@ -54,7 +54,8 @@ export function categoryRef(categoryId: string, month?: YearMonth): string {
 
 export function parseCategoryRef(ref: string | undefined): CategoryRef | null {
   if (!ref) return null;
-  const match = /^categoria:([^:]+)(?::(\d{4}-(?:0[1-9]|1[0-2])))?$/.exec(ref);
+  // "categoria:<id>[:<YYYY-MM>]" or, from the overview notices, the domain tuple "<id>:<YYYY-MM>".
+  const match = /^(?:categoria:)?([^:]+)(?::(\d{4}-(?:0[1-9]|1[0-2])))?$/.exec(ref);
   if (!match?.[1]) return null;
   return { categoryId: match[1], month: match[2] ? ymParse(match[2]) : null };
 }

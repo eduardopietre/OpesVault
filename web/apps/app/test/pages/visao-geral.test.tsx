@@ -80,9 +80,15 @@ describe("Visão geral", () => {
         if (screen.queryByRole("button", { name: `${link.label}: ${alert.title}` }) === null) {
           await user.click(screen.getByRole("button", { name: /Mostrar todos/ }));
         }
+        // The destination may consume ref/act at once (useReveal): read them from the navigation itself.
+        let sent: unknown = null;
+        const off = router.subscribe("onBeforeNavigate", (event) => {
+          sent ??= event.toLocation.search;
+        });
         await user.click(screen.getByRole("button", { name: `${link.label}: ${alert.title}` }));
         await waitFor(() => expect(router.state.location.pathname).toBe(page!.path));
-        expect(router.state.location.search).toEqual({
+        off();
+        expect(sent).toEqual({
           ...(link.ref ? { ref: link.ref } : {}),
           ...(link.act ? { act: link.act } : {}),
         });

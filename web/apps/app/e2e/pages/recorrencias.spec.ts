@@ -5,6 +5,7 @@
  * app itself and walks the link, the suggestions and the creation from a candidate.
  */
 import AxeBuilder from "@axe-core/playwright";
+import { animationsDone } from "../helpers.ts";
 import { expect, test, type Page } from "@playwright/test";
 import {
   SCHEMES,
@@ -20,6 +21,7 @@ import { createRule, dialogOf, menuItem, pick, recordRepeatingCharge, tableOf } 
 async function audit(page: Page, label: string) {
   await page.mouse.move(1, 1); // a hovered button is another color: audit the resting state
   await settle(page, 250);
+  await animationsDone(page);
   const result = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
     .analyze();

@@ -5,6 +5,7 @@
  * answered by the test (`fakeOllama`): a real Ollama is never contacted.
  */
 import AxeBuilder from "@axe-core/playwright";
+import { animationsDone } from "../helpers.ts";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { SCHEMES, SIZES, expectNoHorizontalOverflow, openDemo, settle, watchErrors } from "../helpers.ts";
 import { fakeOllama, pickRow } from "./livro_helpers.ts";
@@ -16,6 +17,7 @@ const PNG = Buffer.from(
 
 async function audit(page: Page, label: string) {
   await settle(page, 300);
+  await animationsDone(page);
   const result = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
     .analyze();

@@ -3,6 +3,7 @@
  * of the report, no console errors, no sideways scrolling at the five sizes and axe clean, in light and dark.
  */
 import AxeBuilder from "@axe-core/playwright";
+import { animationsDone } from "../helpers.ts";
 import { expect, test, type Page } from "@playwright/test";
 import {
   SCHEMES,
@@ -16,6 +17,7 @@ import {
 
 async function audit(page: Page, label: string) {
   await settle(page, 300);
+  await animationsDone(page);
   const result = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
     .analyze();

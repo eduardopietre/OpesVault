@@ -1,5 +1,6 @@
 /** Helpers of the Reembolsos e acertos and Documentos end-to-end tests. */
 import AxeBuilder from "@axe-core/playwright";
+import { animationsDone } from "../helpers.ts";
 import { expect, type Page } from "@playwright/test";
 import { settle } from "../helpers.ts";
 import { pickRow } from "./livro_helpers.ts";
@@ -7,6 +8,7 @@ import { pickRow } from "./livro_helpers.ts";
 export async function audit(page: Page, label: string) {
   await page.mouse.move(1, 1); // a hovered button is another color: audit the resting state
   await settle(page, 250);
+  await animationsDone(page);
   const result = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
     // a notice fading in or out has the contrast of its half-transparent text for a moment

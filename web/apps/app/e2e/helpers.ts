@@ -79,3 +79,22 @@ export async function recordAddresses(page: Page): Promise<() => Promise<string[
   });
   return () => page.evaluate(() => (window as unknown as { __addresses: string[] }).__addresses.slice());
 }
+
+/**
+ * Waits until every running animation (Web Animations: motion, CSS transitions) has finished, so an
+ * accessibility audit never measures the contrast of text halfway through a fade.
+ */
+export async function animationsDone(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    for (let round = 0; round < 5; round++) {
+      const running = document
+        .getAnimations()
+        .filter((a) => a.playState === "running" && a.effect?.getTiming().iterations !== Infinity);
+      if (!running.length) return;
+      await Promise.race([
+        Promise.all(running.map((a) => a.finished.catch(() => undefined))),
+        new Promise((r) => setTimeout(r, 2000)),
+      ]);
+    }
+  });
+}

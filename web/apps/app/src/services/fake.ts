@@ -57,6 +57,12 @@ export interface FakeOptions {
   latency?: number;
   /** Starts with the demo account and its project. */
   seed?: boolean;
+  /**
+   * The seeded project also gets `applyDemoExtras` (a debt between members, a recurrence to link, a repeating
+   * charge, a stock sale, a bill due this month): the app and its end-to-end tests. The page tests leave it off,
+   * to keep checking the numbers of the domain's demonstration (which has golden parity with the desktop's).
+   */
+  extras?: boolean;
   /** Source of randomness for ids and recovery keys (tests pass a fixed one). */
   random?: () => number;
   now?: () => Date;
@@ -174,7 +180,7 @@ export function createFakeServices(options: FakeOptions = {}): AppServices & { r
       build: async () => {
         const session = await demoSession({ extractor: browserExtractor() });
         // More paths than the desktop's demonstration has (docs/18 W12); the domain's demo stays as it is.
-        applyDemoExtras(session, today());
+        if (options.extras) applyDemoExtras(session, today());
         // The demonstration has the local AI chosen, so its screens can be walked through (the requests
         // go to 127.0.0.1 only when someone asks; tests and the e2e build answer them themselves).
         dom.settings.updateSettings(session.ledger, { ai_enabled: true, ai_model: "gemma4:12b" });

@@ -4,20 +4,20 @@ Versão 1.0 • 05/10/2026. Guia para rodar o servidor do OpesVault com Docker n
 
 ## 1. O que roda
 
-| Serviço | Imagem | Papel |
-|---|---|---|
+| Serviço  | Imagem                                              | Papel                                                                          |
+| -------- | --------------------------------------------------- | ------------------------------------------------------------------------------ |
 | `server` | `opesvault-server` (construída do `web/Dockerfile`) | API em `/api/v1` e o aplicativo web; Node 22, SQLite embutido, anexos em disco |
-| `caddy` | `caddy:2-alpine` | HTTPS automático na frente do `server`; a única porta exposta |
+| `caddy`  | `caddy:2-alpine`                                    | HTTPS automático na frente do `server`; a única porta exposta                  |
 
 O servidor é **zero-knowledge** (`19` §2): guarda contas (e-mail e hash do segredo de login), quem é integrante de qual projeto, e texto cifrado. Ele não tem a senha nem a chave de nenhum projeto. Um backup do servidor é, portanto, um backup de texto cifrado.
 
 O volume `opesvault-data` (montado em `/data` no `server`) guarda:
 
-| Arquivo | Conteúdo |
-|---|---|
-| `opesvault.db`, `opesvault.db-wal`, `opesvault.db-shm` | Banco SQLite: contas, sessões (só hashes), projetos, integrantes, envelopes, registros cifrados, concessões de edição |
-| `blobs/<projeto>/<anexo>` | Anexos cifrados |
-| `secret` | Segredo do servidor, gerado na primeira vez se `OPESVAULT_SECRET` estiver vazio. **Os sais de login dependem dele**: sem ele, ninguém entra (`19` §5) |
+| Arquivo                                                | Conteúdo                                                                                                                                              |
+| ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `opesvault.db`, `opesvault.db-wal`, `opesvault.db-shm` | Banco SQLite: contas, sessões (só hashes), projetos, integrantes, envelopes, registros cifrados, concessões de edição                                 |
+| `blobs/<projeto>/<anexo>`                              | Anexos cifrados                                                                                                                                       |
+| `secret`                                               | Segredo do servidor, gerado na primeira vez se `OPESVAULT_SECRET` estiver vazio. **Os sais de login dependem dele**: sem ele, ninguém entra (`19` §5) |
 
 ## 2. Requisitos
 
@@ -35,23 +35,23 @@ cd web
 cp .env.example .env
 ```
 
-| Variável (`.env`) | Padrão | Para quê |
-|---|---|---|
-| `OPESVAULT_DOMAIN` | `localhost` | Domínio do site. `localhost` usa a autoridade certificadora local do Caddy (só para testes) |
-| `OPESVAULT_HTTP_PORT` | `80` | Porta HTTP publicada (redireciona para HTTPS e atende a validação do certificado) |
-| `OPESVAULT_HTTPS_PORT` | `443` | Porta HTTPS publicada |
-| `OPESVAULT_SECRET` | vazio | Segredo do servidor (32 caracteres ou mais). Vazio: gerado no volume. Se preencher, guarde o `.env` com os backups |
+| Variável (`.env`)      | Padrão      | Para quê                                                                                                           |
+| ---------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------ |
+| `OPESVAULT_DOMAIN`     | `localhost` | Domínio do site. `localhost` usa a autoridade certificadora local do Caddy (só para testes)                        |
+| `OPESVAULT_HTTP_PORT`  | `80`        | Porta HTTP publicada (redireciona para HTTPS e atende a validação do certificado)                                  |
+| `OPESVAULT_HTTPS_PORT` | `443`       | Porta HTTPS publicada                                                                                              |
+| `OPESVAULT_SECRET`     | vazio       | Segredo do servidor (32 caracteres ou mais). Vazio: gerado no volume. Se preencher, guarde o `.env` com os backups |
 
 Variáveis que o `server` lê (o `docker-compose.yml` já define as de produção):
 
-| Variável | Padrão | Observação |
-|---|---|---|
-| `PORT` | `8080` | Porta interna |
-| `OPESVAULT_DATA_DIR` | `/data` na imagem | Banco, anexos e segredo |
-| `OPESVAULT_SECRET` / `OPESVAULT_SECRET_FILE` | — | Valor, caminho de arquivo, ou arquivo (segredos do Docker) |
-| `OPESVAULT_SECURE_COOKIES` | `true` | Só `false` em desenvolvimento por HTTP sem `localhost` |
-| `OPESVAULT_TRUST_PROXY` | `false` (`true` no compose) | Usa o IP do cliente informado pelo Caddy nos limites de tentativas |
-| `OPESVAULT_STATIC_DIR` | `/app/public` na imagem | Aplicativo web servido junto com a API |
+| Variável                                     | Padrão                      | Observação                                                         |
+| -------------------------------------------- | --------------------------- | ------------------------------------------------------------------ |
+| `PORT`                                       | `8080`                      | Porta interna                                                      |
+| `OPESVAULT_DATA_DIR`                         | `/data` na imagem           | Banco, anexos e segredo                                            |
+| `OPESVAULT_SECRET` / `OPESVAULT_SECRET_FILE` | —                           | Valor, caminho de arquivo, ou arquivo (segredos do Docker)         |
+| `OPESVAULT_SECURE_COOKIES`                   | `true`                      | Só `false` em desenvolvimento por HTTP sem `localhost`             |
+| `OPESVAULT_TRUST_PROXY`                      | `false` (`true` no compose) | Usa o IP do cliente informado pelo Caddy nos limites de tentativas |
+| `OPESVAULT_STATIC_DIR`                       | `/app/public` na imagem     | Aplicativo web servido junto com a API                             |
 
 ## 4. Instalar
 
@@ -63,7 +63,7 @@ docker compose ps             # server "healthy", caddy "Up"
 curl https://SEU-DOMINIO/api/v1/health      # {"ok":true}
 ```
 
-Depois abra `https://SEU-DOMINIO` no navegador. Enquanto a interface web não estiver pronta (`18` W7), a imagem traz uma página provisória que só confirma que o servidor está no ar.
+Depois abra `https://SEU-DOMINIO` no navegador. A imagem traz o aplicativo web de produção (`VITE_SERVICES=real`, sem o catálogo de componentes), servido pelo mesmo processo da API.
 
 **Proxy corporativo com inspeção de TLS:** se o `docker build` falhar ao baixar pacotes com erro de certificado, passe a autoridade certificadora do proxy só para a construção, sem gravá-la na imagem:
 
@@ -139,7 +139,7 @@ Cada linha é um JSON com hora, método, modelo de rota (por exemplo `/api/v1/pr
 
 - Deixe abertas só as portas 80 e 443 (e o SSH, se for VPS). O `server` não publica porta no host.
 - O contêiner do `server` roda como usuário sem privilégios (`node`), com sistema de arquivos só de leitura, sem capacidades do Linux e com `no-new-privileges`; só `/data` e `/tmp` são graváveis.
-- O limite de tentativas de entrar é por IP (30 por minuto) e por e-mail (10 falhas a cada 15 minutos).
+- O limite de tentativas de entrar é por IP (30 por minuto) e por e-mail (10 falhas a cada 15 minutos). Há ainda limites por IP para o pedido do sal de login (60 por minuto) e para toda a API (600 por minuto) e por conta para criar projeto e incluir integrante (60 por minuto); os valores estão em `apps/server/src/config.ts` e os contadores zeram ao reiniciar.
 - Quem administra o servidor vê o que está no `19` §7 e pode apagar ou reter dados, mas não lê nem altera os projetos sem ser detectado (`19` §11).
 
 ## 10. Desenvolvimento
@@ -155,10 +155,10 @@ Navegadores aceitam cookie `Secure` em `http://localhost`, então o padrão func
 
 ## 11. Problemas comuns
 
-| Sintoma | Causa provável | O que fazer |
-|---|---|---|
-| `server` não fica "healthy" | Segredo curto ou volume sem permissão | `docker compose logs server`; `OPESVAULT_SECRET` precisa de 32 caracteres; o volume precisa pertencer ao uid 1000 |
-| Certificado não sai | DNS ainda não aponta, ou portas 80/443 bloqueadas | `docker compose logs caddy`; conferir DNS e firewall |
-| Todos deixam de conseguir entrar depois de reinstalar | Segredo do servidor mudou | Restaurar o arquivo `secret` (ou o `OPESVAULT_SECRET`) do backup |
-| Navegador mostra "offline" | Servidor parado ou atualizando | `docker compose ps`; as alterações ficam na fila do navegador |
-| `docker build` falha com erro de certificado | Proxy com inspeção de TLS | §4, construção com `--secret id=extra_ca` |
+| Sintoma                                               | Causa provável                                    | O que fazer                                                                                                       |
+| ----------------------------------------------------- | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `server` não fica "healthy"                           | Segredo curto ou volume sem permissão             | `docker compose logs server`; `OPESVAULT_SECRET` precisa de 32 caracteres; o volume precisa pertencer ao uid 1000 |
+| Certificado não sai                                   | DNS ainda não aponta, ou portas 80/443 bloqueadas | `docker compose logs caddy`; conferir DNS e firewall                                                              |
+| Todos deixam de conseguir entrar depois de reinstalar | Segredo do servidor mudou                         | Restaurar o arquivo `secret` (ou o `OPESVAULT_SECRET`) do backup                                                  |
+| Navegador mostra "offline"                            | Servidor parado ou atualizando                    | `docker compose ps`; as alterações ficam na fila do navegador                                                     |
+| `docker build` falha com erro de certificado          | Proxy com inspeção de TLS                         | §4, construção com `--secret id=extra_ca`                                                                         |

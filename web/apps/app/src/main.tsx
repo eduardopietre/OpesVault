@@ -17,7 +17,9 @@ installTrustedTypes(`${import.meta.env.BASE_URL}sw.js`);
 async function start() {
   const preferences = devicePreferences();
   const idleMinutes = readIdleLock(preferences);
-  const fake = USE_FAKE_SERVICES ? createFakeServices({ seed: true, latency: import.meta.env.DEV ? 250 : 120 }) : null;
+  const fake = USE_FAKE_SERVICES
+    ? createFakeServices({ seed: true, extras: true, latency: import.meta.env.DEV ? 250 : 120 })
+    : null;
   fake?.setIdleLock(idleMinutes);
   const services = fake ?? createRealServices({ holder: tabHolder(), idleLockMs: idleMinutes * 60_000 });
   const session = new SessionStore();

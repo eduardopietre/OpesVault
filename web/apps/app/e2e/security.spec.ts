@@ -17,6 +17,7 @@ import { openDemo, settle, watchErrors } from "./helpers.ts";
 import { hostilePdf } from "./hostile_pdf.ts";
 import { chooseFiles } from "./pages/importar_helpers.ts";
 import { fakeOllama } from "./pages/livro_helpers.ts";
+import { attach } from "./pages/sharing_helpers.ts";
 
 const HOSTILE = [
   `<img src=x onerror="window.__pwned=1">`,
@@ -279,7 +280,7 @@ test.describe("hostile strings in the dialogs of every page", () => {
         const row = page.locator("[data-row-id]").first();
         if (await row.isVisible().catch(() => false)) await row.click();
       });
-      if (process.env["SECURITY_VERBOSE"]) console.log(`${route}: ${dialogs} dialogs filled`);
+      test.info().annotations.push({ type: "dialogs filled", description: String(dialogs) });
       expect(dialogs, `dialogs filled on ${route}`).toBeGreaterThanOrEqual(minimum);
       await watch.check();
       // what was saved is drawn again by the pages that show it
@@ -340,7 +341,7 @@ test.describe("hostile strings in the other free-text places", () => {
     await page.getByRole("menuitem", { name: /^Livro completo/ }).click();
     await page.getByRole("alertdialog").getByRole("button", { name: "Exportar CSV" }).click();
     const text = readFileSync(await (await download).path(), "utf8");
-    const records = parseCsv(text.replace(/^﻿/, ""));
+    const records = parseCsv(text.charCodeAt(0) === 0xfeff ? text.slice(1) : text);
     expect(records.length).toBeGreaterThan(10);
     // every record has the 14 columns: no cell broke out of its field into another row or column
     expect(records.filter((record) => record.length !== 14)).toEqual([]);
@@ -390,7 +391,23 @@ test.describe("a hostile PDF", () => {
         .first(),
     ).toBeVisible({ timeout: 120_000 });
     expect(Date.now() - started).toBeLessThan(150_000);
+    // The same file as a receipt: the viewer draws its first pages (pdf.js without eval, XFA or fetches).
+    await page
+      .getByRole("link", { name: /^Livro/ })
+      .first()
+      .click();
+    await attach(page, "Aluguel", { name: "hostil.pdf", mimeType: "application/pdf", buffer });
+    await page.getByRole("button", { name: "Abrir comprovante" }).click();
+    const viewer = page.getByRole("dialog", { name: "Comprovante" });
+    await expect(viewer.getByLabel("Páginas do comprovante").locator("canvas").first()).toBeVisible({
+      timeout: 60_000,
+    });
+    await viewer.getByRole("button", { name: "Fechar" }).first().click();
     // still alive: the page answers and the project still opens a dialog
+    await page
+      .getByRole("link", { name: /^Importar/ })
+      .first()
+      .click();
     await expect(page.getByRole("button", { name: "Importar arquivos…" }).first()).toBeEnabled();
     await settle(page, 500);
     await watch.check();

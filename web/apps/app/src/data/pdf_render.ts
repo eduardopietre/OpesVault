@@ -21,8 +21,20 @@ interface PdfLoadingTask {
 }
 
 interface PdfJs {
-  getDocument(options: { data: Uint8Array; password?: string }): PdfLoadingTask;
+  getDocument(options: { data: Uint8Array; password?: string } & typeof SAFE_OPTIONS): PdfLoadingTask;
 }
+
+/**
+ * What a hostile file must not get from pdf.js (docs/19 §12): no `new Function` for fonts (the CSP forbids it
+ * anyway), no XFA forms (an HTML-like scripting surface), nothing fetched on demand, no worker fetches.
+ */
+const SAFE_OPTIONS = {
+  isEvalSupported: false,
+  enableXfa: false,
+  disableAutoFetch: true,
+  useWorkerFetch: false,
+  verbosity: 0,
+} as const;
 
 /** The PDF is protected and no password (or a wrong one) was given. The password itself is never kept. */
 export class PdfPasswordRequired extends Error {
@@ -64,7 +76,7 @@ export async function renderPdf(
 ): Promise<RenderedPdf> {
   const pdfjs = await loadPdfJs();
   // pdf.js takes ownership of the buffer it is given: hand it a copy.
-  const task = pdfjs.getDocument({ data: data.slice(), ...(password ? { password } : {}) });
+  const task = pdfjs.getDocument({ ...SAFE_OPTIONS, data: data.slice(), ...(password ? { password } : {}) });
   const document = await task.promise.catch((error: unknown) => {
     void task.destroy();
     if (error instanceof Error && error.name === "PasswordException") {
@@ -118,7 +130,7 @@ export interface OpenPdf {
  */
 export async function openPdf(data: Uint8Array, password?: string): Promise<OpenPdf> {
   const pdfjs = await loadPdfJs();
-  const task = pdfjs.getDocument({ data: data.slice(), ...(password ? { password } : {}) });
+  const task = pdfjs.getDocument({ ...SAFE_OPTIONS, data: data.slice(), ...(password ? { password } : {}) });
   const document = await task.promise.catch((error: unknown) => {
     void task.destroy();
     if (error instanceof Error && error.name === "PasswordException") {

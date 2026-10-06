@@ -12,11 +12,26 @@ interface PdfPage {
 interface PdfDocument {
   numPages: number;
   getPage(number: number): Promise<PdfPage>;
+}
+
+/** What `getDocument` returns: the loading task owns the worker, so it (not the document) is destroyed. */
+interface PdfLoadingTask {
+  promise: Promise<PdfDocument>;
   destroy(): Promise<void>;
 }
 
 interface PdfJs {
-  getDocument(options: { data: Uint8Array }): { promise: Promise<PdfDocument> };
+  getDocument(options: { data: Uint8Array; password?: string }): PdfLoadingTask;
+}
+
+/** The PDF is protected and no password (or a wrong one) was given. The password itself is never kept. */
+export class PdfPasswordRequired extends Error {
+  readonly incorrect: boolean;
+  constructor(incorrect: boolean) {
+    super(incorrect ? "Senha incorreta." : "Este PDF é protegido por senha.");
+    this.name = "PdfPasswordRequired";
+    this.incorrect = incorrect;
+  }
 }
 
 let loading: Promise<PdfJs> | null = null;
@@ -37,33 +52,47 @@ export interface RenderedPdf {
 
 /**
  * Renders up to `maxPages` pages, one canvas each, into `host` (replacing what it holds). `width` is the
- * CSS width the pages should fill. Throws when the file cannot be read or drawn.
+ * CSS width the pages should fill. Throws when the file cannot be read or drawn, and `PdfPasswordRequired` when
+ * it is protected: `password` is used for this one call and not kept.
  */
 export async function renderPdf(
   data: Uint8Array,
   host: HTMLElement,
   width: number,
   maxPages = 30,
+  password?: string,
 ): Promise<RenderedPdf> {
   const pdfjs = await loadPdfJs();
   // pdf.js takes ownership of the buffer it is given: hand it a copy.
-  const document = await pdfjs.getDocument({ data: data.slice() }).promise;
-  host.replaceChildren();
-  const pixelRatio = Math.min(globalThis.devicePixelRatio || 1, 2);
-  const count = Math.min(document.numPages, maxPages);
-  for (let number = 1; number <= count; number++) {
-    const page = await document.getPage(number);
-    const base = page.getViewport({ scale: 1 });
-    const scale = (Math.max(width, 240) / base.width) * pixelRatio;
-    const viewport = page.getViewport({ scale });
-    const canvas = host.ownerDocument.createElement("canvas");
-    canvas.width = Math.floor(viewport.width);
-    canvas.height = Math.floor(viewport.height);
-    canvas.className = "mb-3 block h-auto w-full rounded-md border border-separator bg-white shadow-sm";
-    canvas.setAttribute("role", "img");
-    canvas.setAttribute("aria-label", `Página ${number} de ${document.numPages}`);
-    host.append(canvas);
-    await page.render({ canvas, viewport }).promise;
+  const task = pdfjs.getDocument({ data: data.slice(), ...(password ? { password } : {}) });
+  const document = await task.promise.catch((error: unknown) => {
+    void task.destroy();
+    if (error instanceof Error && error.name === "PasswordException") {
+      throw new PdfPasswordRequired((error as { code?: number }).code === 2);
+    }
+    throw error;
+  });
+  try {
+    host.replaceChildren();
+    const pixelRatio = Math.min(globalThis.devicePixelRatio || 1, 2);
+    const count = Math.min(document.numPages, maxPages);
+    for (let number = 1; number <= count; number++) {
+      const page = await document.getPage(number);
+      const base = page.getViewport({ scale: 1 });
+      const scale = (Math.max(width, 240) / base.width) * pixelRatio;
+      const viewport = page.getViewport({ scale });
+      const canvas = host.ownerDocument.createElement("canvas");
+      canvas.width = Math.floor(viewport.width);
+      canvas.height = Math.floor(viewport.height);
+      canvas.className = "mb-3 block h-auto w-full rounded-md border border-separator bg-white shadow-sm";
+      canvas.setAttribute("role", "img");
+      canvas.setAttribute("aria-label", `Página ${number} de ${document.numPages}`);
+      host.append(canvas);
+      await page.render({ canvas, viewport }).promise;
+    }
+  } catch (error) {
+    void task.destroy();
+    throw error;
   }
-  return { pages: document.numPages, destroy: () => void document.destroy() };
+  return { pages: document.numPages, destroy: () => void task.destroy() };
 }

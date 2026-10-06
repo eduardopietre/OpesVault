@@ -21,6 +21,8 @@
  *                 "carne_leao:<YYYY-MM>:<memberId>"  Carnê-Leão of a member              act "darf"
  *                 "year:<YYYY>"                   the return of that year (pending items)
  *   investimentos "<positionId>"                  an investment (maturity)
+ *   reembolsos    "<reimbursementId>" or the refunded expense's "<operationId>"   act "receber" (opens the receipt)
+ *   documentos    "<documentId>" or "documento:<documentId>"   selects the file (a receipt, an import's original)
  *   configuracoes (no ref)
  */
 import { ymStr, type YearMonth, dom } from "@opesvault/domain";

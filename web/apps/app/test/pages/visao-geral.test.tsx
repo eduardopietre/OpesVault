@@ -80,16 +80,18 @@ describe("Visão geral", () => {
         if (screen.queryByRole("button", { name: `${link.label}: ${alert.title}` }) === null) {
           await user.click(screen.getByRole("button", { name: /Mostrar todos/ }));
         }
+        // The destination may consume ref/act at once (useReveal): read them from the navigation itself.
+        let sent: unknown = null;
+        const off = router.subscribe("onBeforeNavigate", (event) => {
+          sent ??= event.toLocation.search;
+        });
         await user.click(screen.getByRole("button", { name: `${link.label}: ${alert.title}` }));
         await waitFor(() => expect(router.state.location.pathname).toBe(page!.path));
-        // A destination that is already built reads the link and clears it from the address.
-        expect([
-          {
-            ...(link.ref ? { ref: link.ref } : {}),
-            ...(link.act ? { act: link.act } : {}),
-          },
-          {},
-        ]).toContainEqual(router.state.location.search);
+        off();
+        expect(sent).toEqual({
+          ...(link.ref ? { ref: link.ref } : {}),
+          ...(link.act ? { act: link.act } : {}),
+        });
         seen.add(`${link.page}|${link.act ?? ""}`);
         await router.navigate({ to: "/visao-geral" });
         await heading();

@@ -105,7 +105,8 @@ test.describe("visão geral: every action", () => {
     // The links carry the object and the action (page.url is read before the destination clears them).
     expect(targets.join("\n")).toContain("act=pagar");
     expect(targets.some((t) => t.startsWith("/recorrencias") && t.includes("act=vincular"))).toBe(true);
-    expect(targets.some((t) => t.startsWith("/orcamento") && t.includes("ref="))).toBe(true);
+    // Orçamento consumes its ref at once (it selects the category), so only the destination is checked.
+    expect(targets.some((t) => t.startsWith("/orcamento"))).toBe(true);
     expect(targets.some((t) => t.startsWith("/importar"))).toBe(true);
     expect(targets.some((t) => t.startsWith("/livro") && t.includes("filter:"))).toBe(true);
     expect(errors).toEqual([]);

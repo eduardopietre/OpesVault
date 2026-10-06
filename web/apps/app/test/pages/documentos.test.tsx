@@ -7,6 +7,7 @@ import { downloadFile } from "../../src/pages/livro/export.ts";
 import { documentRows, fileSize, summaryLine, usedBy } from "../../src/pages/documentos/rows.ts";
 import { DocumentUnavailable } from "../../src/data/workspace.ts";
 import { flat, openAt, type User } from "./sharing_docs_harness.tsx";
+import { navigations, wentTo } from "../navigations.ts";
 
 // happy-dom has no canvas: pdf.js is replaced by a drawing that reports its pages and asks for a password.
 vi.mock("../../src/data/pdf_render.ts", async () => {
@@ -113,9 +114,9 @@ describe("Documentos", () => {
     const batch = [...importing.importStore.batches(ledger).values()][0]!;
     const region = await panel();
     expect(within(region).getByText(/^Importação \(/)).toBeTruthy();
+    const went = navigations(router);
     await user.click(within(region).getByRole("button", { name: "Ver importação" }));
-    await waitFor(() => expect(router.state.location.pathname).toBe("/importar"));
-    expect((router.state.location.search as { ref?: string }).ref).toBe(batch.id);
+    await wentTo(went, "/importar", { ref: batch.id });
   });
 
   it("shows the operations that a receipt belongs to, each with a link to the Livro", async () => {
@@ -125,9 +126,9 @@ describe("Documentos", () => {
     await waitFor(() => expect(within(region).getByText(/Comprovante de “Posto Shell”/)).toBeTruthy());
     expect(within(region).getByText(/Comprovante de “Mercado do mês”/)).toBeTruthy();
     expect(within(region).getAllByRole("button", { name: /^Ver lançamento/ })).toHaveLength(2);
+    const went = navigations(router);
     await user.click(within(region).getByRole("button", { name: "Ver lançamento: Mercado do mês" }));
-    await waitFor(() => expect(router.state.location.pathname).toBe("/livro"));
-    expect((router.state.location.search as { ref?: string }).ref).toBe(op(ledger, "Mercado do mês").id);
+    await wentTo(went, "/livro", { ref: op(ledger, "Mercado do mês").id });
   });
 
   it("shows an image directly and says a structured file has no page view", async () => {

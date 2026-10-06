@@ -22,6 +22,7 @@ import { categoryRef, cents, parseCategoryRef, summaryLine, usedPercent } from "
 import { createAppRouter } from "../../src/router.tsx";
 import { DEMO, createFakeServices } from "../../src/services/fake.ts";
 import { SessionStore } from "../../src/session.tsx";
+import { navigations, wentTo } from "../navigations.ts";
 
 // happy-dom has no canvas: the chart itself is not drawn here (the e2e tests do); its table is.
 vi.mock("../../../../packages/ui/src/chart/echarts.ts", () => ({
@@ -300,14 +301,10 @@ describe("Orçamento", () => {
 
   it("goes to the ledger with the category and the month (Ver lançamentos)", async () => {
     const { ledger, now, router, user } = await openPage();
+    const went = navigations(router);
     await pickRow(user, "Transporte");
     await user.click(screen.getByRole("button", { name: "Ver lançamentos" }));
-    await waitFor(() => expect(router.state.location.pathname).toBe("/livro"));
-    await waitFor(() =>
-      expect((router.state.location.search as { ref?: string }).ref).toBe(
-        `categoria:${categoryId(ledger, "Transporte")}:${ymStr(now)}`,
-      ),
-    );
+    await wentTo(went, "/livro", { ref: `categoria:${categoryId(ledger, "Transporte")}:${ymStr(now)}` });
   });
 
   it("opens the category from an overview alert (ref) and selects it", async () => {

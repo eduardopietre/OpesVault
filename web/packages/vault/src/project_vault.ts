@@ -24,15 +24,17 @@ import {
   changeEnvelopePassword,
   createProjectSecrets,
   CryptoError,
+  fromUtf8,
   openWithPassword,
   openWithRecoveryKey,
   randomId,
   regenerateEnvelopeRecoveryKey,
   systemRandom,
+  utf8,
+  wipe,
   type KdfParams,
   type PlainRecord,
   type ProjectKeys,
-  type RecordKeyShare,
   type RandomSource,
 } from "@opesvault/crypto";
 import {
@@ -48,7 +50,7 @@ import {
   type SyncBackend,
 } from "./backend.ts";
 import { BlobCache } from "./blob_cache.ts";
-import type { PendingChange, VaultCache } from "./cache.ts";
+import type { CachedSnapshot, PendingChange, VaultCache } from "./cache.ts";
 import { IdleTimer, systemTimers, type Timers } from "./timers.ts";
 
 export type { PlainRecord } from "@opesvault/crypto";
@@ -151,8 +153,8 @@ export interface ProjectVaultOptions {
   /** Decrypted attachments kept in memory while unlocked. */
   readonly blobCacheBytes?: number;
   readonly pullPageSize?: number;
-  /** Opens records off the main thread (the app supplies Web Workers); the vault works without one. */
-  readonly recordOpener?: RecordOpener;
+  /** When the device snapshot is written (defaults: `SNAPSHOT_MIN`, `SNAPSHOT_STALE`, `SNAPSHOT_DELAY_MS`). */
+  readonly deviceSnapshot?: { readonly minRecords?: number; readonly stale?: number; readonly delayMs?: number };
 }
 
 export interface CreateProjectOptions extends Omit<ProjectVaultOptions, "projectId"> {
@@ -211,51 +213,29 @@ const LOCKED_SNAPSHOT: VaultSnapshot = Object.freeze({
 });
 
 /** A sealed record as the vault holds it before opening. */
-export interface SealedItem {
+interface SealedItem {
   readonly id: string;
   readonly ciphertext: string;
 }
 
-/** One cached record after the opener read and opened it. */
-export type OpenedEntry =
+/** One cached record, opened (or found to be a tombstone or damaged): also the device snapshot's format. */
+type OpenedEntry =
   | readonly [id: string, revision: number, state: "tombstone"]
   | readonly [id: string, revision: number, state: "damaged"]
   | readonly [id: string, revision: number, state: "open", record: PlainRecord];
 
-/**
- * Opens many records somewhere else than the main thread (Web Workers, supplied by the app). Without one the
- * vault opens them here, a batch at a time. The keys it gets are non-extractable `CryptoKey`s; the opener
- * must not keep them once the call is answered. A failing opener is not an error of the project: the
- * vault opens the records on this thread instead.
- */
-export interface RecordOpener {
-  /** Opens `items`; the answers follow the order of `items`, `null` for a record that does not open. */
-  open(share: RecordKeyShare, items: readonly SealedItem[]): Promise<(PlainRecord | null)[]>;
-  /** Reads the project's cached records from IndexedDB (database `cacheName`) and opens them. */
-  openCached(share: RecordKeyShare, cacheName: string, projectId: string): Promise<OpenedEntry[]>;
-}
-
 /** Records decrypted at once: enough to keep the browser's crypto threads busy without a huge promise list. */
 const OPEN_BATCH = 256;
-/** Fewer records than this are opened here: starting workers would cost more than it saves. */
-const OPENER_MIN = 2000;
+/** A project with fewer records than this opens fast without a device snapshot: none is written. */
+const SNAPSHOT_MIN = 2000;
+/** The device snapshot is rewritten once this many records were written after it… */
+const SNAPSHOT_STALE = 500;
+/** …a moment after the last of them, when nothing is pending (writing it costs a fraction of a second). */
+const SNAPSHOT_DELAY_MS = 5000;
 
 /** Decrypts many records, a batch at a time; a record that fails to open is `null` (damaged). */
-async function openMany(
-  keys: ProjectKeys,
-  items: readonly SealedItem[],
-  opener: RecordOpener | null,
-): Promise<Map<string, PlainRecord | null>> {
+async function openMany(keys: ProjectKeys, items: readonly SealedItem[]): Promise<Map<string, PlainRecord | null>> {
   const out = new Map<string, PlainRecord | null>();
-  if (opener !== null && items.length >= OPENER_MIN) {
-    try {
-      const opened = await opener.open(keys.shareRecordKeys(), items);
-      items.forEach((item, k) => out.set(item.id, opened[k] ?? null));
-      return out;
-    } catch {
-      out.clear(); // the workers failed: open them here
-    }
-  }
   for (let i = 0; i < items.length; i += OPEN_BATCH) {
     const batch = items.slice(i, i + OPEN_BATCH);
     const opened = await Promise.all(batch.map((item) => keys.openRecord(item.id, item.ciphertext).catch(() => null)));
@@ -280,7 +260,6 @@ export class ProjectVault {
   readonly holder: string;
   readonly #backend: SyncBackend;
   readonly #cache: VaultCache;
-  readonly #opener: RecordOpener | null;
   readonly #kdf: KdfParams | undefined;
   readonly #random: RandomSource;
   readonly #timers: Timers;
@@ -315,6 +294,13 @@ export class ProjectVault {
   #heldBy: EditLease | null = null;
   #online = true;
   #syncing = false;
+  /** Changes whose in-memory part is done but not yet sealed into `#pending` (see `stage`). */
+  #unstaged = 0;
+  /** The generation of the device snapshot this device has (null: none), and rows written after it. */
+  #snapshotGeneration: number | null = null;
+  #snapshotStale = 0;
+  #snapshotTimer: unknown = null;
+  readonly #snapshotRule: { readonly minRecords: number; readonly stale: number; readonly delayMs: number };
   #lastError: string | null = null;
 
   #wantPull = false;
@@ -339,7 +325,11 @@ export class ProjectVault {
     this.projectId = options.projectId;
     this.#backend = options.backend;
     this.#cache = options.cache;
-    this.#opener = options.recordOpener ?? null;
+    this.#snapshotRule = {
+      minRecords: options.deviceSnapshot?.minRecords ?? SNAPSHOT_MIN,
+      stale: options.deviceSnapshot?.stale ?? SNAPSHOT_STALE,
+      delayMs: options.deviceSnapshot?.delayMs ?? SNAPSHOT_DELAY_MS,
+    };
     this.#kdf = options.kdf;
     this.#random = options.random ?? systemRandom;
     this.holder = options.holder ?? `tab-${randomId(this.#random)}`;
@@ -478,6 +468,8 @@ export class ProjectVault {
   async unlock(password: string): Promise<void> {
     if (this.#keys !== null) return;
     let t = performance.now();
+    // Read while the password is checked: it is ciphertext, and only the key opens it.
+    const snapshot = this.#cache.getSnapshot(this.projectId).catch(() => null);
     const envelope = await this.#envelope();
     t = span("envelope", t);
     let keys: ProjectKeys;
@@ -487,7 +479,7 @@ export class ProjectVault {
       throw vaultErrorFromCrypto(error);
     }
     span("kdf", t);
-    await this.#open(keys);
+    await this.#open(keys, snapshot);
   }
 
   /**
@@ -570,6 +562,10 @@ export class ProjectVault {
     this.#locking = true;
     this.#generation += 1;
     this.#clearTimers();
+    if (this.#snapshotTimer !== null) this.#timers.clearTimeout(this.#snapshotTimer);
+    this.#snapshotTimer = null;
+    this.#snapshotGeneration = null;
+    this.#snapshotStale = 0;
     this.#idle?.stop();
     this.#update();
     // Changes being sealed right now finish first, so that no staged change is lost.
@@ -641,55 +637,17 @@ export class ProjectVault {
     await this.#cache.updateProject(this.projectId, { envelope: stored });
   }
 
-  async #open(keys: ProjectKeys): Promise<void> {
+  async #open(keys: ProjectKeys, snapshot?: Promise<CachedSnapshot | null>): Promise<void> {
     this.#generation += 1;
     const generation = this.#generation;
-    let t = performance.now();
     const cached = await this.#cache.getProject(this.projectId);
     const pending = await this.#cache.listPending(this.projectId);
     this.#cursor = cached?.cursor ?? 0;
     this.#sealedName = cached?.sealedName ?? null;
-    let entries: OpenedEntry[] | null = null;
-    if (this.#opener !== null) {
-      // Read and opened in the workers, a slice of the ids each: the main thread only receives the result.
-      try {
-        entries = await this.#opener.openCached(keys.shareRecordKeys(), this.#cache.name, this.projectId);
-        t = span("cache-read+decrypt", t);
-      } catch {
-        entries = null; // the workers failed: read and open here
-      }
-    }
-    if (entries !== null) {
-      for (const entry of entries) {
-        const [id, revision, state] = entry;
-        this.#known.set(id, revision);
-        if (state === "tombstone") this.#tombstones.add(id);
-        else if (state === "damaged") this.#damaged.add(id);
-        else {
-          const plain = entry[3];
-          this.#refs.set(id, { kind: plain.kind, id: plain.id });
-          this.#plain.set(recordKey(plain.kind, plain.id), plain);
-        }
-      }
-    } else {
-      const records = await this.#cache.listRecords(this.projectId);
-      t = span("cache-read", t);
-      const sealed: SealedItem[] = [];
-      for (const record of records) {
-        this.#known.set(record.id, record.revision);
-        if (record.ciphertext === null) this.#tombstones.add(record.id);
-        else sealed.push({ id: record.id, ciphertext: record.ciphertext });
-      }
-      for (const [id, plain] of await openMany(keys, sealed, null)) {
-        if (plain === null) {
-          this.#damaged.add(id);
-          continue;
-        }
-        this.#refs.set(id, { kind: plain.kind, id: plain.id });
-        this.#plain.set(recordKey(plain.kind, plain.id), plain);
-      }
-      t = span("decrypt", t);
-    }
+    const entries = await this.#readCachedEntries(keys, cached?.generation, snapshot);
+    let t = performance.now();
+    this.#loadEntries(entries, new Set());
+    t = span("load", t);
     for (const change of pending) {
       this.#pending.set(change.id, change);
       if (change.ciphertext === null) {
@@ -723,6 +681,174 @@ export class ProjectVault {
     this.#update();
     await this.#connect();
     span("connect", t);
+    this.#scheduleSnapshot();
+  }
+
+  /**
+   * Every record this device has cached for the project, opened: from the device snapshot (and the rows written
+   * after it) when there is one, else every record one by one. `generation` is the cache's (undefined: do not
+   * look for a snapshot).
+   */
+  async #readCachedEntries(
+    keys: ProjectKeys,
+    generation: number | undefined,
+    snapshot?: Promise<CachedSnapshot | null>,
+  ): Promise<OpenedEntry[]> {
+    let t = performance.now();
+    const fromSnapshot = await this.#openFromSnapshot(keys, generation, snapshot);
+    if (fromSnapshot !== null) {
+      span("snapshot", t);
+      return fromSnapshot;
+    }
+    const records = await this.#cache.listRecords(this.projectId);
+    t = span("cache-read", t);
+    const opened = await openMany(
+      keys,
+      records.flatMap((r) => (r.ciphertext === null ? [] : [{ id: r.id, ciphertext: r.ciphertext }])),
+    );
+    span("decrypt", t);
+    return records.map((r): OpenedEntry => {
+      if (r.ciphertext === null) return [r.id, r.revision, "tombstone"];
+      const plain = opened.get(r.id) ?? null;
+      return plain === null ? [r.id, r.revision, "damaged"] : [r.id, r.revision, "open", plain];
+    });
+  }
+
+  /**
+   * Puts opened entries in memory. Records in `keep` (with a local change waiting) only get their revision: their
+   * in-memory version is the local one. Returns the records that were opened, for `#emitRemote`.
+   */
+  #loadEntries(entries: readonly OpenedEntry[], keep: ReadonlySet<string>): PlainRecord[] {
+    const opened: PlainRecord[] = [];
+    for (const entry of entries) {
+      const [id, revision, state] = entry;
+      this.#known.set(id, revision);
+      if (keep.has(id)) continue;
+      if (state === "tombstone") {
+        this.#tombstones.add(id);
+        this.#damaged.delete(id);
+      } else if (state === "damaged") this.#damaged.add(id);
+      else {
+        const plain = entry[3];
+        this.#tombstones.delete(id);
+        this.#damaged.delete(id);
+        this.#refs.set(id, { kind: plain.kind, id: plain.id });
+        this.#plain.set(recordKey(plain.kind, plain.id), plain);
+        opened.push(plain);
+      }
+    }
+    return opened;
+  }
+
+  /**
+   * The project as this device's snapshot holds it, plus the records written after the snapshot (opened one by
+   * one). Null when there is no usable snapshot: none yet, an older cache, or one that does not open (then it is
+   * dropped and the records are opened as before).
+   */
+  async #openFromSnapshot(
+    keys: ProjectKeys,
+    generation: number | undefined,
+    prefetched?: Promise<CachedSnapshot | null>,
+  ): Promise<OpenedEntry[] | null> {
+    this.#snapshotGeneration = null;
+    this.#snapshotStale = 0;
+    if (generation === undefined) return null;
+    let t = performance.now();
+    const snapshot = await (prefetched ?? this.#cache.getSnapshot(this.projectId).catch(() => null));
+    if (snapshot === null || snapshot.generation > generation) return null;
+    t = span("snapshot:read", t);
+    let entries: OpenedEntry[];
+    try {
+      const plaintext = await keys.openSnapshot(snapshot.sealed, snapshot.generation);
+      t = span("snapshot:decrypt", t);
+      try {
+        const text = fromUtf8(plaintext);
+        t = span("snapshot:decode", t);
+        entries = JSON.parse(text) as OpenedEntry[];
+        t = span("snapshot:parse", t);
+      } finally {
+        wipe(plaintext);
+      }
+      if (!Array.isArray(entries)) throw new Error("not a snapshot");
+    } catch {
+      await this.#cache.removeSnapshot(this.projectId).catch(() => undefined);
+      return null;
+    }
+    // The usual case: nothing was written after the snapshot, and the cache says so without a query.
+    const after =
+      snapshot.generation === generation ? [] : await this.#cache.listRecordsSince(this.projectId, snapshot.generation);
+    span("snapshot:after", t);
+    if (after.length > 0) {
+      const byId = new Map<string, OpenedEntry>(entries.map((entry) => [entry[0], entry]));
+      const sealed = after.flatMap((r) => (r.ciphertext === null ? [] : [{ id: r.id, ciphertext: r.ciphertext }]));
+      const opened = await openMany(keys, sealed);
+      for (const row of after) {
+        if (row.ciphertext === null) byId.set(row.id, [row.id, row.revision, "tombstone"]);
+        else {
+          const plain = opened.get(row.id) ?? null;
+          byId.set(row.id, plain === null ? [row.id, row.revision, "damaged"] : [row.id, row.revision, "open", plain]);
+        }
+      }
+      entries = [...byId.values()];
+    }
+    this.#snapshotGeneration = snapshot.generation;
+    this.#snapshotStale = after.length;
+    return entries;
+  }
+
+  /** Rewrites the device snapshot a moment after enough records changed (or when a big project has none). */
+  #scheduleSnapshot(): void {
+    const rule = this.#snapshotRule;
+    if (this.#keys === null || this.#known.size < rule.minRecords || this.#snapshotTimer !== null) return;
+    if (this.#snapshotGeneration !== null && this.#snapshotStale < rule.stale) return;
+    const generation = this.#generation;
+    this.#snapshotTimer = this.#timers.setTimeout(() => {
+      this.#snapshotTimer = null;
+      if (generation === this.#generation) void this.#writeSnapshot(generation).catch(() => undefined);
+    }, rule.delayMs);
+  }
+
+  /**
+   * Seals what this tab holds as the device snapshot. Only while memory and the cache say the same: nothing
+   * pending, being staged or in conflict, and no page or push being applied (the queue is held meanwhile).
+   * Otherwise it waits for the next chance.
+   */
+  async #writeSnapshot(generation: number): Promise<void> {
+    const keys = this.#keys;
+    if (keys === null) return;
+    const built = await this.#exclusive(async () => {
+      const row = await this.#cache.getProject(this.projectId);
+      if (generation !== this.#generation || this.#keys !== keys) return null;
+      if (this.#pending.size > 0 || this.#unstaged > 0 || this.#conflicts.size > 0) return null;
+      const entries: OpenedEntry[] = [];
+      for (const [id, revision] of this.#known) {
+        if (this.#tombstones.has(id)) entries.push([id, revision, "tombstone"]);
+        else if (this.#damaged.has(id)) entries.push([id, revision, "damaged"]);
+        else {
+          const ref = this.#refs.get(id);
+          const plain = ref ? this.#plain.get(recordKey(ref.kind, ref.id)) : undefined;
+          if (plain === undefined) return null; // not what the cache holds: leave it for later
+          entries.push([id, revision, "open", plain]);
+        }
+      }
+      return { generation: row?.generation ?? 0, text: JSON.stringify(entries) };
+    });
+    if (built === null) {
+      this.#scheduleSnapshot();
+      return;
+    }
+    const plaintext = utf8(built.text);
+    let sealed: Uint8Array;
+    try {
+      sealed = await keys.sealSnapshot(plaintext, built.generation, this.#random);
+    } finally {
+      wipe(plaintext);
+    }
+    if (generation !== this.#generation) return;
+    if (await this.#cache.putSnapshot({ projectId: this.projectId, generation: built.generation, sealed })) {
+      this.#snapshotGeneration = built.generation;
+      this.#snapshotStale = 0;
+    }
   }
 
   /** After unlocking: refresh the name, pull, then try to become the editor. */
@@ -805,6 +931,8 @@ export class ProjectVault {
     const generation = this.#generation;
     for (const record of upserts) this.#plain.set(recordKey(record.kind, record.id), record);
     for (const ref of deletes) this.#plain.delete(recordKey(ref.kind, ref.id));
+    // Memory already has the change and `#pending` does not yet: no device snapshot may be taken meanwhile.
+    this.#unstaged += 1;
     const work = this.#exclusive(async () => {
       const changes = new Map<string, PendingChange>();
       const dropped: string[] = [];
@@ -861,6 +989,8 @@ export class ProjectVault {
         }
       }
       for (const id of dropped) this.#pending.delete(id);
+    }).finally(() => {
+      this.#unstaged -= 1;
     });
     return work.then(() => {
       if (generation !== this.#generation) return;
@@ -952,6 +1082,7 @@ export class ProjectVault {
         this.#syncing = false;
         this.#syncRun = null;
         this.#update();
+        if (generation === this.#generation) this.#scheduleSnapshot();
       }
     })();
     this.#syncRun = run;
@@ -986,14 +1117,48 @@ export class ProjectVault {
   }
 
   async #pullAll(generation: number): Promise<void> {
+    // Nothing of the project in memory yet (a device that never opened it): pages are only stored, sealed as
+    // they come, and opened together at the end. A page that touches a local change goes the
+    // usual way (it may be a conflict), after what was stored so far is loaded.
+    let fresh = this.#known.size === 0;
+    let stored = 0;
     for (;;) {
-      const page = await this.#backend.pull(this.projectId, this.#cursor, this.#pageSize);
+      const size = fresh ? Math.max(this.#pageSize, LIMITS.maxPullLimit) : this.#pageSize;
+      const page = await this.#backend.pull(this.projectId, this.#cursor, size);
       if (generation !== this.#generation) return;
       this.#online = true;
-      await this.#exclusive(() => this.#applyPage(page, generation));
+      if (fresh && page.revision >= this.#cursor && !page.records.some((r) => this.#pending.has(r.id))) {
+        await this.#exclusive(async () => {
+          if (generation !== this.#generation) return;
+          await this.#cache.applyPull(this.projectId, page.records, page.revision, []);
+          this.#snapshotStale += page.records.length;
+          this.#cursor = page.revision;
+        });
+        stored += page.records.length;
+      } else {
+        if (stored > 0) await this.#exclusive(() => this.#loadStored(generation));
+        stored = 0;
+        fresh = false;
+        await this.#exclusive(() => this.#applyPage(page, generation));
+      }
       if (!page.more) break;
     }
+    if (stored > 0) await this.#exclusive(() => this.#loadStored(generation));
     if (this.#lastError !== null && this.#lastError !== "server_behind") this.#lastError = null;
+  }
+
+  /** Opens what `#pullAll` stored without opening (a first download) and tells the listeners. */
+  async #loadStored(generation: number): Promise<void> {
+    const keys = this.#keys;
+    if (keys === null || generation !== this.#generation) return;
+    const t = performance.now();
+    const entries = await this.#readCachedEntries(keys, undefined);
+    if (generation !== this.#generation || this.#keys !== keys) return;
+    const upserts = this.#loadEntries(entries, new Set(this.#pending.keys()));
+    span("first-download-open", t);
+    this.#damagedChanged();
+    this.#update();
+    if (upserts.length > 0) this.#emitRemote({ upserts, deletes: [] });
   }
 
   async #applyPage(page: PullResult, generation: number): Promise<void> {
@@ -1019,7 +1184,6 @@ export class ProjectVault {
           ? [{ id: r.id, ciphertext: r.ciphertext }]
           : [],
       ),
-      this.#opener,
     );
     for (const record of page.records) {
       const known = this.#known.get(record.id) ?? 0;
@@ -1073,6 +1237,7 @@ export class ProjectVault {
       }
     }
     await this.#cache.applyPull(this.projectId, page.records, page.revision, acknowledged);
+    this.#snapshotStale += page.records.length;
     if (generation !== this.#generation) return;
     for (const record of page.records) {
       if (record.revision > (this.#known.get(record.id) ?? 0)) this.#known.set(record.id, record.revision);
@@ -1160,6 +1325,7 @@ export class ProjectVault {
             revision,
             cursor,
           );
+          this.#snapshotStale += batch.length;
           if (generation !== this.#generation) return;
           for (const change of batch) {
             const current = this.#pending.get(change.id);

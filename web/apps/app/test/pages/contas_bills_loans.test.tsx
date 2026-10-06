@@ -12,7 +12,7 @@ import {
   LedgerAccountSchema,
   ymOf,
 } from "@opesvault/domain";
-import { screen, waitFor, within } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import {
   choose,
@@ -30,6 +30,7 @@ import {
   table,
   undoOnce,
 } from "./contas_harness.tsx";
+import { navigations, wentTo } from "../navigations.ts";
 
 vi.mock("../../../../packages/ui/src/chart/echarts.ts", async () => await import("./fake_echarts.ts"));
 
@@ -432,10 +433,10 @@ describe("Financiamentos", () => {
 
   it("opens the contract's operations in the Livro (Ver lançamentos do financiamento)", async () => {
     const { ledger, router, user } = await openLoans();
+    const went = navigations(router);
     await user.click(screen.getByRole("button", { name: "Mais" }));
     await user.click(await screen.findByRole("menuitem", { name: "Ver lançamentos do financiamento" }));
-    await waitFor(() => expect(router.state.location.pathname).toBe("/livro"));
-    expect((router.state.location.search as { ref?: string }).ref).toBe(`conta:${planOf(ledger).liability_account_id}`);
+    await wentTo(went, "/livro", { ref: `conta:${planOf(ledger).liability_account_id}` });
   });
 
   it("explains that nothing is selected in an empty project", async () => {

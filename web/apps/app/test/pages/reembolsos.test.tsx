@@ -3,6 +3,7 @@ import { act as reactAct, screen, waitFor, within } from "@testing-library/react
 import { describe, expect, it } from "vitest";
 import { findReimbursement, sharingView, summaryLine } from "../../src/pages/reembolsos/rows.ts";
 import { flat, openAt, shareExpenses, type OpenOptions, type User } from "./sharing_docs_harness.tsx";
+import { navigations, wentTo } from "../navigations.ts";
 
 const open = (path = "/reembolsos", options: OpenOptions = { prepare: shareExpenses }) =>
   openAt(path, "Reembolsos e acertos", options);
@@ -214,9 +215,9 @@ describe("Reembolsos e acertos", () => {
     const { ledger, router, user } = await open();
     const item = only(sharing.reimbursements(ledger).values());
     await pickRow(user, "Reembolsos", "Consulta pediatra");
+    const went = navigations(router);
     await user.click(screen.getByRole("button", { name: "Ver lançamento" }));
-    await waitFor(() => expect(router.state.location.pathname).toBe("/livro"));
-    expect((router.state.location.search as { ref?: string }).ref).toBe(item.operation_id);
+    await wentTo(went, "/livro", { ref: item.operation_id });
   });
 
   it("opens the operation of a share from the expenses that form the balance", async () => {
@@ -224,10 +225,10 @@ describe("Reembolsos e acertos", () => {
     const shares = await table("Despesas que formam o saldo");
     await user.click(within(shares).getByText("Material escolar"));
     const bar = (await screen.findByText("Selecionado:")).closest("div")!.parentElement!;
+    const went = navigations(router);
     await user.click(within(bar).getByRole("button", { name: "Ver lançamento" }));
-    await waitFor(() => expect(router.state.location.pathname).toBe("/livro"));
     const operation = [...ledger.operations.values()].find((o) => o.description === "Material escolar")!;
-    expect((router.state.location.search as { ref?: string }).ref).toBe(operation.id);
+    await wentTo(went, "/livro", { ref: operation.id });
   });
 
   it("follows a link from another screen: selects the reimbursement and starts the receipt", async () => {

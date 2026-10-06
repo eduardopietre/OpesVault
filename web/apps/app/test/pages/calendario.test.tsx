@@ -8,6 +8,7 @@ import { pageById } from "../../src/pages.tsx";
 import { dayLabel } from "../../src/pages/calendario/month_grid.tsx";
 import { agendaFigures, dayTitle, entriesOf, monthWeeks } from "../../src/pages/calendario/rows.ts";
 import { mountPage } from "./overview_calendar_helpers.tsx";
+import { navigations, wentTo } from "../navigations.ts";
 
 beforeEach(() => chooseMonth(ymOf(today())));
 afterEach(() => vi.unstubAllGlobals());
@@ -119,12 +120,15 @@ describe("Calendário", () => {
     for (const event of events) {
       const link = eventLink(event);
       const page = pageById(link.page)!;
+      const went = navigations(router);
       await user.click(screen.getByRole("button", { name: `${link.label}: ${event.title}` }));
+      await wentTo(
+        went,
+        page.path,
+        { ...(link.ref ? { ref: link.ref } : {}), ...(link.act ? { act: link.act } : {}) },
+        { exact: true },
+      );
       await waitFor(() => expect(router.state.location.pathname).toBe(page.path));
-      expect(router.state.location.search).toEqual({
-        ...(link.ref ? { ref: link.ref } : {}),
-        ...(link.act ? { act: link.act } : {}),
-      });
       seen.add(`${link.page}|${link.act ?? ""}`);
       await router.navigate({ to: "/calendario" });
       await heading();

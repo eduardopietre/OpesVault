@@ -16,7 +16,6 @@ import {
   verifyBackup as vaultVerifyBackup,
   watchActivity,
   type ProjectVaultOptions,
-  type RecordOpener,
   type SyncBackend,
   VaultCache,
   VaultError,
@@ -47,8 +46,6 @@ export interface RealServicesOptions {
   /** Tests only: cheaper key derivation and vault timing. */
   readonly kdf?: KdfParams;
   readonly vaultOptions?: Partial<Pick<ProjectVaultOptions, "timers" | "pushDelayMs" | "retryMs" | "pollMs">>;
-  /** Opens the records of a big project on Web Workers (data/open_pool.ts); without it, on this thread. */
-  readonly recordOpener?: RecordOpener | undefined;
 }
 
 const BACKUP_MESSAGES: Record<BackupError["code"], string> = {
@@ -174,7 +171,6 @@ export function createRealServices(options: RealServicesOptions = {}): AppServic
           ...(options.holder ? { holder: options.holder } : {}),
           ...(options.kdf ? { kdf: options.kdf } : {}),
           ...options.vaultOptions,
-          ...(options.recordOpener ? { recordOpener: options.recordOpener } : {}),
           idleLockMs: idleMs,
         }),
     );

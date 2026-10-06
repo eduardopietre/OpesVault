@@ -27,23 +27,18 @@ export interface PlainRecord {
   readonly payload: unknown;
 }
 
-/** The two keys it takes to open a record: see `ProjectKeys.shareRecordKeys`. */
-export interface RecordKeyShare {
-  readonly projectId: string;
-  readonly records: CryptoKey;
-  readonly recordIds: CryptoKey;
-}
-
 export const INFO = {
   records: "opesvault/records/v1",
   recordId: "opesvault/record-id/v1",
   name: "opesvault/project-name/v1",
   blobKey: "opesvault/blob-key/v1",
+  deviceSnapshot: "opesvault/device-snapshot/v1",
 } as const;
 
 const RECORD_VERSION = 1;
 const NAME_VERSION = 1;
 const BLOB_KEY_VERSION = 1;
+const SNAPSHOT_VERSION = 1;
 /** Plaintext is padded with JSON whitespace to a multiple of this, to blur exact sizes. */
 export const RECORD_PADDING = 64;
 export const OPAQUE_ID_CHARS = 32;
@@ -95,26 +90,36 @@ export class ProjectKeys {
   #recordIds: CryptoKey | null;
   #name: CryptoKey | null;
   #blobKeys: CryptoKey | null;
+  #snapshot: CryptoKey | null;
 
-  private constructor(projectId: string, records: CryptoKey, recordIds: CryptoKey, name: CryptoKey, blobs: CryptoKey) {
+  private constructor(
+    projectId: string,
+    records: CryptoKey,
+    recordIds: CryptoKey,
+    name: CryptoKey,
+    blobs: CryptoKey,
+    snapshot: CryptoKey,
+  ) {
     this.projectId = projectId;
     this.#records = records;
     this.#recordIds = recordIds;
     this.#name = name;
     this.#blobKeys = blobs;
+    this.#snapshot = snapshot;
   }
 
   /** Derives the working keys from the raw project key. The caller still owns (and wipes) `raw`. */
   static async fromProjectKey(projectId: string, raw: Bytes): Promise<ProjectKeys> {
     if (raw.length !== KEY_BYTES) throw new CryptoError("invalid_format");
     const base = await importHkdfKey(raw);
-    const [records, recordIds, name, blobs] = await Promise.all([
+    const [records, recordIds, name, blobs, snapshot] = await Promise.all([
       hkdfAesKey(base, utf8(INFO.records)),
       hkdfHmacKey(base, utf8(INFO.recordId)),
       hkdfAesKey(base, utf8(INFO.name)),
       hkdfAesKey(base, utf8(INFO.blobKey)),
+      hkdfAesKey(base, utf8(INFO.deviceSnapshot)),
     ]);
-    return new ProjectKeys(projectId, records, recordIds, name, blobs);
+    return new ProjectKeys(projectId, records, recordIds, name, blobs, snapshot);
   }
 
   get destroyed(): boolean {
@@ -127,6 +132,7 @@ export class ProjectKeys {
     this.#recordIds = null;
     this.#name = null;
     this.#blobKeys = null;
+    this.#snapshot = null;
   }
 
   #key(key: CryptoKey | null): CryptoKey {
@@ -160,16 +166,26 @@ export class ProjectKeys {
    * record or project, or if the record inside does not hash to this opaque id.
    */
   async openRecord(opaqueId: string, ciphertext: B64): Promise<PlainRecord> {
-    return openRecordWith(this.shareRecordKeys(), opaqueId, ciphertext);
+    return openSealedRecord(this.projectId, this.#key(this.#records), this.#key(this.#recordIds), opaqueId, ciphertext);
   }
 
   /**
-   * The two keys that open records, for a Web Worker of this app that opens many records at once. They are
-   * non-extractable CryptoKeys: the worker can use them but never read them. The caller ends the worker as
-   * soon as it is done (`destroy()` here does not reach it).
+   * Seals this device's snapshot of the project (docs/19 §8): every opened record at one generation of the
+   * local cache, in a single block, so that opening a big project decrypts one block instead of each record.
+   * It never leaves the device. The generation is bound into the AAD: a snapshot cannot pass for another one.
    */
-  shareRecordKeys(): RecordKeyShare {
-    return { projectId: this.projectId, records: this.#key(this.#records), recordIds: this.#key(this.#recordIds) };
+  async sealSnapshot(plaintext: Bytes, generation: number, random: RandomSource = systemRandom): Promise<Bytes> {
+    return seal(this.#key(this.#snapshot), plaintext, this.#snapshotAad(generation), SNAPSHOT_VERSION, random);
+  }
+
+  /** Opens a snapshot sealed by `sealSnapshot` for this project and generation; anything else fails. */
+  async openSnapshot(sealed: Uint8Array, generation: number): Promise<Bytes> {
+    return open(this.#key(this.#snapshot), sealed, this.#snapshotAad(generation), SNAPSHOT_VERSION);
+  }
+
+  #snapshotAad(generation: number): Bytes {
+    if (!Number.isSafeInteger(generation) || generation < 0) throw new CryptoError("invalid_format");
+    return utf8(`${INFO.deviceSnapshot}|${this.projectId}|${generation}`);
   }
 
   async sealName(name: string, random: RandomSource = systemRandom): Promise<B64> {
@@ -285,15 +301,21 @@ export class ProjectKeys {
   }
 }
 
-/** Opens one record with its keys (the body of `ProjectKeys.openRecord`, usable inside a worker). */
-export async function openRecordWith(share: RecordKeyShare, opaqueId: string, ciphertext: B64): Promise<PlainRecord> {
+/** The body of `ProjectKeys.openRecord`: opens one record and checks that it hashes to its opaque id. */
+async function openSealedRecord(
+  projectId: string,
+  records: CryptoKey,
+  recordIds: CryptoKey,
+  opaqueId: string,
+  ciphertext: B64,
+): Promise<PlainRecord> {
   let sealed: Bytes;
   try {
     sealed = fromB64(ciphertext);
   } catch {
     throw new CryptoError("invalid_format");
   }
-  const plaintext = await open(share.records, sealed, recordAad(share.projectId, opaqueId), RECORD_VERSION);
+  const plaintext = await open(records, sealed, recordAad(projectId, opaqueId), RECORD_VERSION);
   let value: unknown;
   try {
     value = JSON.parse(fromUtf8(plaintext));
@@ -313,7 +335,7 @@ export async function openRecordWith(share: RecordKeyShare, opaqueId: string, ci
   }
   const record = value as PlainRecord;
   checkRecordRef(record.kind, record.id);
-  const mac = await hmac(share.recordIds, utf8(`${record.kind}\n${record.id}`));
+  const mac = await hmac(recordIds, utf8(`${record.kind}\n${record.id}`));
   if (toHex(mac).slice(0, OPAQUE_ID_CHARS) !== opaqueId) throw new CryptoError("decrypt_failed");
   return { kind: record.kind, id: record.id, payload: record.payload };
 }

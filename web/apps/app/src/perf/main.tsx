@@ -8,12 +8,11 @@
  * `window.__perf` is what e2e/perf.spec.ts drives; every phase is also a `performance.measure`.
  */
 import "@opesvault/ui/styles.css";
-import { ProjectVault, MemoryServer, type RecordOpener, VaultCache, signUp as vaultSignUp } from "@opesvault/vault";
+import { ProjectVault, MemoryServer, VaultCache, signUp as vaultSignUp } from "@opesvault/vault";
 import { createRoot } from "react-dom/client";
 import { App } from "../App.tsx";
 import { devicePreferences } from "../preferences.ts";
 import { createAppRouter, preloadProjectScreens } from "../router.tsx";
-import { createWorkerOpener } from "../data/open_pool.ts";
 import { Workspace } from "../data/workspace.ts";
 import { createFakeServices } from "../services/fake.ts";
 import { createRealServices } from "../services/real.ts";
@@ -74,15 +73,6 @@ async function start() {
   let services: AppServices;
   let seedCache: VaultCache | null = null;
   let projectId = "perf-project";
-  // The workers can be switched off between two openings of the same project (a rejection makes the vault open
-  // the records on its own thread), so both ways are measured under the same load.
-  let workersOn = params.get("workers") !== "0";
-  const workerOpener = createWorkerOpener();
-  const switchable: RecordOpener | undefined = workerOpener && {
-    open: (share, items) => (workersOn ? workerOpener.open(share, items) : Promise.reject(new Error("off"))),
-    openCached: (share, name, id) =>
-      workersOn ? workerOpener.openCached(share, name, id) : Promise.reject(new Error("off")),
-  };
   let records: number;
   if (mode === "real") {
     const server = new MemoryServer();
@@ -112,7 +102,6 @@ async function start() {
       backend,
       openCache: () => Promise.resolve(seedCache!),
       holder: "perf-tab",
-      recordOpener: switchable,
       idleLockMs: null,
     });
   } else {
@@ -181,9 +170,22 @@ async function start() {
     async useColdCache(): Promise<void> {
       await seedCache?.forgetProject(projectId);
     },
-    /** Opens the records with the workers (the default) or on the main thread. */
-    setWorkers(on: boolean): void {
-      workersOn = on;
+    /** Waits until the vault has written this device's snapshot (a moment after opening); resolves with the ms waited. */
+    async waitForDeviceSnapshot(): Promise<number> {
+      const started = performance.now();
+      while (seedCache !== null && (await seedCache.getSnapshot(projectId)) === null) {
+        if (performance.now() - started > 120_000) throw new Error("no device snapshot");
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      return Math.round(performance.now() - started);
+    },
+    /** The size of the device snapshot as stored (bytes), 0 without one. */
+    async deviceSnapshotBytes(): Promise<number> {
+      return (await seedCache?.getSnapshot(projectId))?.sealed.length ?? 0;
+    },
+    /** Drops the device snapshot: the next open decrypts every record, as before it existed. */
+    async dropDeviceSnapshot(): Promise<void> {
+      await seedCache?.removeSnapshot(projectId);
     },
     go: (to: string) => router.navigate({ to }),
     appears: (selector: string) => appears(() => document.querySelector(selector) !== null),

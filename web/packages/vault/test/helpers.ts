@@ -159,5 +159,8 @@ export async function dumpIndexedDb(factory: IDBFactory, name = "opesvault"): Pr
     });
   }
   db.close();
-  return JSON.stringify(out);
+  // Bytes (the device snapshot, attachments) are dumped as text, so plaintext inside them would show.
+  return JSON.stringify(out, (_key, value: unknown) =>
+    value instanceof Uint8Array ? Buffer.from(value).toString("latin1") + Buffer.from(value).toString("utf8") : value,
+  );
 }

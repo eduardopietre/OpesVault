@@ -28,7 +28,6 @@ async function start() {
       (await import("./services/real.ts")).createRealServices({
         holder: tabHolder(),
         idleLockMs: idleMinutes * 60_000,
-        recordOpener: (await import("./data/open_pool.ts")).createWorkerOpener(),
       }),
     );
   const session = new SessionStore();

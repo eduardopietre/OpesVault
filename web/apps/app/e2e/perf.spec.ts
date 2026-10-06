@@ -115,7 +115,15 @@ test.describe("real vault path", () => {
     coldMemory.rssMiB = (await processRss(page)) || coldMemory.rssMiB;
     save("memory after cold open", coldMemory);
 
-    // Warm: the records are in IndexedDB.
+    // The vault writes this device's snapshot a moment after opening a big project (docs/19 §8).
+    const waited = await call<number>(page, "(p) => p.waitForDeviceSnapshot()");
+    const bytes = await call<number>(page, "(p) => p.deviceSnapshotBytes()");
+    save("device snapshot", {
+      "written after opening (ms, includes the 5 s delay)": waited,
+      "size (MiB)": +(bytes / 2 ** 20).toFixed(1),
+    });
+
+    // Warm: the records are in IndexedDB, with the device snapshot.
     await call(page, "(p) => p.close()");
     await page.evaluate(() => performance.clearMeasures());
     const warm = await openProject(page, cdp);
@@ -125,6 +133,17 @@ test.describe("real vault path", () => {
     warmMemory.rssMiB = (await processRss(page)) || warmMemory.rssMiB;
     save("memory after warm open", warmMemory);
     expect(warm["total"]).toBeGreaterThan(0);
+
+    // The same without the snapshot: every record decrypted one by one, as before the snapshot was written.
+    await call(page, "(p) => p.close()");
+    await call(page, "(p) => p.dropDeviceSnapshot()");
+    await page.evaluate(() => performance.clearMeasures());
+    const noSnapshot = await openProject(page, cdp);
+    const noSnapshotMarks = await call<Record<string, number>>(page, "(p) => p.marks()");
+    save("open warm without the snapshot", { ...noSnapshot, ...noSnapshotMarks });
+    const noSnapshotMemory = await memory(page, cdp);
+    noSnapshotMemory.rssMiB = (await processRss(page)) || noSnapshotMemory.rssMiB;
+    save("memory after warm open without the snapshot", noSnapshotMemory);
   });
 });
 

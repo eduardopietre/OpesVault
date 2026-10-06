@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { alertLink, eventLink } from "../../src/data/links.ts";
 import { forecastId, forecastWindow, ruleRef } from "../../src/pages/recorrencias/rows.ts";
 import { flat, linkCount, openPage, rowOf, rules, seedRule } from "./recorrencias_harness.tsx";
+import { navigations, wentTo } from "../navigations.ts";
 
 vi.mock("../../../../packages/ui/src/chart/echarts.ts", () => import("./fake_echarts.ts"));
 
@@ -112,9 +113,9 @@ describe("Recorrências: vindo de outras páginas (useReveal)", () => {
 
   it("the projection command leaves for the report with its reference", async () => {
     const o = await openPage("/recorrencias", "Recorrências");
+    const went = navigations(o.router);
     await o.user.click(screen.getByRole("button", { name: "Mais" }));
     await o.user.click(await screen.findByRole("menuitem", { name: "Projeção de compromissos (Relatórios)" }));
-    await waitFor(() => expect(o.router.state.location.pathname).toBe("/relatorios"));
-    expect(o.router.state.location.search).toMatchObject({ ref: "projected_balance" });
+    await wentTo(went, "/relatorios", { ref: "projected_balance" });
   });
 });

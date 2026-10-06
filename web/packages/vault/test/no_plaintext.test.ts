@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { MemoryServer, ProjectVault, signIn, signUp, type SyncBackend } from "../src/index.ts";
-import { device, dumpIndexedDb, TEST_KDF } from "./helpers.ts";
+import { device, dumpIndexedDb, settle, TEST_KDF } from "./helpers.ts";
 
 const SECRETS = {
   projectName: "Família Secreta Oliveira",
@@ -59,6 +59,8 @@ describe("no plaintext leaves the tab", () => {
       kdf: TEST_KDF,
       name: SECRETS.projectName,
       password: SECRETS.projectPassword,
+      // The device snapshot is written for this small project too, so it is scanned like the rest.
+      deviceSnapshot: { minRecords: 1, stale: 1, delayMs: 10 },
     });
     await vault.stage([
       {
@@ -75,6 +77,9 @@ describe("no plaintext leaves the tab", () => {
     await vault.syncNow();
     server.offline = false;
     await vault.syncNow();
+    await dev.timers.advance(10);
+    for (let i = 0; i < 200 && (await dev.cache.getSnapshot(vault.projectId)) === null; i++) await settle(5);
+    expect(await dev.cache.getSnapshot(vault.projectId)).not.toBeNull();
     await vault.putBlob(new TextEncoder().encode(SECRETS.attachment));
     await vault.rename(`${SECRETS.projectName} 2`);
     await vault.changePassword(SECRETS.projectPassword, SECRETS.newProjectPassword);
@@ -87,6 +92,7 @@ describe("no plaintext leaves the tab", () => {
     const stored = await dumpIndexedDb(dev.factory);
     const sent = log.join("\n");
     expect(stored).toContain("pending");
+    expect(JSON.parse(stored).snapshots).toHaveLength(1);
     expect(sent).toContain("push");
     const forbidden = [
       ...Object.values(SECRETS),

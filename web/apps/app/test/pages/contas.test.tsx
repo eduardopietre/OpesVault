@@ -1,6 +1,6 @@
 /** Contas e cartões: the page, the plain lists (Integrantes, Cartões, Categorias) and Todas as contas. */
 import { AccountSubtype, AccountType, Dec, MemberRole, dom, formatBrl, queries } from "@opesvault/domain";
-import { screen, waitFor, within } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import {
   choose,
@@ -17,6 +17,7 @@ import {
   table,
   undoOnce,
 } from "./contas_harness.tsx";
+import { navigations, wentTo } from "../navigations.ts";
 
 vi.mock("../../../../packages/ui/src/chart/echarts.ts", async () => await import("./fake_echarts.ts"));
 
@@ -490,8 +491,8 @@ describe("Todas as contas", () => {
     const { ledger, router, user } = await openContas();
     await goTab(user, "Todas as contas");
     await pick(user, await table("Contas"), "Conjunta");
+    const went = navigations(router);
     await user.click(screen.getByRole("button", { name: "Ver lançamentos" }));
-    await waitFor(() => expect(router.state.location.pathname).toBe("/livro"));
-    expect((router.state.location.search as { ref?: string }).ref).toBe(`conta:${byName(ledger, "Conjunta").id}`);
+    await wentTo(went, "/livro", { ref: `conta:${byName(ledger, "Conjunta").id}` });
   });
 });

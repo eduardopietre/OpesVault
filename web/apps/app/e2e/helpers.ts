@@ -59,3 +59,23 @@ export async function settle(page: Page, ms = 400): Promise<void> {
   await page.evaluate(() => document.fonts.ready);
   await page.waitForTimeout(ms);
 }
+
+/**
+ * Records every address the app pushes or replaces from now on (also after a reload). A destination that reads
+ * its link (`ref`, `act`) clears it from the address at once, so a test cannot read the link from `page.url()`.
+ * Call it before `openDemo`; the function it returns lists the addresses of the current document.
+ */
+export async function recordAddresses(page: Page): Promise<() => Promise<string[]>> {
+  await page.addInitScript(() => {
+    const store = window as unknown as { __addresses: string[] };
+    store.__addresses = [];
+    for (const method of ["pushState", "replaceState"] as const) {
+      const original = history[method].bind(history);
+      history[method] = (data: unknown, unused: string, url?: string | URL | null) => {
+        store.__addresses.push(String(url ?? ""));
+        original(data, unused, url);
+      };
+    }
+  });
+  return () => page.evaluate(() => (window as unknown as { __addresses: string[] }).__addresses.slice());
+}

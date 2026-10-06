@@ -4,7 +4,15 @@
  */
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
-import { SCHEMES, SIZES, expectNoHorizontalOverflow, openDemo, settle, watchErrors } from "../helpers.ts";
+import {
+  SCHEMES,
+  SIZES,
+  expectNoHorizontalOverflow,
+  openDemo,
+  recordAddresses,
+  settle,
+  watchErrors,
+} from "../helpers.ts";
 
 async function audit(page: Page, label: string) {
   await page.mouse.move(1, 1); // a hovered button is another color: audit the resting state
@@ -31,6 +39,7 @@ for (const size of SIZES) {
       test("every button and dialog works, cleanly", async ({ page }) => {
         const errors = watchErrors(page);
         const phone = size.width < 640;
+        const addresses = await recordAddresses(page);
         await openDemo(page, "/orcamento");
         const table = page.getByRole(phone ? "listbox" : "grid", { name: "Orçamento por categoria" });
         await expect(table).toBeVisible();
@@ -69,7 +78,9 @@ for (const size of SIZES) {
         // Ver lançamentos goes to the ledger with the category and the month, and back
         await table.getByText("Transporte").first().click();
         await page.getByRole("button", { name: "Ver lançamentos" }).click();
-        await expect(page).toHaveURL(/\/livro\?.*ref=categoria/);
+        // the Livro reads its link and clears it from the address at once
+        await expect.poll(async () => (await addresses()).some((u) => /\/livro\?.*ref=categoria/.test(u))).toBe(true);
+        await expect(page.getByRole("heading", { level: 1, name: "Livro financeiro" })).toBeVisible();
         await page.goBack();
         await expect(page.getByRole("heading", { level: 1, name: "Orçamento" })).toBeVisible();
 
@@ -152,12 +163,16 @@ for (const size of SIZES) {
 
       test("opens the category and the action asked by a link, once", async ({ page }) => {
         const errors = watchErrors(page);
+        const addresses = await recordAddresses(page);
         await openDemo(page, "/orcamento");
         const table = page.getByRole(size.width < 640 ? "listbox" : "grid", { name: "Orçamento por categoria" });
         await table.getByText("Transporte").first().click();
         await page.getByRole("button", { name: "Ver lançamentos" }).click();
-        const url = new URL(page.url());
-        const ref = url.searchParams.get("ref");
+        await expect.poll(async () => (await addresses()).some((u) => u.includes("ref=categoria"))).toBe(true);
+        const ref = new URL(
+          (await addresses()).find((u) => u.includes("ref=categoria")) ?? "",
+          "http://x",
+        ).searchParams.get("ref");
         expect(ref).toMatch(/^categoria:[^:]+:\d{4}-\d{2}$/);
         await page.goBack();
         // go there with an action, as the overview alerts do

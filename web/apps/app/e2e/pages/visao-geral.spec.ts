@@ -213,7 +213,8 @@ test.describe("visão geral: every action", () => {
     await page.getByRole("button", { name: "Mais" }).click();
     await page.getByRole("menuitem", { name: "Comparação completa (Relatórios)" }).click();
     await expect(page).toHaveURL(/\/relatorios/);
-    expect(decodeURIComponent(page.url())).toContain("ref=comparison");
+    // Relatórios consumes the link at once and opens the comparison report.
+    await expect(page.getByText("Comparação com a média").first()).toBeVisible();
     await openDemo(page, "/visao-geral");
     await page.getByRole("button", { name: "Comparação completa", exact: true }).click();
     await expect(page).toHaveURL(/\/relatorios/);

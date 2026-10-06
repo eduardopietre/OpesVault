@@ -3,6 +3,7 @@
  * the key envelope, the recovery key, the login secret and record, name and blob sealing.
  */
 export * from "./argon2.ts";
+export * from "./backup.ts";
 export * from "./bytes.ts";
 export * from "./envelope.ts";
 export * from "./errors.ts";

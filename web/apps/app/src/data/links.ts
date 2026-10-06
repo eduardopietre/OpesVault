@@ -25,7 +25,10 @@
  *   investimentos "<positionId>"                  an investment (maturity)
  *   reembolsos    "<reimbursementId>" or the refunded expense's "<operationId>"   act "receber" (opens the receipt)
  *   documentos    "<documentId>" or "documento:<documentId>"   selects the file (a receipt, an import's original)
- *   configuracoes (no ref)
+ *   configuracoes (no ref)               the first section (the project)
+ *                 "projeto" | "ia" | "seguranca" | "backup" | "privacidade"   opens that section ("backup" is where
+ *                                                 the reminder of an old backup leads)
+ *   contas        "integrantes"                   the members tab (from Configurações › Projeto)
  */
 import { ymStr, type YearMonth, dom } from "@opesvault/domain";
 

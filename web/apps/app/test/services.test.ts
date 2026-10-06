@@ -15,7 +15,7 @@ describe("fake services", () => {
       ServiceError,
     );
     const created = await services.createProject({ name: "Casa", password: "senha do projeto" });
-    expect(created.recoveryKey).toMatch(/^([A-Z2-9]{4}-){7}[A-Z2-9]{4}$/);
+    expect(created.recoveryKey).toMatch(/^([0-9A-Z]{4}-){8}[0-9A-Z]{4}$/);
     // A wrong password never opens an empty project.
     await expect(services.openProject(created.project.id, "errada")).rejects.toMatchObject({ code: "bad-password" });
     const open = await services.openProject(created.project.id, "senha do projeto");

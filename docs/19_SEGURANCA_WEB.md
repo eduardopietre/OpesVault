@@ -1,6 +1,6 @@
 # Segurança da versão web: chaves, cofre, sincronização e bloqueio
 
-Versão 1.0 • 05/10/2026. Documento normativo da web, sucessor do `03` (que continua valendo para o desktop até W13). Distingue requisito de produto de garantia criptográfica, como o `03`. Implementação: `web/packages/crypto` e `web/packages/vault`; servidor: `web/apps/server`. Decisões do usuário em `18` §1; escolhas marcadas como **adotado provisoriamente, revisável** dependem do `18` §8.
+Versão 1.1 • 06/10/2026 (§13, backup). Documento normativo da web, sucessor do `03` (que continua valendo para o desktop até W13). Distingue requisito de produto de garantia criptográfica, como o `03`. Implementação: `web/packages/crypto` e `web/packages/vault`; servidor: `web/apps/server`. Decisões do usuário em `18` §1; escolhas marcadas como **adotado provisoriamente, revisável** dependem do `18` §8.
 
 ## 1. Escopo
 
@@ -10,14 +10,14 @@ Vale para tudo que toca dados do projeto na web: senha do projeto, senha da cont
 
 **Zero-knowledge:** a senha do projeto, a chave do projeto e o conteúdo dos registros nunca saem do navegador em claro. O servidor autentica contas, guarda texto cifrado e sincroniza. Isso protege contra:
 
-| Quem | O que consegue | O que não consegue |
-|---|---|---|
-| Operador do servidor, ou quem copiar o banco, o volume `/data` ou um backup dele | Ver os metadados da §7; apagar, reter ou devolver versões antigas de registros (§11) | Ler registros, anexos, nomes de projeto ou a senha; alterar um registro sem que a alteração seja detectada; mover um registro de lugar ou de projeto |
-| Quem observa a rede | Com TLS (Caddy, `20`): só tamanhos e horários | Ler ou alterar o tráfego |
-| Aparelho roubado ou perdido, **bloqueado** | Ler o IndexedDB: texto cifrado, envelope, cursor e e-mail da sessão (cookie) | Abrir o projeto sem a senha; o Argon2id (§3) encarece cada tentativa |
-| Aparelho roubado ou perdido, **desbloqueado** | Tudo o que a aba mostra, enquanto não houver bloqueio por inatividade (§9) | — |
-| Script injetado na aba (XSS, dependência comprometida, extensão do navegador) | Enquanto o projeto está desbloqueado, **tudo**: ler os registros em memória, usar as chaves (mesmo não extraíveis) para decifrar e cifrar, capturar a senha quando digitada | Ler os bytes das chaves de trabalho (`CryptoKey` não extraível), mas isso não o impede de usá-las |
-| Integrante removido | Continua sabendo a senha compartilhada e pode ter guardado a chave do projeto e cópias do texto cifrado | Obter registros novos do servidor (perde o acesso na hora) |
+| Quem                                                                             | O que consegue                                                                                                                                                              | O que não consegue                                                                                                                                   |
+| -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Operador do servidor, ou quem copiar o banco, o volume `/data` ou um backup dele | Ver os metadados da §7; apagar, reter ou devolver versões antigas de registros (§11)                                                                                        | Ler registros, anexos, nomes de projeto ou a senha; alterar um registro sem que a alteração seja detectada; mover um registro de lugar ou de projeto |
+| Quem observa a rede                                                              | Com TLS (Caddy, `20`): só tamanhos e horários                                                                                                                               | Ler ou alterar o tráfego                                                                                                                             |
+| Aparelho roubado ou perdido, **bloqueado**                                       | Ler o IndexedDB: texto cifrado, envelope, cursor e e-mail da sessão (cookie)                                                                                                | Abrir o projeto sem a senha; o Argon2id (§3) encarece cada tentativa                                                                                 |
+| Aparelho roubado ou perdido, **desbloqueado**                                    | Tudo o que a aba mostra, enquanto não houver bloqueio por inatividade (§9)                                                                                                  | —                                                                                                                                                    |
+| Script injetado na aba (XSS, dependência comprometida, extensão do navegador)    | Enquanto o projeto está desbloqueado, **tudo**: ler os registros em memória, usar as chaves (mesmo não extraíveis) para decifrar e cifrar, capturar a senha quando digitada | Ler os bytes das chaves de trabalho (`CryptoKey` não extraível), mas isso não o impede de usá-las                                                    |
+| Integrante removido                                                              | Continua sabendo a senha compartilhada e pode ter guardado a chave do projeto e cópias do texto cifrado                                                                     | Obter registros novos do servidor (perde o acesso na hora)                                                                                           |
 
 Não se promete proteção contra malware no aparelho, extensões maliciosas do navegador, keylogger, captura de tela ou inspeção da aba desbloqueada, como no `03` §1. Senha compartilhada não isola integrantes (`03` §1, `18` §1): qualquer integrante com a senha lê e altera tudo.
 
@@ -27,13 +27,13 @@ Não se promete proteção contra malware no aparelho, extensões maliciosas do 
 
 Nada caseiro (`03` §2): WebCrypto para HKDF, AES-GCM e HMAC; `hash-wasm` (implementação de referência do Argon2 compilada para WebAssembly) para o Argon2id.
 
-| Uso | Primitiva | Parâmetros |
-|---|---|---|
-| Senha do projeto e senha da conta | Argon2id (RFC 9106) | **64 MiB, 3 passadas, 1 via, saída de 32 bytes, sal de 16 bytes** — adotado provisoriamente, revisável (`18` §8: medir no celular mais fraco) |
-| Derivação de chaves | HKDF-SHA256 (RFC 5869) | `info` com rótulo e versão (§4) |
-| Cifra | AES-256-GCM (NIST SP 800-38D) | Nonce de 96 bits aleatório por cifração; etiqueta de 128 bits |
-| Id opaco de registro | HMAC-SHA256 | Truncado a 128 bits (32 hexadecimais) |
-| Aleatoriedade | `crypto.getRandomValues` | — |
+| Uso                               | Primitiva                     | Parâmetros                                                                                                                                    |
+| --------------------------------- | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Senha do projeto e senha da conta | Argon2id (RFC 9106)           | **64 MiB, 3 passadas, 1 via, saída de 32 bytes, sal de 16 bytes** — adotado provisoriamente, revisável (`18` §8: medir no celular mais fraco) |
+| Derivação de chaves               | HKDF-SHA256 (RFC 5869)        | `info` com rótulo e versão (§4)                                                                                                               |
+| Cifra                             | AES-256-GCM (NIST SP 800-38D) | Nonce de 96 bits aleatório por cifração; etiqueta de 128 bits                                                                                 |
+| Id opaco de registro              | HMAC-SHA256                   | Truncado a 128 bits (32 hexadecimais)                                                                                                         |
+| Aleatoriedade                     | `crypto.getRandomValues`      | —                                                                                                                                             |
 
 - Os parâmetros do Argon2id viajam com cada envelope, então podem subir depois sem quebrar envelopes antigos. Ao abrir, o app só aceita parâmetros entre 8 MiB e 1 GiB, 1 a 16 passadas e 1 a 4 vias; fora disso recusa antes de derivar (um envelope hostil não esgota a memória da aba).
 - Senhas são normalizadas em Unicode NFC antes de virar bytes, para que a mesma senha digitada em sistemas diferentes abra o projeto. Senha nova vazia é recusada.
@@ -118,15 +118,15 @@ Projeto, registro e anexo: 128 bits em 32 hexadecimais minúsculos. O id do proj
 
 ## 7. O que o servidor vê
 
-| Vê | Não vê |
-|---|---|
-| E-mail de cada conta, data de criação, IPs e horários das requisições | Senha da conta (só um derivado, guardado com scrypt) |
-| Quais contas são integrantes de cada projeto e quem é dono | Senha do projeto, chave do projeto, chave de recuperação |
-| Quantidade de registros por projeto, tamanho aproximado de cada um (múltiplos de 64 bytes) e quando muda | Tipo, id real e conteúdo dos registros |
-| Quais registros mudam juntos (um envio) e com que frequência | Nome do projeto |
-| Quantidade, tamanho e horário dos anexos | Conteúdo dos anexos |
-| Quem tem a concessão de edição e o rótulo da aba (aleatório) | O que está sendo editado |
-| Parâmetros do Argon2id e sais (públicos por projeto) | |
+| Vê                                                                                                       | Não vê                                                   |
+| -------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| E-mail de cada conta, data de criação, IPs e horários das requisições                                    | Senha da conta (só um derivado, guardado com scrypt)     |
+| Quais contas são integrantes de cada projeto e quem é dono                                               | Senha do projeto, chave do projeto, chave de recuperação |
+| Quantidade de registros por projeto, tamanho aproximado de cada um (múltiplos de 64 bytes) e quando muda | Tipo, id real e conteúdo dos registros                   |
+| Quais registros mudam juntos (um envio) e com que frequência                                             | Nome do projeto                                          |
+| Quantidade, tamanho e horário dos anexos                                                                 | Conteúdo dos anexos                                      |
+| Quem tem a concessão de edição e o rótulo da aba (aleatório)                                             | O que está sendo editado                                 |
+| Parâmetros do Argon2id e sais (públicos por projeto)                                                     |                                                          |
 
 Isso é limitação conhecida, como as do `03` §1: o padrão de uso pode revelar, por exemplo, que um projeto recebe muitos lançamentos no começo do mês.
 
@@ -191,7 +191,49 @@ Se a resposta de um envio se perde, o app não sabe se ele foi aceito e **não r
 - O `packages/vault` não importa o domínio (regra de lint) e só conhece `{kind, id, payload}`.
 - Servidor (`20`): valida toda entrada com zod, limita tamanho de requisição, limita tentativas de login por IP e por e-mail, exige o cabeçalho `X-OpesVault: 1` em toda requisição que altera (CSRF), registra só método, rota, situação, duração e ids opacos (nunca corpo, e-mail ou segredo), e serve o app com CSP sem `unsafe-inline`/`unsafe-eval` (só `'wasm-unsafe-eval'`, que permite compilar WebAssembly para o Argon2id e não permite `eval` de JavaScript), `require-trusted-types-for 'script'`, `Cross-Origin-Opener-Policy: same-origin`, `Referrer-Policy: no-referrer`, `Permissions-Policy` restritiva, `X-Content-Type-Options: nosniff` e `frame-ancestors 'none'`.
 
-## 13. Referências
+## 13. Backup, restauração e verificação
+
+Arquivo cifrado com **o mesmo segredo do projeto (a senha do projeto)**, feito e lido só no navegador, sem rede (`18` W11). Substitui, na web, o `03` §7. Implementação: formato em `web/packages/crypto/src/backup.ts`, exportar, verificar e restaurar em `web/packages/vault/src/backup.ts`, testes em `web/packages/{crypto,vault}/test/backup.test.ts`. Mudar qualquer byte do formato exige subir a versão (campo `version`) e o vetor conhecido do teste.
+
+### 13.1 Formato (versão 1)
+
+```
+arquivo = cabeçalho (32 bytes) ‖ conferência da chave (16 bytes) ‖ bloco 0 ‖ bloco 1 ‖ … ‖ último bloco
+cabeçalho = "OVBK" ‖ versão u8 ‖ id do KDF u8 (1 = Argon2id) ‖ vias u8 ‖ passadas u8 ‖ memória KiB u32 ‖ tamanho do bloco u32 ‖ sal (16 bytes)
+chave     = HKDF-SHA256(Argon2id(senha NFC, sal, parâmetros do cabeçalho), info "opesvault/backup/v1")      (AES-256-GCM, não extraível)
+conferência = AES-256-GCM(chave, texto vazio, nonce = contador 0xFFFFFFFF, AAD = "opesvault/backup/v1|check|" ‖ cabeçalho)
+bloco i   = AES-256-GCM(chave, texto claro de exatamente "tamanho do bloco" bytes (o último, de 1 a esse tamanho),
+            nonce = 8 bytes zero ‖ i u32, AAD = "opesvault/backup/v1|chunk|" ‖ cabeçalho ‖ i u32 ‖ final u8)
+```
+
+Os números são big-endian. O texto claro é um fluxo de **quadros** cortado em blocos de 1 MiB (padrão; aceito de 256 B a 16 MiB), de modo que um registro ou um anexo pode atravessar blocos e a memória nunca guarda mais que um bloco e o quadro em montagem:
+
+| Quadro                          | Conteúdo                                                                                                               |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `0x01` META (sempre o primeiro) | tamanho u32 ‖ JSON `{format, createdAt, projectName, app}`                                                             |
+| `0x02` registro                 | tamanho u32 ‖ JSON `{kind, id, payload}` (o `(tipo, id, JSON)` do `Ledger`, em claro dentro da cifra)                  |
+| `0x03` anexo                    | id do anexo (16 bytes) ‖ tamanho u32 ‖ bytes do anexo (já decifrados do cofre)                                         |
+| `0xFF` END (sempre o último)    | tamanho u32 ‖ JSON `{records, blobs, missing}`; `missing` lista anexos que os registros citam mas o servidor não tinha |
+
+Ordem gravada: META, todos os registros, todos os anexos, END.
+
+### 13.2 O que cada escolha garante
+
+- **Nada em claro, só o cabeçalho.** Nem o nome do projeto, nem o número de registros, nem os tipos. O cabeçalho mostra a versão, os parâmetros do KDF, o tamanho do bloco e o sal. O nome sugerido para o arquivo é neutro (`opesvault-backup-AAAA-MM-DD.ovbackup`), sem o nome do projeto.
+- **Uma chave por arquivo.** O sal é aleatório a cada backup, então a chave nunca se repete e o nonce pode ser um contador (como nos anexos, §6.4). Parâmetros do Argon2id: os da §3 (64 MiB, 3 passadas, 1 via). Ao abrir valem os limites da §3 e o tamanho de bloco entre 256 B e 16 MiB, recusados **antes** de derivar a chave.
+- **Integridade do arquivo todo.** O AAD de cada bloco amarra o cabeçalho inteiro (outro KDF, outro tamanho de bloco ou outro sal não abrem), a posição (reordenar, repetir ou tirar um bloco do meio falha) e o indicador de final (cortar o arquivo na fronteira de um bloco falha, porque o novo último bloco foi selado como "não final"; acrescentar dados falha porque o antigo último bloco passa a ser lido como "não final"). Blocos de outro backup, mesmo com a mesma senha, não abrem (outro sal, outra chave). Depois do END não pode haver mais nada, e as contagens do END têm de bater com o que foi lido.
+- **Senha errada é distinta de arquivo danificado.** A conferência da chave (uma etiqueta GCM sobre texto vazio, presa ao cabeçalho) diz `wrong_password` sem ler conteúdo; depois dela, qualquer falha de bloco é `corrupted`. Um cabeçalho alterado aparece como senha errada (a conferência o cobre).
+- **Erros.** `BackupError` leva só um código (`not_a_backup`, `unsupported_version`, `invalid_params`, `wrong_password`, `empty_password`, `corrupted`, `invalid_content`), nunca senha, nome ou conteúdo (§12). Versão desconhecida é recusada com mensagem própria, sem tentar ler.
+
+### 13.3 Operações
+
+- **Exportar.** Exige o projeto desbloqueado e **pede a senha do projeto de novo**: ela é conferida contra o envelope (`checkPassword`, sem abrir nada) e é a que protege o arquivo, para que um arquivo nunca fique protegido por uma senha digitada errada. Lê os registros da memória e os anexos do servidor (decifrados um por vez); não escreve nada no servidor. Um anexo que o servidor não tem entra em `missing` e o backup sai mesmo assim, com aviso; qualquer outra falha (sem conexão, bloqueado) interrompe, para não gerar um backup incompleto sem a pessoa saber. Os blocos cifrados vão para uma lista de partes de `Blob`; nada em claro vai para disco.
+- **Verificar.** Decifra o arquivo inteiro, bloco a bloco, sem tocar em nenhum projeto, e confere: versão, senha, integridade, contagens, anexos citados por registros (`dangling`: citado e ausente de `missing`), SHA-256 de cada anexo contra o do registro (`hashMismatches`) e anexos que ninguém cita (`orphans`).
+- **Restaurar.** Sempre num projeto **novo**, nunca sobre um existente: primeiro a verificação completa (um arquivo ruim não cria nada), depois `ProjectVault.create` (chave do projeto nova, **chave de recuperação nova**, mostrada uma vez) com a senha do arquivo, e então os registros em lotes e cada anexo com o **mesmo id** (os registros de documento continuam apontando para ele; ids de anexo valem por projeto). Se algo falhar depois de o projeto existir no servidor, ele é apagado de novo. A senha do projeto restaurado é a do arquivo (um backup antigo mantém a senha antiga, como no `03` §7); o nome é o do arquivo ou o que a pessoa digitar, e a pessoa pode trocar a senha em Configurações depois.
+- **Limites conhecidos.** Quem tem o arquivo pode tentar adivinhar a senha **sem o limite de tentativas do servidor**; só o Argon2id encarece cada tentativa, então vale uma senha longa. Um backup é um instante: trocar a senha do projeto não altera backups antigos, e quem conhecia a senha antiga continua abrindo os arquivos antigos. A lista de partes de `Blob` do arquivo exportado fica na memória da aba (os navegadores costumam mandar `Blob` grande para o disco, mas isso não é garantido); a gravação direta em arquivo por fluxo (File System Access API) fica para depois e não muda o formato.
+- **Lembrete.** A data do último backup gerado fica numa **preferência deste aparelho** por projeto (o arquivo está neste aparelho; um backup feito em outro não protege este, e o esquema persistido do projeto não muda). O aviso do domínio (`dom.alerts.backupAlert`) aparece na Visão geral quando passa de 30 dias, ou quando o projeto tem lançamentos e nunca houve backup neste aparelho.
+
+## 14. Referências
 
 - RFC 9106 — Argon2 Memory-Hard Function for Password Hashing.
 - RFC 5869 — HMAC-based Extract-and-Expand Key Derivation Function (HKDF).

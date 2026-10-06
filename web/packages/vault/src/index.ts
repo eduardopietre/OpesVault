@@ -3,6 +3,7 @@
  * It never imports the domain: records are `{kind, id, payload}` JSON.
  */
 export * from "./accounts.ts";
+export * from "./backup.ts";
 export * from "./backend.ts";
 export * from "./blob_cache.ts";
 export * from "./cache.ts";

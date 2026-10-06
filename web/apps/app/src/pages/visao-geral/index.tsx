@@ -32,6 +32,7 @@ import { useGoTo } from "../../data/navigation.ts";
 import { useAct, useLedger, useWorkspace } from "../../data/react.tsx";
 import type { Workspace } from "../../data/workspace.ts";
 import { OverviewReasonDialog } from "../../dialogs/overview_reason.tsx";
+import { useBackupAlerts } from "../configuracoes/backup_state.ts";
 import { AlertsPanel } from "./alerts_panel.tsx";
 import { FigureCard, Money, toneOf } from "./figures.tsx";
 import {
@@ -101,7 +102,10 @@ export function Page() {
   const memberValid = memberId !== null && members.some((m) => m.id === memberId) ? memberId : null;
 
   const key = `${monthKey}|${memberValid ?? ""}`;
-  const alerts = useLedger((ledger) => dom.alerts.alerts(ledger, today), today);
+  const projectAlerts = useLedger((ledger) => dom.alerts.alerts(ledger, today), today);
+  // The backup reminder is about this device (Configurações › Backup), so it comes after the project's own.
+  const backupAlerts = useBackupAlerts(today);
+  const alerts = useMemo(() => [...projectAlerts, ...backupAlerts], [projectAlerts, backupAlerts]);
   const figures = useLedger((ledger) => monthFigures(ledger, month, memberValid), key);
   const balances = useLedger((ledger) => balanceRows(ledger, month, memberValid), key);
   const categories = useLedger((ledger) => categoryRows(ledger, month, memberValid), key);

@@ -3,8 +3,20 @@
  * encrypted: it only imitates the answers of the real services so every screen can be walked through.
  */
 import { dom, demoSession, Ledger, newId, session as sessions } from "@opesvault/domain";
+import {
+  CryptoError,
+  blobSource,
+  formatRecoveryKey,
+  generateRecoveryKey,
+  parseRecoveryKey,
+  toHex,
+  type KdfParams,
+} from "@opesvault/crypto";
+import { serviceError } from "./real.ts";
+import { readBackup, watchActivity, writeBackup, type BackupReport } from "@opesvault/vault";
+import { backupFileName, checkOf, documentBlobRefs } from "../data/backup.ts";
 import { browserExtractor } from "../data/pdf.ts";
-import { Workspace } from "../data/workspace.ts";
+import { DOCUMENT_KIND, Workspace } from "../data/workspace.ts";
 import {
   ServiceError,
   type Account,
@@ -22,6 +34,8 @@ interface StoredAccount extends Account {
 
 interface StoredProject extends ProjectSummary {
   password: string;
+  /** The recovery key's 20 bytes, as hex. */
+  recovery: string;
   attention: Record<string, number>;
   /** Built on first open (the demo imports a PDF, which takes a moment). */
   workspace: Workspace | null;
@@ -33,6 +47,8 @@ export const DEMO = {
   password: "senha-de-demonstracao",
   projectName: "Casa",
   projectPassword: "senha-do-projeto",
+  /** The demonstration project's recovery key (a made-up one, with a valid check group). */
+  recoveryKey: formatRecoveryKey(Uint8Array.from({ length: 20 }, (_, i) => i + 1)),
 } as const;
 
 export interface FakeOptions {
@@ -43,6 +59,8 @@ export interface FakeOptions {
   /** Source of randomness for ids and recovery keys (tests pass a fixed one). */
   random?: () => number;
   now?: () => Date;
+  /** Argon2id parameters of the backup files (tests use lighter ones than the real 64 MiB). */
+  kdf?: KdfParams;
 }
 
 /** A new project's ledger with the account's first name as its first member. */
@@ -54,11 +72,19 @@ function firstLedger(projectName: string, accountName: string): Ledger {
   return ledger;
 }
 
+/** The domain-neutral failure of a backup, in the words of the real services. */
+function rethrowBackup(error: unknown): never {
+  throw serviceError(error);
+}
+
 function delay(ms: number) {
   return ms > 0 ? new Promise((resolve) => setTimeout(resolve, ms)) : Promise.resolve();
 }
 
-const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+/** Wrong or mistyped recovery key, as the real services say it. */
+const badRecoveryKey = () =>
+  new ServiceError("bad-recovery-key", "Chave de recuperação incorreta. Confira os grupos digitados.");
+const badPassword = () => new ServiceError("bad-password", "Senha do projeto incorreta.");
 
 export function createFakeServices(options: FakeOptions = {}): AppServices & { readonly demoProjectId: string | null } {
   const latency = options.latency ?? 0;
@@ -70,6 +96,10 @@ export function createFakeServices(options: FakeOptions = {}): AppServices & { r
   let open: StoredProject | null = null;
   let locked: StoredProject | null = null;
   let sequence = 0;
+  const syncListeners = new Set<(status: "synced" | "locked") => void>();
+  let idleMs: number | null = null;
+  let idleTimer: ReturnType<typeof setTimeout> | null = null;
+  const randomBytes = (length: number) => Uint8Array.from({ length }, () => Math.floor(random() * 256));
   const id = (prefix: string) => `${prefix}-${(++sequence).toString(36)}${Math.floor(random() * 1e6).toString(36)}`;
 
   const summary = (project: StoredProject): ProjectSummary => ({
@@ -95,6 +125,33 @@ export function createFakeServices(options: FakeOptions = {}): AppServices & { r
     return current;
   };
 
+  const requireOpen = (): StoredProject => {
+    if (!open) throw new ServiceError("not-open", "Abra um projeto para fazer isso.");
+    return open;
+  };
+
+  /** Locks the open project (by the idle time or by the lock button): same effect for the session. */
+  const lockOpen = () => {
+    if (open) locked = open;
+    open = null;
+    if (idleTimer !== null) clearTimeout(idleTimer);
+    idleTimer = null;
+    for (const listener of syncListeners) listener("locked");
+  };
+  const armIdle = () => {
+    if (idleTimer !== null) clearTimeout(idleTimer);
+    idleTimer = null;
+    if (open && idleMs !== null) idleTimer = setTimeout(lockOpen, idleMs);
+  };
+  if (typeof window !== "undefined") watchActivity(window, armIdle);
+
+  const docRecords = (workspace: Workspace) =>
+    workspace.session.documents.map((d) => ({
+      kind: DOCUMENT_KIND,
+      id: d.meta.id,
+      payload: { ...d.meta, blob_id: d.meta.id.replaceAll("-", "") },
+    }));
+
   let demoProjectId: string | null = null;
   if (options.seed) {
     const account: StoredAccount = {
@@ -108,6 +165,7 @@ export function createFakeServices(options: FakeOptions = {}): AppServices & { r
       id: id("prj"),
       name: DEMO.projectName,
       password: DEMO.projectPassword,
+      recovery: toHex(parseRecoveryKey(DEMO.recoveryKey)),
       updatedAt: now().toISOString(),
       members: 2,
       attention: { "visao-geral": 3, importar: 2 },
@@ -164,10 +222,12 @@ export function createFakeServices(options: FakeOptions = {}): AppServices & { r
     async createProject({ name, password }): Promise<CreatedProject> {
       await delay(latency);
       const account = requireAccount();
+      const recovery = generateRecoveryKey(randomBytes);
       const project: StoredProject = {
         id: id("prj"),
         name: name.trim(),
         password,
+        recovery: toHex(recovery.bytes),
         updatedAt: now().toISOString(),
         members: 1,
         attention: {},
@@ -176,10 +236,7 @@ export function createFakeServices(options: FakeOptions = {}): AppServices & { r
       };
       projects.set(project.id, project);
       account.projects.push(project.id);
-      const groups = Array.from({ length: 8 }, () =>
-        Array.from({ length: 4 }, () => ALPHABET[Math.floor(random() * ALPHABET.length)]).join(""),
-      );
-      return { project: summary(project), recoveryKey: groups.join("-") };
+      return { project: summary(project), recoveryKey: recovery.text };
     },
     async openProject(projectId, password) {
       await delay(latency);
@@ -189,23 +246,27 @@ export function createFakeServices(options: FakeOptions = {}): AppServices & { r
         throw new ServiceError("not-found", "Este projeto não está mais disponível para a sua conta.");
       }
       // A wrong password never opens an empty project (docs/18 W1).
-      if (project.password !== password) throw new ServiceError("bad-password", "Senha do projeto incorreta.");
+      if (project.password !== password) throw badPassword();
       const workspace = await ensure(project);
       open = project;
       locked = null;
+      armIdle();
       return opened(project, workspace);
     },
     async lock() {
       await delay(latency);
       if (open) locked = open;
       open = null;
+      if (idleTimer !== null) clearTimeout(idleTimer);
+      idleTimer = null;
     },
     async unlock(password) {
       await delay(latency);
       if (!locked) throw new ServiceError("not-locked", "Nenhum projeto bloqueado.");
-      if (locked.password !== password) throw new ServiceError("bad-password", "Senha do projeto incorreta.");
+      if (locked.password !== password) throw badPassword();
       open = locked;
       locked = null;
+      armIdle();
       return opened(open, await ensure(open));
     },
     async closeProject() {
@@ -215,7 +276,163 @@ export function createFakeServices(options: FakeOptions = {}): AppServices & { r
     },
     watchSync(listener) {
       listener("synced");
-      return () => undefined;
+      syncListeners.add(listener);
+      return () => syncListeners.delete(listener);
+    },
+
+    async renameProject(name) {
+      await delay(latency);
+      const project = requireOpen();
+      const trimmed = name.trim();
+      if (!trimmed) throw new ServiceError("empty-name", "Dê um nome ao projeto.");
+      project.name = trimmed;
+      return summary(project);
+    },
+    async changePassword(currentPassword, newPassword) {
+      await delay(latency);
+      const project = requireOpen();
+      if (!newPassword) throw new ServiceError("empty-password", "Digite a senha.");
+      if (project.password !== currentPassword) throw badPassword();
+      project.password = newPassword;
+    },
+    async regenerateRecoveryKey(password) {
+      await delay(latency);
+      const project = requireOpen();
+      if (project.password !== password) throw badPassword();
+      const fresh = generateRecoveryKey(randomBytes);
+      project.recovery = toHex(fresh.bytes);
+      return fresh.text;
+    },
+    async recoverProject(projectId, recoveryKey, newPassword) {
+      await delay(latency);
+      const account = requireAccount();
+      const project = projects.get(projectId);
+      if (!project || !account.projects.includes(projectId)) {
+        throw new ServiceError("not-found", "Este projeto não está mais disponível para a sua conta.");
+      }
+      if (!newPassword) throw new ServiceError("empty-password", "Digite a senha.");
+      let typed: string;
+      try {
+        typed = toHex(parseRecoveryKey(recoveryKey));
+      } catch (error) {
+        if (error instanceof CryptoError) throw badRecoveryKey();
+        throw error;
+      }
+      if (typed !== project.recovery) throw badRecoveryKey();
+      project.password = newPassword;
+      const workspace = await ensure(project);
+      open = project;
+      locked = null;
+      armIdle();
+      return opened(project, workspace);
+    },
+    setIdleLock(minutes) {
+      idleMs = minutes > 0 ? minutes * 60_000 : null;
+      armIdle();
+    },
+    async exportBackup(password, onProgress) {
+      await delay(latency);
+      const project = requireOpen();
+      if (project.password !== password) throw badPassword();
+      const workspace = await ensure(project);
+      const bytes = new Map(workspace.session.documents.map((d) => [d.meta.id.replaceAll("-", ""), d.data]));
+      const parts: Uint8Array<ArrayBuffer>[] = [];
+      const result = await writeBackup(
+        {
+          name: project.name,
+          records: [
+            ...workspace.ledger.toRecords().map((r) => ({ kind: r.kind, id: r.id, payload: r.payload })),
+            ...docRecords(workspace),
+          ],
+          blob: (blobId) => Promise.resolve(bytes.get(blobId) ?? null),
+        },
+        password,
+        (chunk) => void parts.push(chunk),
+        {
+          blobRefsOf: documentBlobRefs,
+          now,
+          ...(options.kdf ? { kdf: options.kdf } : {}),
+          ...(onProgress ? { onProgress } : {}),
+        },
+      );
+      return {
+        blob: new Blob(parts, { type: "application/octet-stream" }),
+        fileName: backupFileName(new Date(result.createdAt)),
+        createdAt: result.createdAt,
+        records: result.records,
+        documents: result.documents,
+        documentBytes: result.documentBytes,
+        missing: result.missing.length,
+      };
+    },
+    async verifyBackup(file, password, onProgress) {
+      await delay(latency);
+      const report = await readBackup(
+        blobSource(file),
+        password,
+        { blobRefsOf: documentBlobRefs, ...(onProgress ? { onProgress } : {}) },
+        {},
+      ).catch(rethrowBackup);
+      return checkOf(report);
+    },
+    async restoreBackup(file, password, name, onProgress) {
+      await delay(latency);
+      const account = requireAccount();
+      const ledgerRecords: { id: string; kind: string; payload: Record<string, unknown> }[] = [];
+      const docMeta = new Map<string, { id: string; sha256: string; original_name: string; size: number }>();
+      const bytes = new Map<string, Uint8Array>();
+      const report: BackupReport = await readBackup(
+        blobSource(file),
+        password,
+        { blobRefsOf: documentBlobRefs, ...(onProgress ? { onProgress } : {}) },
+        {
+          record: (record) => {
+            if (record.kind === DOCUMENT_KIND) {
+              const d = record.payload as { id: string; sha256: string; original_name: string; size: number };
+              docMeta.set(record.id, { id: d.id, sha256: d.sha256, original_name: d.original_name, size: d.size });
+            } else {
+              ledgerRecords.push({
+                id: record.id,
+                kind: record.kind,
+                payload: record.payload as Record<string, unknown>,
+              });
+            }
+          },
+          blob: (blobId, data) => void bytes.set(blobId, data),
+        },
+      ).catch(rethrowBackup);
+      const documents = [...docMeta.values()].map((meta) => ({
+        meta,
+        data: bytes.get(meta.id.replaceAll("-", "")) ?? new Uint8Array(0),
+      }));
+      const projectName = name.trim() || `${report.projectName} (restaurado)`;
+      const recovery = generateRecoveryKey(randomBytes);
+      const workspace = new Workspace(sessions.Session.fromRecords(newId(), ledgerRecords, documents));
+      const project: StoredProject = {
+        id: id("prj"),
+        name: projectName,
+        password,
+        recovery: toHex(recovery.bytes),
+        updatedAt: now().toISOString(),
+        members: [...workspace.ledger.members.values()].filter((m) => m.active).length,
+        attention: {},
+        workspace,
+        build: () => Promise.reject(new Error("built at restore")),
+      };
+      projects.set(project.id, project);
+      account.projects.push(project.id);
+      return { project: summary(project), recoveryKey: recovery.text, check: checkOf(report) };
+    },
+    async pendingChanges() {
+      return 0;
+    },
+    async forgetDevice() {
+      await delay(latency);
+      current = null;
+      open = null;
+      locked = null;
+      if (idleTimer !== null) clearTimeout(idleTimer);
+      idleTimer = null;
     },
   };
 }

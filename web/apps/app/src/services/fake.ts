@@ -2,8 +2,8 @@
  * In-memory AppServices for development, the catalog and tests. Nothing leaves the tab and nothing is
  * encrypted: it only imitates the answers of the real services so every screen can be walked through.
  */
-import { Ledger } from "@opesvault/domain";
-import { demoLedger } from "../data/demo.ts";
+import { demoSession, Ledger, newId, session as sessions } from "@opesvault/domain";
+import { browserExtractor } from "../data/pdf.ts";
 import { Workspace } from "../data/workspace.ts";
 import {
   ServiceError,
@@ -23,7 +23,9 @@ interface StoredAccount extends Account {
 interface StoredProject extends ProjectSummary {
   password: string;
   attention: Record<string, number>;
-  workspace: Workspace;
+  /** Built on first open (the demo imports a PDF, which takes a moment). */
+  workspace: Workspace | null;
+  build: () => Promise<Workspace>;
 }
 
 export const DEMO = {
@@ -74,13 +76,16 @@ export function createFakeServices(options: FakeOptions = {}): AppServices & { r
     id: project.id,
     name: project.name,
     updatedAt: project.updatedAt,
-    members: membersOf(project).length,
+    members: project.workspace ? membersOf(project).length : project.members,
   });
   const membersOf = (project: StoredProject): Member[] =>
-    [...project.workspace.ledger.members.values()].filter((m) => m.active).map((m) => ({ id: m.id, name: m.name }));
-  const opened = (project: StoredProject): OpenProject => ({
+    project.workspace
+      ? [...project.workspace.ledger.members.values()].filter((m) => m.active).map((m) => ({ id: m.id, name: m.name }))
+      : [];
+  const ensure = async (project: StoredProject): Promise<Workspace> => (project.workspace ??= await project.build());
+  const opened = (project: StoredProject, workspace: Workspace): OpenProject => ({
     project: summary(project),
-    workspace: project.workspace,
+    workspace,
     members: membersOf(project),
     attention: { ...project.attention },
     readOnly: false,
@@ -106,7 +111,8 @@ export function createFakeServices(options: FakeOptions = {}): AppServices & { r
       updatedAt: now().toISOString(),
       members: 2,
       attention: { "visao-geral": 3, importar: 2 },
-      workspace: new Workspace(demoLedger(DEMO.projectName)),
+      workspace: null,
+      build: async () => new Workspace(await demoSession({ extractor: browserExtractor() })),
     };
     account.projects.push(project.id);
     accounts.set(account.email, account);
@@ -159,7 +165,8 @@ export function createFakeServices(options: FakeOptions = {}): AppServices & { r
         updatedAt: now().toISOString(),
         members: 1,
         attention: {},
-        workspace: new Workspace(firstLedger(name.trim(), account.name)),
+        workspace: new Workspace(new sessions.Session(newId(), firstLedger(name.trim(), account.name))),
+        build: () => Promise.reject(new Error("built at creation")),
       };
       projects.set(project.id, project);
       account.projects.push(project.id);
@@ -177,9 +184,10 @@ export function createFakeServices(options: FakeOptions = {}): AppServices & { r
       }
       // A wrong password never opens an empty project (docs/18 W1).
       if (project.password !== password) throw new ServiceError("bad-password", "Senha do projeto incorreta.");
+      const workspace = await ensure(project);
       open = project;
       locked = null;
-      return opened(project);
+      return opened(project, workspace);
     },
     async lock() {
       await delay(latency);
@@ -192,7 +200,7 @@ export function createFakeServices(options: FakeOptions = {}): AppServices & { r
       if (locked.password !== password) throw new ServiceError("bad-password", "Senha do projeto incorreta.");
       open = locked;
       locked = null;
-      return opened(open);
+      return opened(open, await ensure(open));
     },
     async closeProject() {
       await delay(latency);

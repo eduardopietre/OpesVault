@@ -2,7 +2,9 @@
  * React access to the open project: `useWorkspace()` for actions, `useLedger()` for reads that re-run
  * after every change, and `useAct()` to run a user action with the domain's errors shown to the user.
  */
-import { DomainError, type Ledger } from "@opesvault/domain";
+import { DomainError, type Ledger, type session as sessions } from "@opesvault/domain";
+
+type Session = sessions.Session;
 import { notify } from "@opesvault/ui";
 import { createContext, useCallback, useContext, useMemo, useSyncExternalStore, type ReactNode } from "react";
 import type { Workspace } from "./workspace.ts";
@@ -46,10 +48,10 @@ export function useLedger<T>(select: (ledger: Ledger) => T, key: string | number
  * Runs a user action. A DomainError (a refused change, with a Portuguese message for the user) is shown
  * as a notice and returns `undefined`; anything else is a bug and is rethrown.
  */
-export function useAct(): <T>(action: (ledger: Ledger) => T, done?: string) => T | undefined {
+export function useAct(): <T>(action: (ledger: Ledger, session: Session) => T, done?: string) => T | undefined {
   const workspace = useWorkspace();
   return useCallback(
-    <T,>(action: (ledger: Ledger) => T, done?: string) => {
+    <T,>(action: (ledger: Ledger, session: Session) => T, done?: string) => {
       try {
         const result = workspace.act(action);
         if (done) notify(done);

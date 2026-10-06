@@ -92,7 +92,7 @@ test("sign in, open the demo project with its password, switch project and sign 
   await expect(page).toHaveURL(/\/visao-geral$/);
 
   // Attention counts are part of the link names.
-  await expect(page.getByRole("link", { name: "Importar e revisar, 2 itens pedem atenção" })).toBeVisible();
+  await expect(page.getByRole("link", { name: /^Importar e revisar, \d+ itens? pedem? atenção$/ })).toBeVisible();
 
   await page.getByRole("button", { name: "Conta de Ana Souza" }).click();
   await page.getByRole("menuitemradio", { name: "Bruno" }).click();

@@ -1,19 +1,27 @@
 /**
- * The open project as the screens see it: the domain Ledger, undo/redo and the sync of what changed.
+ * The open project as the screens see it: the domain Session (Ledger + documents), undo/redo and the
+ * sync of what changed.
  *
  * Every user action goes through `act()`: the domain call runs, its changes become one undo step and
  * the changed records are handed to the sink (the encrypted vault, or nothing in the fake services).
- * Screens read the ledger and re-render on `version` (useSyncExternalStore). A failing action leaves no
- * partial change behind: whatever it wrote before failing is reverted.
+ * Documents (PDFs and other originals) travel apart: their bytes become an encrypted blob and their
+ * metadata a `document` record; on opening, only the metadata is read and the bytes are fetched when a
+ * screen needs them (`loadDocument`). A failing action leaves no partial change behind.
  */
 import {
   DomainError,
-  Ledger,
   type IsoDate,
+  type Ledger,
   type LedgerRecord,
-  UndoStack,
+  type UndoStack,
+  newId,
+  session as sessions,
   today as localToday,
 } from "@opesvault/domain";
+
+type Session = sessions.Session;
+type Document = sessions.Document;
+type DocumentMeta = sessions.DocumentMeta;
 
 export interface PlainRecordLike {
   readonly kind: string;
@@ -21,15 +29,32 @@ export interface PlainRecordLike {
   readonly payload: unknown;
 }
 
-/** Where changed records go. The vault encrypts them at once and pushes them shortly after. */
+/** Where changed records and document bytes go. The vault encrypts them before they leave the tab. */
 export interface RecordSink {
   stage(upserts: readonly PlainRecordLike[], deletes: readonly { kind: string; id: string }[]): Promise<void> | void;
+  putBlob?(data: Uint8Array): Promise<string>;
+  getBlob?(blobId: string): Promise<Uint8Array>;
+  deleteBlob?(blobId: string): Promise<void>;
+}
+
+/** Record kind holding a document's metadata (the bytes are a blob). */
+export const DOCUMENT_KIND = "document";
+
+interface DocumentRecord extends DocumentMeta {
+  readonly blob_id: string;
 }
 
 export class ReadOnlyError extends DomainError {
   constructor() {
     super("Este projeto está aberto só para leitura: outra aba ou aparelho está editando.");
     this.name = "ReadOnlyError";
+  }
+}
+
+export class DocumentUnavailable extends DomainError {
+  constructor() {
+    super("O documento original ainda não foi baixado. Abra-o de novo com a conexão disponível.");
+    this.name = "DocumentUnavailable";
   }
 }
 
@@ -40,39 +65,92 @@ export interface WorkspaceOptions {
   readonly today?: () => IsoDate;
 }
 
+/** A document whose bytes are fetched on demand: reading `data` before `loadDocument` is an error. */
+function lazyDocument(meta: DocumentMeta, holder: Map<string, Uint8Array>): Document {
+  return {
+    meta,
+    get data(): Uint8Array {
+      const bytes = holder.get(meta.id);
+      if (bytes === undefined) throw new DocumentUnavailable();
+      return bytes;
+    },
+  };
+}
+
+function splitRecords(records: Iterable<PlainRecordLike>): { ledger: LedgerRecord[]; documents: DocumentRecord[] } {
+  const ledger: LedgerRecord[] = [];
+  const documents: DocumentRecord[] = [];
+  for (const r of records) {
+    if (r.kind === DOCUMENT_KIND) documents.push(r.payload as DocumentRecord);
+    else ledger.push({ id: r.id, kind: r.kind, payload: r.payload as Record<string, unknown> });
+  }
+  return { ledger, documents };
+}
+
 export class Workspace {
-  #ledger: Ledger;
-  #undo: UndoStack;
+  #session: Session;
   #version = 0;
   #readOnly: boolean;
   readonly #sink: RecordSink | null;
   readonly #today: () => IsoDate;
   readonly #listeners = new Set<() => void>();
   #pendingStage: Promise<void> = Promise.resolve();
+  /** Bytes of documents known in this tab (loaded on demand or added here). */
+  readonly #bytes: Map<string, Uint8Array>;
+  /** Blob id of each synced document. */
+  readonly #blobOf = new Map<string, string>();
+  /** Documents added here whose bytes could not be uploaded yet (offline, no lease). */
+  readonly #unsent = new Map<string, Document>();
   /** A failure of the last hand-over to the vault (shown by the sync state). */
   stageError: unknown = null;
 
-  constructor(ledger: Ledger, options: WorkspaceOptions = {}) {
-    this.#ledger = ledger;
+  constructor(session: Session, options: WorkspaceOptions = {}, bytes: Map<string, Uint8Array> = new Map()) {
+    this.#session = session;
+    this.#bytes = bytes;
     this.#sink = options.sink ?? null;
     this.#readOnly = options.readOnly ?? false;
     this.#today = options.today ?? (() => localToday());
-    this.#undo = new UndoStack(() => this.#ledger);
+    for (const d of session.documents) {
+      try {
+        this.#bytes.set(d.meta.id, d.data);
+      } catch {
+        // lazy document: fetched on demand
+      }
+    }
+    session.undoStack(); // journaling starts now: what was loaded is not an edit
   }
 
-  /** Builds the workspace from the records in the vault (an empty vault starts a new ledger). */
+  /** Builds the workspace from the records in the vault (an empty vault starts a new project). */
   static fromRecords(records: Iterable<PlainRecordLike>, name: string, options: WorkspaceOptions = {}): Workspace {
-    const list = [...records].map((r) => ({ id: r.id, kind: r.kind, payload: r.payload as Record<string, unknown> }));
-    const fresh = list.length === 0;
-    const ledger = fresh ? Ledger.new(name) : Ledger.fromRecords(list);
-    const workspace = new Workspace(ledger, options);
+    const { ledger, documents } = splitRecords(records);
+    const bytes = new Map<string, Uint8Array>();
+    let session: Session;
+    if (ledger.length === 0) {
+      session = sessions.Session.new(name, newId());
+    } else {
+      const docs = documents.map((d) =>
+        lazyDocument({ id: d.id, sha256: d.sha256, original_name: d.original_name, size: d.size }, bytes),
+      );
+      session = sessions.Session.fromRecords(newId(), ledger, docs);
+    }
+    // The lazy documents read their bytes from the workspace's map.
+    const workspace = new Workspace(session, options, bytes);
+    for (const d of documents) workspace.#blobOf.set(d.id, d.blob_id);
     // A new project, or one migrated in memory, sends every record once.
-    if (fresh || ledger.migratedFrom !== null) workspace.#stageAll();
+    if (session.forceFullSync || session.ledger.migratedFrom !== null) workspace.#flush();
     return workspace;
   }
 
+  #setBytes(id: string, data: Uint8Array): void {
+    this.#bytes.set(id, data);
+  }
+
+  get session(): Session {
+    return this.#session;
+  }
+
   get ledger(): Ledger {
-    return this.#ledger;
+    return this.#session.ledger;
   }
 
   get readOnly(): boolean {
@@ -80,7 +158,7 @@ export class Workspace {
   }
 
   get undoStack(): UndoStack {
-    return this.#undo;
+    return this.#session.undoStack();
   }
 
   today(): IsoDate {
@@ -103,22 +181,21 @@ export class Workspace {
 
   // ── actions ─────────────────────────────────────────
 
-  /** Runs one user action on the ledger: one undo step, synced, observed. */
-  act<T>(action: (ledger: Ledger) => T): T {
+  /** Runs one user action on the project: one undo step, synced, observed. */
+  act<T>(action: (ledger: Ledger, session: Session) => T): T {
     if (this.#readOnly) throw new ReadOnlyError();
-    const journal = this.#undo.journal;
+    const journal = this.undoStack.journal;
     const mark = journal.length;
     let result: T;
     try {
-      result = action(this.#ledger);
+      result = action(this.#session.ledger, this.#session);
     } catch (error) {
       // Put back whatever the failed action wrote before failing.
       const partial = journal.splice(mark);
-      if (partial.length) this.#ledger.revert(partial);
-      this.#ledger.markClean(-1); // nothing to forget; keeps the dirty map consistent
+      if (partial.length) this.#session.ledger.revert(partial);
       throw error;
     }
-    this.#undo.seal();
+    this.undoStack.seal();
     this.#flush();
     this.#changed();
     return result;
@@ -126,7 +203,7 @@ export class Workspace {
 
   undo(): string | null {
     if (this.#readOnly) throw new ReadOnlyError();
-    const step = this.#undo.undo();
+    const step = this.undoStack.undo();
     if (!step) return null;
     this.#flush();
     this.#changed();
@@ -135,7 +212,7 @@ export class Workspace {
 
   redo(): string | null {
     if (this.#readOnly) throw new ReadOnlyError();
-    const step = this.#undo.redo();
+    const step = this.undoStack.redo();
     if (!step) return null;
     this.#flush();
     this.#changed();
@@ -144,42 +221,102 @@ export class Workspace {
 
   /** Who is recorded in the history for the next changes (the operator picked in the top bar). */
   setOperator(name: string | null): void {
-    this.#ledger.operator = name;
+    this.#session.ledger.operator = name;
+  }
+
+  // ── documents ───────────────────────────────────────
+
+  /** True when the document's bytes are in this tab. */
+  hasDocument(documentId: string): boolean {
+    return this.#bytes.has(documentId);
+  }
+
+  /** Fetches and decrypts a document's bytes (once); afterwards `session.document(id).data` works. */
+  async loadDocument(documentId: string): Promise<Uint8Array> {
+    const cached = this.#bytes.get(documentId);
+    if (cached !== undefined) return cached;
+    const blobId = this.#blobOf.get(documentId);
+    if (blobId === undefined || !this.#sink?.getBlob) throw new DocumentUnavailable();
+    const data = await this.#sink.getBlob(blobId);
+    const meta = this.#session.documents.find((d) => d.meta.id === documentId)?.meta;
+    if (meta && sessions.sha256Hex(data) !== meta.sha256) throw new DomainError("O documento baixado não confere.");
+    this.#setBytes(documentId, data);
+    return data;
   }
 
   // ── sync ────────────────────────────────────────────
 
-  /** Hands the records changed since the last hand-over to the vault. */
+  /** Hands what changed since the last hand-over to the vault. */
   #flush(): void {
-    const keys = this.#ledger.dirtyKeys();
-    if (!keys.length) return;
-    const upTo = this.#ledger.changeCount;
-    const upserts: PlainRecordLike[] = [];
-    const deletes: { kind: string; id: string }[] = [];
-    for (const { kind, id } of keys) {
-      const payload = this.#ledger.recordFor(kind, id);
-      if (payload === null) deletes.push({ kind, id });
-      else upserts.push({ kind, id, payload });
+    const sent = this.#session.pendingSync();
+    this.#session.markSynced(sent);
+    const upserts: PlainRecordLike[] = sent.upserts.map((r) => ({ kind: r.kind, id: r.id, payload: r.payload }));
+    const deletes = sent.deletes.map((d) => ({ kind: d.kind, id: d.id }));
+    for (const d of sent.documentsAdded) {
+      this.#setBytes(d.meta.id, d.data);
+      if (!this.#blobOf.has(d.meta.id)) this.#unsent.set(d.meta.id, d);
     }
-    this.#ledger.markClean(upTo);
-    this.#send(upserts, deletes);
-  }
-
-  #stageAll(): void {
-    const rows: LedgerRecord[] = this.#ledger.toRecords();
-    this.#ledger.markClean(this.#ledger.changeCount);
-    this.#send(rows, []);
-  }
-
-  #send(upserts: PlainRecordLike[], deletes: { kind: string; id: string }[]): void {
+    const removed: string[] = [];
+    for (const id of sent.documentsRemoved) {
+      this.#unsent.delete(id);
+      const blob = this.#blobOf.get(id);
+      if (blob !== undefined) removed.push(blob);
+      this.#blobOf.delete(id);
+      deletes.push({ kind: DOCUMENT_KIND, id });
+    }
     if (!this.#sink) return;
     const sink = this.#sink;
     // Hand-overs stay in order; a failure is kept for the sync state, the data is still in memory.
     this.#pendingStage = this.#pendingStage
-      .then(() => sink.stage(upserts, deletes))
+      .then(async () => {
+        await sink.stage(upserts, deletes);
+        await this.#uploadUnsent();
+        if (sink.deleteBlob) for (const blob of removed) await sink.deleteBlob(blob).catch(() => undefined);
+      })
+      .then(
+        () => {
+          if (this.stageError !== null) {
+            this.stageError = null;
+            this.#changed();
+          }
+        },
+        (error: unknown) => {
+          this.stageError = error;
+          this.#changed();
+        },
+      );
+  }
+
+  /** Uploads documents added here; their metadata record is staged only once the bytes are stored. */
+  async #uploadUnsent(): Promise<void> {
+    const sink = this.#sink;
+    if (!sink?.putBlob) {
+      this.#unsent.clear();
+      return;
+    }
+    for (const [id, document] of [...this.#unsent]) {
+      const blobId = await sink.putBlob(document.data);
+      this.#blobOf.set(id, blobId);
+      this.#unsent.delete(id);
+      const record: DocumentRecord = { ...document.meta, blob_id: blobId };
+      await sink.stage([{ kind: DOCUMENT_KIND, id, payload: record }], []);
+    }
+  }
+
+  /** Documents whose bytes are only in this tab (not uploaded yet). */
+  get unsentDocuments(): number {
+    return this.#unsent.size;
+  }
+
+  /** Tries again to upload documents that could not be sent (called when the network returns). */
+  retryUploads(): void {
+    if (!this.#unsent.size || !this.#sink) return;
+    this.#pendingStage = this.#pendingStage
+      .then(() => this.#uploadUnsent())
       .then(
         () => {
           this.stageError = null;
+          this.#changed();
         },
         (error: unknown) => {
           this.stageError = error;
@@ -194,16 +331,20 @@ export class Workspace {
   }
 
   /**
-   * Someone else changed the project (this tab is read-only, or took over the edit): the ledger is
+   * Someone else changed the project (this tab is read-only, or took over the edit): the session is
    * rebuilt from the vault's records. Undo history of this tab no longer applies.
    */
   reload(records: Iterable<PlainRecordLike>, readOnly: boolean): void {
-    const list = [...records].map((r) => ({ id: r.id, kind: r.kind, payload: r.payload as Record<string, unknown> }));
-    if (list.length) {
-      const operator = this.#ledger.operator;
-      this.#ledger = Ledger.fromRecords(list);
-      this.#ledger.operator = operator;
-      this.#undo = new UndoStack(() => this.#ledger);
+    const { ledger, documents } = splitRecords(records);
+    if (ledger.length) {
+      const operator = this.#session.ledger.operator;
+      const docs = documents.map((d) =>
+        lazyDocument({ id: d.id, sha256: d.sha256, original_name: d.original_name, size: d.size }, this.#bytes),
+      );
+      this.#session = sessions.Session.fromRecords(this.#session.projectId, ledger, docs);
+      this.#session.ledger.operator = operator;
+      this.#session.undoStack();
+      for (const d of documents) this.#blobOf.set(d.id, d.blob_id);
     }
     this.#readOnly = readOnly;
     this.#changed();

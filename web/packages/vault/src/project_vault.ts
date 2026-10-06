@@ -36,6 +36,7 @@ import {
 } from "@opesvault/crypto";
 import {
   BackendError,
+  ID_PATTERN,
   LEASE_MS,
   LIMITS,
   type EditLease,
@@ -218,7 +219,7 @@ export class ProjectVault {
   readonly #retryMs: number;
   readonly #pollMs: number;
   readonly #pageSize: number;
-  readonly #idle: IdleTimer | null;
+  #idle: IdleTimer | null;
   readonly #blobs: BlobCache;
 
   #keys: ProjectKeys | null = null;
@@ -337,6 +338,16 @@ export class ProjectVault {
     return this.#plain.get(recordKey(kind, id));
   }
 
+  /**
+   * Changes the idle lock time (null turns it off), for a setting the user changed while the project is
+   * open. Counts from now.
+   */
+  setIdleLock(ms: number | null): void {
+    this.#idle?.stop();
+    this.#idle = ms === null ? null : new IdleTimer(ms, () => void this.lock(), this.#timers);
+    if (this.unlocked) this.#idle?.touch();
+  }
+
   /** Marks user activity for the idle lock. */
   touch(): void {
     if (this.unlocked) this.#idle?.touch();
@@ -427,6 +438,21 @@ export class ProjectVault {
       throw error;
     }
     await this.#open(opened.keys);
+  }
+
+  /**
+   * Checks the project password against the envelope without opening anything (the backup asks for it
+   * again, so that a file is never protected by a mistyped password). `wrong_password` when it differs.
+   */
+  async checkPassword(password: string): Promise<void> {
+    const envelope = await this.#envelope();
+    let keys: ProjectKeys;
+    try {
+      keys = await openWithPassword(this.projectId, envelope, password);
+    } catch (error) {
+      throw vaultErrorFromCrypto(error);
+    }
+    keys.destroy();
   }
 
   /** Re-wraps the project key under a new password. Members must use the new password from then on. */
@@ -1244,12 +1270,15 @@ export class ProjectVault {
 
   // ---------------------------------------------------------------- attachments
 
-  /** Encrypts and uploads an attachment (needs the lease and the network). Returns its new id. */
-  async putBlob(data: Uint8Array): Promise<string> {
+  /**
+   * Encrypts and uploads an attachment (needs the lease and the network). Returns its id: a new random one,
+   * or `blobId` when given (restoring a backup keeps the ids the records refer to; they are per project).
+   */
+  async putBlob(data: Uint8Array, blobId: string = randomId(this.#random)): Promise<string> {
     const keys = this.#requireEditable();
     const lease = this.#lease;
     if (lease === null) throw new VaultError(this.#online ? "no_lease" : "offline");
-    const blobId = randomId(this.#random);
+    if (!ID_PATTERN.test(blobId)) throw new TypeError("blob id must be 32 lowercase hex characters");
     const sealed = await keys.sealBlob(blobId, data, this.#random);
     try {
       await this.#backend.putBlob(this.projectId, lease.leaseId, blobId, sealed);

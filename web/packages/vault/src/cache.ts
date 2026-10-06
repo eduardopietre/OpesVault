@@ -213,6 +213,15 @@ export class VaultCache {
     await done(tx);
   }
 
+  /** Removes everything cached on this device, for every project (the "forget this device" command). */
+  async forgetAll(): Promise<void> {
+    const tx = this.#db.transaction(["records", "pending", "projects"], "readwrite");
+    tx.objectStore("records").clear();
+    tx.objectStore("pending").clear();
+    tx.objectStore("projects").clear();
+    await done(tx);
+  }
+
   /** Removes everything cached for a project (after it is deleted or access is lost). */
   async forgetProject(projectId: string): Promise<void> {
     const tx = this.#db.transaction(["records", "pending", "projects"], "readwrite");

@@ -35,7 +35,11 @@ for (const size of SIZES) {
         for (const [id, label] of TABS) {
           await page.getByRole("tab", { name: label }).click();
           if (id === "bancarias" || id === "contas" || id === "financiamentos") {
-            await page.locator("canvas").first().waitFor({ timeout: 5000 }).catch(() => undefined);
+            await page
+              .locator("canvas")
+              .first()
+              .waitFor({ timeout: 5000 })
+              .catch(() => undefined);
           }
           await shot(page, `${id}-${suffix}`);
         }

@@ -15,7 +15,7 @@ import { useResolvedTheme } from "../preferences.tsx";
 import { CHART_SERIES_VARS, cssVar } from "../tokens.ts";
 import { Button } from "./Button.tsx";
 import { Collapsible } from "./Collapsible.tsx";
-import { Adaptive, Skeleton } from "./layout.tsx";
+import { Adaptive, Skeleton, type AdaptiveAt } from "./layout.tsx";
 
 type EChartsModule = typeof import("../chart/echarts.ts");
 type Instance = ReturnType<EChartsModule["echarts"]["init"]>;
@@ -38,7 +38,9 @@ function axisLabel(unit: ChartUnit | undefined) {
 }
 
 /** Builds the ECharts option from the data and the current tokens. */
-export function chartOption(chart: ChartData, reduceMotion: boolean): ChartOption {
+export function chartOption(whole: ChartData, reduceMotion: boolean): ChartOption {
+  // Series marked `hidden` live only in the table of values.
+  const chart = { ...whole, series: whole.series.filter((series) => !series.hidden) };
   const text = cssVar("--ov-text") || "#1d1d1f";
   const secondary = cssVar("--ov-secondary") || "#5b5b61";
   const grid = cssVar("--ov-chart-grid") || "#e6e6ea";
@@ -226,10 +228,21 @@ export interface ChartPanelProps {
   /** Preference key prefix for the two collapsible parts. */
   prefKey?: string;
   height?: number;
+  /** Widths of the chart and of the values when side by side ("3fr 2fr" by default; "1fr 1fr" for many columns). */
+  columns?: string;
+  /** Panel width from which they sit side by side (1000 by default; more for a table with many columns). */
+  at?: AdaptiveAt;
   className?: string | undefined;
 }
 
-export function ChartPanel({ chart, prefKey, height = 300, className }: ChartPanelProps) {
+export function ChartPanel({
+  chart,
+  prefKey,
+  height = 300,
+  columns = "3fr 2fr",
+  at = 1000,
+  className,
+}: ChartPanelProps) {
   const [selected, setSelected] = useState<number | null>(null);
   const instance = useRef<Instance | null>(null);
   const rows = useMemo(() => tableRows(chart), [chart]);
@@ -247,7 +260,7 @@ export function ChartPanel({ chart, prefKey, height = 300, className }: ChartPan
 
   return (
     <div className={cn("min-w-0", className)}>
-      <Adaptive at={1000} columns="3fr 2fr" gap={24}>
+      <Adaptive at={at} columns={columns} gap={24}>
         <Collapsible
           title={chart.title}
           {...(prefKey ? { prefKey: `${prefKey}/grafico` } : {})}

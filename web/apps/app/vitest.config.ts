@@ -13,6 +13,8 @@ export default defineConfig({
     name: "app",
     include: ["test/**/*.test.ts", "test/**/*.test.tsx"],
     environment: "happy-dom",
+    // Page tests render whole screens over the demo project; under a full parallel run 5 s is too tight.
+    testTimeout: 30_000,
     setupFiles: ["test/setup.ts"],
   },
 });

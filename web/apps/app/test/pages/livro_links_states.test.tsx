@@ -150,6 +150,15 @@ describe("Livro: estados", () => {
     await waitFor(() => expect(screen.queryByText("1 marcado")).toBeNull());
   });
 
+  it("marks and unmarks the current row from the Ações menu (the way on a phone)", async () => {
+    const o = await openLivro();
+    await pickRow(o.user, "Aluguel");
+    await menu(o.user, "Ações", "Marcar este lançamento");
+    expect(await screen.findByText("1 marcado")).toBeTruthy();
+    await menu(o.user, "Ações", "Desmarcar este lançamento");
+    await waitFor(() => expect(screen.queryByText("1 marcado")).toBeNull());
+  });
+
   it("ticks everything the filters show from the Ações menu, and clears it", async () => {
     const o = await openLivro();
     await menu(o.user, "Ações", /Marcar os \d+ exibidos/);

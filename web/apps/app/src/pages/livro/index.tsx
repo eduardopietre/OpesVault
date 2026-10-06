@@ -34,7 +34,6 @@ import {
   parseBrDate,
   useBand,
   useElementWidth,
-  Checkbox,
   usePreferences,
   useMotionPreset,
   type MenuEntry,
@@ -299,6 +298,12 @@ export function Page() {
       label: `Marcar os ${operations.length} exibidos`,
       onSelect: selectAllShown,
       disabled: !operations.length,
+    },
+    {
+      id: "toggle-mark",
+      label: current !== null && checked.has(current) ? "Desmarcar este lançamento" : "Marcar este lançamento",
+      onSelect: () => current !== null && check(current, !checked.has(current)),
+      disabled: current === null,
     },
     { id: "clear", label: "Limpar marcação", onSelect: () => setChecked(EMPTY_SET), disabled: !checked.size },
     { kind: "separator", id: "sep0" },
@@ -721,18 +726,7 @@ export function Page() {
             onActivate={(id) => openEdit(operationOf(id))}
             height="max(22rem, calc(100dvh - 20rem))"
             cardTitle={(op) => (
-              <span className="flex items-center gap-2">
-                <span onClick={(event) => event.stopPropagation()}>
-                  <Checkbox
-                    label={<span className="sr-only">Marcar {op.description}</span>}
-                    checked={checked.has(op.id)}
-                    onCheckedChange={(value) => check(op.id, value)}
-                  />
-                </span>
-                <span className={isActive(op) ? "min-w-0 truncate" : "min-w-0 truncate text-tertiary"}>
-                  {op.description}
-                </span>
-              </span>
+              <span className={isActive(op) ? "block truncate" : "block truncate text-tertiary"}>{op.description}</span>
             )}
             empty={empty}
           />

@@ -1,0 +1,66 @@
+/**
+ * Screenshots of Recorrências in light and dark at each size (docs/18 §5.3), written to web/build/telas.
+ *   pnpm --filter @opesvault/app screens
+ */
+import { fileURLToPath } from "node:url";
+import { test, type Page } from "@playwright/test";
+import { SCHEMES, SIZES, openDemo, settle } from "../helpers.ts";
+import { createRule, dialogOf, recordRepeatingCharge, tableOf } from "./recorrencias_helpers.ts";
+
+const OUT = fileURLToPath(new URL("../../../../build/telas/", import.meta.url));
+
+/** The content scrolls inside the shell: the rest of the page, after the first screen. */
+async function scrollDown(page: Page) {
+  await page.evaluate(() => document.getElementById("conteudo")?.scrollTo(0, 1e6));
+  await settle(page, 500);
+}
+
+for (const size of SIZES) {
+  for (const scheme of SCHEMES) {
+    const suffix = `${size.width}x${size.height}-${scheme === "light" ? "claro" : "escuro"}`;
+    test.describe(suffix, () => {
+      test.use({ viewport: size, colorScheme: scheme, contextOptions: { reducedMotion: "reduce" } });
+
+      test("recorrências", async ({ page }) => {
+        await openDemo(page, "/recorrencias");
+        await tableOf(page, "Previsões").waitFor();
+        await settle(page, 900);
+        await page.screenshot({ path: `${OUT}recorrencias-${suffix}.png` });
+        await scrollDown(page);
+        await page.screenshot({ path: `${OUT}recorrencias-fim-${suffix}.png` });
+        await page.evaluate(() => document.getElementById("conteudo")?.scrollTo(0, 0));
+        await tableOf(page, "Regras de recorrência").getByText("Aluguel").first().click();
+        await tableOf(page, "Previsões").getByText("Atrasada").first().click();
+        await settle(page, 400);
+        await page.screenshot({ path: `${OUT}recorrencias-selecao-${suffix}.png` });
+        await page.getByRole("button", { name: "Editar…" }).click();
+        await dialogOf(page, "Editar recorrência").waitFor();
+        await settle(page);
+        await page.screenshot({ path: `${OUT}recorrencias-editar-${suffix}.png` });
+        await page.keyboard.press("Escape");
+        await dialogOf(page, "Editar recorrência").waitFor({ state: "hidden" });
+        await page.getByRole("button", { name: "Nova recorrência…" }).click();
+        await page.getByRole("button", { name: "Criar recorrência" }).click();
+        await settle(page);
+        await page.screenshot({ path: `${OUT}recorrencias-nova-${suffix}.png` });
+      });
+
+      test("recorrências com vínculo e cobranças que se repetem", async ({ page }) => {
+        await openDemo(page, "/recorrencias");
+        await tableOf(page, "Previsões").waitFor();
+        await createRule(page, "Posto Shell", "145,00", "Despesa: Transporte");
+        await tableOf(page, "Previsões").locator("[data-row-id]", { hasText: "Posto Shell" }).first().click();
+        await page.getByRole("button", { name: "Vincular realizado…" }).click();
+        await dialogOf(page, "Vincular realizado").waitFor();
+        await settle(page);
+        await page.screenshot({ path: `${OUT}recorrencias-vincular-${suffix}.png` });
+        await dialogOf(page, "Vincular realizado").getByRole("button", { name: "Vincular", exact: true }).click();
+        await recordRepeatingCharge(page, "Streaming Plus", "39,90");
+        await tableOf(page, "Cobranças que parecem recorrentes").waitFor();
+        await settle(page, 700);
+        await scrollDown(page);
+        await page.screenshot({ path: `${OUT}recorrencias-candidatas-${suffix}.png` });
+      });
+    });
+  }
+}

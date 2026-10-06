@@ -12,7 +12,8 @@ import {
   settle,
   watchErrors,
 } from "../helpers.ts";
-import { audit, goTo, shareAnExpense, tableOf } from "./sharing_helpers.ts";
+import { shareAnExpense } from "./sharing_helpers.ts";
+import { audit, goTo, tableOf } from "../helpers.ts";
 
 for (const size of SIZES) {
   for (const scheme of SCHEMES) {

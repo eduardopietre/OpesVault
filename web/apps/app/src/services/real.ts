@@ -241,6 +241,17 @@ export function createRealServices(options: RealServicesOptions = {}): AppServic
         return account;
       });
     },
+    async restoreAccount() {
+      try {
+        const session = await backend.currentSession();
+        if (session === null) return null;
+        account = { id: session.accountId, name: nameFromEmail(session.email), email: session.email };
+        return account;
+      } catch {
+        // Offline or the server is away: the person signs in when it is back.
+        return null;
+      }
+    },
     async signOut() {
       await detach(true);
       await guard(() => backend.signOut());

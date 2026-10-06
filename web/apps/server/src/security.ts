@@ -8,7 +8,6 @@ export function contentSecurityPolicy(secure: boolean): string {
 const PERMISSIONS_POLICY = [
   "accelerometer=()",
   "autoplay=()",
-  "bluetooth=()",
   "browsing-topics=()",
   "camera=()",
   "display-capture=()",

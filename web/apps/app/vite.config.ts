@@ -1,6 +1,8 @@
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { createHash } from "node:crypto";
+import { readFile, writeFile } from "node:fs/promises";
+import { join, resolve } from "node:path";
 import { defineConfig, type Plugin } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 import { cspMeta } from "./src/security.ts";
@@ -30,31 +32,32 @@ function contentSecurityPolicy(): Plugin {
  * they are same-origin, covered by the CSP, and precached by the service worker.
  */
 function subresourceIntegrity(): Plugin {
+  let outDir = "";
   return {
     name: "opesvault-sri",
     apply: "build",
     enforce: "post",
-    transformIndexHtml: {
-      order: "post",
-      handler(html, context) {
-        const bundle = context.bundle;
-        if (!bundle) return html;
-        const digest = (path: string): string | null => {
-          const item = bundle[path.replace(/^\//, "")];
-          if (!item) return null;
-          const data = item.type === "chunk" ? item.code : item.source;
-          return `sha384-${createHash("sha384").update(data).digest("base64")}`;
-        };
-        return html.replace(/<(script|link)\b([^>]*)>/g, (tag, name: string, attrs: string) => {
-          if (/\bintegrity=/.test(attrs)) return tag;
-          const target = /\b(?:src|href)="(\/assets\/[^"]+)"/.exec(attrs)?.[1];
-          if (!target) return tag;
-          if (name === "link" && !/\brel="(?:stylesheet|modulepreload)"/.test(attrs)) return tag;
-          const integrity = digest(target);
-          if (integrity === null) throw new Error(`SRI: ${target} is not in the bundle`);
-          return tag.replace(/\s*(\/?)>$/, ` integrity="${integrity}"$1>`);
-        });
-      },
+    configResolved(config) {
+      outDir = resolve(config.root, config.build.outDir);
+    },
+    // After the files are written (so the hashes are those of the bytes on disk, which other plugins may have
+    // changed after `transformIndexHtml`) and before the service worker is generated (it hashes index.html).
+    async writeBundle() {
+      const indexPath = join(outDir, "index.html");
+      const html = await readFile(indexPath, "utf8");
+      const tags = [...html.matchAll(/<(script|link)\b([^>]*)>/g)];
+      let result = html;
+      for (const [tag, name, attrs] of tags) {
+        if (!tag || !name || attrs === undefined || /\bintegrity=/.test(attrs)) continue;
+        const target = /\b(?:src|href)="\/(assets\/[^"]+)"/.exec(attrs)?.[1];
+        if (!target) continue;
+        if (name === "link" && !/\brel="(?:stylesheet|modulepreload)"/.test(attrs)) continue;
+        const digest = createHash("sha384")
+          .update(await readFile(join(outDir, target)))
+          .digest("base64");
+        result = result.replace(tag, tag.replace(/\s*(\/?)>$/, ` integrity="sha384-${digest}"$1>`));
+      }
+      await writeFile(indexPath, result);
     },
   };
 }

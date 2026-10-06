@@ -33,6 +33,34 @@ async function until(condition: () => boolean | Promise<boolean>, ms = 5000): Pr
 }
 
 describe("real services", () => {
+  it("after a page load, restores the account of the session that is still valid, never the keys", async () => {
+    const server = new MemoryServer();
+    const backend = server.client();
+    const factory = new IDBFactory();
+    const load = () =>
+      createRealServices({
+        backend,
+        openCache: () => VaultCache.open({ factory, keyRange: IDBKeyRange }),
+        holder: "tab-a",
+        kdf: KDF,
+        idleLockMs: null,
+        vaultOptions: { pushDelayMs: 0, pollMs: 50 },
+      });
+    const first = load();
+    expect(await first.restoreAccount?.()).toBeNull();
+    await first.signUp({ name: "Ana Souza", email: "ana@example.com", password: "senha da conta" });
+    const created = await first.createProject({ name: "Casa", password: "senha do projeto" });
+    // a page load: new services, the same browser (cookie, IndexedDB)
+    const second = load();
+    expect(await second.restoreAccount?.()).toMatchObject({ email: "ana@example.com" });
+    expect((await second.listProjects()).map((p) => p.id)).toEqual([created.project.id]);
+    // the account is back, the project is still closed: its password is needed
+    await expect(second.openProject(created.project.id, "errada")).rejects.toMatchObject({ code: "bad-password" });
+    expect((await second.openProject(created.project.id, "senha do projeto")).project.name).toBe("Casa");
+    await second.signOut();
+    expect(await load().restoreAccount?.()).toBeNull();
+  });
+
   it("creates, edits, syncs and opens a project on another device", async () => {
     const server = new MemoryServer();
     const a = device(server, "tab-a");

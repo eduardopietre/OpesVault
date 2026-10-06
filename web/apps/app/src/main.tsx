@@ -26,6 +26,10 @@ async function start() {
   window.addEventListener("offline", online);
   online();
 
+  // The server session outlives the tab: a reload goes on from the project list, not from the sign-in form.
+  const restored = await services.restoreAccount?.();
+  if (restored) session.update({ account: restored });
+
   // "?demo" opens the demonstration project at once (fake services only): screenshots and e2e tests.
   const url = new URL(location.href);
   if (url.searchParams.has("demo") && fake?.demoProjectId) {

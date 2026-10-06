@@ -11,8 +11,17 @@ import { useLedger, useWorkspace } from "../../data/react.tsx";
 import { AccountDialog } from "../../dialogs/accounts_account.tsx";
 import { BalanceCheckDialog } from "../../dialogs/balance_check.tsx";
 import { accountChartData } from "./chart.ts";
-import { type TabReveal, EditButton, Empty, ListTable, Toolbar, Warn, useDialog, useTabReveal } from "./parts.tsx";
-import type { TierColumn } from "./columns.ts";
+import {
+  type TabReveal,
+  EditButton,
+  Empty,
+  ListTable,
+  Toolbar,
+  Warn,
+  useDialog,
+  useTabReveal,
+} from "../../components/list_parts.tsx";
+import type { TierColumn } from "../../components/tier_columns.ts";
 import { accountRows, cents, checkRows, money, type AccountRow, type CheckRow } from "./rows.ts";
 
 const HISTORY_MONTHS = 12;

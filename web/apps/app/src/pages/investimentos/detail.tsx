@@ -36,7 +36,7 @@ import {
   returnRows,
   valuationRows,
 } from "./rows.ts";
-import { EditButton, Empty, ListTable, useLock } from "../contas/parts.tsx";
+import { EditButton, Empty, ListTable, useLock } from "../../components/list_parts.tsx";
 import { finishXirr } from "./xirr.ts";
 import { solveXirr } from "./xirr_client.ts";
 

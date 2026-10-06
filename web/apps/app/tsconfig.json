@@ -5,5 +5,5 @@
     "types": ["vite/client", "vite-plugin-pwa/react", "node"],
     "jsx": "react-jsx"
   },
-  "include": ["src", "test", "e2e", "scripts", "*.ts"]
+  "include": ["src", "test", "e2e", "e2e-real", "scripts", "*.ts"]
 }

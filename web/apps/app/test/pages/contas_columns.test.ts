@@ -1,6 +1,6 @@
 /** Which columns a table shows for the room it has: never more than fit, the essential ones first. */
 import { describe, expect, it } from "vitest";
-import { CARD_TIERS, CARDS_BELOW, fitColumns, type TierColumn } from "../../src/pages/contas/columns.ts";
+import { CARD_TIERS, CARDS_BELOW, fitColumns, type TierColumn } from "../../src/components/tier_columns.ts";
 
 interface Row {
   id: string;

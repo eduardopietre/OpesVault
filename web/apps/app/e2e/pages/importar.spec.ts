@@ -25,9 +25,9 @@ import {
   readNotice,
   watchWorkers,
 } from "./importar_helpers.ts";
-import { PROTECTED_PDF_PASSWORD } from "./protected_pdf.ts";
+import { PROTECTED_PDF_PASSWORD } from "../protected_pdf.ts";
 import { fakeOllama } from "./livro_helpers.ts";
-import { audit, tableOf } from "./sharing_helpers.ts";
+import { audit, tableOf } from "../helpers.ts";
 
 const items = (page: Page) => tableOf(page, "Itens extraídos");
 const queue = (page: Page) => tableOf(page, "Documentos importados");

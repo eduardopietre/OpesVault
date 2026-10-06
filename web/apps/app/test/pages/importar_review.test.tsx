@@ -8,7 +8,7 @@ import { AccountType, importing, type Id } from "@opesvault/domain";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { BANK_OFX } from "../../../../packages/domain/src/demo_docs/index.ts";
-import { PROTECTED_PDF_PASSWORD, protectedPdf } from "../../e2e/pages/protected_pdf.ts";
+import { PROTECTED_PDF_PASSWORD, protectedPdf } from "../../e2e/protected_pdf.ts";
 import {
   batches,
   file,

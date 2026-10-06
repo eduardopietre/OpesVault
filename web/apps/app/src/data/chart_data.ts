@@ -3,14 +3,19 @@
  * (what a ChartPanel draws and tabulates). The values stay exact decimal strings; hidden series stay in
  * the table only, and positions (lines) get no total or mean, as in the domain's own table of values.
  */
-import { charts, type Dec } from "@opesvault/domain";
+import { charts, ymOf, type Dec, type IsoDate } from "@opesvault/domain";
 import { formatBrDate, formatMonthShort, type ChartData, type ChartSeries, type ChartUnit } from "@opesvault/ui";
 
 type Chart = charts.data.Chart;
 type Point = charts.data.Point;
 
-function labelOf(x: string, isDate: boolean): string {
-  if (isDate) return formatBrDate(x).slice(0, 5);
+export interface ChartDataOptions {
+  /** Label a dated point by its month ("out/26", one point per month, as in a schedule) instead of "dd/mm". */
+  readonly monthLabels?: boolean;
+}
+
+function labelOf(x: string, isDate: boolean, monthLabels: boolean): string {
+  if (isDate) return monthLabels ? formatMonthShort(ymOf(x as IsoDate)) : formatBrDate(x).slice(0, 5);
   const month = /^(\d{4})-(\d{2})$/.exec(x);
   return month ? formatMonthShort({ year: Number(month[1]), month: Number(month[2]) }) : x;
 }
@@ -22,11 +27,11 @@ function unitOf(unit: string): ChartUnit {
 const text = (value: Dec | null): string | null => (value === null ? null : value.toFixed());
 
 /** Converts a domain chart. A monthly flow chart gets "Total" and "Média" rows, as in the domain's table. */
-export function toChartData(chart: Chart): ChartData {
+export function toChartData(chart: Chart, options: ChartDataOptions = {}): ChartData {
   const [, rows] = charts.data.tableRows(chart);
   const data = rows.filter((row) => row.x !== null);
   const keys = data.map((row) => (row.isDate ? "d" : "s") + row.x);
-  const categories = data.map((row) => labelOf(row.x as string, row.isDate));
+  const categories = data.map((row) => labelOf(row.x as string, row.isDate, options.monthLabels === true));
   const series: ChartSeries[] = chart.series.map((s, index) => {
     const byKey = new Map<string, Point>(s.points.map((p) => [(p.isDate ? "d" : "s") + p.x, p]));
     return {

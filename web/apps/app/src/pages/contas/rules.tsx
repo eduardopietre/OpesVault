@@ -12,8 +12,17 @@ import { useLedger, useWorkspace } from "../../data/react.tsx";
 import { ReasonDialog } from "../../dialogs/livro_prompts.tsx";
 import { useFormAct } from "../../dialogs/livro_form.tsx";
 import { RuleDialog } from "../../dialogs/rule_dialog.tsx";
-import { type TabReveal, EditButton, Empty, ListTable, Toolbar, Warn, useDialog, useTabReveal } from "./parts.tsx";
-import type { TierColumn } from "./columns.ts";
+import {
+  type TabReveal,
+  EditButton,
+  Empty,
+  ListTable,
+  Toolbar,
+  Warn,
+  useDialog,
+  useTabReveal,
+} from "../../components/list_parts.tsx";
+import type { TierColumn } from "../../components/tier_columns.ts";
 import { proposalRows, ruleRows, type ProposalRow, type RuleRow } from "./rows.ts";
 
 const { rules, suggestions } = importing;

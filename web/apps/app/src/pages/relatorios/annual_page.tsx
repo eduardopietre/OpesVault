@@ -12,7 +12,7 @@ import { chooseMonth, useSharedMonth } from "../../data/month.ts";
 import { useLedger, useOptionalWorkspace } from "../../data/react.tsx";
 import type { Workspace } from "../../data/workspace.ts";
 import { useTheme } from "../../theme.tsx";
-import { saveTextFile } from "../visao-geral/save_file.ts";
+import { saveTextFile } from "../../data/save_file.ts";
 import { ReportTableView } from "../visao-geral/report_page.tsx";
 import { annualFileName, annualReportData, annualReportFile } from "./annual.ts";
 import type { AnnualSearch } from "./annual_search.ts";

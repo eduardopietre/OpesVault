@@ -17,7 +17,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { App } from "../../src/App.tsx";
 import { chooseMonth } from "../../src/data/month.ts";
-import { toChartData } from "../../src/pages/orcamento/chart.ts";
+import { toChartData } from "../../src/data/chart_data.ts";
 import { categoryRef, cents, parseCategoryRef, summaryLine, usedPercent } from "../../src/pages/orcamento/rows.ts";
 import { createAppRouter } from "../../src/router.tsx";
 import { DEMO, createFakeServices } from "../../src/services/fake.ts";

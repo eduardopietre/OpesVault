@@ -13,7 +13,7 @@ import { useLedger, useOptionalWorkspace } from "../../data/react.tsx";
 import type { Workspace } from "../../data/workspace.ts";
 import { useTheme } from "../../theme.tsx";
 import { cellText, type ReportTable } from "../visao-geral/report.ts";
-import { saveTextFile } from "../visao-geral/save_file.ts";
+import { saveTextFile } from "../../data/save_file.ts";
 import { taxReportData, taxReportFile, taxReportFileName, type ReportSection } from "./report.ts";
 import type { TaxReportSearch } from "./report_search.ts";
 

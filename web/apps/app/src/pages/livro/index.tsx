@@ -29,6 +29,7 @@ import {
   Sheet,
   TextField,
   confirm,
+  decide,
   formatBrDate,
   notify,
   parseBrDate,
@@ -213,6 +214,51 @@ export function Page() {
       "Comprovante anexado e guardado cifrado no projeto.",
     );
   };
+  /** Takes a receipt off the selected entry (one act); a file nothing else uses leaves the project with it. */
+  const detachReceipt = async () => {
+    const op = needOne();
+    if (op === null) return;
+    const receipts = dom.attachments.ofOperation(ledger, op.id);
+    if (!receipts.length) {
+      notify("Este lançamento não tem comprovante.");
+      return;
+    }
+    const nameOf = (documentId: Id) =>
+      workspace.session.documents.find((d) => d.meta.id === documentId)?.meta.original_name ?? "comprovante";
+    let target = receipts[0]!;
+    if (receipts.length === 1) {
+      const ok = await confirm({
+        title: "Desvincular o comprovante?",
+        text: `“${nameOf(target.document_id)}” deixa de ser comprovante de “${op.description}”. Se nada mais usar o arquivo, ele sai do projeto. Dá para desfazer logo em seguida.`,
+        confirmLabel: "Desvincular",
+        danger: true,
+      });
+      if (!ok) return;
+    } else {
+      const choice = await decide({
+        title: "Desvincular qual comprovante?",
+        text: `“${op.description}” tem ${receipts.length} comprovantes. O arquivo só sai do projeto se nada mais o usar. Dá para desfazer logo em seguida.`,
+        choices: receipts.map((receipt, index) => ({
+          id: receipt.id,
+          label: `Desvincular ${index + 1}: ${nameOf(receipt.document_id)}`,
+          variant: "danger" as const,
+        })),
+      });
+      const chosen = receipts.find((receipt) => receipt.id === choice);
+      if (!chosen) return;
+      target = chosen;
+    }
+    try {
+      // Undo puts the file back with its bytes, so they must be in this tab before it can go.
+      await workspace.loadDocument(target.document_id);
+    } catch (error) {
+      notify(error instanceof Error ? error.message : "Não foi possível desvincular o comprovante.", {
+        tone: "negative",
+      });
+      return;
+    }
+    act((_ledger, session) => dom.attachments.detach(session, target.id), "Comprovante desvinculado. Ctrl+Z desfaz.");
+  };
   const detailIncome = () => {
     const op = needOne();
     if (op === null) return;
@@ -312,6 +358,12 @@ export function Page() {
     { id: "reclassify", label: "Reclassificar…", onSelect: reclassify, disabled: readOnly || !targets.length },
     { id: "tags", label: "Marcadores…", onSelect: tag, disabled: readOnly || !targets.length },
     { id: "attach", label: "Anexar comprovante…", onSelect: attach, disabled: readOnly || !single },
+    {
+      id: "detach",
+      label: "Desvincular comprovante…",
+      onSelect: () => void detachReceipt(),
+      disabled: readOnly || !single,
+    },
     { id: "income", label: "Detalhar rendimento (IR)…", onSelect: detailIncome, disabled: readOnly || !single },
     { id: "merchant", label: "Nomear estabelecimento…", onSelect: nameMerchant, disabled: readOnly || !single },
     { id: "reimbursement", label: "Reembolso a receber…", onSelect: reimbursement, disabled: readOnly || !single },

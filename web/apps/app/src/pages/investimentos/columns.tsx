@@ -1,7 +1,7 @@
 /** The columns of every table of Investimentos (desktop `COLUMNS` of the page and `detail.py`'s tables). */
 import { Badge } from "@opesvault/ui";
-import type { TierColumn } from "../contas/columns.ts";
-import { Warn } from "../contas/parts.tsx";
+import type { TierColumn } from "../../components/tier_columns.ts";
+import { Warn } from "../../components/list_parts.tsx";
 import type { EventRow, LotRow, NoteRow, PortfolioRow, ReturnRow, ValuationRow } from "./rows.ts";
 
 export const PORTFOLIO_COLUMNS: TierColumn<PortfolioRow>[] = [

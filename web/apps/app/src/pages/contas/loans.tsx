@@ -10,10 +10,19 @@ import { useLedger, useWorkspace } from "../../data/react.tsx";
 import { LoanDialog } from "../../dialogs/loan_new.tsx";
 import { PayInstallmentDialog } from "../../dialogs/loan_pay.tsx";
 import { PrepaymentDialog } from "../../dialogs/loan_prepay.tsx";
-import { FigureCard, Money } from "../visao-geral/figures.tsx";
+import { FigureCard, Money } from "../../components/figures.tsx";
 import { scheduleChartData } from "./chart.ts";
-import { type TabReveal, EditButton, Empty, ListTable, Toolbar, useDialog, useLock, useTabReveal } from "./parts.tsx";
-import type { TierColumn } from "./columns.ts";
+import {
+  type TabReveal,
+  EditButton,
+  Empty,
+  ListTable,
+  Toolbar,
+  useDialog,
+  useLock,
+  useTabReveal,
+} from "../../components/list_parts.tsx";
+import type { TierColumn } from "../../components/tier_columns.ts";
 import { cents, installmentRows, loanRows, money, nextInstallment, type InstallmentRow, type LoanRow } from "./rows.ts";
 
 const { loans } = dom;

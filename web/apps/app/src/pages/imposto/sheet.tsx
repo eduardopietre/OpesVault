@@ -4,7 +4,7 @@
  */
 import { ElidedText } from "@opesvault/ui";
 import { useMemo } from "react";
-import { ListTable } from "../contas/parts.tsx";
+import { ListTable } from "../../components/list_parts.tsx";
 import { sheetColumns, type Col } from "./columns.tsx";
 import type { Row } from "./rows.ts";
 

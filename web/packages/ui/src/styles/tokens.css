@@ -110,7 +110,7 @@
     --ov-tertiary: #86868c;
     --ov-accent: #6aa8f5;
     --ov-accent-fill: #2b6cc4;
-    --ov-accent-fill-hover: #3479d4;
+    --ov-accent-fill-hover: #2f72c9; /* white text: 4.8:1 */
     --ov-accent-text: #ffffff;
     --ov-accent-soft: #1d3150;
     --ov-focus: #6aa8f5;
@@ -152,7 +152,7 @@
   --ov-tertiary: #86868c;
   --ov-accent: #6aa8f5;
   --ov-accent-fill: #2b6cc4;
-  --ov-accent-fill-hover: #3479d4;
+  --ov-accent-fill-hover: #2f72c9; /* white text: 4.8:1 */
   --ov-accent-text: #ffffff;
   --ov-accent-soft: #1d3150;
   --ov-focus: #6aa8f5;

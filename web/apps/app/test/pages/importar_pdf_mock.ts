@@ -1,7 +1,7 @@
 /**
  * happy-dom has no canvas: the page viewer's pdf.js is replaced by a drawing that reports the pages of the file
  * (counted from its `/Type /Page` objects), is 595 x 842 points like A4, and asks for the password of a file that is
- * encrypted (the one of `e2e/pages/protected_pdf.ts`). Use inside `vi.mock("../../src/data/pdf_render.ts", …)`.
+ * encrypted (the one of `e2e/protected_pdf.ts`). Use inside `vi.mock("../../src/data/pdf_render.ts", …)`.
  */
 import { vi } from "vitest";
 import type * as Render from "../../src/data/pdf_render.ts";

@@ -2,7 +2,8 @@
  * In-memory AppServices for development, the catalog and tests. Nothing leaves the tab and nothing is
  * encrypted: it only imitates the answers of the real services so every screen can be walked through.
  */
-import { dom, demoSession, Ledger, newId, session as sessions } from "@opesvault/domain";
+import { dom, demoSession, Ledger, newId, session as sessions, today } from "@opesvault/domain";
+import { applyDemoExtras } from "../data/demo_extra.ts";
 import {
   CryptoError,
   blobSource,
@@ -172,6 +173,8 @@ export function createFakeServices(options: FakeOptions = {}): AppServices & { r
       workspace: null,
       build: async () => {
         const session = await demoSession({ extractor: browserExtractor() });
+        // More paths than the desktop's demonstration has (docs/18 W12); the domain's demo stays as it is.
+        applyDemoExtras(session, today());
         // The demonstration has the local AI chosen, so its screens can be walked through (the requests
         // go to 127.0.0.1 only when someone asks; tests and the e2e build answer them themselves).
         dom.settings.updateSettings(session.ledger, { ai_enabled: true, ai_model: "gemma4:12b" });

@@ -13,8 +13,9 @@ import {
   settle,
   watchErrors,
 } from "../helpers.ts";
-import { protectedPdf } from "./protected_pdf.ts";
-import { attach, audit, goTo, tableOf } from "./sharing_helpers.ts";
+import { protectedPdf } from "../protected_pdf.ts";
+import { attach } from "./sharing_helpers.ts";
+import { audit, goTo, tableOf } from "../helpers.ts";
 
 const PROTECTED = protectedPdf();
 

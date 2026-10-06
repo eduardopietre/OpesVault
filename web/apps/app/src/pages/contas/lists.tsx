@@ -21,8 +21,16 @@ import {
   type CategoryRow,
   type MemberRow,
 } from "./rows.ts";
-import { type TabReveal, EditButton, Empty, ListTable, Toolbar, useDialog, useTabReveal } from "./parts.tsx";
-import type { TierColumn } from "./columns.ts";
+import {
+  type TabReveal,
+  EditButton,
+  Empty,
+  ListTable,
+  Toolbar,
+  useDialog,
+  useTabReveal,
+} from "../../components/list_parts.tsx";
+import type { TierColumn } from "../../components/tier_columns.ts";
 
 // ── cards ────────────────────────────────────────
 

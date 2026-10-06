@@ -14,8 +14,8 @@ import {
 } from "@opesvault/ui";
 import { TriangleAlert } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { useWorkspace } from "../../data/react.tsx";
-import { fitColumns, type TierColumn } from "./columns.ts";
+import { useWorkspace } from "../data/react.tsx";
+import { fitColumns, type TierColumn } from "./tier_columns.ts";
 
 export const LOCKED = "Outra aba ou outro aparelho está editando este projeto. Atualize para editar.";
 

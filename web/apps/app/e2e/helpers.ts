@@ -1,4 +1,5 @@
 /** Shared pieces of the end-to-end tests. */
+import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page } from "@playwright/test";
 
 export const SIZES = [
@@ -97,4 +98,39 @@ export async function animationsDone(page: Page): Promise<void> {
       ]);
     }
   });
+}
+
+/** An accessibility audit of the resting state of the page (WCAG 2.x A and AA, plus 2.2 AA). */
+export async function audit(page: Page, label: string) {
+  await page.mouse.move(1, 1); // a hovered button is another color: audit the resting state
+  await settle(page, 250);
+  await animationsDone(page);
+  const result = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
+    // a notice fading in or out has the contrast of its half-transparent text for a moment
+    .exclude("[data-tone]")
+    .analyze();
+  expect(
+    result.violations.map(
+      (violation) =>
+        `${label}: ${violation.id} (${violation.impact}) ${violation.nodes
+          .map((node) => `${node.target.join(" ")} ${node.failureSummary ?? ""}`)
+          .slice(0, 3)
+          .join(", ")}`,
+    ),
+  ).toEqual([]);
+}
+
+/**
+ * A table by its name. The same data is a card list ("listbox") when the room it has is narrow, which depends on
+ * the container and not on the window, so both are accepted.
+ */
+export const tableOf = (page: Page, name: string, _phone = false) =>
+  page.getByRole("grid", { name, exact: true }).or(page.getByRole("listbox", { name, exact: true }));
+
+/** Goes to a destination with the keyboard sequence `g` + letter. */
+export async function goTo(page: Page, letter: string, path: RegExp): Promise<void> {
+  await page.keyboard.press("g");
+  await page.keyboard.press(letter);
+  await expect(page).toHaveURL(path);
 }

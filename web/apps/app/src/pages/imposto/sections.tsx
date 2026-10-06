@@ -8,7 +8,7 @@ import { tax } from "@opesvault/domain";
 import { Collapsible, useMotionPreset } from "@opesvault/ui";
 import { motion } from "motion/react";
 import type { ReactNode } from "react";
-import { EditButton } from "../contas/parts.tsx";
+import { EditButton } from "../../components/list_parts.tsx";
 import {
   ASSETS,
   CARNE,

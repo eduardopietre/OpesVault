@@ -109,6 +109,15 @@ function nextEnabled(options: readonly SelectOption[], from: number, step: 1 | -
   return from;
 }
 
+/**
+ * A modal dialog lives in the browser's top layer, above anything portaled to <body>: a list opened inside
+ * one must portal into that dialog or it opens hidden behind it.
+ */
+function useDialogContainer(): [(element: HTMLElement | null) => void, HTMLElement | undefined] {
+  const [container, setContainer] = useState<HTMLElement | undefined>(undefined);
+  return [(element) => setContainer(element?.closest("dialog") ?? undefined), container];
+}
+
 const popoverClass =
   "z-50 w-[var(--radix-popover-trigger-width)] min-w-[200px] max-w-[calc(100vw-16px)] rounded-lg border border-separator bg-raised shadow-lg " +
   "data-[state=open]:animate-[ov-menu-in_var(--ov-duration-fast)_var(--ov-ease-enter)]";
@@ -143,6 +152,7 @@ export function Select({
   const listId = useId();
   const typed = useRef({ text: "", at: 0 });
   const current = optionById(options, value);
+  const [containerRef, container] = useDialogContainer();
 
   const show = (start?: number) => {
     setActive(
@@ -197,6 +207,7 @@ export function Select({
         <Popover.Root open={open} onOpenChange={(next) => (next ? show() : setOpen(false))}>
           <Popover.Trigger asChild>
             <button
+              ref={containerRef}
               id={id}
               type="button"
               role="combobox"
@@ -216,7 +227,7 @@ export function Select({
               <ChevronsUpDown aria-hidden="true" className="size-4 shrink-0 text-secondary" />
             </button>
           </Popover.Trigger>
-          <Popover.Portal>
+          <Popover.Portal {...(container ? { container } : {})}>
             <Popover.Content
               align="start"
               sideOffset={4}
@@ -265,6 +276,7 @@ export function Combobox({
   const [query, setQuery] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
+  const [containerRef, container] = useDialogContainer();
   const listId = useId();
   const filtered = useMemo(() => {
     if (!query) return options;
@@ -311,6 +323,7 @@ export function Combobox({
                 className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-secondary"
               />
               <input
+                ref={containerRef}
                 id={id}
                 role="combobox"
                 aria-autocomplete="list"
@@ -339,7 +352,7 @@ export function Combobox({
               />
             </div>
           </Popover.Anchor>
-          <Popover.Portal>
+          <Popover.Portal {...(container ? { container } : {})}>
             <Popover.Content
               align="start"
               sideOffset={4}

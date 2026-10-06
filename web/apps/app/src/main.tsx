@@ -19,7 +19,7 @@ async function start() {
   // Which implementation is loaded when it is needed: the product's one arrives while the person signs in.
   const fakeModule = USE_FAKE_SERVICES ? await import("./services/fake.ts") : null;
   const fake = fakeModule
-    ? fakeModule.createFakeServices({ seed: true, latency: import.meta.env.DEV ? 250 : 120 })
+    ? fakeModule.createFakeServices({ seed: true, extras: true, latency: import.meta.env.DEV ? 250 : 120 })
     : null;
   fake?.setIdleLock(idleMinutes);
   const services =
@@ -36,6 +36,10 @@ async function start() {
   window.addEventListener("online", online);
   window.addEventListener("offline", online);
   online();
+
+  // The server session outlives the tab: a reload goes on from the project list, not from the sign-in form.
+  const restored = await services.restoreAccount?.();
+  if (restored) session.update({ account: restored });
 
   // "?demo" opens the demonstration project at once (fake services only): screenshots and e2e tests.
   const url = new URL(location.href);

@@ -1,7 +1,7 @@
 /** Contas e cartões without React: the rows of each table and the references of the links. */
 import { Dec, charts, demoSession, dom, makeDate, type Ledger } from "@opesvault/domain";
 import { beforeAll, describe, expect, it } from "vitest";
-import { accountChartData, billsChartData, scheduleChartData } from "../../src/pages/contas/chart.ts";
+import { toChartData } from "../../src/data/chart_data.ts";
 import {
   TAB_IDS,
   TAB_LABELS,
@@ -173,7 +173,7 @@ describe("the tables", () => {
 describe("the charts", () => {
   it("draws the bank's informed balances as isolated points and hides what the domain hides", () => {
     const account = [...ledger.accounts.values()].find((a) => a.name === "Banco A")!;
-    const data = accountChartData(
+    const data = toChartData(
       charts.data.accountBalanceHistory(ledger, account.id, { year: 2025, month: 11 }, { year: 2026, month: 10 }),
     );
     expect(data.series.map((s) => [s.name, s.kind])).toEqual([
@@ -182,13 +182,13 @@ describe("the charts", () => {
     ]);
     expect(data.series[1]!.values.filter((v) => v !== null)).toHaveLength(1);
     const card = [...ledger.cards.values()][0]!;
-    const bills = billsChartData(charts.data.cardBillsHistory(ledger, card.id, [{ year: 2026, month: 4 }]));
+    const bills = toChartData(charts.data.cardBillsHistory(ledger, card.id, [{ year: 2026, month: 4 }]));
     expect(bills.series.find((s) => s.name === "Parcelas")!.hidden).toBe(true);
   });
 
   it("labels each installment of the schedule by its month", () => {
     const plan = [...dom.loans.plans(ledger).values()][0]!;
-    const data = scheduleChartData(charts.data.loanChart(ledger, plan.id, today));
+    const data = toChartData(charts.data.loanChart(ledger, plan.id, today), { monthLabels: true });
     expect(data.categories[0]).toBe("jan/26");
     expect(data.categories).toHaveLength(36);
     expect(data.series.find((s) => s.name === "Parcela")!.hidden).toBe(true);

@@ -3,7 +3,7 @@ import { exporting, tax } from "@opesvault/domain";
 import { act as reactAct, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { BANK_INCOME_REPORT_PDF } from "../../../../packages/domain/src/demo_docs/index.ts";
-import { PROTECTED_PDF_PASSWORD, protectedPdf } from "../../e2e/pages/protected_pdf.ts";
+import { PROTECTED_PDF_PASSWORD, protectedPdf } from "../../e2e/protected_pdf.ts";
 import { taxReportData } from "../../src/pages/imposto/report.ts";
 import {
   YEAR,

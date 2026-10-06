@@ -14,7 +14,7 @@ import type { Workspace } from "../../data/workspace.ts";
 import { chooseMonth, useSharedMonth } from "../../data/month.ts";
 import { useTheme } from "../../theme.tsx";
 import { cellText, monthlyReportData, monthlyReportFile, reportFileName, type ReportTable } from "./report.ts";
-import { saveTextFile } from "./save_file.ts";
+import { saveTextFile } from "../../data/save_file.ts";
 import type { ReportSearch } from "./report_search.ts";
 
 function monthOf(text: string | undefined, fallback: YearMonth): YearMonth {

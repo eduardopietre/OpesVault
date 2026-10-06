@@ -10,10 +10,19 @@ import { useLedger, useWorkspace } from "../../data/react.tsx";
 import { LoanDialog } from "../../dialogs/loan_new.tsx";
 import { PayInstallmentDialog } from "../../dialogs/loan_pay.tsx";
 import { PrepaymentDialog } from "../../dialogs/loan_prepay.tsx";
-import { FigureCard, Money } from "../visao-geral/figures.tsx";
-import { scheduleChartData } from "./chart.ts";
-import { type TabReveal, EditButton, Empty, ListTable, Toolbar, useDialog, useLock, useTabReveal } from "./parts.tsx";
-import type { TierColumn } from "./columns.ts";
+import { FigureCard, Money } from "../../components/figures.tsx";
+import { toChartData } from "../../data/chart_data.ts";
+import {
+  type TabReveal,
+  EditButton,
+  Empty,
+  ListTable,
+  Toolbar,
+  useDialog,
+  useLock,
+  useTabReveal,
+} from "../../components/list_parts.tsx";
+import type { TierColumn } from "../../components/tier_columns.ts";
 import { cents, installmentRows, loanRows, money, nextInstallment, type InstallmentRow, type LoanRow } from "./rows.ts";
 
 const { loans } = dom;
@@ -133,7 +142,7 @@ export function LoansTab({ reveal }: { reveal?: TabReveal<LoanReveal> | null }) 
   const schedule = useLedger((l) => (planId ? installmentRows(l, planId, today) : []), `${planId ?? ""}|${today}`);
   const status = useLedger((l) => (planId ? loans.status(l, planId, today) : null), `${planId ?? ""}|${today}`);
   const chart = useLedger(
-    (l) => (planId ? scheduleChartData(charts.data.loanChart(l, planId, today)) : null),
+    (l) => (planId ? toChartData(charts.data.loanChart(l, planId, today), { monthLabels: true }) : null),
     `${planId ?? ""}|${today}`,
   );
   const installment = schedule.find((r) => r.id === numberPick) ?? nextInstallment(schedule);

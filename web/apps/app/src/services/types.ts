@@ -112,6 +112,11 @@ export interface AppServices {
   signIn(email: string, password: string): Promise<Account>;
   signUp(input: { name: string; email: string; password: string }): Promise<Account>;
   signOut(): Promise<void>;
+  /**
+   * After a page load: the account of the server session that is still valid (the cookie outlives the tab), or
+   * null. The account password is never kept, so it is not asked again; the project password still is.
+   */
+  restoreAccount?(): Promise<Account | null>;
   listProjects(): Promise<ProjectSummary[]>;
   createProject(input: { name: string; password: string }): Promise<CreatedProject>;
   openProject(id: string, password: string): Promise<OpenProject>;

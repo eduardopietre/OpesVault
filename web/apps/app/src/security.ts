@@ -4,35 +4,7 @@
  * header (with frame-ancestors, which a <meta> cannot carry); `vite preview` gets it as a <meta>.
  */
 
-/** Directives shared by the header and the meta element. */
-export const CSP_DIRECTIVES: readonly string[] = [
-  "default-src 'self'",
-  // WebAssembly only (Argon2id); JavaScript eval stays forbidden.
-  "script-src 'self' 'wasm-unsafe-eval'",
-  "style-src 'self'",
-  "img-src 'self' data: blob:",
-  "font-src 'self'",
-  // The local Ollama is called from the browser (docs/18 §3.6).
-  "connect-src 'self' http://localhost:* http://127.0.0.1:*",
-  "worker-src 'self' blob:",
-  "manifest-src 'self'",
-  "media-src 'self' blob:",
-  "object-src 'none'",
-  "base-uri 'none'",
-  "form-action 'self'",
-  "require-trusted-types-for 'script'",
-  "trusted-types default",
-];
-
-/** The policy as an HTTP header (adds what only a header can say). */
-export function cspHeader(): string {
-  return [...CSP_DIRECTIVES, "frame-ancestors 'none'"].join("; ");
-}
-
-/** The policy for a <meta http-equiv> element. */
-export function cspMeta(): string {
-  return CSP_DIRECTIVES.join("; ");
-}
+export { CSP_DIRECTIVES, cspHeader, cspMeta } from "@opesvault/vault";
 
 interface TrustedTypePolicyFactoryLike {
   createPolicy(
@@ -41,9 +13,15 @@ interface TrustedTypePolicyFactoryLike {
   ): unknown;
 }
 
-/** A module worker bundled with this app (`something.worker.ts`, emitted as `assets/something.worker-<hash>.js`). */
-export function isOwnWorker(url: URL): boolean {
-  return url.origin === location.origin && /\/[\w-]+\.worker(-[\w-]+)?\.(js|ts)$/.test(url.pathname);
+/**
+ * A module worker bundled with this app: in a production build `assets/<name>.worker-<hash>.js`, and in
+ * development (Vite) a `.worker.ts` source under `/src/`. Only the top-level `assets` folder counts, so
+ * that no other same-origin path (an API route, an uploaded file) can ever become a worker script.
+ */
+export function isOwnWorker(url: URL, development: boolean = import.meta.env.DEV): boolean {
+  if (url.origin !== location.origin || url.username !== "" || url.password !== "") return false;
+  if (/^\/assets\/[\w-]+\.worker-[\w-]+\.js$/.test(url.pathname)) return url.search === "" && url.hash === "";
+  return development && /^\/src\/([\w-]+\/)*[\w-]+\.worker\.ts$/.test(url.pathname);
 }
 
 /**

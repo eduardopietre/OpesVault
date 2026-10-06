@@ -10,9 +10,18 @@ import { useGoTo } from "../../data/navigation.ts";
 import { useLedger, useWorkspace } from "../../data/react.tsx";
 import { AccountDialog } from "../../dialogs/accounts_account.tsx";
 import { BalanceCheckDialog } from "../../dialogs/balance_check.tsx";
-import { accountChartData } from "./chart.ts";
-import { type TabReveal, EditButton, Empty, ListTable, Toolbar, Warn, useDialog, useTabReveal } from "./parts.tsx";
-import type { TierColumn } from "./columns.ts";
+import { toChartData } from "../../data/chart_data.ts";
+import {
+  type TabReveal,
+  EditButton,
+  Empty,
+  ListTable,
+  Toolbar,
+  Warn,
+  useDialog,
+  useTabReveal,
+} from "../../components/list_parts.tsx";
+import type { TierColumn } from "../../components/tier_columns.ts";
 import { accountRows, cents, checkRows, money, type AccountRow, type CheckRow } from "./rows.ts";
 
 const HISTORY_MONTHS = 12;
@@ -102,9 +111,7 @@ export function AccountsTab({ reveal }: { reveal?: TabReveal<AccountReveal> | nu
     (ledger) => {
       if (selectedId === null || !ledger.accounts.has(selectedId)) return null;
       const end = ymOf(today);
-      return accountChartData(
-        charts.data.accountBalanceHistory(ledger, selectedId, ymAdd(end, -(HISTORY_MONTHS - 1)), end),
-      );
+      return toChartData(charts.data.accountBalanceHistory(ledger, selectedId, ymAdd(end, -(HISTORY_MONTHS - 1)), end));
     },
     `${selectedId ?? ""}|${today}`,
   );

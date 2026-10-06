@@ -50,6 +50,15 @@ function unlockScroll(element: HTMLDialogElement) {
 }
 
 /**
+ * What should get focus back when the layer closes. A dialog opened from a menu entry would otherwise remember the
+ * entry, which is gone by then: the menu's own button (named by the menu's `aria-labelledby`) is the opener.
+ */
+function opener(active: Element | null): Element | null {
+  const labelledBy = active?.closest?.('[role="menu"]')?.getAttribute("aria-labelledby");
+  return (labelledBy ? document.getElementById(labelledBy) : null) ?? active;
+}
+
+/**
  * Leaves the modal state: closes the native dialog (the page is no longer inert) and gives focus back to
  * where it was, unless the user or the action already moved it elsewhere.
  */
@@ -102,7 +111,7 @@ function OverlayLayer({
   useLayoutEffect(() => {
     const element = dialog.current;
     if (!element) return;
-    previous.current = document.activeElement;
+    previous.current = opener(document.activeElement);
     if (!element.open) {
       try {
         element.showModal();
@@ -114,6 +123,11 @@ function OverlayLayer({
     const target =
       initialFocus?.current ??
       element.querySelector<HTMLElement>("[autofocus], [data-autofocus]") ??
+      // A form opens on its first field (the close button comes first in the document, but typing is the
+      // task); a layer with no field falls through to its first control.
+      element.querySelector<HTMLElement>(
+        "input:not([disabled]):not([type='hidden']):not([type='checkbox']):not([type='radio']):not([type='file']), textarea:not([disabled]), select:not([disabled]), [role='combobox']:not([disabled])",
+      ) ??
       element.querySelector<HTMLElement>(
         "input:not([disabled]), textarea, select, button:not([disabled]), [href], [tabindex]:not([tabindex='-1'])",
       );

@@ -7,7 +7,7 @@ import { test, type Page } from "@playwright/test";
 import { SCHEMES, SIZES, openDemo, settle } from "../helpers.ts";
 import { AMBIGUOUS, CSV, ITAU, OFX, PROTECTED, chooseFiles, readNotice } from "./importar_helpers.ts";
 import { fakeOllama } from "./livro_helpers.ts";
-import { tableOf } from "./sharing_helpers.ts";
+import { tableOf } from "../helpers.ts";
 
 const OUT = fileURLToPath(new URL("../../../../build/telas/", import.meta.url));
 

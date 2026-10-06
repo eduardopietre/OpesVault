@@ -307,7 +307,8 @@ test.describe("livro: every command", () => {
     await pick(page, page, "Integrante", "Todos os integrantes");
     await pick(page, page, "Situação", "Só ativos");
     await pick(page, page, "Origem", "Manual");
-    await expect.poll(() => page.locator("[data-row-id]").count()).toBe(3);
+    // the three rents of the demonstration and this month's condominium fee
+    await expect.poll(() => page.locator("[data-row-id]").count()).toBe(4);
 
     // a filter saved in the project, applied and deleted
     await menuItem(page, "Filtros salvos", "Salvar filtro atual…");
@@ -316,7 +317,7 @@ test.describe("livro: every command", () => {
     await finish(page, dialog, "Salvar filtro");
     await page.getByRole("button", { name: "Limpar filtros" }).first().click();
     await menuItem(page, "Filtros salvos", "Só a moradia");
-    await expect.poll(() => page.locator("[data-row-id]").count()).toBe(3);
+    await expect.poll(() => page.locator("[data-row-id]").count()).toBe(4);
     await menuItem(page, "Filtros salvos", /Excluir “Só a moradia”/);
     await page.getByRole("button", { name: "Limpar filtros" }).first().click();
 

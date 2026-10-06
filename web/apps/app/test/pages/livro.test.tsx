@@ -596,6 +596,32 @@ describe("Livro: comprovantes", () => {
     expect(o.workspace.session.documents.length).toBe(documents - 1);
   });
 
+  it("unlinks a receipt from the Livro in one act, and undo puts the file back", async () => {
+    const o = await openLivro();
+    const id = await pickRow(o.user, "Aluguel");
+    await openActions(o.user, "Desvincular comprovante…");
+    expect(await screen.findByText("Este lançamento não tem comprovante.")).toBeTruthy();
+    await o.user.upload(screen.getByLabelText("Escolher o comprovante") as HTMLInputElement, png());
+    await waitFor(() => expect(dom.attachments.ofOperation(o.workspace.ledger, id).length).toBe(1));
+    const documents = o.workspace.session.documents.length;
+
+    await openActions(o.user, "Desvincular comprovante…");
+    const confirmation = await screen.findByRole("alertdialog", { name: "Desvincular o comprovante?" });
+    // refusing changes nothing
+    await o.user.click(within(confirmation).getByRole("button", { name: "Cancelar" }));
+    expect(dom.attachments.ofOperation(o.workspace.ledger, id).length).toBe(1);
+
+    await openActions(o.user, "Desvincular comprovante…");
+    const again = await screen.findByRole("alertdialog", { name: "Desvincular o comprovante?" });
+    await o.user.click(within(again).getByRole("button", { name: "Desvincular" }));
+    await waitFor(() => expect(dom.attachments.ofOperation(o.workspace.ledger, id).length).toBe(0));
+    // a file nothing else uses leaves the project with its last receipt
+    expect(o.workspace.session.documents.length).toBe(documents - 1);
+    o.workspace.undo();
+    expect(dom.attachments.ofOperation(o.workspace.ledger, id).length).toBe(1);
+    expect(o.workspace.session.documents.length).toBe(documents);
+  });
+
   it("refuses a file that is not a PDF or an image", async () => {
     const o = await openLivro();
     await pickRow(o.user, "Aluguel");

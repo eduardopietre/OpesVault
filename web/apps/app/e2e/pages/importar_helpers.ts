@@ -1,7 +1,7 @@
 /** Helpers of the Importar e revisar end-to-end tests and screenshots: real files, the file chooser and a drop. */
 import { expect, type Page } from "@playwright/test";
 import { BANK_OFX, ITAU_CARD_PDF, NUBANK_CARD_CSV } from "../../../../packages/domain/src/demo_docs/index.ts";
-import { protectedPdf } from "./protected_pdf.ts";
+import { protectedPdf } from "../protected_pdf.ts";
 
 export interface TestFile {
   name: string;

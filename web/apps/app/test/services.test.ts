@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cspHeader, cspMeta } from "../src/security.ts";
+import { cspHeader, cspMeta, isOwnWorker } from "../src/security.ts";
 import { DEMO, createFakeServices } from "../src/services/fake.ts";
 import { ServiceError } from "../src/services/types.ts";
 import { SessionStore, sessionActions, syncStateOf } from "../src/session.tsx";
@@ -108,5 +108,35 @@ describe("content security policy", () => {
     expect(cspMeta()).toContain("require-trusted-types-for 'script'");
     expect(cspMeta()).not.toContain("frame-ancestors");
     expect(cspHeader()).toContain("frame-ancestors 'none'");
+  });
+});
+
+describe("Trusted Types worker rule", () => {
+  const url = (path: string) => new URL(path, location.origin);
+  it("accepts only the bundled workers under /assets", () => {
+    expect(isOwnWorker(url("/assets/parser.worker-BinMslUd.js"), false)).toBe(true);
+    expect(isOwnWorker(url("/assets/pdf.worker-BJGphbC-.js"), false)).toBe(true);
+  });
+  it("refuses every other path, origin, query and credentials", () => {
+    for (const bad of [
+      "/api/v1/projects/abc/blobs/evil.worker-x.js",
+      "/evil.worker-x.js",
+      "/assets/sub/evil.worker-x.js",
+      "/assets/evil.js",
+      "/assets/evil.worker-x.js?x=1",
+      "/assets/evil.worker-x.js#x",
+      "/assets/evil.worker.ts",
+      "/src/data/parser.worker.ts",
+      "//evil.test/assets/a.worker-x.js",
+      "https://evil.test/assets/a.worker-x.js",
+      `${location.protocol}//u:p@${location.host}/assets/a.worker-x.js`,
+    ]) {
+      expect(isOwnWorker(new URL(bad, location.origin), false), bad).toBe(false);
+    }
+  });
+  it("in development also accepts the .worker.ts sources of the app, and nothing else", () => {
+    expect(isOwnWorker(url("/src/data/parser.worker.ts?worker_file&type=module"), true)).toBe(true);
+    expect(isOwnWorker(url("/node_modules/x/evil.worker.ts"), true)).toBe(false);
+    expect(isOwnWorker(url("/src/evil.js"), true)).toBe(false);
   });
 });

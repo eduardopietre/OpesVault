@@ -63,7 +63,7 @@ describe("reading in the worker", () => {
 
   it("throws SourceError for a protected PDF without its password, so the page asks", async () => {
     const worker = installFakeWorker();
-    const { protectedPdf } = await import("../../e2e/pages/protected_pdf.ts");
+    const { protectedPdf } = await import("../../e2e/protected_pdf.ts");
     await expect(parser.analyze(request("p.pdf", new Uint8Array(protectedPdf())))).rejects.toBeInstanceOf(SourceError);
     await expect(parser.analyze(request("p.pdf", new Uint8Array(protectedPdf()), "errada"))).rejects.toMatchObject({
       problem: SourceProblem.WRONG_PASSWORD,

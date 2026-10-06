@@ -1,8 +1,12 @@
 import { cancelAllDecisions, clearToasts } from "@opesvault/ui";
-import { cleanup } from "@testing-library/react";
+import { cleanup, configure } from "@testing-library/react";
 import { MotionGlobalConfig } from "motion/react";
 import { afterEach, beforeAll } from "vitest";
 import { preloadProjectScreens } from "../src/router.tsx";
+
+// Whole screens over the demo project render slowly when the machine is busy: wait up to 5 s for an element
+// (findBy…/waitFor) instead of 1 s. A missing element still fails, only later.
+configure({ asyncUtilTimeout: 5000 });
 
 // happy-dom has no animation timeline or layout.
 MotionGlobalConfig.skipAnimations = true;

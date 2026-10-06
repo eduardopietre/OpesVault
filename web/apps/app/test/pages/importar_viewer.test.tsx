@@ -7,7 +7,7 @@ import { importing } from "@opesvault/domain";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { ITAU_CARD_PDF } from "../../../../packages/domain/src/demo_docs/index.ts";
-import { PROTECTED_PDF_PASSWORD, protectedPdf } from "../../e2e/pages/protected_pdf.ts";
+import { PROTECTED_PDF_PASSWORD, protectedPdf } from "../../e2e/protected_pdf.ts";
 import { DocumentUnavailable } from "../../src/data/workspace.ts";
 import { boxStyle } from "../../src/pages/importar/rows.ts";
 import { file, importFiles, itemsOf, lastBatch, openImport, pickItem, picker } from "./importar_harness.tsx";

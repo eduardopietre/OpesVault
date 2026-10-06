@@ -35,7 +35,7 @@ import type { Workspace } from "../../data/workspace.ts";
 import { OverviewReasonDialog } from "../../dialogs/overview_reason.tsx";
 import { useBackupAlerts } from "../configuracoes/backup_state.ts";
 import { AlertsPanel } from "./alerts_panel.tsx";
-import { FigureCard, Money, toneOf } from "./figures.tsx";
+import { FigureCard, Money, toneOf } from "../../components/figures.tsx";
 import {
   SUMMARY_MONTHS,
   balanceRows,

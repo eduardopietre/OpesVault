@@ -8,7 +8,7 @@ import { AccountType, importing, type Id } from "@opesvault/domain";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { BANK_OFX } from "../../../../packages/domain/src/demo_docs/index.ts";
-import { PROTECTED_PDF_PASSWORD, protectedPdf } from "../../e2e/pages/protected_pdf.ts";
+import { PROTECTED_PDF_PASSWORD, protectedPdf } from "../../e2e/protected_pdf.ts";
 import {
   batches,
   file,
@@ -449,6 +449,10 @@ describe("Importar e revisar: teclado", () => {
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Rejeitar item" })).toBeNull());
     fireEvent.keyDown(grid, { key: "Enter", ctrlKey: true });
     await dialog("Aprovação parcial");
+    // Found by the keyboard-only e2e: the grid read Ctrl+Enter as a plain Enter too, and opened the correction
+    // of the row under the approval's dialog. Only the approval opens.
+    expect(screen.queryByRole("dialog", { name: "Corrigir item" })).toBeNull();
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
   });
 
   it("C opens the category of the selected item", async () => {

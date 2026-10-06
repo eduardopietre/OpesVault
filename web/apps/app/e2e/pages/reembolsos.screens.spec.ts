@@ -4,8 +4,7 @@
  */
 import { fileURLToPath } from "node:url";
 import { test, type Page } from "@playwright/test";
-import { SCHEMES, SIZES, openDemo, settle } from "../helpers.ts";
-import { goTo, shareAnExpense, tableOf } from "./sharing_helpers.ts";
+import { SCHEMES, SIZES, openDemo, settle, tableOf } from "../helpers.ts";
 
 const OUT = fileURLToPath(new URL("../../../../build/telas/", import.meta.url));
 
@@ -26,14 +25,8 @@ for (const size of SIZES) {
       const phone = size.width < 640;
 
       test("reembolsos", async ({ page }) => {
+        // the web demonstration has a reimbursement and a debt between members (data/demo_extra.ts)
         await openDemo(page, "/reembolsos");
-        await settle(page, 700);
-        await pageShot(page, size, `${OUT}reembolsos-so-reembolso-${suffix}.png`);
-
-        await openDemo(page, "/livro");
-        await page.locator("[data-row-id]").first().waitFor();
-        await shareAnExpense(page);
-        await goTo(page, "b", /\/reembolsos$/);
         await tableOf(page, "Saldos entre integrantes", phone).waitFor();
         await settle(page, 700);
         await pageShot(page, size, `${OUT}reembolsos-${suffix}.png`);

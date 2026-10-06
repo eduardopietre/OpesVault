@@ -7,7 +7,7 @@ import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { importing } from "@opesvault/domain";
 import { describe, expect, it, vi } from "vitest";
 import { BANK_OFX, ITAU_CARD_PDF, NUBANK_CARD_CSV } from "../../../../packages/domain/src/demo_docs/index.ts";
-import { PROTECTED_PDF_PASSWORD, protectedPdf } from "../../e2e/pages/protected_pdf.ts";
+import { PROTECTED_PDF_PASSWORD, protectedPdf } from "../../e2e/protected_pdf.ts";
 import { addDroppedFiles } from "../../src/data/dropped_files.ts";
 import { batches, file, importFiles, itemsTable, lastBatch, openImport, picker, tableOf } from "./importar_harness.tsx";
 import { fakePdfRender } from "./importar_pdf_mock.ts";

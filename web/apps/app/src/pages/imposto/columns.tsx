@@ -7,8 +7,8 @@
 import { MoneyError, parseBrl } from "@opesvault/domain";
 import { ElidedText } from "@opesvault/ui";
 import type { ReactNode } from "react";
-import type { TierColumn } from "../contas/columns.ts";
-import { Warn } from "../contas/parts.tsx";
+import type { TierColumn } from "../../components/tier_columns.ts";
+import { Warn } from "../../components/list_parts.tsx";
 import type { Row } from "./rows.ts";
 
 type Kind = "text" | "money" | "date" | "month" | "count";

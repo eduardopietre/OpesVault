@@ -38,7 +38,7 @@ import { InvestmentTradeDialog, type TradeKind } from "../../dialogs/investment_
 import { InvestmentFixDialog, InvestmentValuationDialog } from "../../dialogs/investment_valuation.tsx";
 import { useAct, useLedger, useWorkspace } from "../../data/react.tsx";
 import { useGoTo, useReveal } from "../../data/navigation.ts";
-import { Empty, EditButton, ListTable, Toolbar, useDialog, useLock } from "../contas/parts.tsx";
+import { Empty, EditButton, ListTable, Toolbar, useDialog, useLock } from "../../components/list_parts.tsx";
 import { NOTE_COLUMNS, PORTFOLIO_COLUMNS } from "./columns.tsx";
 import { Detail } from "./detail.tsx";
 import { eventRows, noteRows, parseReveal, portfolioRows, summaryLine, valuationRows, type NoteRow } from "./rows.ts";

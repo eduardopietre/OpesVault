@@ -4,7 +4,7 @@
  */
 import { expect, test, type Page } from "@playwright/test";
 import { SCHEMES, SIZES, expectNoHorizontalOverflow, recordAddresses, settle, watchErrors } from "../helpers.ts";
-import { audit, tableOf } from "./sharing_helpers.ts";
+import { audit, tableOf } from "../helpers.ts";
 
 /** The demonstration project on the year its tax data is in. */
 async function open(page: Page) {

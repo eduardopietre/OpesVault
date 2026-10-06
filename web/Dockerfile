@@ -25,32 +25,17 @@ COPY packages/ui/package.json packages/ui/
 COPY apps/app/package.json apps/app/
 COPY apps/server/package.json apps/server/
 
-# The app is built only once it has a build script; until then only the server's dependencies.
 RUN --mount=type=secret,id=extra_ca,required=false \
     if [ -f /run/secrets/extra_ca ]; then export NODE_EXTRA_CA_CERTS=/run/secrets/extra_ca; fi; \
     corepack enable && corepack prepare "pnpm@${PNPM_VERSION}" --activate && \
-    if node -e "process.exit(require('./apps/app/package.json').scripts?.build ? 0 : 1)"; then \
-      pnpm install --frozen-lockfile; \
-    else \
-      pnpm install --frozen-lockfile --filter "@opesvault/server..."; \
-    fi
+    pnpm install --frozen-lockfile
 
 COPY . .
 
 RUN pnpm --filter @opesvault/server build
 
-# The web app, or a placeholder page while apps/app has no build yet (docs/18 W7).
-RUN if node -e "process.exit(require('./apps/app/package.json').scripts?.build ? 0 : 1)"; then \
-      pnpm --filter @opesvault/app build; \
-    else \
-      mkdir -p apps/app/dist && \
-      printf '%s\n' \
-        '<!doctype html>' \
-        '<html lang="pt-BR">' \
-        '<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>OpesVault</title></head>' \
-        '<body><h1>OpesVault</h1><p>O servidor está funcionando. A interface web ainda não faz parte desta imagem.</p></body>' \
-        '</html>' > apps/app/dist/index.html; \
-    fi
+# The web app for production: the real services (server + encrypted vault), no component catalog.
+RUN VITE_SERVICES=real pnpm --filter @opesvault/app build
 
 FROM ${NODE_IMAGE} AS runtime
 ENV NODE_ENV=production \

@@ -238,7 +238,9 @@ export function DataTable<T extends object>({
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (!ids.length) return;
+    // Ctrl/Alt/Cmd + a key belongs to the page (Ctrl+Enter approves, Alt+number changes section), not to the grid:
+    // Ctrl+Enter used to open the row's correction as well as approve it.
+    if (!ids.length || event.ctrlKey || event.metaKey || event.altKey) return;
     const page = Math.max(1, Math.floor((scroller.current?.clientHeight ?? 400) / (cards ? 96 : rowHeight)) - 1);
     const from = selectedIndex < 0 ? -1 : selectedIndex;
     const actions: Record<string, () => void> = {

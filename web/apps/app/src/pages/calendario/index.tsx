@@ -19,7 +19,7 @@ import type { Link } from "../../data/links.ts";
 import { useSharedMonth } from "../../data/month.ts";
 import { useGoTo } from "../../data/navigation.ts";
 import { useLedger, useWorkspace } from "../../data/react.tsx";
-import { FigureCard, Money } from "../visao-geral/figures.tsx";
+import { FigureCard, Money } from "../../components/figures.tsx";
 import { DayList, EntriesTable, entryRows } from "./entries.tsx";
 import { MonthGrid } from "./month_grid.tsx";
 import { agendaFigures, entriesOf, monthWeeks } from "./rows.ts";

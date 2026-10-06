@@ -467,8 +467,11 @@ export function redeem(
       }),
     );
   }
+  // Compared with the cost remaining BEFORE this redemption: after it is posted the remaining cost
+  // is already reduced, so a total redemption must be recognised first.
+  const remainingBefore = remainingCost(ledger, positionId);
   const created = operations.map((op) => ledger.addOperation(op));
-  if (final && cost.eq(remainingCost(ledger, positionId)) && pos.mode === TrackingMode.VALUE) {
+  if (final && cost.eq(remainingBefore) && pos.mode === TrackingMode.VALUE) {
     ledger.put("position", { ...pos, closed: true }, { reason: "resgate total" });
   }
   let event = investmentEvent({

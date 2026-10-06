@@ -7,6 +7,7 @@ export * from "./backup.ts";
 export * from "./backend.ts";
 export * from "./blob_cache.ts";
 export * from "./cache.ts";
+export * from "./csp.ts";
 export * from "./memory_backend.ts";
 export * from "./project_vault.ts";
 export * from "./timers.ts";

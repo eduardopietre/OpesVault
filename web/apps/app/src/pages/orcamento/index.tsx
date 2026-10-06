@@ -41,7 +41,7 @@ import { useAct, useLedger, useWorkspace } from "../../data/react.tsx";
 import { useSharedMonth } from "../../data/month.ts";
 import { useGoTo, useReveal } from "../../data/navigation.ts";
 import { useUndo } from "../../shell/undo.tsx";
-import { toChartData } from "./chart.ts";
+import { toChartData } from "../../data/chart_data.ts";
 import { STATE_LABELS, cents, categoryRef, parseCategoryRef, plural, summaryLine, usedPercent } from "./rows.ts";
 
 type Row = dom.budget.BudgetRow;

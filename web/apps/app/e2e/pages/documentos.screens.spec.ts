@@ -5,8 +5,9 @@
 import { fileURLToPath } from "node:url";
 import { test, type Page } from "@playwright/test";
 import { SCHEMES, SIZES, openDemo, settle } from "../helpers.ts";
-import { protectedPdf } from "./protected_pdf.ts";
-import { attach, goTo, tableOf } from "./sharing_helpers.ts";
+import { protectedPdf } from "../protected_pdf.ts";
+import { attach } from "./sharing_helpers.ts";
+import { goTo, tableOf } from "../helpers.ts";
 
 const PROTECTED = protectedPdf();
 

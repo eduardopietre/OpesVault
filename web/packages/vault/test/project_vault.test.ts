@@ -189,7 +189,7 @@ describe("two people, one editor", () => {
 
     await vault.stage([op("3", "perdida?")]);
     await vault.syncNow();
-    await settle();
+    await until(() => vault.getSnapshot().status === "readOnly");
     expect(vault.getSnapshot().status).toBe("readOnly");
     expect(vault.getSnapshot().heldBy?.email).toBe("bia@example.com");
     // The change made just before losing the lease is kept, not dropped.

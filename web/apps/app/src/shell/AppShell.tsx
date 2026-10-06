@@ -25,13 +25,14 @@ import {
 import { Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { motion } from "motion/react";
 import { CircleHelp, FileUp, Lock, LogOut, Monitor, Moon, PanelLeft, Redo2, Repeat2, Sun, Undo2 } from "lucide-react";
-import { useEffect, useState, type DragEvent } from "react";
+import { useEffect, useRef, useState, type DragEvent } from "react";
 import { BOTTOM_NAV, PAGES, SECTIONS, pageById, pageByPath, shortcutOf, type PageDef } from "../pages.tsx";
 import { SIDEBAR_KEY } from "../preferences.ts";
 import { syncStateOf, useSession, useSessionActions } from "../session.tsx";
 import { useTheme } from "../theme.tsx";
 import { HelpDialog } from "./HelpDialog.tsx";
 import { addDroppedFiles } from "../data/dropped_files.ts";
+import { takeEntryFocus } from "./entry_focus.ts";
 import { useShortcuts } from "./shortcuts.ts";
 import { TopBar } from "./TopBar.tsx";
 import { useUndo } from "./undo.tsx";
@@ -73,8 +74,12 @@ export function AppShell() {
   // Opening the project and unlocking it replace what had focus (a dialog, the lock screen): without this,
   // keyboard and screen reader users would start again from the top of the document.
   const locked = session.locked;
+  const wasLocked = useRef(locked);
   useEffect(() => {
+    const unlocked = wasLocked.current && !locked;
+    wasLocked.current = locked;
     if (locked) return;
+    if (!unlocked && !takeEntryFocus()) return;
     const main = document.getElementById("conteudo");
     if (main && (document.activeElement === document.body || document.activeElement === null)) {
       main.focus({ preventScroll: true });

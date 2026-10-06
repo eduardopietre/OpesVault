@@ -59,11 +59,18 @@ export async function settle(rounds = 30): Promise<void> {
 }
 
 /**
- * Waits (in event-loop turns, never in wall time) until `condition` holds: for work a timer
- * started in the background, whose number of turns depends on the machine's load.
+ * Waits until `condition` holds, for work started in the background (a poll, an idle lock) that ends with
+ * WebCrypto and IndexedDB, whose real time depends on the machine's load. It used to count event-loop turns, but a
+ * turn lasts microseconds while a decryption on the thread pool lasts as long as the CPU is busy, so under load the
+ * count ran out first and the test asserted too early. The bound is a deadline that only fails a test that would
+ * otherwise hang, and it fails loudly instead of returning with the condition still false.
  */
-export async function until(condition: () => boolean, rounds = 2000): Promise<void> {
-  for (let i = 0; i < rounds && !condition(); i++) await new Promise((resolve) => setImmediate(resolve));
+export async function until(condition: () => boolean, timeoutMs = 30_000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (!condition()) {
+    if (Date.now() > deadline) throw new Error(`until: the condition did not hold within ${timeoutMs} ms`);
+    await new Promise((resolve) => setImmediate(resolve));
+  }
 }
 
 /** One browser: its own IndexedDB, its own server session. */

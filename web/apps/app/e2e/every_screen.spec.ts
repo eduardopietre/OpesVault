@@ -58,10 +58,11 @@ test.describe("the walk", () => {
         await fakeOllama(page);
         const errors = watchErrors(page);
         const foreign = watchForeignRequests(page);
+        const walker = new Walker(page, errors, entry.path);
         await openDemo(page, entry.path);
         await settle(page, 600);
         expect(errors, "errors while loading").toEqual([]);
-        const walker = new Walker(page, errors, entry.path);
+        expect(walker.downloads, "an export starts only when the user asks (TA-34)").toEqual([]);
         await walker.walk();
         testInfo.annotations.push({ type: "walk", description: walker.summary() });
         process.stdout.write(`[walk] ${entry.title} ${size.width}: ${walker.summary()}` + "\n");
@@ -80,10 +81,16 @@ test.describe("the walk", () => {
             store.__prints += 1;
           };
         });
-        await openDemo(page, `${view.path}${view.query}`);
+        const walker = new Walker(page, errors, view.path, { root: "body", limit: 40 });
+        await page.goto(`${view.path}${view.query ? `${view.query}&demo` : "?demo"}`);
+        await expect(page.locator("h1").first()).toBeVisible();
         await settle(page, 600);
         expect(errors).toEqual([]);
-        const walker = new Walker(page, errors, view.path, { root: "body", limit: 40 });
+        expect(walker.downloads, "an export starts only when the user asks (TA-34)").toEqual([]);
+        expect(
+          await page.evaluate(() => (window as unknown as { __prints: number }).__prints),
+          "no print dialog on load",
+        ).toBe(0);
         await walker.walk();
         testInfo.annotations.push({ type: "walk", description: walker.summary() });
         process.stdout.write(`[walk] ${view.path} ${size.width}: ${walker.summary()}` + "\n");
@@ -182,4 +189,23 @@ test.describe("without a project (TA-31)", () => {
       expect(errors).toEqual([]);
     });
   }
+
+  test("browser storage and cookies hold no data of the project (TA-05, TA-31)", async ({ page }) => {
+    const errors = watchErrors(page);
+    await openDemo(page, "/livro");
+    await expect(page.getByText("Pão de Açúcar").first()).toBeVisible();
+    for (const route of ["/contas", "/investimentos", "/importar", "/livro"]) await goInApp(page, route);
+    const held = await page.evaluate(() => {
+      const entries: string[] = [];
+      for (const store of [localStorage, sessionStorage]) {
+        for (let i = 0; i < store.length; i++) {
+          const key = store.key(i) ?? "";
+          entries.push(`${key}=${store.getItem(key)}`);
+        }
+      }
+      return entries.join("\n") + "\n" + document.cookie;
+    });
+    for (const canary of [...CANARIES, "Casa"]) expect(held, `storage holds ${canary}`).not.toContain(canary);
+    expect(errors).toEqual([]);
+  });
 });

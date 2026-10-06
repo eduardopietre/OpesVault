@@ -91,6 +91,9 @@ export class Walker {
 
   /** Clicks everything on the page: each tab in turn, and in each view once more with a row selected. */
   async walk(depth = 0): Promise<void> {
+    if (depth === 0 && (await this.#depth()) < 0) {
+      this.problems.push("the undo test hook (window.__opesvaultTest) is missing: the e2e build must define it");
+    }
     const view = await this.#viewKey();
     await this.#pass(view);
     if (await this.#selectRow(view)) await this.#pass(view);

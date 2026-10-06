@@ -37,6 +37,7 @@ import {
   type Posting,
 } from "./model.ts";
 import { BRL, isCents, toDecimal, ZERO } from "./money.ts";
+import { DomainError } from "./error.ts";
 import { migrate } from "./migrations.ts";
 import { HistoryList, type JournalEntry, MISSING, TrackedMap } from "./tracking.ts";
 
@@ -45,13 +46,7 @@ const META_NAMESPACE = "6f1c3d2a-1b7e-4b8e-9f00-0c0ffee0a001";
 export const META_ID: Id = uuid5(META_NAMESPACE, "ledger-meta");
 export const META_KIND = "ledger.meta";
 
-/** A rejected change. The message is user-facing Portuguese without financial values. */
-export class DomainError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "DomainError";
-  }
-}
+export { DomainError };
 
 export const LedgerMetaSchema = z.strictObject({
   schema_version: z.number().int().default(SCHEMA_VERSION),

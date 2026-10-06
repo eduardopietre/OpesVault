@@ -27,6 +27,13 @@ export interface PlainRecord {
   readonly payload: unknown;
 }
 
+/** The two keys it takes to open a record: see `ProjectKeys.shareRecordKeys`. */
+export interface RecordKeyShare {
+  readonly projectId: string;
+  readonly records: CryptoKey;
+  readonly recordIds: CryptoKey;
+}
+
 export const INFO = {
   records: "opesvault/records/v1",
   recordId: "opesvault/record-id/v1",
@@ -153,34 +160,16 @@ export class ProjectKeys {
    * record or project, or if the record inside does not hash to this opaque id.
    */
   async openRecord(opaqueId: string, ciphertext: B64): Promise<PlainRecord> {
-    const key = this.#key(this.#records);
-    let sealed: Bytes;
-    try {
-      sealed = fromB64(ciphertext);
-    } catch {
-      throw new CryptoError("invalid_format");
-    }
-    const plaintext = await open(key, sealed, recordAad(this.projectId, opaqueId), RECORD_VERSION);
-    let value: unknown;
-    try {
-      value = JSON.parse(fromUtf8(plaintext));
-    } catch {
-      throw new CryptoError("invalid_format");
-    } finally {
-      wipe(plaintext);
-    }
-    if (
-      typeof value !== "object" ||
-      value === null ||
-      typeof (value as PlainRecord).kind !== "string" ||
-      typeof (value as PlainRecord).id !== "string" ||
-      !("payload" in value)
-    ) {
-      throw new CryptoError("invalid_format");
-    }
-    const record = value as PlainRecord;
-    if ((await this.opaqueId(record.kind, record.id)) !== opaqueId) throw new CryptoError("decrypt_failed");
-    return { kind: record.kind, id: record.id, payload: record.payload };
+    return openRecordWith(this.shareRecordKeys(), opaqueId, ciphertext);
+  }
+
+  /**
+   * The two keys that open records, for a Web Worker of this app that opens many records at once. They are
+   * non-extractable CryptoKeys: the worker can use them but never read them. The caller ends the worker as
+   * soon as it is done (`destroy()` here does not reach it).
+   */
+  shareRecordKeys(): RecordKeyShare {
+    return { projectId: this.projectId, records: this.#key(this.#records), recordIds: this.#key(this.#recordIds) };
   }
 
   async sealName(name: string, random: RandomSource = systemRandom): Promise<B64> {
@@ -294,4 +283,37 @@ export class ProjectKeys {
     wipe(...chunks);
     return out;
   }
+}
+
+/** Opens one record with its keys (the body of `ProjectKeys.openRecord`, usable inside a worker). */
+export async function openRecordWith(share: RecordKeyShare, opaqueId: string, ciphertext: B64): Promise<PlainRecord> {
+  let sealed: Bytes;
+  try {
+    sealed = fromB64(ciphertext);
+  } catch {
+    throw new CryptoError("invalid_format");
+  }
+  const plaintext = await open(share.records, sealed, recordAad(share.projectId, opaqueId), RECORD_VERSION);
+  let value: unknown;
+  try {
+    value = JSON.parse(fromUtf8(plaintext));
+  } catch {
+    throw new CryptoError("invalid_format");
+  } finally {
+    wipe(plaintext);
+  }
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    typeof (value as PlainRecord).kind !== "string" ||
+    typeof (value as PlainRecord).id !== "string" ||
+    !("payload" in value)
+  ) {
+    throw new CryptoError("invalid_format");
+  }
+  const record = value as PlainRecord;
+  checkRecordRef(record.kind, record.id);
+  const mac = await hmac(share.recordIds, utf8(`${record.kind}\n${record.id}`));
+  if (toHex(mac).slice(0, OPAQUE_ID_CHARS) !== opaqueId) throw new CryptoError("decrypt_failed");
+  return { kind: record.kind, id: record.id, payload: record.payload };
 }

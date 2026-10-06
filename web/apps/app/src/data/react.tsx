@@ -2,7 +2,8 @@
  * React access to the open project: `useWorkspace()` for actions, `useLedger()` for reads that re-run
  * after every change, and `useAct()` to run a user action with the domain's errors shown to the user.
  */
-import { DomainError, type Ledger, type session as sessions } from "@opesvault/domain";
+import type { Ledger, session as sessions } from "@opesvault/domain";
+import { DomainError } from "@opesvault/domain/error";
 
 type Session = sessions.Session;
 import { notify } from "@opesvault/ui";

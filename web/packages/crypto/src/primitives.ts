@@ -5,7 +5,7 @@
  * script code (ours or injected) cannot read its bytes back, only use it while the tab holds it.
  * Nothing here is home-made cryptography (docs/03 §2, docs/19 §3).
  */
-import { concatBytes, copyBytes, type Bytes } from "./bytes.ts";
+import { concatBytes, type Bytes } from "./bytes.ts";
 import { CryptoError } from "./errors.ts";
 import { systemRandom, type RandomSource } from "./random.ts";
 
@@ -106,7 +106,8 @@ export async function seal(
 
 export async function open(key: CryptoKey, sealed: Uint8Array, aad: Bytes, version: number): Promise<Bytes> {
   if (sealed.length < 1 + NONCE_BYTES + TAG_BYTES || sealed[0] !== version) throw new CryptoError("invalid_format");
-  const nonce = copyBytes(sealed.subarray(1, 1 + NONCE_BYTES));
-  const body = copyBytes(sealed.subarray(1 + NONCE_BYTES));
+  // Views, not copies: WebCrypto reads them as they are, and a record is opened once per byte.
+  const nonce = sealed.subarray(1, 1 + NONCE_BYTES) as Bytes;
+  const body = sealed.subarray(1 + NONCE_BYTES) as Bytes;
   return aesGcmDecrypt(key, nonce, body, concatBytes(Uint8Array.of(version), aad));
 }

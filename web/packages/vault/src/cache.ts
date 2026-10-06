@@ -76,10 +76,13 @@ export interface CacheOpenOptions {
 export class VaultCache {
   readonly #db: IDBDatabase;
   readonly #keyRange: typeof IDBKeyRange;
+  /** The database's name: a worker opens the same cache by it (see `RecordOpener`). */
+  readonly name: string;
 
-  private constructor(db: IDBDatabase, keyRange: typeof IDBKeyRange) {
+  private constructor(db: IDBDatabase, keyRange: typeof IDBKeyRange, name: string) {
     this.#db = db;
     this.#keyRange = keyRange;
+    this.name = name;
   }
 
   /** Opens (and creates) the cache. */
@@ -94,7 +97,7 @@ export class VaultCache {
       if (!db.objectStoreNames.contains("records")) db.createObjectStore("records", { keyPath: ["projectId", "id"] });
       if (!db.objectStoreNames.contains("pending")) db.createObjectStore("pending", { keyPath: ["projectId", "id"] });
     };
-    return new VaultCache(await request(req), keyRange);
+    return new VaultCache(await request(req), keyRange, options.name ?? CACHE_DB_NAME);
   }
 
   /** Every key of one project: [projectId, string] sorts below [projectId, []] (arrays sort after strings). */
@@ -132,9 +135,37 @@ export class VaultCache {
     await done(tx);
   }
 
+  /**
+   * Every cached record of the project, ordered by id. Read as four slices at once (ids are hex): the
+   * database reads one slice while the page copies another, which is faster than one `getAll` for the
+   * tens of thousands of records of a big project.
+   */
   async listRecords(projectId: string): Promise<CachedRecord[]> {
+    const cuts = ["", "4", "8", "c"];
+    const slices = await Promise.all(
+      cuts.map((from, i) => {
+        const to = cuts[i + 1];
+        const range = this.#keyRange.bound(
+          [projectId, from],
+          to === undefined ? [projectId, []] : [projectId, to],
+          false,
+          true,
+        );
+        const tx = this.#db.transaction("records", "readonly");
+        return request(tx.objectStore("records").getAll(range)) as Promise<CachedRecord[]>;
+      }),
+    );
+    return slices.flat();
+  }
+
+  /**
+   * The records whose id is in [from, to) (to = null: to the end), for reading a project in several slices
+   * at once. Ids are compared as the strings they are.
+   */
+  async listRecordsBetween(projectId: string, from: string, to: string | null): Promise<CachedRecord[]> {
     const tx = this.#db.transaction("records", "readonly");
-    return (await request(tx.objectStore("records").getAll(this.#range(projectId)))) as CachedRecord[];
+    const range = this.#keyRange.bound([projectId, from], to === null ? [projectId, []] : [projectId, to], false, true);
+    return (await request(tx.objectStore("records").getAll(range))) as CachedRecord[];
   }
 
   async getRecord(projectId: string, id: string): Promise<CachedRecord | null> {

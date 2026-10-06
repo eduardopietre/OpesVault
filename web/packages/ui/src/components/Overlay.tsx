@@ -35,12 +35,28 @@ export interface OverlayProps {
 }
 
 /**
+ * The page under an open modal does not scroll. This is an attribute on <html> set here, not a
+ * `html:has(dialog[open])` rule: a :has() on the root makes the browser restyle the whole document
+ * whenever any element is inserted anywhere, which the 50 000-row Livro pays on every scroll frame.
+ */
+const modals = new Set<HTMLDialogElement>();
+function lockScroll(element: HTMLDialogElement) {
+  modals.add(element);
+  document.documentElement.setAttribute("data-ov-scroll-lock", "");
+}
+function unlockScroll(element: HTMLDialogElement) {
+  modals.delete(element);
+  if (modals.size === 0) document.documentElement.removeAttribute("data-ov-scroll-lock");
+}
+
+/**
  * Leaves the modal state: closes the native dialog (the page is no longer inert) and gives focus back to
  * where it was, unless the user or the action already moved it elsewhere.
  */
 function release(element: HTMLDialogElement, previous: Element | null) {
   if (element.hasAttribute("data-closing")) return;
   element.setAttribute("data-closing", "");
+  unlockScroll(element);
   const active = document.activeElement;
   const focusInside = active !== null && element.contains(active);
   if (element.open) element.close();
@@ -94,6 +110,7 @@ function OverlayLayer({
         element.setAttribute("open", "");
       }
     }
+    lockScroll(element);
     const target =
       initialFocus?.current ??
       element.querySelector<HTMLElement>("[autofocus], [data-autofocus]") ??

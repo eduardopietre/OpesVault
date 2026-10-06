@@ -3,10 +3,12 @@
  * on the preinstalled Chromium (/opt/pw-browsers; never `playwright install`).
  *   pnpm --filter @opesvault/app e2e       behaviour, accessibility, overflow, keyboard
  *   pnpm --filter @opesvault/app screens   screenshots in web/build/telas
+ *   pnpm --filter @opesvault/app perf      big-project measurements (perf.html), build/perf/results.json
  */
 import { defineConfig, devices } from "@playwright/test";
 
 const PORT = Number(process.env["E2E_PORT"] ?? 4317);
+const PERF = process.env["PERF"] === "1";
 
 export default defineConfig({
   testDir: "e2e",
@@ -25,13 +27,17 @@ export default defineConfig({
     timezoneId: "America/Sao_Paulo",
   },
   webServer: {
-    command: `pnpm build:e2e && pnpm exec vite preview --outDir build/dist-e2e --port ${PORT} --strictPort`,
-    url: `http://localhost:${PORT}`,
+    command: PERF
+      ? `pnpm build:perf && pnpm exec vite preview --outDir build/dist-perf --port ${PORT} --strictPort`
+      : `pnpm build:e2e && pnpm exec vite preview --outDir build/dist-e2e --port ${PORT} --strictPort`,
+    url: `http://localhost:${PORT}${PERF ? "/perf.html" : ""}`,
     reuseExistingServer: true,
     timeout: 180_000,
   },
   projects: [
-    { name: "e2e", testIgnore: /screens\.spec\.ts/ },
+    { name: "e2e", testIgnore: /(screens|perf)\.spec\.ts/ },
     { name: "screens", testMatch: /screens\.spec\.ts/ },
+    // Big-project measurements (docs/18 W12): `pnpm perf`; never part of the default run.
+    { name: "perf", testMatch: /perf\.spec\.ts/, retries: 0, workers: 1, fullyParallel: false },
   ],
 });

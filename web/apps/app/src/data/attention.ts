@@ -3,8 +3,9 @@
  * notices that are not merely informative, Importar e revisar counts the items waiting for review.
  */
 import { dom, importing, type Ledger, type IsoDate } from "@opesvault/domain";
-import { useOptionalWorkspace } from "./react.tsx";
 import { useSyncExternalStore } from "react";
+import { useLater } from "./later.ts";
+import { useOptionalWorkspace } from "./react.tsx";
 
 export function attentionCounts(ledger: Ledger, today: IsoDate): Record<string, number> {
   const pending = [...importing.importStore.items(ledger).values()].filter(
@@ -16,16 +17,10 @@ export function attentionCounts(ledger: Ledger, today: IsoDate): Record<string, 
 
 const noSubscribe = () => () => undefined;
 const noVersion = () => 0;
-const cache = new WeakMap<object, { version: number; counts: Record<string, number> }>();
 
-/** The counts of the open project, recomputed after each change; `fallback` without a project. */
+/** The counts of the open project, recomputed after each change (after the paint, on a big project); `fallback` without a project. */
 export function useAttention(fallback: Readonly<Record<string, number>>): Readonly<Record<string, number>> {
   const workspace = useOptionalWorkspace();
   const version = useSyncExternalStore(workspace?.subscribe ?? noSubscribe, workspace?.getVersion ?? noVersion);
-  if (!workspace) return fallback;
-  const hit = cache.get(workspace);
-  if (hit && hit.version === version) return hit.counts;
-  const counts = attentionCounts(workspace.ledger, workspace.today());
-  cache.set(workspace, { version, counts });
-  return counts;
+  return useLater(workspace, version, null, (ledger) => attentionCounts(ledger, workspace!.today()), fallback);
 }

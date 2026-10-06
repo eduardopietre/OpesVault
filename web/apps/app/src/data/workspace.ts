@@ -122,6 +122,7 @@ export class Workspace {
 
   /** Builds the workspace from the records in the vault (an empty vault starts a new project). */
   static fromRecords(records: Iterable<PlainRecordLike>, name: string, options: WorkspaceOptions = {}): Workspace {
+    const started = performance.now();
     const { ledger, documents } = splitRecords(records);
     const bytes = new Map<string, Uint8Array>();
     let session: Session;
@@ -135,6 +136,11 @@ export class Workspace {
     }
     // The lazy documents read their bytes from the workspace's map.
     const workspace = new Workspace(session, options, bytes);
+    try {
+      performance.measure("opv:ledger", { start: started, end: performance.now() });
+    } catch {
+      // no Performance API
+    }
     for (const d of documents) workspace.#blobOf.set(d.id, d.blob_id);
     // A new project, or one migrated in memory, sends every record once.
     if (session.forceFullSync || session.ledger.migratedFrom !== null) workspace.#flush();

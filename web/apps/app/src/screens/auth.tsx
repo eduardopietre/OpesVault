@@ -7,7 +7,7 @@ import { Button, TextField } from "@opesvault/ui";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { USE_FAKE_SERVICES } from "../flags.ts";
-import { DEMO } from "../services/fake.ts";
+import { DEMO_ACCOUNT as DEMO } from "../services/demo_account.ts";
 import { useSessionActions } from "../session.tsx";
 import { AuthLayout } from "./AuthLayout.tsx";
 

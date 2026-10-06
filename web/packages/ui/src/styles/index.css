@@ -114,7 +114,7 @@
     scrollbar-color: var(--ov-separator-strong) transparent;
   }
   /* A modal dialog is open: the page under it does not scroll. */
-  html:has(dialog[open][data-ov-modal]) {
+  html[data-ov-scroll-lock] {
     overflow: hidden;
   }
   button,

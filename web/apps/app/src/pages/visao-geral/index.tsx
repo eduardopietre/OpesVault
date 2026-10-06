@@ -29,7 +29,8 @@ import { toChartData } from "../../data/chart_data.ts";
 import { filterRef, type Link } from "../../data/links.ts";
 import { chooseMonth, useSharedMonth } from "../../data/month.ts";
 import { useGoTo } from "../../data/navigation.ts";
-import { useAct, useLedger, useWorkspace } from "../../data/react.tsx";
+import { useLater } from "../../data/later.ts";
+import { useAct, useLedger, useLedgerVersion, useWorkspace } from "../../data/react.tsx";
 import type { Workspace } from "../../data/workspace.ts";
 import { OverviewReasonDialog } from "../../dialogs/overview_reason.tsx";
 import { useBackupAlerts } from "../configuracoes/backup_state.ts";
@@ -45,6 +46,8 @@ import {
   monthFigures,
 } from "./rows.ts";
 import { BalancesTable, CategoriesTable, ComparisonTable } from "./tables.tsx";
+
+const NO_ALERTS: ReturnType<typeof dom.alerts.alerts> = [];
 
 /** The device preference holding the opening in which the panel was hidden. */
 export const ALERTS_HIDDEN_KEY = "visao-geral/avisos-ocultos";
@@ -102,7 +105,15 @@ export function Page() {
   const memberValid = memberId !== null && members.some((m) => m.id === memberId) ? memberId : null;
 
   const key = `${monthKey}|${memberValid ?? ""}`;
-  const projectAlerts = useLedger((ledger) => dom.alerts.alerts(ledger, today), today);
+  // The notices take a second on a big project: they come after the page is painted (data/later.ts).
+  const ledgerVersion = useLedgerVersion();
+  const projectAlerts = useLater(
+    workspace,
+    ledgerVersion,
+    today,
+    (ledger) => dom.alerts.alerts(ledger, today),
+    NO_ALERTS,
+  );
   // The backup reminder is about this device (Configurações › Backup), so it comes after the project's own.
   const backupAlerts = useBackupAlerts(today);
   const alerts = useMemo(() => [...projectAlerts, ...backupAlerts], [projectAlerts, backupAlerts]);

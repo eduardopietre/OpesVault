@@ -1,5 +1,5 @@
 /** Puts the open project's workspace and its undo/redo into context for the pages and the shell. */
-import { DomainError } from "@opesvault/domain";
+import { DomainError } from "@opesvault/domain/error";
 import { notify } from "@opesvault/ui";
 import { useMemo, useSyncExternalStore, type ReactNode } from "react";
 import { useSession } from "../session.tsx";

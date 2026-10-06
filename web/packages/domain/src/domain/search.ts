@@ -56,19 +56,38 @@ export function matches(flt: OperationFilter, op: Operation): boolean {
   )
     return false;
   const needle = casefold(flt.text.trim());
-  return !needle || casefold(op.description).includes(needle) || casefold(op.notes ?? "").includes(needle);
+  if (!needle) return true;
+  const texts = foldedTexts(op);
+  return texts[0].includes(needle) || texts[1].includes(needle);
 }
 
-/** Newest first; operations without any date go last. */
+/** Case-folded description and notes of an operation, kept while the (immutable) operation lives. */
+const folded = new WeakMap<Operation, readonly [string, string]>();
+function foldedTexts(op: Operation): readonly [string, string] {
+  let hit = folded.get(op);
+  if (hit === undefined) {
+    hit = [casefold(op.description), casefold(op.notes ?? "")];
+    folded.set(op, hit);
+  }
+  return hit;
+}
+
+/** Newest first; operations without any date go last. Sorted once per ledger state (every filter keeps this order). */
 export function findOperations(ledger: Ledger, flt: OperationFilter): Operation[] {
-  const found = [...ledger.operations.values()].filter((op) => matches(flt, op));
-  const key = (o: Operation) => o.occurred_on ?? cashDate(o) ?? "0001-01-01";
-  // UUIDs in canonical lowercase form sort like their integers.
-  found.sort((a, b) => {
-    const ka = key(a);
-    const kb = key(b);
-    if (ka !== kb) return ka < kb ? 1 : -1;
-    return a.id < b.id ? 1 : a.id > b.id ? -1 : 0;
+  return sortedOperations(ledger).filter((op) => matches(flt, op));
+}
+
+function sortedOperations(ledger: Ledger): readonly Operation[] {
+  return ledger.cached("search.sorted", () => {
+    const all = [...ledger.operations.values()];
+    const key = (o: Operation) => o.occurred_on ?? cashDate(o) ?? "0001-01-01";
+    // UUIDs in canonical lowercase form sort like their integers.
+    all.sort((a, b) => {
+      const ka = key(a);
+      const kb = key(b);
+      if (ka !== kb) return ka < kb ? 1 : -1;
+      return a.id < b.id ? 1 : a.id > b.id ? -1 : 0;
+    });
+    return all;
   });
-  return found;
 }

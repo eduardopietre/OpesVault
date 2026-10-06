@@ -11,6 +11,8 @@
     "typecheck": "tsc -p tsconfig.json",
     "e2e": "playwright test --project=e2e",
     "screens": "playwright test --project=screens",
+    "build:perf": "vite build --config vite.perf.config.ts",
+    "perf": "rm -f build/perf/results.json; PERF=1 playwright test --project=perf",
     "icons": "node scripts/icons.ts"
   },
   "dependencies": {

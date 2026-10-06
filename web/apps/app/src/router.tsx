@@ -3,7 +3,7 @@
  * new project and the first-run assistant. With a project: the shell and one route per destination
  * (docs/18 §6). The guards read the same session store as the screens.
  */
-import { DecisionHost, Toaster } from "@opesvault/ui";
+import { DecisionHost, Toaster, loadECharts } from "@opesvault/ui";
 import {
   Navigate,
   Outlet,
@@ -24,11 +24,29 @@ import { taxReportSearch } from "./pages/imposto/report_search.ts";
 import { reportSearch } from "./pages/visao-geral/report_search.ts";
 import { SignInScreen, SignUpScreen, WelcomeScreen } from "./screens/auth.tsx";
 import { PlaceholderPage } from "./screens/PlaceholderPage.tsx";
-import { CreateProjectScreen, ProjectsScreen, SetupScreen } from "./screens/projects.tsx";
 import type { SessionStore } from "./session.tsx";
-import { AppShell } from "./shell/AppShell.tsx";
+
+// The shell and the screens after sign-in carry the domain and the vault's dialogs: they load when first needed.
+const AppShell = lazyRouteComponent(() => import("./shell/AppShell.tsx"), "AppShell");
+const ProjectsScreen = lazyRouteComponent(() => import("./screens/projects.tsx"), "ProjectsScreen");
+const CreateProjectScreen = lazyRouteComponent(() => import("./screens/projects.tsx"), "CreateProjectScreen");
+const SetupScreen = lazyRouteComponent(() => import("./screens/projects.tsx"), "SetupScreen");
 
 const SCREENS = import.meta.glob<{ Page: ComponentType }>("./pages/*/index.tsx");
+
+/**
+ * Starts loading the code a project needs (the shell, the projects screen, the overview and its charts, with
+ * the domain and the vault they share) once someone has signed in: it arrives while the project is chosen and
+ * unlocked, instead of after it.
+ */
+export function preloadProjectScreens(): Promise<unknown> {
+  return Promise.all([
+    import("./shell/AppShell.tsx"),
+    import("./screens/projects.tsx"),
+    SCREENS["./pages/visao-geral/index.tsx"]?.(),
+    loadECharts(),
+  ]);
+}
 
 export interface RouterContext {
   session: SessionStore;

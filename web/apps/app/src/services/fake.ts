@@ -12,6 +12,7 @@ import {
   toHex,
   type KdfParams,
 } from "@opesvault/crypto";
+import { DEMO_ACCOUNT } from "./demo_account.ts";
 import { serviceError } from "./real.ts";
 import { readBackup, watchActivity, writeBackup, type BackupReport } from "@opesvault/vault";
 import { backupFileName, checkOf, documentBlobRefs } from "../data/backup.ts";
@@ -43,10 +44,7 @@ interface StoredProject extends ProjectSummary {
 }
 
 export const DEMO = {
-  email: "demo@opesvault.app",
-  password: "senha-de-demonstracao",
-  projectName: "Casa",
-  projectPassword: "senha-do-projeto",
+  ...DEMO_ACCOUNT,
   /** The demonstration project's recovery key (a made-up one, with a valid check group). */
   recoveryKey: formatRecoveryKey(Uint8Array.from({ length: 20 }, (_, i) => i + 1)),
 } as const;

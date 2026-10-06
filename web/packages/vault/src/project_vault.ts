@@ -32,6 +32,7 @@ import {
   type KdfParams,
   type PlainRecord,
   type ProjectKeys,
+  type RecordKeyShare,
   type RandomSource,
 } from "@opesvault/crypto";
 import {
@@ -150,6 +151,8 @@ export interface ProjectVaultOptions {
   /** Decrypted attachments kept in memory while unlocked. */
   readonly blobCacheBytes?: number;
   readonly pullPageSize?: number;
+  /** Opens records off the main thread (the app supplies Web Workers); the vault works without one. */
+  readonly recordOpener?: RecordOpener;
 }
 
 export interface CreateProjectOptions extends Omit<ProjectVaultOptions, "projectId"> {
@@ -207,11 +210,77 @@ const LOCKED_SNAPSHOT: VaultSnapshot = Object.freeze({
   lastError: null,
 });
 
+/** A sealed record as the vault holds it before opening. */
+export interface SealedItem {
+  readonly id: string;
+  readonly ciphertext: string;
+}
+
+/** One cached record after the opener read and opened it. */
+export type OpenedEntry =
+  | readonly [id: string, revision: number, state: "tombstone"]
+  | readonly [id: string, revision: number, state: "damaged"]
+  | readonly [id: string, revision: number, state: "open", record: PlainRecord];
+
+/**
+ * Opens many records somewhere else than the main thread (Web Workers, supplied by the app). Without one the
+ * vault opens them here, a batch at a time. The keys it gets are non-extractable `CryptoKey`s; the opener
+ * must not keep them once the call is answered. A failing opener is not an error of the project: the
+ * vault opens the records on this thread instead.
+ */
+export interface RecordOpener {
+  /** Opens `items`; the answers follow the order of `items`, `null` for a record that does not open. */
+  open(share: RecordKeyShare, items: readonly SealedItem[]): Promise<(PlainRecord | null)[]>;
+  /** Reads the project's cached records from IndexedDB (database `cacheName`) and opens them. */
+  openCached(share: RecordKeyShare, cacheName: string, projectId: string): Promise<OpenedEntry[]>;
+}
+
+/** Records decrypted at once: enough to keep the browser's crypto threads busy without a huge promise list. */
+const OPEN_BATCH = 256;
+/** Fewer records than this are opened here: starting workers would cost more than it saves. */
+const OPENER_MIN = 2000;
+
+/** Decrypts many records, a batch at a time; a record that fails to open is `null` (damaged). */
+async function openMany(
+  keys: ProjectKeys,
+  items: readonly SealedItem[],
+  opener: RecordOpener | null,
+): Promise<Map<string, PlainRecord | null>> {
+  const out = new Map<string, PlainRecord | null>();
+  if (opener !== null && items.length >= OPENER_MIN) {
+    try {
+      const opened = await opener.open(keys.shareRecordKeys(), items);
+      items.forEach((item, k) => out.set(item.id, opened[k] ?? null));
+      return out;
+    } catch {
+      out.clear(); // the workers failed: open them here
+    }
+  }
+  for (let i = 0; i < items.length; i += OPEN_BATCH) {
+    const batch = items.slice(i, i + OPEN_BATCH);
+    const opened = await Promise.all(batch.map((item) => keys.openRecord(item.id, item.ciphertext).catch(() => null)));
+    batch.forEach((item, k) => out.set(item.id, opened[k]!));
+  }
+  return out;
+}
+
+/** Records the time since `since` as a `performance.measure` (docs/18 W12 measurements); returns now. */
+function span(label: string, since: number): number {
+  const now = performance.now();
+  try {
+    performance.measure(`opv:${label}`, { start: since, end: now });
+  } catch {
+    // no Performance API: nothing to record
+  }
+  return now;
+}
+
 export class ProjectVault {
   readonly projectId: string;
   readonly holder: string;
   readonly #backend: SyncBackend;
   readonly #cache: VaultCache;
+  readonly #opener: RecordOpener | null;
   readonly #kdf: KdfParams | undefined;
   readonly #random: RandomSource;
   readonly #timers: Timers;
@@ -270,6 +339,7 @@ export class ProjectVault {
     this.projectId = options.projectId;
     this.#backend = options.backend;
     this.#cache = options.cache;
+    this.#opener = options.recordOpener ?? null;
     this.#kdf = options.kdf;
     this.#random = options.random ?? systemRandom;
     this.holder = options.holder ?? `tab-${randomId(this.#random)}`;
@@ -407,13 +477,16 @@ export class ProjectVault {
   /** Opens the project with the shared project password. A wrong password is `wrong_password`. */
   async unlock(password: string): Promise<void> {
     if (this.#keys !== null) return;
+    let t = performance.now();
     const envelope = await this.#envelope();
+    t = span("envelope", t);
     let keys: ProjectKeys;
     try {
       keys = await openWithPassword(this.projectId, envelope, password);
     } catch (error) {
       throw vaultErrorFromCrypto(error);
     }
+    span("kdf", t);
     await this.#open(keys);
   }
 
@@ -571,24 +644,51 @@ export class ProjectVault {
   async #open(keys: ProjectKeys): Promise<void> {
     this.#generation += 1;
     const generation = this.#generation;
+    let t = performance.now();
     const cached = await this.#cache.getProject(this.projectId);
-    const records = await this.#cache.listRecords(this.projectId);
     const pending = await this.#cache.listPending(this.projectId);
     this.#cursor = cached?.cursor ?? 0;
     this.#sealedName = cached?.sealedName ?? null;
-    for (const record of records) {
-      this.#known.set(record.id, record.revision);
-      if (record.ciphertext === null) {
-        this.#tombstones.add(record.id);
-        continue;
-      }
+    let entries: OpenedEntry[] | null = null;
+    if (this.#opener !== null) {
+      // Read and opened in the workers, a slice of the ids each: the main thread only receives the result.
       try {
-        const plain = await keys.openRecord(record.id, record.ciphertext);
-        this.#refs.set(record.id, { kind: plain.kind, id: plain.id });
-        this.#plain.set(recordKey(plain.kind, plain.id), plain);
+        entries = await this.#opener.openCached(keys.shareRecordKeys(), this.#cache.name, this.projectId);
+        t = span("cache-read+decrypt", t);
       } catch {
-        this.#damaged.add(record.id);
+        entries = null; // the workers failed: read and open here
       }
+    }
+    if (entries !== null) {
+      for (const entry of entries) {
+        const [id, revision, state] = entry;
+        this.#known.set(id, revision);
+        if (state === "tombstone") this.#tombstones.add(id);
+        else if (state === "damaged") this.#damaged.add(id);
+        else {
+          const plain = entry[3];
+          this.#refs.set(id, { kind: plain.kind, id: plain.id });
+          this.#plain.set(recordKey(plain.kind, plain.id), plain);
+        }
+      }
+    } else {
+      const records = await this.#cache.listRecords(this.projectId);
+      t = span("cache-read", t);
+      const sealed: SealedItem[] = [];
+      for (const record of records) {
+        this.#known.set(record.id, record.revision);
+        if (record.ciphertext === null) this.#tombstones.add(record.id);
+        else sealed.push({ id: record.id, ciphertext: record.ciphertext });
+      }
+      for (const [id, plain] of await openMany(keys, sealed, null)) {
+        if (plain === null) {
+          this.#damaged.add(id);
+          continue;
+        }
+        this.#refs.set(id, { kind: plain.kind, id: plain.id });
+        this.#plain.set(recordKey(plain.kind, plain.id), plain);
+      }
+      t = span("decrypt", t);
     }
     for (const change of pending) {
       this.#pending.set(change.id, change);
@@ -622,6 +722,7 @@ export class ProjectVault {
     this.#idle?.touch();
     this.#update();
     await this.#connect();
+    span("connect", t);
   }
 
   /** After unlocking: refresh the name, pull, then try to become the editor. */
@@ -708,15 +809,20 @@ export class ProjectVault {
       const changes = new Map<string, PendingChange>();
       const dropped: string[] = [];
       const base = (id: string): number => this.#pending.get(id)?.baseRevision ?? this.#known.get(id) ?? 0;
-      for (const record of upserts) {
-        const sealed = await keys.sealRecord(record, this.#random);
-        this.#refs.set(sealed.id, { kind: record.kind, id: record.id });
-        changes.set(sealed.id, {
-          projectId: this.projectId,
-          id: sealed.id,
-          baseRevision: base(sealed.id),
-          ciphertext: sealed.ciphertext,
-          seq: randomId(this.#random),
+      // Sealed a batch at a time (a big import or the first sync stages thousands of records).
+      for (let at = 0; at < upserts.length; at += OPEN_BATCH) {
+        const batch = upserts.slice(at, at + OPEN_BATCH);
+        const sealedBatch = await Promise.all(batch.map((record) => keys.sealRecord(record, this.#random)));
+        batch.forEach((record, k) => {
+          const sealed = sealedBatch[k]!;
+          this.#refs.set(sealed.id, { kind: record.kind, id: record.id });
+          changes.set(sealed.id, {
+            projectId: this.projectId,
+            id: sealed.id,
+            baseRevision: base(sealed.id),
+            ciphertext: sealed.ciphertext,
+            seq: randomId(this.#random),
+          });
         });
       }
       for (const ref of deletes) {
@@ -905,6 +1011,16 @@ export class ProjectVault {
     const deletes: RecordRef[] = [];
     const plainChanges: (() => void)[] = [];
     let conflictsChanged = false;
+    // The records nobody is editing here are opened together, a batch at a time.
+    const preopened = await openMany(
+      keys,
+      page.records.flatMap((r) =>
+        r.ciphertext !== null && r.revision > (this.#known.get(r.id) ?? 0) && !this.#pending.has(r.id)
+          ? [{ id: r.id, ciphertext: r.ciphertext }]
+          : [],
+      ),
+      this.#opener,
+    );
     for (const record of page.records) {
       const known = this.#known.get(record.id) ?? 0;
       const pending = this.#pending.get(record.id);
@@ -946,13 +1062,13 @@ export class ProjectVault {
         }
         continue;
       }
-      try {
-        const plain = await keys.openRecord(record.id, record.ciphertext);
+      const plain = preopened.get(record.id) ?? null;
+      if (plain !== null) {
         this.#refs.set(record.id, { kind: plain.kind, id: plain.id });
         plainChanges.push(() => this.#plain.set(recordKey(plain.kind, plain.id), plain));
         upserts.push(plain);
         this.#damaged.delete(record.id);
-      } catch {
+      } else {
         this.#damaged.add(record.id);
       }
     }

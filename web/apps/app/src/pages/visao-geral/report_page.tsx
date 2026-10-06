@@ -26,12 +26,12 @@ function monthOf(text: string | undefined, fallback: YearMonth): YearMonth {
   }
 }
 
-function ReportTableView({ table }: { table: ReportTable }) {
+export function ReportTableView({ table }: { table: ReportTable }) {
   return (
     <section className="break-inside-avoid">
-      <h2 className="mt-6 mb-2 text-headline font-semibold text-text">{table.title}</h2>
+      {table.title ? <h2 className="mt-6 mb-2 text-headline font-semibold text-text">{table.title}</h2> : null}
       <table className="w-full border-collapse text-body">
-        <caption className="sr-only">{table.title}</caption>
+        <caption className="sr-only">{table.title || "Valores"}</caption>
         <thead>
           <tr className="border-b border-secondary">
             {table.headers.map((header, index) => (

@@ -6,7 +6,7 @@
  * "Exportar imagem".
  */
 import { ImageDown } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import { cn } from "../cn.ts";
 import type { ChartOption } from "../chart/echarts.ts";
 import { formatValue, tableRows, type ChartData, type ChartUnit } from "../chart/model.ts";
@@ -232,6 +232,17 @@ export interface ChartPanelProps {
   columns?: string;
   /** Panel width from which they sit side by side (1000 by default; more for a table with many columns). */
   at?: AdaptiveAt;
+  /** Heading of the first column of the values ("Período" by default; "Item", "Data"…). */
+  firstColumn?: string;
+  /** Called with the chosen category index (from the chart or the table), or null when the choice is cleared. */
+  onSelect?: (index: number | null) => void;
+  /** Actions on the title line of the values (an export of the table). */
+  valuesActions?: ReactNode;
+  /**
+   * The page owns the image export (it asks first): the panel stores here the function that downloads the
+   * image, returning false when the chart is not on screen (its section folded), and drops its own button.
+   */
+  exportRef?: RefObject<(() => boolean) | null>;
   className?: string | undefined;
 }
 
@@ -241,6 +252,10 @@ export function ChartPanel({
   height = 300,
   columns = "3fr 2fr",
   at = 1000,
+  firstColumn = "Período",
+  onSelect,
+  valuesActions,
+  exportRef,
   className,
 }: ChartPanelProps) {
   const [selected, setSelected] = useState<number | null>(null);
@@ -248,15 +263,42 @@ export function ChartPanel({
   const rows = useMemo(() => tableRows(chart), [chart]);
   const [tableOpen, setTableOpen] = useState(true);
 
-  const exportImage = () => {
-    const current = instance.current;
-    if (!current) return;
-    const url = current.getDataURL({ type: "png", pixelRatio: 2, backgroundColor: cssVar("--ov-content") || "#fff" });
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `${chart.title.replace(/[\\/:*?"<>|]+/g, " ").trim() || "grafico"}.png`;
-    link.click();
+  const choose = (index: number | null) => {
+    setSelected(index);
+    onSelect?.(index);
   };
+
+  const exportImage = (): boolean => {
+    const current = instance.current;
+    if (!current) return false;
+    const url = current.getDataURL({ type: "png", pixelRatio: 2, backgroundColor: cssVar("--ov-content") || "#fff" });
+    // a file of its own (not the data address): the browser keeps the name given here
+    const bytes = Uint8Array.from(atob(url.slice(url.indexOf(",") + 1)), (char) => char.charCodeAt(0));
+    const href = URL.createObjectURL(new Blob([bytes], { type: "image/png" }));
+    const link = document.createElement("a");
+    link.href = href;
+    // without accents or reserved characters: every browser and file system takes the name as it is
+    const name = chart.title
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^\w .()-]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    link.download = `${name || "grafico"}.png`;
+    link.hidden = true;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(href), 10_000);
+    return true;
+  };
+  useEffect(() => {
+    if (!exportRef) return;
+    exportRef.current = exportImage;
+    return () => {
+      exportRef.current = null;
+    };
+  });
 
   return (
     <div className={cn("min-w-0", className)}>
@@ -264,17 +306,21 @@ export function ChartPanel({
         <Collapsible
           title={chart.title}
           {...(prefKey ? { prefKey: `${prefKey}/grafico` } : {})}
-          actions={
-            <Button size="sm" variant="ghost" icon={<ImageDown className="size-4" />} onClick={exportImage}>
-              Exportar imagem
-            </Button>
-          }
+          {...(exportRef
+            ? {}
+            : {
+                actions: (
+                  <Button size="sm" variant="ghost" icon={<ImageDown className="size-4" />} onClick={exportImage}>
+                    Exportar imagem
+                  </Button>
+                ),
+              })}
         >
           <ChartView
             chart={chart}
             selected={selected}
             onSelect={(index) => {
-              setSelected(index);
+              choose(index);
               setTableOpen(true);
             }}
             height={height}
@@ -286,6 +332,7 @@ export function ChartPanel({
           title="Valores"
           open={tableOpen}
           onOpenChange={setTableOpen}
+          {...(valuesActions ? { actions: valuesActions } : {})}
           {...(prefKey ? { prefKey: `${prefKey}/valores` } : {})}
         >
           <div className="max-h-[360px] overflow-auto">
@@ -294,7 +341,7 @@ export function ChartPanel({
               <thead className="sticky top-0 bg-content">
                 <tr className="border-b border-separator">
                   <th scope="col" className="py-2 pr-3 text-left text-caption font-semibold text-secondary">
-                    Período
+                    {firstColumn}
                   </th>
                   {chart.series.map((series) => (
                     <th
@@ -326,7 +373,7 @@ export function ChartPanel({
                           <button
                             type="button"
                             aria-pressed={active}
-                            onClick={() => setSelected(active ? null : row.index)}
+                            onClick={() => choose(active ? null : row.index)}
                             className="rounded-sm text-left hover:text-accent"
                           >
                             {row.label}

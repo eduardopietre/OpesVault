@@ -260,12 +260,18 @@ describe("Visão geral", () => {
       await heading();
       await user.click(screen.getByRole("button", { name: "Comparação completa" }));
       await waitFor(() => expect(router.state.location.pathname).toBe("/relatorios"));
-      expect(router.state.location.search).toEqual({ ref: "comparison" });
+      // Relatórios reads the link and opens the comparison
+      const open = () =>
+        within(screen.getByRole("navigation", { name: "Relatórios" })).getByRole("button", {
+          name: "Comparação com a média",
+        });
+      await waitFor(() => expect(open().getAttribute("aria-current")).toBe("true"));
       await router.navigate({ to: "/visao-geral" });
       await heading();
       await user.click(screen.getByRole("button", { name: "Mais" }));
       await user.click(await screen.findByRole("menuitem", { name: "Comparação completa (Relatórios)" }));
       await waitFor(() => expect(router.state.location.pathname).toBe("/relatorios"));
+      await waitFor(() => expect(open().getAttribute("aria-current")).toBe("true"));
     });
 
     it("links the pending items to where they are resolved", async () => {

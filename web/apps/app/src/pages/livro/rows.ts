@@ -267,21 +267,28 @@ export type Reveal =
   | { kind: "category"; id: Id; month: YearMonth }
   | { kind: "account"; id: Id }
   | { kind: "tag"; id: Id }
-  | { kind: "filter"; id: Id; month: YearMonth | null; range: readonly [IsoDate, IsoDate] | null; member: Id | null };
+  | {
+      kind: "filter";
+      id: Id | null;
+      month: YearMonth | null;
+      range: readonly [IsoDate, IsoDate] | null;
+      member: Id | null;
+    };
 
 /**
  * The `ref` another page passes to "Ver lançamentos": an operation id, `categoria:<id>:<AAAA-MM>`,
  * `conta:<id>` or `marcador:<tag id>` (the tag's name).
  */
 export function parseReveal(ref: string): Reveal {
-  // "filter:<account>:<YYYY-MM>[:<member>]" or "filter:<account>:<YYYY-MM-DD>..<YYYY-MM-DD>[:<member>]"
-  const filter = /^filter:([^:]+):(?:(\d{4})-(\d{2})|(\d{4}-\d{2}-\d{2})\.\.(\d{4}-\d{2}-\d{2}))(?::([^:]+))?$/.exec(
+  // "filter:<account>:<YYYY-MM>[:<member>]" or "filter:<account>:<YYYY-MM-DD>..<YYYY-MM-DD>[:<member>]";
+  // the account may be empty ("filter::2026-10": every account, as the reports' totals do)
+  const filter = /^filter:([^:]*):(?:(\d{4})-(\d{2})|(\d{4}-\d{2}-\d{2})\.\.(\d{4}-\d{2}-\d{2}))(?::([^:]+))?$/.exec(
     ref,
   );
   if (filter) {
     return {
       kind: "filter",
-      id: filter[1] as Id,
+      id: filter[1] ? (filter[1] as Id) : null,
       month: filter[2] ? { year: Number(filter[2]), month: Number(filter[3]) } : null,
       range: filter[4] && filter[5] ? [filter[4] as IsoDate, filter[5] as IsoDate] : null,
       member: (filter[6] as Id | undefined) ?? null,

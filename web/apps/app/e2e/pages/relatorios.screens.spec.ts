@@ -43,13 +43,20 @@ for (const size of SIZES) {
         await page.screenshot({ path: `${OUT}relatorios-saldo-${suffix}.png`, fullPage: true });
         await pick(page, "Despesas por categoria");
         await page.screenshot({ path: `${OUT}relatorios-categorias-${suffix}.png`, fullPage: true });
+        await pick(page, "Despesas por estabelecimento");
+        await page.screenshot({ path: `${OUT}relatorios-estabelecimentos-${suffix}.png`, fullPage: true });
+        await pick(page, "Composição da carteira");
+        await page.screenshot({ path: `${OUT}relatorios-carteira-${suffix}.png`, fullPage: true });
+        await pick(page, "Projeção de compromissos");
+        await page.screenshot({ path: `${OUT}relatorios-compromissos-${suffix}.png`, fullPage: true });
         await pick(page, "Despesas dedutíveis");
         await page.screenshot({ path: `${OUT}relatorios-dedutiveis-${suffix}.png`, fullPage: true });
         await page.getByRole("combobox", { name: "Ano", exact: true }).click();
         await page.getByRole("option", { name: /Ano de 2025/ }).click();
         await settle(page, 400);
         await page.screenshot({ path: `${OUT}relatorios-vazio-${suffix}.png`, fullPage: true });
-        await pick(page, "Fechamento do ano").catch(() => undefined);
+        await pick(page, "Fechamento do ano");
+        await page.screenshot({ path: `${OUT}relatorios-fechamento-${suffix}.png`, fullPage: true });
       });
 
       test("relatório anual", async ({ page }) => {

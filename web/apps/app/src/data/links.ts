@@ -15,6 +15,8 @@
  *   orcamento     "<categoryId>:<YYYY-MM>"        a category over or near its budget
  *   relatorios    "projected_balance"             the projected balance report
  *                 "comparison"                    the comparison with previous months
+ *                 "<report key>"                  any report: in_out, result, cash, categories, net_worth, composition,
+ *                                                 projection, merchants, tags, deductibles, annual
  *   livro         "filter:<accountId>:<period>[:<memberId>]"  the operations behind a number;
  *                                                 period "YYYY-MM" or "YYYY-MM-DD..YYYY-MM-DD"
  *   imposto       "variable_income:<YYYY-MM>"     DARF of variable income                 act "darf"

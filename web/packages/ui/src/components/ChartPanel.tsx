@@ -49,6 +49,8 @@ export function chartOption(whole: ChartData, reduceMotion: boolean): ChartOptio
   const font = cssVar("--ov-font-sans") || "sans-serif";
   const colors = CHART_SERIES_VARS.map((name) => cssVar(name) || "#2a78d6");
   const right = chart.series.some((series) => series.axis === "right");
+  // Many named items (categories, merchants): every name is shown, tilted and shortened, instead of every other one.
+  const named = chart.categories.length > 5 && chart.categories.some((label) => label.length > 9);
   const unitOf = (axis: "left" | "right" | undefined) =>
     axis === "right" ? (chart.rightUnit ?? chart.unit) : chart.unit;
   const valueAxis = (unit: ChartUnit | undefined, position: "left" | "right") => ({
@@ -103,7 +105,13 @@ export function chartOption(whole: ChartData, reduceMotion: boolean): ChartOptio
     xAxis: {
       type: "category",
       data: [...chart.categories],
-      axisLabel: { color: secondary, fontFamily: font, fontSize: 12, hideOverlap: true },
+      axisLabel: {
+        color: secondary,
+        fontFamily: font,
+        fontSize: 12,
+        hideOverlap: true,
+        ...(named ? { interval: 0, rotate: 35, width: 96, overflow: "truncate" as const, hideOverlap: false } : {}),
+      },
       axisLine: { lineStyle: { color: separator } },
       axisTick: { show: false },
     },

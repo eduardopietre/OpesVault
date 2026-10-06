@@ -132,7 +132,7 @@ const CATEGORY_COLUMNS: TierColumn<CategoryRow>[] = [
   {
     id: "parent",
     header: "Dentro de",
-    cell: (r) => r.parent,
+    cell: (r) => r.parent || "—",
     sortValue: (r) => r.parent,
     grow: 1,
     width: 140,
@@ -141,7 +141,7 @@ const CATEGORY_COLUMNS: TierColumn<CategoryRow>[] = [
   {
     id: "deductible",
     header: "Dedutível",
-    cell: (r) => r.deductible,
+    cell: (r) => r.deductible || "—",
     sortValue: (r) => r.deductible,
     grow: 1,
     width: 160,

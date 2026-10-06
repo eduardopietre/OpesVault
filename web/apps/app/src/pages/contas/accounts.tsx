@@ -32,7 +32,7 @@ const COLUMNS: TierColumn<AccountRow>[] = [
   {
     id: "institution",
     header: "Instituição",
-    cell: (r) => r.institution,
+    cell: (r) => r.institution || "—",
     sortValue: (r) => r.institution,
     grow: 1,
     width: 130,
@@ -41,7 +41,7 @@ const COLUMNS: TierColumn<AccountRow>[] = [
   {
     id: "holders",
     header: "Titulares",
-    cell: (r) => r.holders,
+    cell: (r) => r.holders || "—",
     sortValue: (r) => r.holders,
     grow: 1,
     width: 120,
@@ -53,7 +53,7 @@ const COLUMNS: TierColumn<AccountRow>[] = [
     cell: (r) => money(r.balance),
     sortValue: (r) => cents(r.balance),
     align: "end",
-    width: 110,
+    width: 125,
     tier: 1,
   },
   {

@@ -36,7 +36,7 @@ const COLUMNS: TierColumn<LoanRow>[] = [
     cell: (r) => money(r.outstanding),
     sortValue: (r) => cents(r.outstanding),
     align: "end",
-    width: 130,
+    width: 135,
     tier: 1,
   },
   {
@@ -45,7 +45,7 @@ const COLUMNS: TierColumn<LoanRow>[] = [
     cell: (r) => money(r.inLedger),
     sortValue: (r) => cents(r.inLedger),
     align: "end",
-    width: 120,
+    width: 135,
     tier: 4,
   },
 ];

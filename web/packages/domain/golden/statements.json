@@ -9913,44 +9913,44 @@
       "schema_version": 2,
       "family_name": "Projeto IR",
       "currency": "BRL",
-      "opening_equity_id": "37a2158f-463d-4871-9b96-598afcd929d8"
+      "opening_equity_id": "b9987aac-a718-43cd-ae1b-4c6d58a5c859"
      }
     },
     {
-     "id": "4ec5d900-ff73-44ad-90a4-248193daf663",
+     "id": "8fdd5f9e-74a1-4900-9940-b813738437ba",
      "kind": "member",
      "payload": {
-      "id": "4ec5d900-ff73-44ad-90a4-248193daf663",
+      "id": "8fdd5f9e-74a1-4900-9940-b813738437ba",
       "name": "Ana",
       "active": true,
       "role": "holder"
      }
     },
     {
-     "id": "ce90cc90-b17d-43d4-8ed5-41f5e7e8be7b",
+     "id": "5d54c55b-9fbc-4090-b5a0-520f67f07ae3",
      "kind": "member",
      "payload": {
-      "id": "ce90cc90-b17d-43d4-8ed5-41f5e7e8be7b",
+      "id": "5d54c55b-9fbc-4090-b5a0-520f67f07ae3",
       "name": "Bruno",
       "active": true,
       "role": "holder"
      }
     },
     {
-     "id": "3ac067eb-b3a1-4dad-9c01-e4fcf820f808",
+     "id": "8b8f49ab-6609-44d2-b4cc-975b76c13aa0",
      "kind": "member",
      "payload": {
-      "id": "3ac067eb-b3a1-4dad-9c01-e4fcf820f808",
+      "id": "8b8f49ab-6609-44d2-b4cc-975b76c13aa0",
       "name": "Carla",
       "active": true,
       "role": "holder"
      }
     },
     {
-     "id": "37a2158f-463d-4871-9b96-598afcd929d8",
+     "id": "b9987aac-a718-43cd-ae1b-4c6d58a5c859",
      "kind": "account",
      "payload": {
-      "id": "37a2158f-463d-4871-9b96-598afcd929d8",
+      "id": "b9987aac-a718-43cd-ae1b-4c6d58a5c859",
       "name": "Patrimônio de abertura",
       "type": "equity",
       "subtype": "opening_equity",
@@ -9963,10 +9963,10 @@
      }
     },
     {
-     "id": "cb286a93-26ee-47a4-a665-630550344c3f",
+     "id": "6eb635e4-348e-433f-ad6d-2740d167ddc8",
      "kind": "account",
      "payload": {
-      "id": "cb286a93-26ee-47a4-a665-630550344c3f",
+      "id": "6eb635e4-348e-433f-ad6d-2740d167ddc8",
       "name": "Moradia",
       "type": "expense",
       "subtype": "category",
@@ -9979,10 +9979,10 @@
      }
     },
     {
-     "id": "1fbf0fb2-b7d7-4ca6-b4ae-1d6ec558df95",
+     "id": "96d1118c-dd8b-4bc2-86a8-493f4a33a835",
      "kind": "account",
      "payload": {
-      "id": "1fbf0fb2-b7d7-4ca6-b4ae-1d6ec558df95",
+      "id": "96d1118c-dd8b-4bc2-86a8-493f4a33a835",
       "name": "Alimentação",
       "type": "expense",
       "subtype": "category",
@@ -9995,10 +9995,10 @@
      }
     },
     {
-     "id": "d0da4e4b-ff2d-44d2-ad2c-db47501968fc",
+     "id": "dfcdf338-aa58-401e-af90-f6c5648ff4e2",
      "kind": "account",
      "payload": {
-      "id": "d0da4e4b-ff2d-44d2-ad2c-db47501968fc",
+      "id": "dfcdf338-aa58-401e-af90-f6c5648ff4e2",
       "name": "Transporte",
       "type": "expense",
       "subtype": "category",
@@ -10011,10 +10011,10 @@
      }
     },
     {
-     "id": "62e180eb-fea0-49c4-bb78-6d0df1d8c537",
+     "id": "e05fcd8f-7257-40f2-91f2-3c54baac0eaf",
      "kind": "account",
      "payload": {
-      "id": "62e180eb-fea0-49c4-bb78-6d0df1d8c537",
+      "id": "e05fcd8f-7257-40f2-91f2-3c54baac0eaf",
       "name": "Saúde",
       "type": "expense",
       "subtype": "category",
@@ -10027,10 +10027,10 @@
      }
     },
     {
-     "id": "eb7dd413-5dab-41d9-8ad6-296922285f73",
+     "id": "f5cb1d94-1ce3-4527-a079-9a36a76a7a01",
      "kind": "account",
      "payload": {
-      "id": "eb7dd413-5dab-41d9-8ad6-296922285f73",
+      "id": "f5cb1d94-1ce3-4527-a079-9a36a76a7a01",
       "name": "Educação",
       "type": "expense",
       "subtype": "category",
@@ -10043,10 +10043,10 @@
      }
     },
     {
-     "id": "9c4b92cd-bb25-4688-b0df-8165f7afaf1d",
+     "id": "1108a568-9906-4535-b4b0-dc577cffab32",
      "kind": "account",
      "payload": {
-      "id": "9c4b92cd-bb25-4688-b0df-8165f7afaf1d",
+      "id": "1108a568-9906-4535-b4b0-dc577cffab32",
       "name": "Lazer",
       "type": "expense",
       "subtype": "category",
@@ -10059,10 +10059,10 @@
      }
     },
     {
-     "id": "fedfa32e-2bc9-498b-88a1-bf64686a5e2b",
+     "id": "4cbcaadb-9077-4288-a6f8-e6d9a8dfcdac",
      "kind": "account",
      "payload": {
-      "id": "fedfa32e-2bc9-498b-88a1-bf64686a5e2b",
+      "id": "4cbcaadb-9077-4288-a6f8-e6d9a8dfcdac",
       "name": "Serviços e assinaturas",
       "type": "expense",
       "subtype": "category",
@@ -10075,10 +10075,10 @@
      }
     },
     {
-     "id": "b135226f-9a0d-408a-a828-c3a92c522fa9",
+     "id": "7231a312-309a-4efc-9368-a95ff3adca4a",
      "kind": "account",
      "payload": {
-      "id": "b135226f-9a0d-408a-a828-c3a92c522fa9",
+      "id": "7231a312-309a-4efc-9368-a95ff3adca4a",
       "name": "Impostos e taxas",
       "type": "expense",
       "subtype": "category",
@@ -10091,10 +10091,10 @@
      }
     },
     {
-     "id": "c7069f3c-2c5e-4176-a039-7f86888a1c49",
+     "id": "0f84d501-6d86-4aba-be80-7ce157678086",
      "kind": "account",
      "payload": {
-      "id": "c7069f3c-2c5e-4176-a039-7f86888a1c49",
+      "id": "0f84d501-6d86-4aba-be80-7ce157678086",
       "name": "Juros e encargos",
       "type": "expense",
       "subtype": "category",
@@ -10107,10 +10107,10 @@
      }
     },
     {
-     "id": "6f593332-e03e-4261-8ce8-3c39f69b3409",
+     "id": "a8accc34-81d2-4ff5-985b-cdfd51f00f7b",
      "kind": "account",
      "payload": {
-      "id": "6f593332-e03e-4261-8ce8-3c39f69b3409",
+      "id": "a8accc34-81d2-4ff5-985b-cdfd51f00f7b",
       "name": "Outras despesas",
       "type": "expense",
       "subtype": "category",
@@ -10123,10 +10123,10 @@
      }
     },
     {
-     "id": "efd939bb-e7c1-4558-a0e9-0d24d66e2711",
+     "id": "1e8ed9f3-0122-4af0-81a8-f98a9a0e7215",
      "kind": "account",
      "payload": {
-      "id": "efd939bb-e7c1-4558-a0e9-0d24d66e2711",
+      "id": "1e8ed9f3-0122-4af0-81a8-f98a9a0e7215",
       "name": "Salário",
       "type": "income",
       "subtype": "category",
@@ -10139,10 +10139,10 @@
      }
     },
     {
-     "id": "f2c3d739-7d1f-4fc9-baee-b06a0e36239f",
+     "id": "d84b0515-cd11-46c6-97cd-c563d9f336b7",
      "kind": "account",
      "payload": {
-      "id": "f2c3d739-7d1f-4fc9-baee-b06a0e36239f",
+      "id": "d84b0515-cd11-46c6-97cd-c563d9f336b7",
       "name": "Rendimentos de investimentos",
       "type": "income",
       "subtype": "category",
@@ -10155,10 +10155,10 @@
      }
     },
     {
-     "id": "9c6e40aa-ddb8-4cb4-8692-d856be4f0196",
+     "id": "8f07cb38-d525-45c0-83ce-31f5b4aba1f3",
      "kind": "account",
      "payload": {
-      "id": "9c6e40aa-ddb8-4cb4-8692-d856be4f0196",
+      "id": "8f07cb38-d525-45c0-83ce-31f5b4aba1f3",
       "name": "Outras receitas",
       "type": "income",
       "subtype": "category",
@@ -10171,10 +10171,10 @@
      }
     },
     {
-     "id": "9f30faeb-436d-46d6-906a-bd18a58847bd",
+     "id": "a60abce0-465f-4ee5-9887-c48cf538e177",
      "kind": "account",
      "payload": {
-      "id": "9f30faeb-436d-46d6-906a-bd18a58847bd",
+      "id": "a60abce0-465f-4ee5-9887-c48cf538e177",
       "name": "Banco A",
       "type": "asset",
       "subtype": "checking",
@@ -10182,17 +10182,17 @@
       "institution": "Banco A S.A.",
       "masked_number": "1234-5",
       "holders": [
-       "4ec5d900-ff73-44ad-90a4-248193daf663"
+       "8fdd5f9e-74a1-4900-9940-b813738437ba"
       ],
       "parent_id": null,
       "archived": false
      }
     },
     {
-     "id": "461275d7-03af-4650-9525-cae3fc40b95c",
+     "id": "50188397-721e-4184-8bdb-3db7ccb081bf",
      "kind": "account",
      "payload": {
-      "id": "461275d7-03af-4650-9525-cae3fc40b95c",
+      "id": "50188397-721e-4184-8bdb-3db7ccb081bf",
       "name": "Conjunta",
       "type": "asset",
       "subtype": "checking",
@@ -10200,18 +10200,18 @@
       "institution": null,
       "masked_number": null,
       "holders": [
-       "4ec5d900-ff73-44ad-90a4-248193daf663",
-       "ce90cc90-b17d-43d4-8ed5-41f5e7e8be7b"
+       "8fdd5f9e-74a1-4900-9940-b813738437ba",
+       "5d54c55b-9fbc-4090-b5a0-520f67f07ae3"
       ],
       "parent_id": null,
       "archived": false
      }
     },
     {
-     "id": "53303bd0-b7e0-4b70-9ce5-e9256bd06e13",
+     "id": "f18b5c61-25f5-4a4a-bbed-9f2bf172a0da",
      "kind": "account",
      "payload": {
-      "id": "53303bd0-b7e0-4b70-9ce5-e9256bd06e13",
+      "id": "f18b5c61-25f5-4a4a-bbed-9f2bf172a0da",
       "name": "Corretora",
       "type": "asset",
       "subtype": "brokerage_cash",
@@ -10219,17 +10219,17 @@
       "institution": null,
       "masked_number": null,
       "holders": [
-       "ce90cc90-b17d-43d4-8ed5-41f5e7e8be7b"
+       "5d54c55b-9fbc-4090-b5a0-520f67f07ae3"
       ],
       "parent_id": null,
       "archived": false
      }
     },
     {
-     "id": "2baa0ce7-07b3-4670-b1dc-a021122f491b",
+     "id": "c2706ee3-9389-4388-8115-12b4ccda98d6",
      "kind": "account",
      "payload": {
-      "id": "2baa0ce7-07b3-4670-b1dc-a021122f491b",
+      "id": "c2706ee3-9389-4388-8115-12b4ccda98d6",
       "name": "Poupança",
       "type": "asset",
       "subtype": "savings",
@@ -10237,17 +10237,17 @@
       "institution": null,
       "masked_number": null,
       "holders": [
-       "4ec5d900-ff73-44ad-90a4-248193daf663"
+       "8fdd5f9e-74a1-4900-9940-b813738437ba"
       ],
       "parent_id": null,
       "archived": false
      }
     },
     {
-     "id": "c781789e-d7d5-4b64-bd6e-93eea0c7ef9b",
+     "id": "89f50230-9d0e-494d-9467-4cba6413acbf",
      "kind": "account",
      "payload": {
-      "id": "c781789e-d7d5-4b64-bd6e-93eea0c7ef9b",
+      "id": "89f50230-9d0e-494d-9467-4cba6413acbf",
       "name": "Carteira",
       "type": "asset",
       "subtype": "cash",
@@ -10260,10 +10260,10 @@
      }
     },
     {
-     "id": "c1702471-a1a3-47f1-b9b9-3591a84c727a",
+     "id": "b37e6351-d08d-483b-9b17-b1d951f5ac42",
      "kind": "account",
      "payload": {
-      "id": "c1702471-a1a3-47f1-b9b9-3591a84c727a",
+      "id": "b37e6351-d08d-483b-9b17-b1d951f5ac42",
       "name": "Conta sem titular",
       "type": "asset",
       "subtype": "checking",
@@ -10276,10 +10276,10 @@
      }
     },
     {
-     "id": "0e5c1e64-bfe5-49ff-8e67-6ec6d816295d",
+     "id": "880582ad-5a8e-471e-bcbe-8b5d65f85928",
      "kind": "account",
      "payload": {
-      "id": "0e5c1e64-bfe5-49ff-8e67-6ec6d816295d",
+      "id": "880582ad-5a8e-471e-bcbe-8b5d65f85928",
       "name": "Aluguel recebido",
       "type": "income",
       "subtype": "category",
@@ -10292,10 +10292,10 @@
      }
     },
     {
-     "id": "abc6665c-e315-4896-8882-f5f3eaf6828c",
+     "id": "1a98f927-c23e-4e00-af38-c8b4339e8d4b",
      "kind": "account",
      "payload": {
-      "id": "abc6665c-e315-4896-8882-f5f3eaf6828c",
+      "id": "1a98f927-c23e-4e00-af38-c8b4339e8d4b",
       "name": "Freelance",
       "type": "income",
       "subtype": "category",
@@ -10308,10 +10308,10 @@
      }
     },
     {
-     "id": "970aecba-8bcd-47ac-b44f-48c0846da03d",
+     "id": "e205f096-d81d-4c8f-9f40-776d864edb3c",
      "kind": "account",
      "payload": {
-      "id": "970aecba-8bcd-47ac-b44f-48c0846da03d",
+      "id": "e205f096-d81d-4c8f-9f40-776d864edb3c",
       "name": "Salário — bônus",
       "type": "income",
       "subtype": "category",
@@ -10319,15 +10319,15 @@
       "institution": null,
       "masked_number": null,
       "holders": [],
-      "parent_id": "efd939bb-e7c1-4558-a0e9-0d24d66e2711",
+      "parent_id": "1e8ed9f3-0122-4af0-81a8-f98a9a0e7215",
       "archived": false
      }
     },
     {
-     "id": "f66776c8-72cd-4fd6-8213-7cd93663ddc9",
+     "id": "f95486dd-711e-4fcb-a67f-a6a935f5386c",
      "kind": "account",
      "payload": {
-      "id": "f66776c8-72cd-4fd6-8213-7cd93663ddc9",
+      "id": "f95486dd-711e-4fcb-a67f-a6a935f5386c",
       "name": "Financiamento",
       "type": "liability",
       "subtype": "loan",
@@ -10335,17 +10335,17 @@
       "institution": null,
       "masked_number": null,
       "holders": [
-       "4ec5d900-ff73-44ad-90a4-248193daf663"
+       "8fdd5f9e-74a1-4900-9940-b813738437ba"
       ],
       "parent_id": null,
       "archived": false
      }
     },
     {
-     "id": "4fcc8f0b-1dd9-4ec5-9330-5109d70af2f8",
+     "id": "5ff6e615-3201-4280-ad53-99c6e44f1d99",
      "kind": "account",
      "payload": {
-      "id": "4fcc8f0b-1dd9-4ec5-9330-5109d70af2f8",
+      "id": "5ff6e615-3201-4280-ad53-99c6e44f1d99",
       "name": "Dívida com parente",
       "type": "liability",
       "subtype": "other_liability",
@@ -10358,21 +10358,21 @@
      }
     },
     {
-     "id": "0b066d91-9b6e-4e33-922a-56c0078ccb7b",
+     "id": "86ecbac0-eaf7-4698-8375-b92b1183985a",
      "kind": "operation",
      "payload": {
-      "id": "0b066d91-9b6e-4e33-922a-56c0078ccb7b",
+      "id": "86ecbac0-eaf7-4698-8375-b92b1183985a",
       "kind": "opening_balance",
       "description": "Saldo de abertura — Banco A",
       "currency": "BRL",
       "postings": [
        {
-        "account_id": "9f30faeb-436d-46d6-906a-bd18a58847bd",
+        "account_id": "a60abce0-465f-4ee5-9887-c48cf538e177",
         "amount": "30000.00",
         "member_id": null
        },
        {
-        "account_id": "37a2158f-463d-4871-9b96-598afcd929d8",
+        "account_id": "b9987aac-a718-43cd-ae1b-4c6d58a5c859",
         "amount": "-30000.00",
         "member_id": null
        }
@@ -10399,21 +10399,21 @@
      }
     },
     {
-     "id": "82146094-9337-49f7-ab9c-055895a0c40c",
+     "id": "9f757a4c-2c30-4c76-acf7-c1c7bab87978",
      "kind": "operation",
      "payload": {
-      "id": "82146094-9337-49f7-ab9c-055895a0c40c",
+      "id": "9f757a4c-2c30-4c76-acf7-c1c7bab87978",
       "kind": "opening_balance",
       "description": "Saldo de abertura — Conjunta",
       "currency": "BRL",
       "postings": [
        {
-        "account_id": "461275d7-03af-4650-9525-cae3fc40b95c",
+        "account_id": "50188397-721e-4184-8bdb-3db7ccb081bf",
         "amount": "5000.00",
         "member_id": null
        },
        {
-        "account_id": "37a2158f-463d-4871-9b96-598afcd929d8",
+        "account_id": "b9987aac-a718-43cd-ae1b-4c6d58a5c859",
         "amount": "-5000.00",
         "member_id": null
        }
@@ -10440,21 +10440,21 @@
      }
     },
     {
-     "id": "2fd36a07-e790-4561-babb-016f8701b4b3",
+     "id": "758f661c-24ef-4c12-aadb-00373570bb3d",
      "kind": "operation",
      "payload": {
-      "id": "2fd36a07-e790-4561-babb-016f8701b4b3",
+      "id": "758f661c-24ef-4c12-aadb-00373570bb3d",
       "kind": "opening_balance",
       "description": "Saldo de abertura — Corretora",
       "currency": "BRL",
       "postings": [
        {
-        "account_id": "53303bd0-b7e0-4b70-9ce5-e9256bd06e13",
+        "account_id": "f18b5c61-25f5-4a4a-bbed-9f2bf172a0da",
         "amount": "200000.00",
         "member_id": null
        },
        {
-        "account_id": "37a2158f-463d-4871-9b96-598afcd929d8",
+        "account_id": "b9987aac-a718-43cd-ae1b-4c6d58a5c859",
         "amount": "-200000.00",
         "member_id": null
        }
@@ -10481,21 +10481,21 @@
      }
     },
     {
-     "id": "b3b8f423-a701-45c6-a84d-f56b7ec7aaff",
+     "id": "bd1b6541-6def-4014-ab6e-0eccc54e25c0",
      "kind": "operation",
      "payload": {
-      "id": "b3b8f423-a701-45c6-a84d-f56b7ec7aaff",
+      "id": "bd1b6541-6def-4014-ab6e-0eccc54e25c0",
       "kind": "opening_balance",
       "description": "Saldo de abertura — Carteira",
       "currency": "BRL",
       "postings": [
        {
-        "account_id": "c781789e-d7d5-4b64-bd6e-93eea0c7ef9b",
+        "account_id": "89f50230-9d0e-494d-9467-4cba6413acbf",
         "amount": "300.00",
         "member_id": null
        },
        {
-        "account_id": "37a2158f-463d-4871-9b96-598afcd929d8",
+        "account_id": "b9987aac-a718-43cd-ae1b-4c6d58a5c859",
         "amount": "-300.00",
         "member_id": null
        }
@@ -10522,21 +10522,21 @@
      }
     },
     {
-     "id": "11d47ea9-6667-4416-9c4c-67569166ef00",
+     "id": "9209fde3-5d46-4dd5-9814-e15606fcbe71",
      "kind": "operation",
      "payload": {
-      "id": "11d47ea9-6667-4416-9c4c-67569166ef00",
+      "id": "9209fde3-5d46-4dd5-9814-e15606fcbe71",
       "kind": "opening_balance",
       "description": "Saldo de abertura — Financiamento",
       "currency": "BRL",
       "postings": [
        {
-        "account_id": "f66776c8-72cd-4fd6-8213-7cd93663ddc9",
+        "account_id": "f95486dd-711e-4fcb-a67f-a6a935f5386c",
         "amount": "-20000.00",
         "member_id": null
        },
        {
-        "account_id": "37a2158f-463d-4871-9b96-598afcd929d8",
+        "account_id": "b9987aac-a718-43cd-ae1b-4c6d58a5c859",
         "amount": "20000.00",
         "member_id": null
        }
@@ -10563,553 +10563,553 @@
      }
     },
     {
-     "id": "9c4a6735-fc12-4074-9e08-96539ef6d62f",
+     "id": "3d68deb4-c125-4128-8592-3dc99ba6e2db",
      "kind": "history",
      "payload": {
-      "id": "9c4a6735-fc12-4074-9e08-96539ef6d62f",
+      "id": "3d68deb4-c125-4128-8592-3dc99ba6e2db",
       "entity_kind": "account",
-      "entity_id": "37a2158f-463d-4871-9b96-598afcd929d8",
+      "entity_id": "b9987aac-a718-43cd-ae1b-4c6d58a5c859",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.007764Z"
+      "at": "2026-10-06T00:17:47.736368Z"
      }
     },
     {
-     "id": "086b5bc8-0e3f-41ac-b514-11937008508c",
+     "id": "2e264308-c892-4745-9ddd-30b0a0c74924",
      "kind": "history",
      "payload": {
-      "id": "086b5bc8-0e3f-41ac-b514-11937008508c",
+      "id": "2e264308-c892-4745-9ddd-30b0a0c74924",
       "entity_kind": "account",
-      "entity_id": "cb286a93-26ee-47a4-a665-630550344c3f",
+      "entity_id": "6eb635e4-348e-433f-ad6d-2740d167ddc8",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.007839Z"
+      "at": "2026-10-06T00:17:47.736429Z"
      }
     },
     {
-     "id": "0aa37313-3b13-41d4-aaaa-7813579bce66",
+     "id": "a80eca0e-b569-40d4-beb2-2a6b625b5ecc",
      "kind": "history",
      "payload": {
-      "id": "0aa37313-3b13-41d4-aaaa-7813579bce66",
+      "id": "a80eca0e-b569-40d4-beb2-2a6b625b5ecc",
       "entity_kind": "account",
-      "entity_id": "1fbf0fb2-b7d7-4ca6-b4ae-1d6ec558df95",
+      "entity_id": "96d1118c-dd8b-4bc2-86a8-493f4a33a835",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.007865Z"
+      "at": "2026-10-06T00:17:47.736451Z"
      }
     },
     {
-     "id": "db984002-97bf-4f4b-9b9d-8bc491ab4237",
+     "id": "9f11e41d-575e-46cf-ad63-31ffed7d7e74",
      "kind": "history",
      "payload": {
-      "id": "db984002-97bf-4f4b-9b9d-8bc491ab4237",
+      "id": "9f11e41d-575e-46cf-ad63-31ffed7d7e74",
       "entity_kind": "account",
-      "entity_id": "d0da4e4b-ff2d-44d2-ad2c-db47501968fc",
+      "entity_id": "dfcdf338-aa58-401e-af90-f6c5648ff4e2",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.007883Z"
+      "at": "2026-10-06T00:17:47.736503Z"
      }
     },
     {
-     "id": "8acb7b20-4314-42ed-b9d0-54e59e735cc5",
+     "id": "f39764fc-f5bc-4d5e-b264-a05da2db9f04",
      "kind": "history",
      "payload": {
-      "id": "8acb7b20-4314-42ed-b9d0-54e59e735cc5",
+      "id": "f39764fc-f5bc-4d5e-b264-a05da2db9f04",
       "entity_kind": "account",
-      "entity_id": "62e180eb-fea0-49c4-bb78-6d0df1d8c537",
+      "entity_id": "e05fcd8f-7257-40f2-91f2-3c54baac0eaf",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.007901Z"
+      "at": "2026-10-06T00:17:47.736520Z"
      }
     },
     {
-     "id": "e8c62055-b0d1-4318-a40f-4ddd4381b596",
+     "id": "44b104b1-223c-4d71-a024-c75f630a6219",
      "kind": "history",
      "payload": {
-      "id": "e8c62055-b0d1-4318-a40f-4ddd4381b596",
+      "id": "44b104b1-223c-4d71-a024-c75f630a6219",
       "entity_kind": "account",
-      "entity_id": "eb7dd413-5dab-41d9-8ad6-296922285f73",
+      "entity_id": "f5cb1d94-1ce3-4527-a079-9a36a76a7a01",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.007917Z"
+      "at": "2026-10-06T00:17:47.736536Z"
      }
     },
     {
-     "id": "eba20eee-1085-4e60-9f52-443bd333bd60",
+     "id": "f771fc47-0127-4432-a066-9bca147c35ba",
      "kind": "history",
      "payload": {
-      "id": "eba20eee-1085-4e60-9f52-443bd333bd60",
+      "id": "f771fc47-0127-4432-a066-9bca147c35ba",
       "entity_kind": "account",
-      "entity_id": "9c4b92cd-bb25-4688-b0df-8165f7afaf1d",
+      "entity_id": "1108a568-9906-4535-b4b0-dc577cffab32",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.007932Z"
+      "at": "2026-10-06T00:17:47.736591Z"
      }
     },
     {
-     "id": "c03ba31c-ac9f-4a6f-8030-2a1142a11671",
+     "id": "51cba615-e619-4c22-8273-02ea3c52a6bf",
      "kind": "history",
      "payload": {
-      "id": "c03ba31c-ac9f-4a6f-8030-2a1142a11671",
+      "id": "51cba615-e619-4c22-8273-02ea3c52a6bf",
       "entity_kind": "account",
-      "entity_id": "fedfa32e-2bc9-498b-88a1-bf64686a5e2b",
+      "entity_id": "4cbcaadb-9077-4288-a6f8-e6d9a8dfcdac",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.007946Z"
+      "at": "2026-10-06T00:17:47.736615Z"
      }
     },
     {
-     "id": "a589322f-7e87-4a42-90d0-c57398c65007",
+     "id": "a12bf36f-f81b-4b34-82af-70124637b9a7",
      "kind": "history",
      "payload": {
-      "id": "a589322f-7e87-4a42-90d0-c57398c65007",
+      "id": "a12bf36f-f81b-4b34-82af-70124637b9a7",
       "entity_kind": "account",
-      "entity_id": "b135226f-9a0d-408a-a828-c3a92c522fa9",
+      "entity_id": "7231a312-309a-4efc-9368-a95ff3adca4a",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.007960Z"
+      "at": "2026-10-06T00:17:47.736630Z"
      }
     },
     {
-     "id": "5332de2c-b959-45fe-ae3d-06c47724be89",
+     "id": "5bc33857-da31-4d64-bdf5-f477163421d2",
      "kind": "history",
      "payload": {
-      "id": "5332de2c-b959-45fe-ae3d-06c47724be89",
+      "id": "5bc33857-da31-4d64-bdf5-f477163421d2",
       "entity_kind": "account",
-      "entity_id": "c7069f3c-2c5e-4176-a039-7f86888a1c49",
+      "entity_id": "0f84d501-6d86-4aba-be80-7ce157678086",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.007973Z"
+      "at": "2026-10-06T00:17:47.736644Z"
      }
     },
     {
-     "id": "1d10486b-b8fd-4b6a-8613-86baf7f4cc10",
+     "id": "07bef3cc-541d-46f1-bc8d-5395c894a880",
      "kind": "history",
      "payload": {
-      "id": "1d10486b-b8fd-4b6a-8613-86baf7f4cc10",
+      "id": "07bef3cc-541d-46f1-bc8d-5395c894a880",
       "entity_kind": "account",
-      "entity_id": "6f593332-e03e-4261-8ce8-3c39f69b3409",
+      "entity_id": "a8accc34-81d2-4ff5-985b-cdfd51f00f7b",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.007988Z"
+      "at": "2026-10-06T00:17:47.736659Z"
      }
     },
     {
-     "id": "87bbb38c-047d-42da-aedd-3bd987c80ab6",
+     "id": "49908911-2d30-4c9b-9455-6f8460654e76",
      "kind": "history",
      "payload": {
-      "id": "87bbb38c-047d-42da-aedd-3bd987c80ab6",
+      "id": "49908911-2d30-4c9b-9455-6f8460654e76",
       "entity_kind": "account",
-      "entity_id": "efd939bb-e7c1-4558-a0e9-0d24d66e2711",
+      "entity_id": "1e8ed9f3-0122-4af0-81a8-f98a9a0e7215",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.008002Z"
+      "at": "2026-10-06T00:17:47.736672Z"
      }
     },
     {
-     "id": "a79e3e9e-558e-42f7-9a35-ae2ba0c0f8a6",
+     "id": "a591681c-8541-4b2c-8d47-656d5945310d",
      "kind": "history",
      "payload": {
-      "id": "a79e3e9e-558e-42f7-9a35-ae2ba0c0f8a6",
+      "id": "a591681c-8541-4b2c-8d47-656d5945310d",
       "entity_kind": "account",
-      "entity_id": "f2c3d739-7d1f-4fc9-baee-b06a0e36239f",
+      "entity_id": "d84b0515-cd11-46c6-97cd-c563d9f336b7",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.008016Z"
+      "at": "2026-10-06T00:17:47.736685Z"
      }
     },
     {
-     "id": "09b44f43-acc9-451c-a948-9d9e9a4a4a36",
+     "id": "94cd7b08-72f5-433f-8207-1f85fd17885a",
      "kind": "history",
      "payload": {
-      "id": "09b44f43-acc9-451c-a948-9d9e9a4a4a36",
+      "id": "94cd7b08-72f5-433f-8207-1f85fd17885a",
       "entity_kind": "account",
-      "entity_id": "9c6e40aa-ddb8-4cb4-8692-d856be4f0196",
+      "entity_id": "8f07cb38-d525-45c0-83ce-31f5b4aba1f3",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.008029Z"
+      "at": "2026-10-06T00:17:47.736698Z"
      }
     },
     {
-     "id": "7b8876f0-0021-4f73-9cb0-7f6f84d101aa",
+     "id": "adcec725-b61b-4979-9993-944e51939869",
      "kind": "history",
      "payload": {
-      "id": "7b8876f0-0021-4f73-9cb0-7f6f84d101aa",
+      "id": "adcec725-b61b-4979-9993-944e51939869",
       "entity_kind": "member",
-      "entity_id": "4ec5d900-ff73-44ad-90a4-248193daf663",
+      "entity_id": "8fdd5f9e-74a1-4900-9940-b813738437ba",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.008064Z"
+      "at": "2026-10-06T00:17:47.736729Z"
      }
     },
     {
-     "id": "fa158608-ecdc-4e81-9315-0b805ef3cbbf",
+     "id": "d5138f70-66cc-4323-8ddc-68f7843d44e6",
      "kind": "history",
      "payload": {
-      "id": "fa158608-ecdc-4e81-9315-0b805ef3cbbf",
+      "id": "d5138f70-66cc-4323-8ddc-68f7843d44e6",
       "entity_kind": "member",
-      "entity_id": "ce90cc90-b17d-43d4-8ed5-41f5e7e8be7b",
+      "entity_id": "5d54c55b-9fbc-4090-b5a0-520f67f07ae3",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.008083Z"
+      "at": "2026-10-06T00:17:47.736752Z"
      }
     },
     {
-     "id": "21388b6b-fcc3-40b4-8846-0fd68d7dd8fd",
+     "id": "b231cc7b-c8ee-4bfc-b761-b5dafe79a356",
      "kind": "history",
      "payload": {
-      "id": "21388b6b-fcc3-40b4-8846-0fd68d7dd8fd",
+      "id": "b231cc7b-c8ee-4bfc-b761-b5dafe79a356",
       "entity_kind": "member",
-      "entity_id": "3ac067eb-b3a1-4dad-9c01-e4fcf820f808",
+      "entity_id": "8b8f49ab-6609-44d2-b4cc-975b76c13aa0",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.008100Z"
+      "at": "2026-10-06T00:17:47.736767Z"
      }
     },
     {
-     "id": "885f6120-3d9c-47de-b7e6-3497a70affb1",
+     "id": "c4298283-7844-4b47-91da-9d296403bc35",
      "kind": "history",
      "payload": {
-      "id": "885f6120-3d9c-47de-b7e6-3497a70affb1",
+      "id": "c4298283-7844-4b47-91da-9d296403bc35",
       "entity_kind": "account",
-      "entity_id": "9f30faeb-436d-46d6-906a-bd18a58847bd",
+      "entity_id": "a60abce0-465f-4ee5-9887-c48cf538e177",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.008129Z"
+      "at": "2026-10-06T00:17:47.736797Z"
      }
     },
     {
-     "id": "4d023f93-5a34-49a8-a361-9ca0ae060eae",
+     "id": "7a0d23f3-24da-446d-9910-9f264df424ce",
      "kind": "history",
      "payload": {
-      "id": "4d023f93-5a34-49a8-a361-9ca0ae060eae",
+      "id": "7a0d23f3-24da-446d-9910-9f264df424ce",
       "entity_kind": "account",
-      "entity_id": "461275d7-03af-4650-9525-cae3fc40b95c",
+      "entity_id": "50188397-721e-4184-8bdb-3db7ccb081bf",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.008148Z"
+      "at": "2026-10-06T00:17:47.736815Z"
      }
     },
     {
-     "id": "4dfc21a4-7204-4a77-a0e4-e5fc95cf2838",
+     "id": "f71c9a6a-6237-4fa0-a698-00128eb6d734",
      "kind": "history",
      "payload": {
-      "id": "4dfc21a4-7204-4a77-a0e4-e5fc95cf2838",
+      "id": "f71c9a6a-6237-4fa0-a698-00128eb6d734",
       "entity_kind": "account",
-      "entity_id": "53303bd0-b7e0-4b70-9ce5-e9256bd06e13",
+      "entity_id": "f18b5c61-25f5-4a4a-bbed-9f2bf172a0da",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.008164Z"
+      "at": "2026-10-06T00:17:47.736829Z"
      }
     },
     {
-     "id": "1f1efd98-bb7e-4335-8c7a-cb47460f70e3",
+     "id": "b79a00b1-3ed4-4144-a2dd-c2d2b4752b27",
      "kind": "history",
      "payload": {
-      "id": "1f1efd98-bb7e-4335-8c7a-cb47460f70e3",
+      "id": "b79a00b1-3ed4-4144-a2dd-c2d2b4752b27",
       "entity_kind": "account",
-      "entity_id": "2baa0ce7-07b3-4670-b1dc-a021122f491b",
+      "entity_id": "c2706ee3-9389-4388-8115-12b4ccda98d6",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.008179Z"
+      "at": "2026-10-06T00:17:47.736845Z"
      }
     },
     {
-     "id": "15edf29f-6bab-42a4-9454-57028ed8bd80",
+     "id": "c973e414-2f13-45db-b3e1-49760e4f7d36",
      "kind": "history",
      "payload": {
-      "id": "15edf29f-6bab-42a4-9454-57028ed8bd80",
+      "id": "c973e414-2f13-45db-b3e1-49760e4f7d36",
       "entity_kind": "account",
-      "entity_id": "c781789e-d7d5-4b64-bd6e-93eea0c7ef9b",
+      "entity_id": "89f50230-9d0e-494d-9467-4cba6413acbf",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.008197Z"
+      "at": "2026-10-06T00:17:47.736864Z"
      }
     },
     {
-     "id": "d848fe42-4d0b-4335-b1ad-80b89826164c",
+     "id": "a36a7c67-fce6-4aee-8b1b-506b7f1000e3",
      "kind": "history",
      "payload": {
-      "id": "d848fe42-4d0b-4335-b1ad-80b89826164c",
+      "id": "a36a7c67-fce6-4aee-8b1b-506b7f1000e3",
       "entity_kind": "account",
-      "entity_id": "c1702471-a1a3-47f1-b9b9-3591a84c727a",
+      "entity_id": "b37e6351-d08d-483b-9b17-b1d951f5ac42",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.008212Z"
+      "at": "2026-10-06T00:17:47.736878Z"
      }
     },
     {
-     "id": "ae62a870-5306-433d-b5cd-91358adf8059",
+     "id": "de69d7bf-7a26-445f-aa41-116aca23713b",
      "kind": "history",
      "payload": {
-      "id": "ae62a870-5306-433d-b5cd-91358adf8059",
+      "id": "de69d7bf-7a26-445f-aa41-116aca23713b",
       "entity_kind": "account",
-      "entity_id": "0e5c1e64-bfe5-49ff-8e67-6ec6d816295d",
+      "entity_id": "880582ad-5a8e-471e-bcbe-8b5d65f85928",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.008243Z"
+      "at": "2026-10-06T00:17:47.736910Z"
      }
     },
     {
-     "id": "8d2923b0-c3a2-40fe-8dd0-320f90a1f8f7",
+     "id": "073e6b7f-283b-4d2a-b3ae-de2a5f82cca5",
      "kind": "history",
      "payload": {
-      "id": "8d2923b0-c3a2-40fe-8dd0-320f90a1f8f7",
+      "id": "073e6b7f-283b-4d2a-b3ae-de2a5f82cca5",
       "entity_kind": "account",
-      "entity_id": "abc6665c-e315-4896-8882-f5f3eaf6828c",
+      "entity_id": "1a98f927-c23e-4e00-af38-c8b4339e8d4b",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.008261Z"
+      "at": "2026-10-06T00:17:47.736932Z"
      }
     },
     {
-     "id": "b0af4c1c-326a-4537-9c50-8938eaeac0bc",
+     "id": "5a5abcae-3f6e-46de-a3ec-c94a099ccf29",
      "kind": "history",
      "payload": {
-      "id": "b0af4c1c-326a-4537-9c50-8938eaeac0bc",
+      "id": "5a5abcae-3f6e-46de-a3ec-c94a099ccf29",
       "entity_kind": "account",
-      "entity_id": "970aecba-8bcd-47ac-b44f-48c0846da03d",
+      "entity_id": "e205f096-d81d-4c8f-9f40-776d864edb3c",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.008296Z"
+      "at": "2026-10-06T00:17:47.736987Z"
      }
     },
     {
-     "id": "18d61802-0d40-4258-9155-d7c43d5335ab",
+     "id": "144f4363-4b25-4ebd-ae0d-29c7cd35b23d",
      "kind": "history",
      "payload": {
-      "id": "18d61802-0d40-4258-9155-d7c43d5335ab",
+      "id": "144f4363-4b25-4ebd-ae0d-29c7cd35b23d",
       "entity_kind": "account",
-      "entity_id": "f66776c8-72cd-4fd6-8213-7cd93663ddc9",
+      "entity_id": "f95486dd-711e-4fcb-a67f-a6a935f5386c",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.008312Z"
+      "at": "2026-10-06T00:17:47.737005Z"
      }
     },
     {
-     "id": "4e11cbda-684b-48db-870c-76df274ea8fb",
+     "id": "718fe083-8e5c-4bdd-a57d-c8506d4eafaa",
      "kind": "history",
      "payload": {
-      "id": "4e11cbda-684b-48db-870c-76df274ea8fb",
+      "id": "718fe083-8e5c-4bdd-a57d-c8506d4eafaa",
       "entity_kind": "account",
-      "entity_id": "4fcc8f0b-1dd9-4ec5-9330-5109d70af2f8",
+      "entity_id": "5ff6e615-3201-4280-ad53-99c6e44f1d99",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.008334Z"
+      "at": "2026-10-06T00:17:47.737021Z"
      }
     },
     {
-     "id": "8cb43cf6-f846-4446-8be4-b982711653b5",
+     "id": "ee52ee2a-7cec-46ce-8dd9-ee606529ce5d",
      "kind": "history",
      "payload": {
-      "id": "8cb43cf6-f846-4446-8be4-b982711653b5",
+      "id": "ee52ee2a-7cec-46ce-8dd9-ee606529ce5d",
       "entity_kind": "operation",
-      "entity_id": "0b066d91-9b6e-4e33-922a-56c0078ccb7b",
+      "entity_id": "86ecbac0-eaf7-4698-8375-b92b1183985a",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.008466Z"
+      "at": "2026-10-06T00:17:47.737138Z"
      }
     },
     {
-     "id": "7fd291ea-a463-48dd-a22a-54f6d6266869",
+     "id": "ad135217-606d-4ac8-a835-0c30510333f4",
      "kind": "history",
      "payload": {
-      "id": "7fd291ea-a463-48dd-a22a-54f6d6266869",
+      "id": "ad135217-606d-4ac8-a835-0c30510333f4",
       "entity_kind": "operation",
-      "entity_id": "82146094-9337-49f7-ab9c-055895a0c40c",
+      "entity_id": "9f757a4c-2c30-4c76-acf7-c1c7bab87978",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.008527Z"
+      "at": "2026-10-06T00:17:47.737188Z"
      }
     },
     {
-     "id": "840575f0-14df-4892-b964-750f0d579279",
+     "id": "ce389484-3e2b-44f2-9bff-49745b8e63a3",
      "kind": "history",
      "payload": {
-      "id": "840575f0-14df-4892-b964-750f0d579279",
+      "id": "ce389484-3e2b-44f2-9bff-49745b8e63a3",
       "entity_kind": "operation",
-      "entity_id": "2fd36a07-e790-4561-babb-016f8701b4b3",
+      "entity_id": "758f661c-24ef-4c12-aadb-00373570bb3d",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.008658Z"
+      "at": "2026-10-06T00:17:47.737227Z"
      }
     },
     {
-     "id": "78a9225a-1758-4c70-9b0b-4f9884b7541c",
+     "id": "dc036a00-04ff-4707-9347-50137b3e19db",
      "kind": "history",
      "payload": {
-      "id": "78a9225a-1758-4c70-9b0b-4f9884b7541c",
+      "id": "dc036a00-04ff-4707-9347-50137b3e19db",
       "entity_kind": "operation",
-      "entity_id": "b3b8f423-a701-45c6-a84d-f56b7ec7aaff",
+      "entity_id": "bd1b6541-6def-4014-ab6e-0eccc54e25c0",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.008708Z"
+      "at": "2026-10-06T00:17:47.737261Z"
      }
     },
     {
-     "id": "17ce0d9e-df72-4df0-a78b-4e3bcd264da8",
+     "id": "2875fb74-bfc2-4ad1-a0d9-8b2d2017af93",
      "kind": "history",
      "payload": {
-      "id": "17ce0d9e-df72-4df0-a78b-4e3bcd264da8",
+      "id": "2875fb74-bfc2-4ad1-a0d9-8b2d2017af93",
       "entity_kind": "operation",
-      "entity_id": "11d47ea9-6667-4416-9c4c-67569166ef00",
+      "entity_id": "9209fde3-5d46-4dd5-9814-e15606fcbe71",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.008754Z"
+      "at": "2026-10-06T00:17:47.737303Z"
      }
     }
    ],
    "names": {
-    "ana": "4ec5d900-ff73-44ad-90a4-248193daf663",
-    "bruno": "ce90cc90-b17d-43d4-8ed5-41f5e7e8be7b",
-    "carla": "3ac067eb-b3a1-4dad-9c01-e4fcf820f808",
-    "bank": "9f30faeb-436d-46d6-906a-bd18a58847bd",
-    "joint": "461275d7-03af-4650-9525-cae3fc40b95c",
-    "broker": "53303bd0-b7e0-4b70-9ce5-e9256bd06e13",
-    "savings": "2baa0ce7-07b3-4670-b1dc-a021122f491b",
-    "cash": "c781789e-d7d5-4b64-bd6e-93eea0c7ef9b",
-    "nobody": "c1702471-a1a3-47f1-b9b9-3591a84c727a",
-    "salary": "efd939bb-e7c1-4558-a0e9-0d24d66e2711",
-    "rent": "0e5c1e64-bfe5-49ff-8e67-6ec6d816295d",
-    "freelance": "abc6665c-e315-4896-8882-f5f3eaf6828c",
-    "other_income": "9c6e40aa-ddb8-4cb4-8692-d856be4f0196",
-    "health": "62e180eb-fea0-49c4-bb78-6d0df1d8c537",
-    "food": "1fbf0fb2-b7d7-4ca6-b4ae-1d6ec558df95",
-    "bonus": "970aecba-8bcd-47ac-b44f-48c0846da03d",
-    "loan": "f66776c8-72cd-4fd6-8213-7cd93663ddc9",
-    "debt": "4fcc8f0b-1dd9-4ec5-9330-5109d70af2f8"
+    "ana": "8fdd5f9e-74a1-4900-9940-b813738437ba",
+    "bruno": "5d54c55b-9fbc-4090-b5a0-520f67f07ae3",
+    "carla": "8b8f49ab-6609-44d2-b4cc-975b76c13aa0",
+    "bank": "a60abce0-465f-4ee5-9887-c48cf538e177",
+    "joint": "50188397-721e-4184-8bdb-3db7ccb081bf",
+    "broker": "f18b5c61-25f5-4a4a-bbed-9f2bf172a0da",
+    "savings": "c2706ee3-9389-4388-8115-12b4ccda98d6",
+    "cash": "89f50230-9d0e-494d-9467-4cba6413acbf",
+    "nobody": "b37e6351-d08d-483b-9b17-b1d951f5ac42",
+    "salary": "1e8ed9f3-0122-4af0-81a8-f98a9a0e7215",
+    "rent": "880582ad-5a8e-471e-bcbe-8b5d65f85928",
+    "freelance": "1a98f927-c23e-4e00-af38-c8b4339e8d4b",
+    "other_income": "8f07cb38-d525-45c0-83ce-31f5b4aba1f3",
+    "health": "e05fcd8f-7257-40f2-91f2-3c54baac0eaf",
+    "food": "96d1118c-dd8b-4bc2-86a8-493f4a33a835",
+    "bonus": "e205f096-d81d-4c8f-9f40-776d864edb3c",
+    "loan": "f95486dd-711e-4fcb-a67f-a6a935f5386c",
+    "debt": "5ff6e615-3201-4280-ad53-99c6e44f1d99"
    },
    "commands": [
     {
@@ -11409,12 +11409,12 @@
       "currency": "BRL",
       "postings": [
        {
-        "account_id": "9f30faeb-436d-46d6-906a-bd18a58847bd",
+        "account_id": "a60abce0-465f-4ee5-9887-c48cf538e177",
         "amount": "4000.00",
         "member_id": null
        },
        {
-        "account_id": "efd939bb-e7c1-4558-a0e9-0d24d66e2711",
+        "account_id": "1e8ed9f3-0122-4af0-81a8-f98a9a0e7215",
         "amount": "-4000.00",
         "member_id": null
        }
@@ -11429,7 +11429,7 @@
        "import_id": null,
        "evidence_ids": []
       },
-      "member_id": "4ec5d900-ff73-44ad-90a4-248193daf663",
+      "member_id": "8fdd5f9e-74a1-4900-9940-b813738437ba",
       "card_id": null,
       "cardholder_id": null,
       "installment": null,
@@ -11458,12 +11458,12 @@
       "currency": "BRL",
       "postings": [
        {
-        "account_id": "9f30faeb-436d-46d6-906a-bd18a58847bd",
+        "account_id": "a60abce0-465f-4ee5-9887-c48cf538e177",
         "amount": "4000.00",
         "member_id": null
        },
        {
-        "account_id": "efd939bb-e7c1-4558-a0e9-0d24d66e2711",
+        "account_id": "1e8ed9f3-0122-4af0-81a8-f98a9a0e7215",
         "amount": "-4000.00",
         "member_id": null
        }
@@ -11478,7 +11478,7 @@
        "import_id": null,
        "evidence_ids": []
       },
-      "member_id": "4ec5d900-ff73-44ad-90a4-248193daf663",
+      "member_id": "8fdd5f9e-74a1-4900-9940-b813738437ba",
       "card_id": null,
       "cardholder_id": null,
       "installment": null,
@@ -11507,12 +11507,12 @@
       "currency": "BRL",
       "postings": [
        {
-        "account_id": "9f30faeb-436d-46d6-906a-bd18a58847bd",
+        "account_id": "a60abce0-465f-4ee5-9887-c48cf538e177",
         "amount": "3500.00",
         "member_id": null
        },
        {
-        "account_id": "efd939bb-e7c1-4558-a0e9-0d24d66e2711",
+        "account_id": "1e8ed9f3-0122-4af0-81a8-f98a9a0e7215",
         "amount": "-3500.00",
         "member_id": null
        }
@@ -11527,7 +11527,7 @@
        "import_id": null,
        "evidence_ids": []
       },
-      "member_id": "4ec5d900-ff73-44ad-90a4-248193daf663",
+      "member_id": "8fdd5f9e-74a1-4900-9940-b813738437ba",
       "card_id": null,
       "cardholder_id": null,
       "installment": null,
@@ -11546,12 +11546,12 @@
       "currency": "BRL",
       "postings": [
        {
-        "account_id": "9f30faeb-436d-46d6-906a-bd18a58847bd",
+        "account_id": "a60abce0-465f-4ee5-9887-c48cf538e177",
         "amount": "2000.00",
         "member_id": null
        },
        {
-        "account_id": "efd939bb-e7c1-4558-a0e9-0d24d66e2711",
+        "account_id": "1e8ed9f3-0122-4af0-81a8-f98a9a0e7215",
         "amount": "-2000.00",
         "member_id": null
        }
@@ -11566,7 +11566,7 @@
        "import_id": null,
        "evidence_ids": []
       },
-      "member_id": "4ec5d900-ff73-44ad-90a4-248193daf663",
+      "member_id": "8fdd5f9e-74a1-4900-9940-b813738437ba",
       "card_id": null,
       "cardholder_id": null,
       "installment": null,
@@ -11595,12 +11595,12 @@
       "currency": "BRL",
       "postings": [
        {
-        "account_id": "461275d7-03af-4650-9525-cae3fc40b95c",
+        "account_id": "50188397-721e-4184-8bdb-3db7ccb081bf",
         "amount": "1500.00",
         "member_id": null
        },
        {
-        "account_id": "970aecba-8bcd-47ac-b44f-48c0846da03d",
+        "account_id": "e205f096-d81d-4c8f-9f40-776d864edb3c",
         "amount": "-1500.00",
         "member_id": null
        }
@@ -11615,7 +11615,7 @@
        "import_id": null,
        "evidence_ids": []
       },
-      "member_id": "ce90cc90-b17d-43d4-8ed5-41f5e7e8be7b",
+      "member_id": "5d54c55b-9fbc-4090-b5a0-520f67f07ae3",
       "card_id": null,
       "cardholder_id": null,
       "installment": null,
@@ -11644,12 +11644,12 @@
       "currency": "BRL",
       "postings": [
        {
-        "account_id": "461275d7-03af-4650-9525-cae3fc40b95c",
+        "account_id": "50188397-721e-4184-8bdb-3db7ccb081bf",
         "amount": "100.00",
         "member_id": null
        },
        {
-        "account_id": "970aecba-8bcd-47ac-b44f-48c0846da03d",
+        "account_id": "e205f096-d81d-4c8f-9f40-776d864edb3c",
         "amount": "-100.00",
         "member_id": null
        }
@@ -11664,7 +11664,7 @@
        "import_id": null,
        "evidence_ids": []
       },
-      "member_id": "ce90cc90-b17d-43d4-8ed5-41f5e7e8be7b",
+      "member_id": "5d54c55b-9fbc-4090-b5a0-520f67f07ae3",
       "card_id": null,
       "cardholder_id": null,
       "installment": null,
@@ -11693,12 +11693,12 @@
       "currency": "BRL",
       "postings": [
        {
-        "account_id": "9f30faeb-436d-46d6-906a-bd18a58847bd",
+        "account_id": "a60abce0-465f-4ee5-9887-c48cf538e177",
         "amount": "900.00",
         "member_id": null
        },
        {
-        "account_id": "efd939bb-e7c1-4558-a0e9-0d24d66e2711",
+        "account_id": "1e8ed9f3-0122-4af0-81a8-f98a9a0e7215",
         "amount": "-900.00",
         "member_id": null
        }
@@ -11732,12 +11732,12 @@
       "currency": "BRL",
       "postings": [
        {
-        "account_id": "9f30faeb-436d-46d6-906a-bd18a58847bd",
+        "account_id": "a60abce0-465f-4ee5-9887-c48cf538e177",
         "amount": "900.00",
         "member_id": null
        },
        {
-        "account_id": "efd939bb-e7c1-4558-a0e9-0d24d66e2711",
+        "account_id": "1e8ed9f3-0122-4af0-81a8-f98a9a0e7215",
         "amount": "-900.00",
         "member_id": null
        }
@@ -11771,12 +11771,12 @@
       "currency": "BRL",
       "postings": [
        {
-        "account_id": "9f30faeb-436d-46d6-906a-bd18a58847bd",
+        "account_id": "a60abce0-465f-4ee5-9887-c48cf538e177",
         "amount": "777.00",
         "member_id": null
        },
        {
-        "account_id": "efd939bb-e7c1-4558-a0e9-0d24d66e2711",
+        "account_id": "1e8ed9f3-0122-4af0-81a8-f98a9a0e7215",
         "amount": "-777.00",
         "member_id": null
        }
@@ -11810,12 +11810,12 @@
       "currency": "BRL",
       "postings": [
        {
-        "account_id": "9f30faeb-436d-46d6-906a-bd18a58847bd",
+        "account_id": "a60abce0-465f-4ee5-9887-c48cf538e177",
         "amount": "777.00",
         "member_id": null
        },
        {
-        "account_id": "efd939bb-e7c1-4558-a0e9-0d24d66e2711",
+        "account_id": "1e8ed9f3-0122-4af0-81a8-f98a9a0e7215",
         "amount": "-777.00",
         "member_id": null
        }
@@ -11849,12 +11849,12 @@
       "currency": "BRL",
       "postings": [
        {
-        "account_id": "9f30faeb-436d-46d6-906a-bd18a58847bd",
+        "account_id": "a60abce0-465f-4ee5-9887-c48cf538e177",
         "amount": "100.00",
         "member_id": null
        },
        {
-        "account_id": "abc6665c-e315-4896-8882-f5f3eaf6828c",
+        "account_id": "1a98f927-c23e-4e00-af38-c8b4339e8d4b",
         "amount": "-100.00",
         "member_id": null
        }
@@ -11885,7 +11885,7 @@
       "id": "<new>",
       "year": 2025,
       "source": "category",
-      "source_id": "efd939bb-e7c1-4558-a0e9-0d24d66e2711",
+      "source_id": "1e8ed9f3-0122-4af0-81a8-f98a9a0e7215",
       "payer_tax_id": "11222333000181",
       "payer_name": null,
       "document_id": null,
@@ -11924,7 +11924,7 @@
       "id": "<new>",
       "year": 2025,
       "source": "category",
-      "source_id": "970aecba-8bcd-47ac-b44f-48c0846da03d",
+      "source_id": "e205f096-d81d-4c8f-9f40-776d864edb3c",
       "payer_tax_id": null,
       "payer_name": null,
       "document_id": null,
@@ -11948,7 +11948,7 @@
       "id": "<new>",
       "year": 2025,
       "source": "category",
-      "source_id": "abc6665c-e315-4896-8882-f5f3eaf6828c",
+      "source_id": "1a98f927-c23e-4e00-af38-c8b4339e8d4b",
       "payer_tax_id": null,
       "payer_name": null,
       "document_id": null,
@@ -11972,7 +11972,7 @@
       "id": "<new>",
       "year": 2025,
       "source": "category",
-      "source_id": "0e5c1e64-bfe5-49ff-8e67-6ec6d816295d",
+      "source_id": "880582ad-5a8e-471e-bcbe-8b5d65f85928",
       "payer_tax_id": null,
       "payer_name": null,
       "document_id": null,
@@ -11994,7 +11994,7 @@
        "id": "<new>",
        "year": 2025,
        "source": "category",
-       "source_id": "efd939bb-e7c1-4558-a0e9-0d24d66e2711",
+       "source_id": "1e8ed9f3-0122-4af0-81a8-f98a9a0e7215",
        "payer_tax_id": "11222333000181",
        "payer_name": null,
        "document_id": null,
@@ -12135,7 +12135,7 @@
        "id": "<new>",
        "year": 2025,
        "source": "category",
-       "source_id": "970aecba-8bcd-47ac-b44f-48c0846da03d",
+       "source_id": "e205f096-d81d-4c8f-9f40-776d864edb3c",
        "payer_tax_id": null,
        "payer_name": null,
        "document_id": null,
@@ -12214,7 +12214,7 @@
        "id": "<new>",
        "year": 2025,
        "source": "category",
-       "source_id": "abc6665c-e315-4896-8882-f5f3eaf6828c",
+       "source_id": "1a98f927-c23e-4e00-af38-c8b4339e8d4b",
        "payer_tax_id": null,
        "payer_name": null,
        "document_id": null,
@@ -12293,7 +12293,7 @@
        "id": "<new>",
        "year": 2025,
        "source": "category",
-       "source_id": "0e5c1e64-bfe5-49ff-8e67-6ec6d816295d",
+       "source_id": "880582ad-5a8e-471e-bcbe-8b5d65f85928",
        "payer_tax_id": null,
        "payer_name": null,
        "document_id": null,
@@ -12356,44 +12356,44 @@
       "schema_version": 2,
       "family_name": "Projeto IR",
       "currency": "BRL",
-      "opening_equity_id": "73852d0c-d544-441f-962e-cfbc1d73235b"
+      "opening_equity_id": "f7aee4eb-7099-4129-85c2-ddd41c3eebe3"
      }
     },
     {
-     "id": "07fda30e-243c-43a8-8e7c-cdd291ebeb35",
+     "id": "045345bf-5e52-4c73-b1ab-f965208d1343",
      "kind": "member",
      "payload": {
-      "id": "07fda30e-243c-43a8-8e7c-cdd291ebeb35",
+      "id": "045345bf-5e52-4c73-b1ab-f965208d1343",
       "name": "Ana",
       "active": true,
       "role": "holder"
      }
     },
     {
-     "id": "6638cf92-bffc-4017-a295-93c76dc5dbd7",
+     "id": "00abab6f-7591-404a-ba27-970b0d4065df",
      "kind": "member",
      "payload": {
-      "id": "6638cf92-bffc-4017-a295-93c76dc5dbd7",
+      "id": "00abab6f-7591-404a-ba27-970b0d4065df",
       "name": "Bruno",
       "active": true,
       "role": "holder"
      }
     },
     {
-     "id": "044c78fa-61a5-4bbc-8c90-4df1d519543a",
+     "id": "83967276-c215-4649-8a19-b170282d696b",
      "kind": "member",
      "payload": {
-      "id": "044c78fa-61a5-4bbc-8c90-4df1d519543a",
+      "id": "83967276-c215-4649-8a19-b170282d696b",
       "name": "Carla",
       "active": true,
       "role": "holder"
      }
     },
     {
-     "id": "73852d0c-d544-441f-962e-cfbc1d73235b",
+     "id": "f7aee4eb-7099-4129-85c2-ddd41c3eebe3",
      "kind": "account",
      "payload": {
-      "id": "73852d0c-d544-441f-962e-cfbc1d73235b",
+      "id": "f7aee4eb-7099-4129-85c2-ddd41c3eebe3",
       "name": "Patrimônio de abertura",
       "type": "equity",
       "subtype": "opening_equity",
@@ -12406,10 +12406,10 @@
      }
     },
     {
-     "id": "95294681-93b4-46d4-8e1c-a4390a721701",
+     "id": "d62a4f71-20c4-4237-af6a-5cb4a96a7a60",
      "kind": "account",
      "payload": {
-      "id": "95294681-93b4-46d4-8e1c-a4390a721701",
+      "id": "d62a4f71-20c4-4237-af6a-5cb4a96a7a60",
       "name": "Moradia",
       "type": "expense",
       "subtype": "category",
@@ -12422,10 +12422,10 @@
      }
     },
     {
-     "id": "69c9eb12-9af7-4b52-8f75-cac8c230b23a",
+     "id": "435cf5b7-77c2-4075-a0ef-3b6d5b0440ea",
      "kind": "account",
      "payload": {
-      "id": "69c9eb12-9af7-4b52-8f75-cac8c230b23a",
+      "id": "435cf5b7-77c2-4075-a0ef-3b6d5b0440ea",
       "name": "Alimentação",
       "type": "expense",
       "subtype": "category",
@@ -12438,10 +12438,10 @@
      }
     },
     {
-     "id": "000d598b-93e5-4807-b5f5-909a86589789",
+     "id": "9891a9a3-f0fe-48b8-aacf-3bcd6d8441db",
      "kind": "account",
      "payload": {
-      "id": "000d598b-93e5-4807-b5f5-909a86589789",
+      "id": "9891a9a3-f0fe-48b8-aacf-3bcd6d8441db",
       "name": "Transporte",
       "type": "expense",
       "subtype": "category",
@@ -12454,10 +12454,10 @@
      }
     },
     {
-     "id": "4f2e30da-44af-4349-8c09-f98c85347b24",
+     "id": "72154a0f-fe53-46e8-84b2-0e18fa531488",
      "kind": "account",
      "payload": {
-      "id": "4f2e30da-44af-4349-8c09-f98c85347b24",
+      "id": "72154a0f-fe53-46e8-84b2-0e18fa531488",
       "name": "Saúde",
       "type": "expense",
       "subtype": "category",
@@ -12470,10 +12470,10 @@
      }
     },
     {
-     "id": "17c89518-ee31-4269-ba5d-902836c95192",
+     "id": "59f89e68-2cd6-43db-a6f9-0e42300cd7f5",
      "kind": "account",
      "payload": {
-      "id": "17c89518-ee31-4269-ba5d-902836c95192",
+      "id": "59f89e68-2cd6-43db-a6f9-0e42300cd7f5",
       "name": "Educação",
       "type": "expense",
       "subtype": "category",
@@ -12486,10 +12486,10 @@
      }
     },
     {
-     "id": "7779837a-44a3-4c50-8be6-53779ded149a",
+     "id": "3ccbe9d7-0638-406a-967a-c3a7d21d48f8",
      "kind": "account",
      "payload": {
-      "id": "7779837a-44a3-4c50-8be6-53779ded149a",
+      "id": "3ccbe9d7-0638-406a-967a-c3a7d21d48f8",
       "name": "Lazer",
       "type": "expense",
       "subtype": "category",
@@ -12502,10 +12502,10 @@
      }
     },
     {
-     "id": "0238b257-597d-4e02-b8a9-67cb3b5aa199",
+     "id": "318018dd-bec4-45bb-924d-23962250a459",
      "kind": "account",
      "payload": {
-      "id": "0238b257-597d-4e02-b8a9-67cb3b5aa199",
+      "id": "318018dd-bec4-45bb-924d-23962250a459",
       "name": "Serviços e assinaturas",
       "type": "expense",
       "subtype": "category",
@@ -12518,10 +12518,10 @@
      }
     },
     {
-     "id": "61bd4fb6-9402-480e-9a8e-b30e952dc927",
+     "id": "cde8b56d-0f65-435a-abe7-d08eb0988175",
      "kind": "account",
      "payload": {
-      "id": "61bd4fb6-9402-480e-9a8e-b30e952dc927",
+      "id": "cde8b56d-0f65-435a-abe7-d08eb0988175",
       "name": "Impostos e taxas",
       "type": "expense",
       "subtype": "category",
@@ -12534,10 +12534,10 @@
      }
     },
     {
-     "id": "3d1b62a3-738e-4451-8940-e5cee1986cc6",
+     "id": "bd2ffe20-e6f5-414d-8ab5-321619eec251",
      "kind": "account",
      "payload": {
-      "id": "3d1b62a3-738e-4451-8940-e5cee1986cc6",
+      "id": "bd2ffe20-e6f5-414d-8ab5-321619eec251",
       "name": "Juros e encargos",
       "type": "expense",
       "subtype": "category",
@@ -12550,10 +12550,10 @@
      }
     },
     {
-     "id": "b9b0730b-0b42-43b4-93a5-e6be5b05a937",
+     "id": "507f5ca2-3bfd-47e1-8e34-f779e94e4957",
      "kind": "account",
      "payload": {
-      "id": "b9b0730b-0b42-43b4-93a5-e6be5b05a937",
+      "id": "507f5ca2-3bfd-47e1-8e34-f779e94e4957",
       "name": "Outras despesas",
       "type": "expense",
       "subtype": "category",
@@ -12566,10 +12566,10 @@
      }
     },
     {
-     "id": "37c7eaba-b347-4276-b486-f00be4171bed",
+     "id": "eff4e18b-830a-46c6-bf53-3a3e2405702c",
      "kind": "account",
      "payload": {
-      "id": "37c7eaba-b347-4276-b486-f00be4171bed",
+      "id": "eff4e18b-830a-46c6-bf53-3a3e2405702c",
       "name": "Salário",
       "type": "income",
       "subtype": "category",
@@ -12582,10 +12582,10 @@
      }
     },
     {
-     "id": "d4a1a9f1-24d7-44c0-aabb-a39273053e84",
+     "id": "9ddf65f5-b3e8-4118-b7ca-9b756502fcce",
      "kind": "account",
      "payload": {
-      "id": "d4a1a9f1-24d7-44c0-aabb-a39273053e84",
+      "id": "9ddf65f5-b3e8-4118-b7ca-9b756502fcce",
       "name": "Rendimentos de investimentos",
       "type": "income",
       "subtype": "category",
@@ -12598,10 +12598,10 @@
      }
     },
     {
-     "id": "eb6a5379-80be-40f1-9bbb-3b7cebc77349",
+     "id": "4c11dad1-2a9f-4213-9fbf-6f916c65d769",
      "kind": "account",
      "payload": {
-      "id": "eb6a5379-80be-40f1-9bbb-3b7cebc77349",
+      "id": "4c11dad1-2a9f-4213-9fbf-6f916c65d769",
       "name": "Outras receitas",
       "type": "income",
       "subtype": "category",
@@ -12614,10 +12614,10 @@
      }
     },
     {
-     "id": "8af8090f-608d-4bcd-8797-4d13b949227f",
+     "id": "b4e41d69-62ec-477f-bf67-c3957a3692ef",
      "kind": "account",
      "payload": {
-      "id": "8af8090f-608d-4bcd-8797-4d13b949227f",
+      "id": "b4e41d69-62ec-477f-bf67-c3957a3692ef",
       "name": "Banco A",
       "type": "asset",
       "subtype": "checking",
@@ -12625,17 +12625,17 @@
       "institution": "Banco A S.A.",
       "masked_number": "1234-5",
       "holders": [
-       "07fda30e-243c-43a8-8e7c-cdd291ebeb35"
+       "045345bf-5e52-4c73-b1ab-f965208d1343"
       ],
       "parent_id": null,
       "archived": false
      }
     },
     {
-     "id": "2c42b9d0-e783-4eb6-89b9-e018d61fc0b5",
+     "id": "c14c0622-9a4d-486c-9d57-abdc2c2896f3",
      "kind": "account",
      "payload": {
-      "id": "2c42b9d0-e783-4eb6-89b9-e018d61fc0b5",
+      "id": "c14c0622-9a4d-486c-9d57-abdc2c2896f3",
       "name": "Conjunta",
       "type": "asset",
       "subtype": "checking",
@@ -12643,18 +12643,18 @@
       "institution": null,
       "masked_number": null,
       "holders": [
-       "07fda30e-243c-43a8-8e7c-cdd291ebeb35",
-       "6638cf92-bffc-4017-a295-93c76dc5dbd7"
+       "045345bf-5e52-4c73-b1ab-f965208d1343",
+       "00abab6f-7591-404a-ba27-970b0d4065df"
       ],
       "parent_id": null,
       "archived": false
      }
     },
     {
-     "id": "79d74961-5a55-4d44-930b-96ea32b97961",
+     "id": "d73ec632-92eb-468d-87c1-e1833b17e349",
      "kind": "account",
      "payload": {
-      "id": "79d74961-5a55-4d44-930b-96ea32b97961",
+      "id": "d73ec632-92eb-468d-87c1-e1833b17e349",
       "name": "Corretora",
       "type": "asset",
       "subtype": "brokerage_cash",
@@ -12662,17 +12662,17 @@
       "institution": null,
       "masked_number": null,
       "holders": [
-       "6638cf92-bffc-4017-a295-93c76dc5dbd7"
+       "00abab6f-7591-404a-ba27-970b0d4065df"
       ],
       "parent_id": null,
       "archived": false
      }
     },
     {
-     "id": "c2899181-94c5-4569-a80c-f3001be18f82",
+     "id": "3ec55806-a256-4dfc-88f5-8ae4b1411fb9",
      "kind": "account",
      "payload": {
-      "id": "c2899181-94c5-4569-a80c-f3001be18f82",
+      "id": "3ec55806-a256-4dfc-88f5-8ae4b1411fb9",
       "name": "Poupança",
       "type": "asset",
       "subtype": "savings",
@@ -12680,17 +12680,17 @@
       "institution": null,
       "masked_number": null,
       "holders": [
-       "07fda30e-243c-43a8-8e7c-cdd291ebeb35"
+       "045345bf-5e52-4c73-b1ab-f965208d1343"
       ],
       "parent_id": null,
       "archived": false
      }
     },
     {
-     "id": "4da92088-7259-4cdf-9af1-299ee82e30d3",
+     "id": "92fc0a1e-1ac2-48cb-b7e0-6f3a0653b038",
      "kind": "account",
      "payload": {
-      "id": "4da92088-7259-4cdf-9af1-299ee82e30d3",
+      "id": "92fc0a1e-1ac2-48cb-b7e0-6f3a0653b038",
       "name": "Carteira",
       "type": "asset",
       "subtype": "cash",
@@ -12703,10 +12703,10 @@
      }
     },
     {
-     "id": "7d1aec61-c1e4-44b9-9177-dc0cbeec2963",
+     "id": "7a78bcb1-0038-4074-8ef2-0266dfa74efd",
      "kind": "account",
      "payload": {
-      "id": "7d1aec61-c1e4-44b9-9177-dc0cbeec2963",
+      "id": "7a78bcb1-0038-4074-8ef2-0266dfa74efd",
       "name": "Conta sem titular",
       "type": "asset",
       "subtype": "checking",
@@ -12719,10 +12719,10 @@
      }
     },
     {
-     "id": "b50d20b1-a90b-4a05-ac87-c4357c372065",
+     "id": "44e87a8e-4326-4ca6-80e3-d70397ac9dab",
      "kind": "account",
      "payload": {
-      "id": "b50d20b1-a90b-4a05-ac87-c4357c372065",
+      "id": "44e87a8e-4326-4ca6-80e3-d70397ac9dab",
       "name": "Aluguel recebido",
       "type": "income",
       "subtype": "category",
@@ -12735,10 +12735,10 @@
      }
     },
     {
-     "id": "cd9dc068-3bd2-44d8-a68d-5c33abee6de7",
+     "id": "da497136-2671-4f1b-961e-2861c4f09a48",
      "kind": "account",
      "payload": {
-      "id": "cd9dc068-3bd2-44d8-a68d-5c33abee6de7",
+      "id": "da497136-2671-4f1b-961e-2861c4f09a48",
       "name": "Freelance",
       "type": "income",
       "subtype": "category",
@@ -12751,10 +12751,10 @@
      }
     },
     {
-     "id": "0b37a7ca-f3dc-417c-b481-d6033bd2093f",
+     "id": "760c52bb-00bc-4afa-969e-36ff0ac9f61e",
      "kind": "account",
      "payload": {
-      "id": "0b37a7ca-f3dc-417c-b481-d6033bd2093f",
+      "id": "760c52bb-00bc-4afa-969e-36ff0ac9f61e",
       "name": "Salário — bônus",
       "type": "income",
       "subtype": "category",
@@ -12762,15 +12762,15 @@
       "institution": null,
       "masked_number": null,
       "holders": [],
-      "parent_id": "37c7eaba-b347-4276-b486-f00be4171bed",
+      "parent_id": "eff4e18b-830a-46c6-bf53-3a3e2405702c",
       "archived": false
      }
     },
     {
-     "id": "fd112afb-7dfd-408d-b44a-68806ffc8a0c",
+     "id": "b31bba9f-eed2-41a5-b9ea-f3d8985d4511",
      "kind": "account",
      "payload": {
-      "id": "fd112afb-7dfd-408d-b44a-68806ffc8a0c",
+      "id": "b31bba9f-eed2-41a5-b9ea-f3d8985d4511",
       "name": "Financiamento",
       "type": "liability",
       "subtype": "loan",
@@ -12778,17 +12778,17 @@
       "institution": null,
       "masked_number": null,
       "holders": [
-       "07fda30e-243c-43a8-8e7c-cdd291ebeb35"
+       "045345bf-5e52-4c73-b1ab-f965208d1343"
       ],
       "parent_id": null,
       "archived": false
      }
     },
     {
-     "id": "186ac33f-0535-4afa-8175-bbbeac4ba812",
+     "id": "aadce65f-6864-4068-8bb2-2d9d46ea9c8a",
      "kind": "account",
      "payload": {
-      "id": "186ac33f-0535-4afa-8175-bbbeac4ba812",
+      "id": "aadce65f-6864-4068-8bb2-2d9d46ea9c8a",
       "name": "Dívida com parente",
       "type": "liability",
       "subtype": "other_liability",
@@ -12801,21 +12801,21 @@
      }
     },
     {
-     "id": "9f629f43-3ba8-41b8-85ed-6395a61b4116",
+     "id": "fc95a2b2-3f05-43bb-9404-95775c09bc84",
      "kind": "operation",
      "payload": {
-      "id": "9f629f43-3ba8-41b8-85ed-6395a61b4116",
+      "id": "fc95a2b2-3f05-43bb-9404-95775c09bc84",
       "kind": "opening_balance",
       "description": "Saldo de abertura — Banco A",
       "currency": "BRL",
       "postings": [
        {
-        "account_id": "8af8090f-608d-4bcd-8797-4d13b949227f",
+        "account_id": "b4e41d69-62ec-477f-bf67-c3957a3692ef",
         "amount": "30000.00",
         "member_id": null
        },
        {
-        "account_id": "73852d0c-d544-441f-962e-cfbc1d73235b",
+        "account_id": "f7aee4eb-7099-4129-85c2-ddd41c3eebe3",
         "amount": "-30000.00",
         "member_id": null
        }
@@ -12842,21 +12842,21 @@
      }
     },
     {
-     "id": "3cd304e7-96f3-43e8-82db-c5b564fb3acc",
+     "id": "17040253-6c66-4ac1-96ee-619ba8631d5c",
      "kind": "operation",
      "payload": {
-      "id": "3cd304e7-96f3-43e8-82db-c5b564fb3acc",
+      "id": "17040253-6c66-4ac1-96ee-619ba8631d5c",
       "kind": "opening_balance",
       "description": "Saldo de abertura — Conjunta",
       "currency": "BRL",
       "postings": [
        {
-        "account_id": "2c42b9d0-e783-4eb6-89b9-e018d61fc0b5",
+        "account_id": "c14c0622-9a4d-486c-9d57-abdc2c2896f3",
         "amount": "5000.00",
         "member_id": null
        },
        {
-        "account_id": "73852d0c-d544-441f-962e-cfbc1d73235b",
+        "account_id": "f7aee4eb-7099-4129-85c2-ddd41c3eebe3",
         "amount": "-5000.00",
         "member_id": null
        }
@@ -12883,21 +12883,21 @@
      }
     },
     {
-     "id": "0ee6dff7-cb85-493c-9f5c-bc514dc91877",
+     "id": "5364141e-ea6c-448f-b949-5252ad7f5b41",
      "kind": "operation",
      "payload": {
-      "id": "0ee6dff7-cb85-493c-9f5c-bc514dc91877",
+      "id": "5364141e-ea6c-448f-b949-5252ad7f5b41",
       "kind": "opening_balance",
       "description": "Saldo de abertura — Corretora",
       "currency": "BRL",
       "postings": [
        {
-        "account_id": "79d74961-5a55-4d44-930b-96ea32b97961",
+        "account_id": "d73ec632-92eb-468d-87c1-e1833b17e349",
         "amount": "200000.00",
         "member_id": null
        },
        {
-        "account_id": "73852d0c-d544-441f-962e-cfbc1d73235b",
+        "account_id": "f7aee4eb-7099-4129-85c2-ddd41c3eebe3",
         "amount": "-200000.00",
         "member_id": null
        }
@@ -12924,21 +12924,21 @@
      }
     },
     {
-     "id": "6e467e45-29eb-4604-a380-a693e82a539b",
+     "id": "89323a60-4a2f-4c34-a7b0-73078f506b35",
      "kind": "operation",
      "payload": {
-      "id": "6e467e45-29eb-4604-a380-a693e82a539b",
+      "id": "89323a60-4a2f-4c34-a7b0-73078f506b35",
       "kind": "opening_balance",
       "description": "Saldo de abertura — Carteira",
       "currency": "BRL",
       "postings": [
        {
-        "account_id": "4da92088-7259-4cdf-9af1-299ee82e30d3",
+        "account_id": "92fc0a1e-1ac2-48cb-b7e0-6f3a0653b038",
         "amount": "300.00",
         "member_id": null
        },
        {
-        "account_id": "73852d0c-d544-441f-962e-cfbc1d73235b",
+        "account_id": "f7aee4eb-7099-4129-85c2-ddd41c3eebe3",
         "amount": "-300.00",
         "member_id": null
        }
@@ -12965,21 +12965,21 @@
      }
     },
     {
-     "id": "f718c30c-4544-4340-94c4-9dfcbb2a63b2",
+     "id": "abaac141-8653-4f51-9020-6ab55c7b1ea6",
      "kind": "operation",
      "payload": {
-      "id": "f718c30c-4544-4340-94c4-9dfcbb2a63b2",
+      "id": "abaac141-8653-4f51-9020-6ab55c7b1ea6",
       "kind": "opening_balance",
       "description": "Saldo de abertura — Financiamento",
       "currency": "BRL",
       "postings": [
        {
-        "account_id": "fd112afb-7dfd-408d-b44a-68806ffc8a0c",
+        "account_id": "b31bba9f-eed2-41a5-b9ea-f3d8985d4511",
         "amount": "-20000.00",
         "member_id": null
        },
        {
-        "account_id": "73852d0c-d544-441f-962e-cfbc1d73235b",
+        "account_id": "f7aee4eb-7099-4129-85c2-ddd41c3eebe3",
         "amount": "20000.00",
         "member_id": null
        }
@@ -13006,553 +13006,553 @@
      }
     },
     {
-     "id": "5eb914fb-fb65-45c6-8734-53161ea6c44e",
+     "id": "29d6622d-d393-4f0e-b8f8-51c63198c699",
      "kind": "history",
      "payload": {
-      "id": "5eb914fb-fb65-45c6-8734-53161ea6c44e",
+      "id": "29d6622d-d393-4f0e-b8f8-51c63198c699",
       "entity_kind": "account",
-      "entity_id": "73852d0c-d544-441f-962e-cfbc1d73235b",
+      "entity_id": "f7aee4eb-7099-4129-85c2-ddd41c3eebe3",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.013505Z"
+      "at": "2026-10-06T00:17:47.742135Z"
      }
     },
     {
-     "id": "8c7e040a-fcd0-45f6-ad31-3de6cd3ab372",
+     "id": "c28b5022-bfb5-4982-9be9-6f529ba1e050",
      "kind": "history",
      "payload": {
-      "id": "8c7e040a-fcd0-45f6-ad31-3de6cd3ab372",
+      "id": "c28b5022-bfb5-4982-9be9-6f529ba1e050",
       "entity_kind": "account",
-      "entity_id": "95294681-93b4-46d4-8e1c-a4390a721701",
+      "entity_id": "d62a4f71-20c4-4237-af6a-5cb4a96a7a60",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.013540Z"
+      "at": "2026-10-06T00:17:47.742167Z"
      }
     },
     {
-     "id": "c4d6cdfe-fc7b-4122-9543-8f12cc36ebc6",
+     "id": "b92f57c4-ac78-479b-9779-4608ff4e173d",
      "kind": "history",
      "payload": {
-      "id": "c4d6cdfe-fc7b-4122-9543-8f12cc36ebc6",
+      "id": "b92f57c4-ac78-479b-9779-4608ff4e173d",
       "entity_kind": "account",
-      "entity_id": "69c9eb12-9af7-4b52-8f75-cac8c230b23a",
+      "entity_id": "435cf5b7-77c2-4075-a0ef-3b6d5b0440ea",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.013589Z"
+      "at": "2026-10-06T00:17:47.742238Z"
      }
     },
     {
-     "id": "b6aad299-0ad4-4baf-8d49-8952620d458c",
+     "id": "b4625c5d-4b45-41a4-bd10-ac281ae44eaf",
      "kind": "history",
      "payload": {
-      "id": "b6aad299-0ad4-4baf-8d49-8952620d458c",
+      "id": "b4625c5d-4b45-41a4-bd10-ac281ae44eaf",
       "entity_kind": "account",
-      "entity_id": "000d598b-93e5-4807-b5f5-909a86589789",
+      "entity_id": "9891a9a3-f0fe-48b8-aacf-3bcd6d8441db",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.013612Z"
+      "at": "2026-10-06T00:17:47.742254Z"
      }
     },
     {
-     "id": "514fed65-6511-47e7-aab5-85692c1b097b",
+     "id": "fe2dd4ae-f367-49f1-8883-c67ca83de57c",
      "kind": "history",
      "payload": {
-      "id": "514fed65-6511-47e7-aab5-85692c1b097b",
+      "id": "fe2dd4ae-f367-49f1-8883-c67ca83de57c",
       "entity_kind": "account",
-      "entity_id": "4f2e30da-44af-4349-8c09-f98c85347b24",
+      "entity_id": "72154a0f-fe53-46e8-84b2-0e18fa531488",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.013632Z"
+      "at": "2026-10-06T00:17:47.742268Z"
      }
     },
     {
-     "id": "c2252729-618e-4f45-8657-3787d5eb8203",
+     "id": "7159fefd-f2bb-4b89-962c-b66b98e57047",
      "kind": "history",
      "payload": {
-      "id": "c2252729-618e-4f45-8657-3787d5eb8203",
+      "id": "7159fefd-f2bb-4b89-962c-b66b98e57047",
       "entity_kind": "account",
-      "entity_id": "17c89518-ee31-4269-ba5d-902836c95192",
+      "entity_id": "59f89e68-2cd6-43db-a6f9-0e42300cd7f5",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.013648Z"
+      "at": "2026-10-06T00:17:47.742283Z"
      }
     },
     {
-     "id": "c4acee92-2f46-4b6b-ad40-347e0ffb9d7d",
+     "id": "8241219e-3cfc-4f2a-ae71-25e91b800ec8",
      "kind": "history",
      "payload": {
-      "id": "c4acee92-2f46-4b6b-ad40-347e0ffb9d7d",
+      "id": "8241219e-3cfc-4f2a-ae71-25e91b800ec8",
       "entity_kind": "account",
-      "entity_id": "7779837a-44a3-4c50-8be6-53779ded149a",
+      "entity_id": "3ccbe9d7-0638-406a-967a-c3a7d21d48f8",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.013662Z"
+      "at": "2026-10-06T00:17:47.742298Z"
      }
     },
     {
-     "id": "0f270f7b-112f-4dd4-bbbd-8031b3fd3a08",
+     "id": "c55271c5-faca-4689-802c-6d7db75b3ab4",
      "kind": "history",
      "payload": {
-      "id": "0f270f7b-112f-4dd4-bbbd-8031b3fd3a08",
+      "id": "c55271c5-faca-4689-802c-6d7db75b3ab4",
       "entity_kind": "account",
-      "entity_id": "0238b257-597d-4e02-b8a9-67cb3b5aa199",
+      "entity_id": "318018dd-bec4-45bb-924d-23962250a459",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.013674Z"
+      "at": "2026-10-06T00:17:47.742314Z"
      }
     },
     {
-     "id": "5d0e1295-eeaa-41a0-8bb7-ba50b2ac5a71",
+     "id": "5e5f6468-2b9f-4667-be09-78005147b315",
      "kind": "history",
      "payload": {
-      "id": "5d0e1295-eeaa-41a0-8bb7-ba50b2ac5a71",
+      "id": "5e5f6468-2b9f-4667-be09-78005147b315",
       "entity_kind": "account",
-      "entity_id": "61bd4fb6-9402-480e-9a8e-b30e952dc927",
+      "entity_id": "cde8b56d-0f65-435a-abe7-d08eb0988175",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.013748Z"
+      "at": "2026-10-06T00:17:47.742330Z"
      }
     },
     {
-     "id": "06087c51-8714-4756-8839-1b23a8fd1edf",
+     "id": "467457f6-b1f0-48e2-bb00-30669ba7f98e",
      "kind": "history",
      "payload": {
-      "id": "06087c51-8714-4756-8839-1b23a8fd1edf",
+      "id": "467457f6-b1f0-48e2-bb00-30669ba7f98e",
       "entity_kind": "account",
-      "entity_id": "3d1b62a3-738e-4451-8940-e5cee1986cc6",
+      "entity_id": "bd2ffe20-e6f5-414d-8ab5-321619eec251",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.013762Z"
+      "at": "2026-10-06T00:17:47.742343Z"
      }
     },
     {
-     "id": "6ac1bc5d-df8b-4bf4-9ff0-50db5a180c47",
+     "id": "c11ce9c8-a816-4a63-a035-38a1581d095e",
      "kind": "history",
      "payload": {
-      "id": "6ac1bc5d-df8b-4bf4-9ff0-50db5a180c47",
+      "id": "c11ce9c8-a816-4a63-a035-38a1581d095e",
       "entity_kind": "account",
-      "entity_id": "b9b0730b-0b42-43b4-93a5-e6be5b05a937",
+      "entity_id": "507f5ca2-3bfd-47e1-8e34-f779e94e4957",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.013777Z"
+      "at": "2026-10-06T00:17:47.742356Z"
      }
     },
     {
-     "id": "140c8c9d-cd5f-428f-9944-67839985baf6",
+     "id": "199f2665-a5a9-4680-aa70-a012ca07225d",
      "kind": "history",
      "payload": {
-      "id": "140c8c9d-cd5f-428f-9944-67839985baf6",
+      "id": "199f2665-a5a9-4680-aa70-a012ca07225d",
       "entity_kind": "account",
-      "entity_id": "37c7eaba-b347-4276-b486-f00be4171bed",
+      "entity_id": "eff4e18b-830a-46c6-bf53-3a3e2405702c",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.013794Z"
+      "at": "2026-10-06T00:17:47.742370Z"
      }
     },
     {
-     "id": "10fe5d67-8355-4609-ac67-fd7ba63490f2",
+     "id": "cf334528-17b0-4356-bd08-0e54cbb2ade0",
      "kind": "history",
      "payload": {
-      "id": "10fe5d67-8355-4609-ac67-fd7ba63490f2",
+      "id": "cf334528-17b0-4356-bd08-0e54cbb2ade0",
       "entity_kind": "account",
-      "entity_id": "d4a1a9f1-24d7-44c0-aabb-a39273053e84",
+      "entity_id": "9ddf65f5-b3e8-4118-b7ca-9b756502fcce",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.013810Z"
+      "at": "2026-10-06T00:17:47.742383Z"
      }
     },
     {
-     "id": "26eb23a9-1ea6-41f8-a643-6f5da34c34ec",
+     "id": "57e907d5-50f1-43c9-9fc0-5718f9c06e38",
      "kind": "history",
      "payload": {
-      "id": "26eb23a9-1ea6-41f8-a643-6f5da34c34ec",
+      "id": "57e907d5-50f1-43c9-9fc0-5718f9c06e38",
       "entity_kind": "account",
-      "entity_id": "eb6a5379-80be-40f1-9bbb-3b7cebc77349",
+      "entity_id": "4c11dad1-2a9f-4213-9fbf-6f916c65d769",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.013825Z"
+      "at": "2026-10-06T00:17:47.742395Z"
      }
     },
     {
-     "id": "876c7826-dae9-4491-a3c1-43a5cf83ad4e",
+     "id": "e1dc7ee9-6450-4f8e-ad34-43e98ae2d977",
      "kind": "history",
      "payload": {
-      "id": "876c7826-dae9-4491-a3c1-43a5cf83ad4e",
+      "id": "e1dc7ee9-6450-4f8e-ad34-43e98ae2d977",
       "entity_kind": "member",
-      "entity_id": "07fda30e-243c-43a8-8e7c-cdd291ebeb35",
+      "entity_id": "045345bf-5e52-4c73-b1ab-f965208d1343",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.013844Z"
+      "at": "2026-10-06T00:17:47.742417Z"
      }
     },
     {
-     "id": "63ddca16-8012-4c67-924f-072abb4df222",
+     "id": "3c2748ae-576c-44d8-9e39-f6bb9a91540b",
      "kind": "history",
      "payload": {
-      "id": "63ddca16-8012-4c67-924f-072abb4df222",
+      "id": "3c2748ae-576c-44d8-9e39-f6bb9a91540b",
       "entity_kind": "member",
-      "entity_id": "6638cf92-bffc-4017-a295-93c76dc5dbd7",
+      "entity_id": "00abab6f-7591-404a-ba27-970b0d4065df",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.013860Z"
+      "at": "2026-10-06T00:17:47.742434Z"
      }
     },
     {
-     "id": "9e629768-8c57-48ae-82d9-5c0795397157",
+     "id": "ebf7f0e0-5c0a-45b6-a23b-abc62f7e14fb",
      "kind": "history",
      "payload": {
-      "id": "9e629768-8c57-48ae-82d9-5c0795397157",
+      "id": "ebf7f0e0-5c0a-45b6-a23b-abc62f7e14fb",
       "entity_kind": "member",
-      "entity_id": "044c78fa-61a5-4bbc-8c90-4df1d519543a",
+      "entity_id": "83967276-c215-4649-8a19-b170282d696b",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.013876Z"
+      "at": "2026-10-06T00:17:47.742447Z"
      }
     },
     {
-     "id": "8796ef46-ce1c-4811-9e42-583a5a21bd86",
+     "id": "77c0c198-08ad-412b-a7ff-024c96ad31a8",
      "kind": "history",
      "payload": {
-      "id": "8796ef46-ce1c-4811-9e42-583a5a21bd86",
+      "id": "77c0c198-08ad-412b-a7ff-024c96ad31a8",
       "entity_kind": "account",
-      "entity_id": "8af8090f-608d-4bcd-8797-4d13b949227f",
+      "entity_id": "b4e41d69-62ec-477f-bf67-c3957a3692ef",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.013901Z"
+      "at": "2026-10-06T00:17:47.742504Z"
      }
     },
     {
-     "id": "39240ed3-28bf-4800-95dd-287d153fe7f2",
+     "id": "0c68fbad-7b20-4a6c-a397-16460af3c738",
      "kind": "history",
      "payload": {
-      "id": "39240ed3-28bf-4800-95dd-287d153fe7f2",
+      "id": "0c68fbad-7b20-4a6c-a397-16460af3c738",
       "entity_kind": "account",
-      "entity_id": "2c42b9d0-e783-4eb6-89b9-e018d61fc0b5",
+      "entity_id": "c14c0622-9a4d-486c-9d57-abdc2c2896f3",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.013919Z"
+      "at": "2026-10-06T00:17:47.742527Z"
      }
     },
     {
-     "id": "458e0f69-a88a-4c58-871a-a5ca436d27da",
+     "id": "b96a2fa7-17c7-40d5-b913-88863935f670",
      "kind": "history",
      "payload": {
-      "id": "458e0f69-a88a-4c58-871a-a5ca436d27da",
+      "id": "b96a2fa7-17c7-40d5-b913-88863935f670",
       "entity_kind": "account",
-      "entity_id": "79d74961-5a55-4d44-930b-96ea32b97961",
+      "entity_id": "d73ec632-92eb-468d-87c1-e1833b17e349",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.013934Z"
+      "at": "2026-10-06T00:17:47.742545Z"
      }
     },
     {
-     "id": "5804b2e0-65a7-42b9-b470-17b415f05d18",
+     "id": "8a644c54-58e7-4179-8774-997317257725",
      "kind": "history",
      "payload": {
-      "id": "5804b2e0-65a7-42b9-b470-17b415f05d18",
+      "id": "8a644c54-58e7-4179-8774-997317257725",
       "entity_kind": "account",
-      "entity_id": "c2899181-94c5-4569-a80c-f3001be18f82",
+      "entity_id": "3ec55806-a256-4dfc-88f5-8ae4b1411fb9",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.013949Z"
+      "at": "2026-10-06T00:17:47.742564Z"
      }
     },
     {
-     "id": "99601db1-5aea-4df1-8ecd-ce951b2a3745",
+     "id": "b72e0317-61c1-4565-a724-d6433843e028",
      "kind": "history",
      "payload": {
-      "id": "99601db1-5aea-4df1-8ecd-ce951b2a3745",
+      "id": "b72e0317-61c1-4565-a724-d6433843e028",
       "entity_kind": "account",
-      "entity_id": "4da92088-7259-4cdf-9af1-299ee82e30d3",
+      "entity_id": "92fc0a1e-1ac2-48cb-b7e0-6f3a0653b038",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.013964Z"
+      "at": "2026-10-06T00:17:47.742584Z"
      }
     },
     {
-     "id": "446beb82-313b-44d2-af80-77da65df69ce",
+     "id": "5ba109fa-f928-4c3c-bf5c-0ebdeef9aed5",
      "kind": "history",
      "payload": {
-      "id": "446beb82-313b-44d2-af80-77da65df69ce",
+      "id": "5ba109fa-f928-4c3c-bf5c-0ebdeef9aed5",
       "entity_kind": "account",
-      "entity_id": "7d1aec61-c1e4-44b9-9177-dc0cbeec2963",
+      "entity_id": "7a78bcb1-0038-4074-8ef2-0266dfa74efd",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.013978Z"
+      "at": "2026-10-06T00:17:47.742601Z"
      }
     },
     {
-     "id": "85e9b1f7-3544-49c4-abb0-a5090fe90bc4",
+     "id": "d89c8dac-2e3b-4953-8937-ce88982b0feb",
      "kind": "history",
      "payload": {
-      "id": "85e9b1f7-3544-49c4-abb0-a5090fe90bc4",
+      "id": "d89c8dac-2e3b-4953-8937-ce88982b0feb",
       "entity_kind": "account",
-      "entity_id": "b50d20b1-a90b-4a05-ac87-c4357c372065",
+      "entity_id": "44e87a8e-4326-4ca6-80e3-d70397ac9dab",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.014005Z"
+      "at": "2026-10-06T00:17:47.742626Z"
      }
     },
     {
-     "id": "efdce7ac-c277-4227-93ec-784ae1030405",
+     "id": "1c5ca185-79b8-4a56-a2ae-baaf9a257046",
      "kind": "history",
      "payload": {
-      "id": "efdce7ac-c277-4227-93ec-784ae1030405",
+      "id": "1c5ca185-79b8-4a56-a2ae-baaf9a257046",
       "entity_kind": "account",
-      "entity_id": "cd9dc068-3bd2-44d8-a68d-5c33abee6de7",
+      "entity_id": "da497136-2671-4f1b-961e-2861c4f09a48",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.014026Z"
+      "at": "2026-10-06T00:17:47.742650Z"
      }
     },
     {
-     "id": "5f64a4e8-49cf-4f39-bd98-3168c0482641",
+     "id": "aeb5921a-7d68-4065-af7f-84f03da8d823",
      "kind": "history",
      "payload": {
-      "id": "5f64a4e8-49cf-4f39-bd98-3168c0482641",
+      "id": "aeb5921a-7d68-4065-af7f-84f03da8d823",
       "entity_kind": "account",
-      "entity_id": "0b37a7ca-f3dc-417c-b481-d6033bd2093f",
+      "entity_id": "760c52bb-00bc-4afa-969e-36ff0ac9f61e",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.014072Z"
+      "at": "2026-10-06T00:17:47.742695Z"
      }
     },
     {
-     "id": "be6c2cc6-3179-4d22-ae9a-4ff24c8c1873",
+     "id": "ba8ec2d2-6164-4179-86bf-0d5c7891f629",
      "kind": "history",
      "payload": {
-      "id": "be6c2cc6-3179-4d22-ae9a-4ff24c8c1873",
+      "id": "ba8ec2d2-6164-4179-86bf-0d5c7891f629",
       "entity_kind": "account",
-      "entity_id": "fd112afb-7dfd-408d-b44a-68806ffc8a0c",
+      "entity_id": "b31bba9f-eed2-41a5-b9ea-f3d8985d4511",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.014092Z"
+      "at": "2026-10-06T00:17:47.742804Z"
      }
     },
     {
-     "id": "7e102627-7e27-4e13-9380-ad294374c8d1",
+     "id": "20f7187e-0300-44c0-80d8-ac8d17607766",
      "kind": "history",
      "payload": {
-      "id": "7e102627-7e27-4e13-9380-ad294374c8d1",
+      "id": "20f7187e-0300-44c0-80d8-ac8d17607766",
       "entity_kind": "account",
-      "entity_id": "186ac33f-0535-4afa-8175-bbbeac4ba812",
+      "entity_id": "aadce65f-6864-4068-8bb2-2d9d46ea9c8a",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.014107Z"
+      "at": "2026-10-06T00:17:47.742823Z"
      }
     },
     {
-     "id": "41588b04-1d22-4429-97df-64a8d43faaed",
+     "id": "73a3f820-b56d-41c5-86c9-4aeb72d5674a",
      "kind": "history",
      "payload": {
-      "id": "41588b04-1d22-4429-97df-64a8d43faaed",
+      "id": "73a3f820-b56d-41c5-86c9-4aeb72d5674a",
       "entity_kind": "operation",
-      "entity_id": "9f629f43-3ba8-41b8-85ed-6395a61b4116",
+      "entity_id": "fc95a2b2-3f05-43bb-9404-95775c09bc84",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.014176Z"
+      "at": "2026-10-06T00:17:47.742901Z"
      }
     },
     {
-     "id": "32f17a1e-1637-405e-8b73-7c7003c399e4",
+     "id": "6fd90f8b-a5ba-4837-b411-5e193b9fc7c2",
      "kind": "history",
      "payload": {
-      "id": "32f17a1e-1637-405e-8b73-7c7003c399e4",
+      "id": "6fd90f8b-a5ba-4837-b411-5e193b9fc7c2",
       "entity_kind": "operation",
-      "entity_id": "3cd304e7-96f3-43e8-82db-c5b564fb3acc",
+      "entity_id": "17040253-6c66-4ac1-96ee-619ba8631d5c",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.014224Z"
+      "at": "2026-10-06T00:17:47.742956Z"
      }
     },
     {
-     "id": "19af63db-2699-425c-a5b6-f78b1685cd39",
+     "id": "fb3e635e-ee0c-427d-8228-745de6febce2",
      "kind": "history",
      "payload": {
-      "id": "19af63db-2699-425c-a5b6-f78b1685cd39",
+      "id": "fb3e635e-ee0c-427d-8228-745de6febce2",
       "entity_kind": "operation",
-      "entity_id": "0ee6dff7-cb85-493c-9f5c-bc514dc91877",
+      "entity_id": "5364141e-ea6c-448f-b949-5252ad7f5b41",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.014264Z"
+      "at": "2026-10-06T00:17:47.742997Z"
      }
     },
     {
-     "id": "cc446bd8-0c0e-4ae9-8c7e-557411b139d9",
+     "id": "1b4fb8ea-2c66-4338-944e-33eed9311c71",
      "kind": "history",
      "payload": {
-      "id": "cc446bd8-0c0e-4ae9-8c7e-557411b139d9",
+      "id": "1b4fb8ea-2c66-4338-944e-33eed9311c71",
       "entity_kind": "operation",
-      "entity_id": "6e467e45-29eb-4604-a380-a693e82a539b",
+      "entity_id": "89323a60-4a2f-4c34-a7b0-73078f506b35",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.014299Z"
+      "at": "2026-10-06T00:17:47.743033Z"
      }
     },
     {
-     "id": "f04c03e8-882e-41dd-b917-9e4b49e5e2fc",
+     "id": "25b6c8cc-417c-4e7f-9866-0873986d403e",
      "kind": "history",
      "payload": {
-      "id": "f04c03e8-882e-41dd-b917-9e4b49e5e2fc",
+      "id": "25b6c8cc-417c-4e7f-9866-0873986d403e",
       "entity_kind": "operation",
-      "entity_id": "f718c30c-4544-4340-94c4-9dfcbb2a63b2",
+      "entity_id": "abaac141-8653-4f51-9020-6ab55c7b1ea6",
       "action": "create",
       "version": 1,
       "before": null,
       "after": null,
       "operator": null,
       "reason": null,
-      "at": "2026-10-05T23:57:46.014334Z"
+      "at": "2026-10-06T00:17:47.743067Z"
      }
     }
    ],
    "names": {
-    "ana": "07fda30e-243c-43a8-8e7c-cdd291ebeb35",
-    "bruno": "6638cf92-bffc-4017-a295-93c76dc5dbd7",
-    "carla": "044c78fa-61a5-4bbc-8c90-4df1d519543a",
-    "bank": "8af8090f-608d-4bcd-8797-4d13b949227f",
-    "joint": "2c42b9d0-e783-4eb6-89b9-e018d61fc0b5",
-    "broker": "79d74961-5a55-4d44-930b-96ea32b97961",
-    "savings": "c2899181-94c5-4569-a80c-f3001be18f82",
-    "cash": "4da92088-7259-4cdf-9af1-299ee82e30d3",
-    "nobody": "7d1aec61-c1e4-44b9-9177-dc0cbeec2963",
-    "salary": "37c7eaba-b347-4276-b486-f00be4171bed",
-    "rent": "b50d20b1-a90b-4a05-ac87-c4357c372065",
-    "freelance": "cd9dc068-3bd2-44d8-a68d-5c33abee6de7",
-    "other_income": "eb6a5379-80be-40f1-9bbb-3b7cebc77349",
-    "health": "4f2e30da-44af-4349-8c09-f98c85347b24",
-    "food": "69c9eb12-9af7-4b52-8f75-cac8c230b23a",
-    "bonus": "0b37a7ca-f3dc-417c-b481-d6033bd2093f",
-    "loan": "fd112afb-7dfd-408d-b44a-68806ffc8a0c",
-    "debt": "186ac33f-0535-4afa-8175-bbbeac4ba812"
+    "ana": "045345bf-5e52-4c73-b1ab-f965208d1343",
+    "bruno": "00abab6f-7591-404a-ba27-970b0d4065df",
+    "carla": "83967276-c215-4649-8a19-b170282d696b",
+    "bank": "b4e41d69-62ec-477f-bf67-c3957a3692ef",
+    "joint": "c14c0622-9a4d-486c-9d57-abdc2c2896f3",
+    "broker": "d73ec632-92eb-468d-87c1-e1833b17e349",
+    "savings": "3ec55806-a256-4dfc-88f5-8ae4b1411fb9",
+    "cash": "92fc0a1e-1ac2-48cb-b7e0-6f3a0653b038",
+    "nobody": "7a78bcb1-0038-4074-8ef2-0266dfa74efd",
+    "salary": "eff4e18b-830a-46c6-bf53-3a3e2405702c",
+    "rent": "44e87a8e-4326-4ca6-80e3-d70397ac9dab",
+    "freelance": "da497136-2671-4f1b-961e-2861c4f09a48",
+    "other_income": "4c11dad1-2a9f-4213-9fbf-6f916c65d769",
+    "health": "72154a0f-fe53-46e8-84b2-0e18fa531488",
+    "food": "435cf5b7-77c2-4075-a0ef-3b6d5b0440ea",
+    "bonus": "760c52bb-00bc-4afa-969e-36ff0ac9f61e",
+    "loan": "b31bba9f-eed2-41a5-b9ea-f3d8985d4511",
+    "debt": "aadce65f-6864-4068-8bb2-2d9d46ea9c8a"
    },
    "commands": [
     {
@@ -14023,12 +14023,12 @@
       "currency": "BRL",
       "postings": [
        {
-        "account_id": "c2899181-94c5-4569-a80c-f3001be18f82",
+        "account_id": "3ec55806-a256-4dfc-88f5-8ae4b1411fb9",
         "amount": "1000.00",
         "member_id": null
        },
        {
-        "account_id": "73852d0c-d544-441f-962e-cfbc1d73235b",
+        "account_id": "f7aee4eb-7099-4129-85c2-ddd41c3eebe3",
         "amount": "-1000.00",
         "member_id": null
        }
@@ -14062,12 +14062,12 @@
       "currency": "BRL",
       "postings": [
        {
-        "account_id": "8af8090f-608d-4bcd-8797-4d13b949227f",
+        "account_id": "b4e41d69-62ec-477f-bf67-c3957a3692ef",
         "amount": "1400.00",
         "member_id": null
        },
        {
-        "account_id": "eb6a5379-80be-40f1-9bbb-3b7cebc77349",
+        "account_id": "4c11dad1-2a9f-4213-9fbf-6f916c65d769",
         "amount": "-1400.00",
         "member_id": null
        }
@@ -14098,7 +14098,7 @@
       "id": "<new>",
       "asset_id": "<new>",
       "account_id": "<new>",
-      "holder_id": "07fda30e-243c-43a8-8e7c-cdd291ebeb35",
+      "holder_id": "045345bf-5e52-4c73-b1ab-f965208d1343",
       "mode": "value",
       "opened_on": "2025-02-01",
       "cost_known": true,
@@ -14138,7 +14138,7 @@
       "tax_due_later": "0",
       "fees": "0",
       "net": "34.00",
-      "cash_account_id": "8af8090f-608d-4bcd-8797-4d13b949227f",
+      "cash_account_id": "b4e41d69-62ec-477f-bf67-c3957a3692ef",
       "operation_ids": [
        "<new>"
       ],
@@ -14163,7 +14163,7 @@
       "tax_due_later": "0",
       "fees": "0",
       "net": "985.00",
-      "cash_account_id": "8af8090f-608d-4bcd-8797-4d13b949227f",
+      "cash_account_id": "b4e41d69-62ec-477f-bf67-c3957a3692ef",
       "operation_ids": [
        "<new>"
       ],
@@ -14188,7 +14188,7 @@
       "tax_due_later": "0",
       "fees": "0",
       "net": "500.00",
-      "cash_account_id": "8af8090f-608d-4bcd-8797-4d13b949227f",
+      "cash_account_id": "b4e41d69-62ec-477f-bf67-c3957a3692ef",
       "operation_ids": [
        "<new>"
       ],
@@ -14213,7 +14213,7 @@
       "tax_due_later": "0",
       "fees": "0",
       "net": "98.00",
-      "cash_account_id": "8af8090f-608d-4bcd-8797-4d13b949227f",
+      "cash_account_id": "b4e41d69-62ec-477f-bf67-c3957a3692ef",
       "operation_ids": [
        "<new>"
       ],
@@ -14253,7 +14253,7 @@
       "tax_due_later": "0",
       "fees": "0",
       "net": "120.00",
-      "cash_account_id": "8af8090f-608d-4bcd-8797-4d13b949227f",
+      "cash_account_id": "b4e41d69-62ec-477f-bf67-c3957a3692ef",
       "operation_ids": [
        "<new>"
       ],
@@ -14278,7 +14278,7 @@
       "tax_due_later": "0",
       "fees": "0",
       "net": "1999.50",
-      "cash_account_id": "8af8090f-608d-4bcd-8797-4d13b949227f",
+      "cash_account_id": "b4e41d69-62ec-477f-bf67-c3957a3692ef",
       "operation_ids": [
        "<new>"
       ],
@@ -14293,7 +14293,7 @@
       "id": "<new>",
       "asset_id": "<new>",
       "account_id": "<new>",
-      "holder_id": "6638cf92-bffc-4017-a295-93c76dc5dbd7",
+      "holder_id": "00abab6f-7591-404a-ba27-970b0d4065df",
       "mode": "value",
       "opened_on": "2024-03-01",
       "cost_known": false,
@@ -14315,7 +14315,7 @@
       "tax_due_later": "0",
       "fees": "0",
       "net": "55.55",
-      "cash_account_id": "8af8090f-608d-4bcd-8797-4d13b949227f",
+      "cash_account_id": "b4e41d69-62ec-477f-bf67-c3957a3692ef",
       "operation_ids": [
        "<new>"
       ],
@@ -14340,7 +14340,7 @@
       "tax_due_later": "0",
       "fees": "0",
       "net": "9.00",
-      "cash_account_id": "79d74961-5a55-4d44-930b-96ea32b97961",
+      "cash_account_id": "d73ec632-92eb-468d-87c1-e1833b17e349",
       "operation_ids": [
        "<new>"
       ],
@@ -14365,7 +14365,7 @@
       "tax_due_later": "0",
       "fees": "0",
       "net": "7.00",
-      "cash_account_id": "8af8090f-608d-4bcd-8797-4d13b949227f",
+      "cash_account_id": "b4e41d69-62ec-477f-bf67-c3957a3692ef",
       "operation_ids": [
        "<new>"
       ],
@@ -14380,7 +14380,7 @@
       "id": "<new>",
       "asset_id": "<new>",
       "account_id": "<new>",
-      "holder_id": "07fda30e-243c-43a8-8e7c-cdd291ebeb35",
+      "holder_id": "045345bf-5e52-4c73-b1ab-f965208d1343",
       "mode": "quantity",
       "opened_on": "2025-01-02",
       "cost_known": true,
@@ -14402,7 +14402,7 @@
       "tax_due_later": "0",
       "fees": "0",
       "net": "2000.00",
-      "cash_account_id": "8af8090f-608d-4bcd-8797-4d13b949227f",
+      "cash_account_id": "b4e41d69-62ec-477f-bf67-c3957a3692ef",
       "operation_ids": [
        "<new>"
       ],
@@ -14430,7 +14430,7 @@
       "tax_due_later": "0",
       "fees": "1.00",
       "net": "1248.98",
-      "cash_account_id": "8af8090f-608d-4bcd-8797-4d13b949227f",
+      "cash_account_id": "b4e41d69-62ec-477f-bf67-c3957a3692ef",
       "operation_ids": [
        "<new>"
       ],
@@ -14455,7 +14455,7 @@
       "tax_due_later": "0",
       "fees": "0",
       "net": "500.00",
-      "cash_account_id": "8af8090f-608d-4bcd-8797-4d13b949227f",
+      "cash_account_id": "b4e41d69-62ec-477f-bf67-c3957a3692ef",
       "operation_ids": [
        "<new>"
       ],
@@ -14492,7 +14492,7 @@
       "tax_due_later": "0",
       "fees": "0",
       "net": "1000.00",
-      "cash_account_id": "79d74961-5a55-4d44-930b-96ea32b97961",
+      "cash_account_id": "d73ec632-92eb-468d-87c1-e1833b17e349",
       "operation_ids": [
        "<new>"
       ],
@@ -14520,7 +14520,7 @@
       "tax_due_later": "0",
       "fees": "0",
       "net": "600.00",
-      "cash_account_id": "79d74961-5a55-4d44-930b-96ea32b97961",
+      "cash_account_id": "d73ec632-92eb-468d-87c1-e1833b17e349",
       "operation_ids": [
        "<new>"
       ],
@@ -14535,7 +14535,7 @@
       "id": "<new>",
       "year": 2025,
       "source": "account",
-      "source_id": "8af8090f-608d-4bcd-8797-4d13b949227f",
+      "source_id": "b4e41d69-62ec-477f-bf67-c3957a3692ef",
       "payer_tax_id": null,
       "payer_name": null,
       "document_id": null,
@@ -14579,7 +14579,7 @@
       "id": "<new>",
       "year": 2025,
       "source": "account",
-      "source_id": "79d74961-5a55-4d44-930b-96ea32b97961",
+      "source_id": "d73ec632-92eb-468d-87c1-e1833b17e349",
       "payer_tax_id": null,
       "payer_name": null,
       "document_id": null,
@@ -14603,7 +14603,7 @@
       "id": "<new>",
       "year": 2025,
       "source": "account",
-      "source_id": "2c42b9d0-e783-4eb6-89b9-e018d61fc0b5",
+      "source_id": "c14c0622-9a4d-486c-9d57-abdc2c2896f3",
       "payer_tax_id": null,
       "payer_name": null,
       "document_id": null,
@@ -14627,7 +14627,7 @@
       "id": "<new>",
       "year": 2025,
       "source": "account",
-      "source_id": "fd112afb-7dfd-408d-b44a-68806ffc8a0c",
+      "source_id": "b31bba9f-eed2-41a5-b9ea-f3d8985d4511",
       "payer_tax_id": null,
       "payer_name": null,
       "document_id": null,
@@ -14694,7 +14694,7 @@
       "id": "<new>",
       "year": 2024,
       "source": "account",
-      "source_id": "8af8090f-608d-4bcd-8797-4d13b949227f",
+      "source_id": "b4e41d69-62ec-477f-bf67-c3957a3692ef",
       "payer_tax_id": null,
       "payer_name": null,
       "document_id": null,
@@ -14713,7 +14713,7 @@
       "id": "<new>",
       "year": 2026,
       "source": "account",
-      "source_id": "8af8090f-608d-4bcd-8797-4d13b949227f",
+      "source_id": "b4e41d69-62ec-477f-bf67-c3957a3692ef",
       "payer_tax_id": null,
       "payer_name": null,
       "document_id": null,
@@ -14735,7 +14735,7 @@
        "id": "<new>",
        "year": 2025,
        "source": "account",
-       "source_id": "8af8090f-608d-4bcd-8797-4d13b949227f",
+       "source_id": "b4e41d69-62ec-477f-bf67-c3957a3692ef",
        "payer_tax_id": null,
        "payer_name": null,
        "document_id": null,
@@ -14904,7 +14904,7 @@
        "id": "<new>",
        "year": 2025,
        "source": "account",
-       "source_id": "79d74961-5a55-4d44-930b-96ea32b97961",
+       "source_id": "d73ec632-92eb-468d-87c1-e1833b17e349",
        "payer_tax_id": null,
        "payer_name": null,
        "document_id": null,
@@ -14986,7 +14986,7 @@
        "id": "<new>",
        "year": 2025,
        "source": "account",
-       "source_id": "2c42b9d0-e783-4eb6-89b9-e018d61fc0b5",
+       "source_id": "c14c0622-9a4d-486c-9d57-abdc2c2896f3",
        "payer_tax_id": null,
        "payer_name": null,
        "document_id": null,
@@ -15057,7 +15057,7 @@
        "id": "<new>",
        "year": 2025,
        "source": "account",
-       "source_id": "fd112afb-7dfd-408d-b44a-68806ffc8a0c",
+       "source_id": "b31bba9f-eed2-41a5-b9ea-f3d8985d4511",
        "payer_tax_id": null,
        "payer_name": null,
        "document_id": null,
@@ -15271,7 +15271,7 @@
        "id": "<new>",
        "year": 2024,
        "source": "account",
-       "source_id": "8af8090f-608d-4bcd-8797-4d13b949227f",
+       "source_id": "b4e41d69-62ec-477f-bf67-c3957a3692ef",
        "payer_tax_id": null,
        "payer_name": null,
        "document_id": null,
@@ -15331,7 +15331,7 @@
        "id": "<new>",
        "year": 2026,
        "source": "account",
-       "source_id": "8af8090f-608d-4bcd-8797-4d13b949227f",
+       "source_id": "b4e41d69-62ec-477f-bf67-c3957a3692ef",
        "payer_tax_id": null,
        "payer_name": null,
        "document_id": null,

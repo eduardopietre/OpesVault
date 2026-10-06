@@ -299,8 +299,7 @@ describe("review flows replayed from the desktop", () => {
         } catch (error) {
           if (expected.outcome.error === undefined) throw error;
           expect((error as Error).name, label).toBe(expected.outcome.error);
-          if (error instanceof DomainError)
-            expect((error as Error).message, label).toBe(expected.outcome.message);
+          if (error instanceof DomainError) expect((error as Error).message, label).toBe(expected.outcome.message);
         }
         if (expected.snapshot !== null) expect(snapshot(session), label).toEqual(expected.snapshot);
       }

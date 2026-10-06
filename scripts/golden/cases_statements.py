@@ -299,7 +299,9 @@ def _bank() -> list[dict[str, Any]]:
         ],
     )
     s.add("save_report", Y, "account", "@broker", [_line("balance_end", "200000.00"), _line("withheld", "1.00")])
-    s.add("save_report", Y, "account", "@joint", [_line("balance_previous", "5000.00"), _line("balance_end", "5000.01")])
+    s.add(
+        "save_report", Y, "account", "@joint", [_line("balance_previous", "5000.00"), _line("balance_end", "5000.01")]
+    )
     s.add("save_report", Y, "account", "@loan", [_line("balance_end", "20000.00")])
     s.add("report_on_position_account", Y, cdb, [_line("exempt", "1.00"), _line("exclusive", "2.00")])
     s.add("report_on_position_account", Y, fund, [_line("withheld", "1.00"), _line("exempt", "55.55")])

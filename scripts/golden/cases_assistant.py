@@ -226,7 +226,10 @@ PARSE_CASES: list[tuple[str, Any]] = [
     ("set_budget", {"month": "2026-03", "category": "x", "amount": 3}),
     ("set_budget", {"month": "2026-03", "category": "x"}),
     ("record_expense", {"account": "a", "category": "b", "amount": "1", "date": 5, "description": ""}),
-    ("record_expense", {"account": "a", "category": "b", "amount": "1", "date": "2026-01-01", "description": "x" * 201}),
+    (
+        "record_expense",
+        {"account": "a", "category": "b", "amount": "1", "date": "2026-01-01", "description": "x" * 201},
+    ),
     ("name_merchant", {"description": "", "name": ""}),
     ("name_merchant", {"description": "x", "name": "n" * 61}),
     ("create_category_rule", {"pattern": "ab", "category": "c"}),
@@ -279,7 +282,7 @@ def parse_cases() -> list[dict[str, Any]]:
             result: dict[str, Any] = {"ok": enc(parsed.model_dump())}
         except ToolError as exc:
             result = {"error": str(exc)}
-        except Exception as exc:
+        except Exception:
             result = {"crash": True}
         out.append({"tool": name, "args": enc(args), "result": result})
     return out
@@ -395,10 +398,16 @@ def _link(data: Any) -> Any:
     link = data.get("link") if isinstance(data, dict) else None
     if link is None:
         return None
-    return [link[0], *[str(x) if isinstance(x, UUID) else x for x in link[1:2]], *[[str(d) for d in x] if x else None for x in link[2:]]]
+    return [
+        link[0],
+        *[str(x) if isinstance(x, UUID) else x for x in link[1:2]],
+        *[[str(d) for d in x] if x else None for x in link[2:]],
+    ]
 
 
-def run_read(ledger: Ledger, records: list[dict[str, Any]], today: date, name: str, args: dict[str, Any]) -> dict[str, Any]:
+def run_read(
+    ledger: Ledger, records: list[dict[str, Any]], today: date, name: str, args: dict[str, Any]
+) -> dict[str, Any]:
     import opesvault.assistant.reads as reads_mod
 
     registry = Conversation().registry
@@ -414,7 +423,7 @@ def run_read(ledger: Ledger, records: list[dict[str, Any]], today: date, name: s
             reads_mod.date = original  # type: ignore[misc]
     except ToolError as exc:
         return {"error": str(exc)}
-    except Exception as exc:
+    except Exception:
         return {"crash": True}
     out: dict[str, Any] = {"text": result_text(data) if name != "show_in_ledger" else None}
     if name == "show_in_ledger":
@@ -426,10 +435,30 @@ def run_read(ledger: Ledger, records: list[dict[str, Any]], today: date, name: s
 # ── edits ───────────────────────────────────────────
 
 EDIT_CASES: list[tuple[str, dict[str, Any], bool]] = [
-    ("reclassify_operations", {"ids": ["@op:Mercado Pão de Açúcar"], "category": "Transporte", "reason": "é corrida"}, True),
-    ("reclassify_operations", {"ids": ["@op:Mercado Pão de Açúcar", "@op:Padaria Real"], "category": "transporte", "reason": "  dois   lançamentos  "}, True),
-    ("reclassify_operations", {"ids": ["@op:Mercado Pão de Açúcar", "@op:Mercado Pão de Açúcar"], "category": "Lazer", "reason": "repetido"}, True),
-    ("reclassify_operations", {"ids": ["@op:Mercado Pão de Açúcar"], "category": "Alimentação", "reason": "mesma"}, False),
+    (
+        "reclassify_operations",
+        {"ids": ["@op:Mercado Pão de Açúcar"], "category": "Transporte", "reason": "é corrida"},
+        True,
+    ),
+    (
+        "reclassify_operations",
+        {
+            "ids": ["@op:Mercado Pão de Açúcar", "@op:Padaria Real"],
+            "category": "transporte",
+            "reason": "  dois   lançamentos  ",
+        },
+        True,
+    ),
+    (
+        "reclassify_operations",
+        {"ids": ["@op:Mercado Pão de Açúcar", "@op:Mercado Pão de Açúcar"], "category": "Lazer", "reason": "repetido"},
+        True,
+    ),
+    (
+        "reclassify_operations",
+        {"ids": ["@op:Mercado Pão de Açúcar"], "category": "Alimentação", "reason": "mesma"},
+        False,
+    ),
     ("reclassify_operations", {"ids": ["@op:Salário"], "category": "Lazer", "reason": "tipo errado"}, False),
     ("reclassify_operations", {"ids": ["@op:Poupança teste"], "category": "Lazer", "reason": "transferência"}, False),
     ("reclassify_operations", {"ids": ["@op:Estorno duplicado"], "category": "Lazer", "reason": "cancelado"}, False),
@@ -475,21 +504,117 @@ EDIT_CASES: list[tuple[str, dict[str, Any], bool]] = [
     ("set_budget", {"month": "2026-04", "category": "Lazer", "amount": D("12.5")}, True),
     ("set_budget", {"month": "  ", "category": "Lazer", "amount": "10"}, False),
     ("set_budget", {"month": "abril", "category": "Lazer", "amount": "10"}, False),
-    ("record_expense", {"account": "Banco A", "category": "Saúde", "amount": "R$ 1.234,56", "date": "2026-02-06", "description": "Exame"}, True),
-    ("record_expense", {"account": "banco a", "category": "Saúde", "amount": D("87.4"), "date": "2026-02-06", "description": "  Exame   de  sangue "}, True),
-    ("record_expense", {"account": "Cartão X", "category": "Saúde", "amount": "1", "date": "2026-02-06", "description": "x"}, False),
-    ("record_expense", {"account": "Alimentação", "category": "Saúde", "amount": "1", "date": "2026-02-06", "description": "x"}, False),
-    ("record_expense", {"account": "Banco A", "category": "Salário", "amount": "1", "date": "2026-02-06", "description": "x"}, False),
-    ("record_expense", {"account": "Banco A", "category": "Saúde", "amount": "1", "date": "", "description": "x"}, False),
-    ("record_expense", {"account": "Banco A", "category": "Saúde", "amount": "1", "date": "2999-01-01", "description": "x"}, False),
-    ("record_expense", {"account": "Banco A", "category": "Saúde", "amount": "1", "date": "26-01-01", "description": "x"}, False),
-    ("record_expense", {"account": "Banco A", "category": "Saúde", "amount": "1", "date": "20260206", "description": "formato compacto"}, True),
-    ("record_expense", {"account": "Banco A", "category": "Saúde", "amount": "1", "date": "2026-W06-5", "description": "semana"}, True),
-    ("record_expense", {"account": "Inexistente", "category": "Saúde", "amount": "1", "date": "2026-02-06", "description": "x"}, False),
-    ("record_income", {"account": "Banco A", "category": "Salário", "amount": D("4000"), "date": "2026-02-05", "description": "Salário extra"}, True),
-    ("record_income", {"account": "Poupança", "category": "Salário", "amount": "10,05", "date": "2026-02-05", "description": "Rendimento"}, True),
-    ("record_income", {"account": "Banco A", "category": "Lazer", "amount": "10", "date": "2026-02-05", "description": "tipo errado"}, False),
-    ("record_income", {"account": "Conjunta", "category": "Salário", "amount": "1000000000000000000000000000000", "date": "2026-02-05", "description": "enorme"}, False),
+    (
+        "record_expense",
+        {
+            "account": "Banco A",
+            "category": "Saúde",
+            "amount": "R$ 1.234,56",
+            "date": "2026-02-06",
+            "description": "Exame",
+        },
+        True,
+    ),
+    (
+        "record_expense",
+        {
+            "account": "banco a",
+            "category": "Saúde",
+            "amount": D("87.4"),
+            "date": "2026-02-06",
+            "description": "  Exame   de  sangue ",
+        },
+        True,
+    ),
+    (
+        "record_expense",
+        {"account": "Cartão X", "category": "Saúde", "amount": "1", "date": "2026-02-06", "description": "x"},
+        False,
+    ),
+    (
+        "record_expense",
+        {"account": "Alimentação", "category": "Saúde", "amount": "1", "date": "2026-02-06", "description": "x"},
+        False,
+    ),
+    (
+        "record_expense",
+        {"account": "Banco A", "category": "Salário", "amount": "1", "date": "2026-02-06", "description": "x"},
+        False,
+    ),
+    (
+        "record_expense",
+        {"account": "Banco A", "category": "Saúde", "amount": "1", "date": "", "description": "x"},
+        False,
+    ),
+    (
+        "record_expense",
+        {"account": "Banco A", "category": "Saúde", "amount": "1", "date": "2999-01-01", "description": "x"},
+        False,
+    ),
+    (
+        "record_expense",
+        {"account": "Banco A", "category": "Saúde", "amount": "1", "date": "26-01-01", "description": "x"},
+        False,
+    ),
+    (
+        "record_expense",
+        {
+            "account": "Banco A",
+            "category": "Saúde",
+            "amount": "1",
+            "date": "20260206",
+            "description": "formato compacto",
+        },
+        True,
+    ),
+    (
+        "record_expense",
+        {"account": "Banco A", "category": "Saúde", "amount": "1", "date": "2026-W06-5", "description": "semana"},
+        True,
+    ),
+    (
+        "record_expense",
+        {"account": "Inexistente", "category": "Saúde", "amount": "1", "date": "2026-02-06", "description": "x"},
+        False,
+    ),
+    (
+        "record_income",
+        {
+            "account": "Banco A",
+            "category": "Salário",
+            "amount": D("4000"),
+            "date": "2026-02-05",
+            "description": "Salário extra",
+        },
+        True,
+    ),
+    (
+        "record_income",
+        {
+            "account": "Poupança",
+            "category": "Salário",
+            "amount": "10,05",
+            "date": "2026-02-05",
+            "description": "Rendimento",
+        },
+        True,
+    ),
+    (
+        "record_income",
+        {"account": "Banco A", "category": "Lazer", "amount": "10", "date": "2026-02-05", "description": "tipo errado"},
+        False,
+    ),
+    (
+        "record_income",
+        {
+            "account": "Conjunta",
+            "category": "Salário",
+            "amount": "1000000000000000000000000000000",
+            "date": "2026-02-05",
+            "description": "enorme",
+        },
+        False,
+    ),
     ("set_import_item_category", {"item": "@item:0", "category": "Alimentação"}, True),
     ("set_import_item_category", {"item": "@item:1", "category": "Lazer"}, True),
     ("set_import_item_category", {"item": "@item:0", "category": "Nada"}, False),
@@ -519,7 +644,7 @@ def run_edit(
             prepared = tool.prepare(ledger, parsed, ORIGIN)
         except ToolError as exc:
             return {"error": str(exc)}
-        except Exception as exc:
+        except Exception:
             return {"crash": True}
     finally:
         edits_mod.date = original  # type: ignore[misc]
@@ -533,7 +658,7 @@ def run_edit(
             out["applied"] = applied
         except ToolError as exc:
             out["applied"] = {"error": str(exc)}
-        except Exception as exc:
+        except Exception:
             out["applied"] = {"crash": True}
         out["state"] = delta(state(ledger, known), state(fresh(records), known))
     return out
@@ -564,7 +689,15 @@ SCRIPTS: dict[str, list[dict[str, Any]]] = {
     "a question answered with reads and an approved edit": [
         {"op": "ask", "text": "  Os Uber estão em Transporte?  "},
         {"op": "turn", "calls": [c("search_operations", {"text": "mercado"})]},
-        {"op": "turn", "calls": [c("reclassify_operations", {"ids": ["@op:Mercado Pão de Açúcar"], "category": "Transporte", "reason": "é corrida"})]},
+        {
+            "op": "turn",
+            "calls": [
+                c(
+                    "reclassify_operations",
+                    {"ids": ["@op:Mercado Pão de Açúcar"], "category": "Transporte", "reason": "é corrida"},
+                )
+            ],
+        },
         {"op": "resolve", "index": 0, "approved": True},
         {"op": "turn", "calls": [c("show_in_ledger", {"account": "Transporte"})]},
         {"op": "turn", "calls": [c("get_overview", {}), c("list_members", {})]},
@@ -592,7 +725,12 @@ SCRIPTS: dict[str, list[dict[str, Any]]] = {
     ],
     "an edit that fails on apply": [
         {"op": "ask", "text": "x"},
-        {"op": "turn", "calls": [c("reclassify_operations", {"ids": ["@op:Padaria Real"], "category": "Lazer", "reason": "lanche"})]},
+        {
+            "op": "turn",
+            "calls": [
+                c("reclassify_operations", {"ids": ["@op:Padaria Real"], "category": "Lazer", "reason": "lanche"})
+            ],
+        },
         {"op": "mutate", "cancel": "Padaria Real"},
         {"op": "resolve", "index": 0, "approved": True},
         {"op": "turn", "calls": [c("tag_operations", {"ids": ["@op:Aluguel"], "tag": "Casa"})]},
@@ -614,7 +752,7 @@ SCRIPTS: dict[str, list[dict[str, Any]]] = {
         {"op": "turn", "calls": [], "content": ""},
         {"op": "turn", "calls": [c("list_members", {})]},
         {"op": "turn", "calls": [], "content": '{"name": "list_members", "arguments": {}}'},
-        {"op": "turn", "calls": [], "content": "```json\n{\"name\": \"list_members\"}"},
+        {"op": "turn", "calls": [], "content": '```json\n{"name": "list_members"}'},
         {"op": "turn", "calls": [], "content": "  <tool_call>x"},
     ],
     "text that is not a tool call is an answer": [
@@ -626,7 +764,8 @@ SCRIPTS: dict[str, list[dict[str, Any]]] = {
         {"op": "turn", "calls": [], "content": "Olá."},
         {"op": "turn", "calls": [], "content": "   "},
     ],
-    "a question cannot loop forever": [{"op": "ask", "text": "x"}] + [{"op": "turn", "calls": [c("list_members", {})]}] * (MAX_STEPS + 1),
+    "a question cannot loop forever": [{"op": "ask", "text": "x"}]
+    + [{"op": "turn", "calls": [c("list_members", {})]}] * (MAX_STEPS + 1),
     "pending edits are dropped when the question is interrupted": [
         {"op": "ask", "text": "x"},
         {"op": "turn", "calls": [c("nope", {})]},
@@ -712,7 +851,11 @@ def run_script(
                         op = next(o for o in ledger.operations.values() if o.description == step["tag"][0])
                         tags.add_tag(ledger, [op.id], step["tag"][1])
             if brief:
-                entry["messages"] = [len(conversation.messages), enc(conversation.messages[0]), enc(conversation.messages[-1])]
+                entry["messages"] = [
+                    len(conversation.messages),
+                    enc(conversation.messages[0]),
+                    enc(conversation.messages[-1]),
+                ]
             else:
                 entry["messages"] = enc(conversation.messages)
             entry["counters"] = [conversation.invalid, conversation.steps]
@@ -747,15 +890,18 @@ def generate() -> dict[str, Any]:
         },
         "constants": {"max_attempts": MAX_ATTEMPTS, "max_steps": MAX_STEPS, "max_messages": MAX_MESSAGES},
         "parse": parse_cases(),
-        "reads": [
-            {"tool": n, "args": a, "result": run_read(ledger, records, today, n, a)} for n, a in READ_CASES
-        ],
+        "reads": [{"tool": n, "args": a, "result": run_read(ledger, records, today, n, a)} for n, a in READ_CASES],
         "edits": [
             {"tool": n, "args": enc(a), "apply": ap, "result": run_edit(records, today, n, a, ap)}
             for n, a, ap in EDIT_CASES
         ],
         "conversations": [
-            {"name": name, "steps": steps, "brief": name in BRIEF, "results": run_script(records, today, steps, name in BRIEF)}
+            {
+                "name": name,
+                "steps": steps,
+                "brief": name in BRIEF,
+                "results": run_script(records, today, steps, name in BRIEF),
+            }
             for name, steps in SCRIPTS.items()
         ],
     }

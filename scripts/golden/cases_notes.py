@@ -58,9 +58,8 @@ def note_pdf(
     net = Decimal(0)
     for side, spec, qty, price in trade_lines:
         value = (Decimal(qty) * Decimal(price)).quantize(Decimal("0.01"))
-        lines.append(
-            f"1-BOVESPA {side} VISTA {spec} {qty} {_money(Decimal(price))} {_money(value)} {'C' if side == 'V' else 'D'}"
-        )
+        marker = "C" if side == "V" else "D"
+        lines.append(f"1-BOVESPA {side} VISTA {spec} {qty} {_money(Decimal(price))} {_money(value)} {marker}")
         net += value if side == "V" else -value
     lines += ["Resumo dos Negócios Resumo Financeiro"]
     for label, value, marker in costs or []:
@@ -135,7 +134,9 @@ def run_step(session: Session, step: dict[str, Any]) -> Any:
             )
             return list(pipeline.batches(ledger)).index(batch.id)
         case "set_target":
-            pipeline.set_batch_target(ledger, _batch(session, step["batch"]).id, _by_name(session, step["account"]), None)
+            pipeline.set_batch_target(
+                ledger, _batch(session, step["batch"]).id, _by_name(session, step["account"]), None
+            )
             return None
         case "approve":
             batch = _batch(session, step["batch"])

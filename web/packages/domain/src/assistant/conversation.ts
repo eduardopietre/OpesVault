@@ -206,6 +206,7 @@ function looksLikeCall(text: string): boolean {
   // `text.lstrip("`").lstrip().lower()`
   const left = text
     .replace(/^`+/, "")
+    // eslint-disable-next-line no-control-regex -- Python counts U+001C..U+001F as whitespace
     .replace(/^[\s\u001c-\u001f\u0085]+/u, "")
     .toLowerCase();
   return (

@@ -162,6 +162,25 @@ describe("Importar e revisar: ler arquivos", () => {
   });
 });
 
+describe("Importar e revisar: sair da página", () => {
+  it("keeps reading and importing what was chosen when the person goes to another page", async () => {
+    const o = await openImport();
+    let release: () => void = () => undefined;
+    o.worker.delay = new Promise<void>((resolve) => (release = resolve));
+    await o.user.upload(picker(), [file(BANK_OFX, "extrato.ofx")]);
+    await within(await screen.findByLabelText("Arquivos em leitura")).findByText(/Lendo…/);
+    await o.router.navigate({ to: "/livro" });
+    expect(await screen.findByRole("heading", { level: 1, name: "Livro financeiro" })).toBeTruthy();
+    release();
+    // the document arrives in the project, and the notice follows the person to the page they are on
+    await waitFor(() => expect(batches(o)).toHaveLength(2), { timeout: 20_000 });
+    expect(await screen.findByText("extrato.ofx: 2 item(ns) para revisar.")).toBeTruthy();
+    // coming back, the document is there to review
+    await o.router.navigate({ to: "/importar" });
+    expect(await screen.findByRole("heading", { level: 2, name: "extrato.ofx" })).toBeTruthy();
+  });
+});
+
 describe("Importar e revisar: PDF protegido", () => {
   it("asks the password, refuses a wrong one inside the dialog, reads with the right one and keeps no password", async () => {
     const o = await openImport();

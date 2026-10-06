@@ -87,8 +87,9 @@ export function useImportQueue({ ai, onImported }: { ai: ImportAi; onImported: (
   useEffect(() => {
     alive.current = true;
     return () => {
+      // Leaving the page does not stop the reading: what was chosen is still imported (the project belongs to
+      // the workspace, not to the page). Only the page's own state is no longer touched.
       alive.current = false;
-      parser.cancel(); // the page is gone: nothing more is read for it
     };
   }, []);
 
@@ -118,6 +119,8 @@ export function useImportQueue({ ai, onImported }: { ai: ImportAi; onImported: (
       } catch (error) {
         if (!(error instanceof SourceError) || !isPassword(error.problem)) throw error;
         const first = error.problem === SourceProblem.WRONG_PASSWORD;
+        // Nobody is here to type it: the file is skipped rather than left hanging.
+        if (!alive.current) throw new PasswordGaveUp();
         return new Promise<Analysis>((resolve, reject) => {
           let finished = false;
           if (jobId !== null) patch(jobId, { state: "password" });
@@ -205,7 +208,7 @@ export function useImportQueue({ ai, onImported }: { ai: ImportAi; onImported: (
     try {
       for (;;) {
         const waiting = list.current.find((job) => job.state === "waiting");
-        if (!waiting || !alive.current) break;
+        if (!waiting) break;
         await process(waiting);
       }
     } finally {

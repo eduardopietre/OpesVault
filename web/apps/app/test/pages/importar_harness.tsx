@@ -24,11 +24,13 @@ export interface FakeWorker {
   hang: boolean;
   /** When set, the worker answers garbage. */
   garbage: boolean;
+  /** When set, the worker answers only once this promise is settled (a slow reading). */
+  delay: Promise<void> | null;
 }
 
 /** An in-process worker: the page's port talks to `serveParser` through cloned messages. */
 export function installFakeWorker(timeoutMs = 120_000): FakeWorker {
-  const state: FakeWorker = { received: [], terminated: 0, started: 0, hang: false, garbage: false };
+  const state: FakeWorker = { received: [], terminated: 0, started: 0, hang: false, garbage: false, delay: null };
   setParserPortFactory(() => {
     state.started += 1;
     const toWorker: ((event: { data: unknown }) => void)[] = [];
@@ -39,7 +41,9 @@ export function installFakeWorker(timeoutMs = 120_000): FakeWorker {
         const reply = state.garbage
           ? { id: (message as { id: number }).id, kind: "analysis", analysis: { nope: 1 } }
           : message;
-        queueMicrotask(() => toPage.forEach((listener) => listener({ data: structuredClone(reply) })));
+        void (state.delay ?? Promise.resolve()).then(() =>
+          toPage.forEach((listener) => listener({ data: structuredClone(reply) })),
+        );
       },
       addEventListener: (_type: "message", listener: (event: { data: unknown }) => void) => {
         toWorker.push(listener);

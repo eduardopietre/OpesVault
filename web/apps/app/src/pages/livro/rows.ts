@@ -149,6 +149,8 @@ export interface FilterState {
   origin: OriginKind | null;
   tag: string | null;
   text: string;
+  /** The account is a category: its subcategories count too ("Ver lançamentos" from the budget). */
+  withChildren: boolean;
 }
 
 export const EMPTY_FILTERS: FilterState = {
@@ -161,6 +163,7 @@ export const EMPTY_FILTERS: FilterState = {
   origin: null,
   tag: null,
   text: "",
+  withChildren: false,
 };
 
 /** True when something other than the period narrows the list. */
@@ -203,15 +206,27 @@ export function toOperationFilter(
   } else {
     [start, end] = periodRange(f.period, today);
   }
+  // A category with its subcategories: the operations that touch any of them (and the tag, when chosen).
+  let ids: Set<Id> | null = f.tag !== null ? new Set(dom.tags.operationsWith(ledger, f.tag)) : null;
+  if (f.withChildren && f.account !== null) {
+    const wanted = new Set([
+      f.account,
+      ...[...ledger.accounts.values()].filter((a) => a.parent_id === f.account).map((a) => a.id),
+    ]);
+    const touching = new Set<Id>();
+    for (const op of ledger.operations.values())
+      if (op.postings.some((p) => wanted.has(p.account_id))) touching.add(op.id);
+    ids = ids === null ? touching : new Set([...ids].filter((id) => touching.has(id)));
+  }
   return search.operationFilter({
     start,
     end,
-    account_id: f.account,
+    account_id: f.withChildren ? null : f.account,
     member_id: f.member,
     text: f.text,
     status: f.status,
     origin: f.origin,
-    operation_ids: f.tag !== null ? new Set(dom.tags.operationsWith(ledger, f.tag)) : null,
+    operation_ids: ids,
   });
 }
 
@@ -251,13 +266,27 @@ export type Reveal =
   | { kind: "operation"; id: Id }
   | { kind: "category"; id: Id; month: YearMonth }
   | { kind: "account"; id: Id }
-  | { kind: "tag"; id: Id };
+  | { kind: "tag"; id: Id }
+  | { kind: "filter"; id: Id; month: YearMonth | null; range: readonly [IsoDate, IsoDate] | null; member: Id | null };
 
 /**
  * The `ref` another page passes to "Ver lançamentos": an operation id, `categoria:<id>:<AAAA-MM>`,
  * `conta:<id>` or `marcador:<tag id>` (the tag's name).
  */
 export function parseReveal(ref: string): Reveal {
+  // "filter:<account>:<YYYY-MM>[:<member>]" or "filter:<account>:<YYYY-MM-DD>..<YYYY-MM-DD>[:<member>]"
+  const filter = /^filter:([^:]+):(?:(\d{4})-(\d{2})|(\d{4}-\d{2}-\d{2})\.\.(\d{4}-\d{2}-\d{2}))(?::([^:]+))?$/.exec(
+    ref,
+  );
+  if (filter) {
+    return {
+      kind: "filter",
+      id: filter[1] as Id,
+      month: filter[2] ? { year: Number(filter[2]), month: Number(filter[3]) } : null,
+      range: filter[4] && filter[5] ? [filter[4] as IsoDate, filter[5] as IsoDate] : null,
+      member: (filter[6] as Id | undefined) ?? null,
+    };
+  }
   const category = /^categoria:([^:]+):(\d{4})-(\d{2})$/.exec(ref);
   if (category) {
     return {

@@ -113,7 +113,7 @@ export function FilterBar({ filters, onChange, month, onMonth, choices, onReset,
         className={`${w} tablet:w-56`}
         options={[{ id: NONE, label: "Todas as contas" }, ...choices.accounts]}
         value={filters.account ?? NONE}
-        onChange={(id) => set({ account: choose(id) })}
+        onChange={(id) => set({ account: choose(id), withChildren: false })}
       />
       <Select
         label="Integrante"

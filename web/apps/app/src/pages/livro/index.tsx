@@ -29,6 +29,7 @@ import {
   Sheet,
   TextField,
   confirm,
+  formatBrDate,
   notify,
   parseBrDate,
   useBand,
@@ -54,7 +55,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { useGoTo, useReveal } from "../../data/navigation.ts";
 import { useSharedMonth } from "../../data/month.ts";
-import { useLedger, useWorkspace } from "../../data/react.tsx";
+import { useAct, useLedger, useWorkspace } from "../../data/react.tsx";
 import { AiRunRow } from "../../dialogs/ai_review.tsx";
 import { OPERATION_KINDS, type OperationKindKey } from "../../dialogs/operation.tsx";
 import { isSimple } from "../../dialogs/operation_edit.tsx";
@@ -86,6 +87,7 @@ function readHidden(raw: string | null): ReadonlySet<string> {
 export function Page() {
   const workspace = useWorkspace();
   const goTo = useGoTo();
+  const act = useAct();
   const band = useBand();
   const preset = useMotionPreset();
   const preferences = usePreferences();
@@ -207,8 +209,10 @@ export function Page() {
     const op = single;
     if (!file || op === null) return;
     const bytes = new Uint8Array(await file.arrayBuffer());
-    workspace.act((_ledger, session) => dom.attachments.attach(session, op.id, file.name, bytes));
-    notify("Comprovante anexado e guardado cifrado no projeto.");
+    act(
+      (_ledger, session) => dom.attachments.attach(session, op.id, file.name, bytes),
+      "Comprovante anexado e guardado cifrado no projeto.",
+    );
   };
   const detailIncome = () => {
     const op = needOne();
@@ -225,9 +229,10 @@ export function Page() {
   };
   const markReviewed = () => {
     if (!targets.length) return;
-    const silenced = workspace.act((l) => targets.reduce((n, id) => n + dom.anomalies.markReviewed(l, id), 0));
-    notify(`${targets.length} lançamento(s) conferido(s); avisos de duplicidade ou valor silenciados.`);
-    return silenced;
+    act(
+      (l) => targets.reduce((n, id) => n + dom.anomalies.markReviewed(l, id), 0),
+      `${targets.length} lançamento(s) conferido(s); avisos de duplicidade ou valor silenciados.`,
+    );
   };
   const reimbursement = () => {
     const op = needOne();
@@ -428,9 +433,9 @@ export function Page() {
 
   // ── coming from other pages (docs/16 §5) ───────
 
-  useReveal((ref, act) => {
+  useReveal((ref, action) => {
     if (ref === undefined) {
-      if (act === "novo") show({ kind: "new", op: "expense" });
+      if (action === "novo") show({ kind: "new", op: "expense" });
       return;
     }
     const target = parseReveal(ref);
@@ -438,7 +443,22 @@ export function Page() {
     switch (target.kind) {
       case "category":
         chooseMonth(target.month);
-        applyFilters({ ...base, period: "month", account: target.id });
+        applyFilters({ ...base, period: "month", account: target.id, withChildren: true });
+        setCurrent(null);
+        setChecked(EMPTY_SET);
+        break;
+      case "filter":
+        if (target.month) chooseMonth(target.month);
+        applyFilters({
+          ...base,
+          account: target.id,
+          member: target.member,
+          ...(target.month
+            ? { period: "month" as const }
+            : target.range
+              ? { period: "custom" as const, start: formatBrDate(target.range[0]), end: formatBrDate(target.range[1]) }
+              : {}),
+        });
         setCurrent(null);
         setChecked(EMPTY_SET);
         break;
@@ -462,11 +482,11 @@ export function Page() {
         setChecked(EMPTY_SET);
         setCurrent(op.id);
         setDetailsOpen(true);
-        if (act === "editar") openEdit(op);
+        if (action === "editar") openEdit(op);
         break;
       }
     }
-    if (act === "novo") show({ kind: "new", op: "expense" });
+    if (action === "novo") show({ kind: "new", op: "expense" });
   });
 
   // ── keyboard: "/" searches, Space marks the current row ──

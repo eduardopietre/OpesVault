@@ -30,7 +30,7 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const base =
-  "inline-flex shrink-0 select-none items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium " +
+  "inline-flex shrink-0 select-none items-center [&_svg:not([class*=size-])]:size-4 justify-center gap-2 whitespace-nowrap rounded-md font-medium " +
   "transition-[background-color,color,border-color,box-shadow,transform] duration-[var(--ov-duration-fast)] " +
   "ease-standard active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 " +
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";

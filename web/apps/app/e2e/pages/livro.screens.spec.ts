@@ -17,7 +17,7 @@ const SIZES = [
 ] as const;
 
 async function closeOverlay(page: Page, name: string | RegExp): Promise<void> {
-  await page.keyboard.press("Escape");
+  await page.getByRole("dialog", { name }).getByRole("button", { name: "Fechar" }).click();
   await expect(page.getByRole("dialog", { name })).toHaveCount(0);
 }
 

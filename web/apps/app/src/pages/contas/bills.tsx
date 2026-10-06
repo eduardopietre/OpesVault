@@ -9,7 +9,7 @@ import { useState } from "react";
 import { useLedger, useWorkspace } from "../../data/react.tsx";
 import { cardItems } from "../../dialogs/account_choices.ts";
 import { BillPaymentDialog, type BillSummary } from "../../dialogs/bill_payment.tsx";
-import { billsChartData } from "./chart.ts";
+import { toChartData } from "../../data/chart_data.ts";
 import {
   type TabReveal,
   Empty,
@@ -153,7 +153,7 @@ export function BillsTab({ reveal }: { reveal?: TabReveal<BillReveal> | null }) 
   const chart = useLedger(
     (l) =>
       cardId && rows.length
-        ? billsChartData(
+        ? toChartData(
             charts.data.cardBillsHistory(
               l,
               cardId,

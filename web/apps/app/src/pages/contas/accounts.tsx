@@ -10,7 +10,7 @@ import { useGoTo } from "../../data/navigation.ts";
 import { useLedger, useWorkspace } from "../../data/react.tsx";
 import { AccountDialog } from "../../dialogs/accounts_account.tsx";
 import { BalanceCheckDialog } from "../../dialogs/balance_check.tsx";
-import { accountChartData } from "./chart.ts";
+import { toChartData } from "../../data/chart_data.ts";
 import {
   type TabReveal,
   EditButton,
@@ -111,9 +111,7 @@ export function AccountsTab({ reveal }: { reveal?: TabReveal<AccountReveal> | nu
     (ledger) => {
       if (selectedId === null || !ledger.accounts.has(selectedId)) return null;
       const end = ymOf(today);
-      return accountChartData(
-        charts.data.accountBalanceHistory(ledger, selectedId, ymAdd(end, -(HISTORY_MONTHS - 1)), end),
-      );
+      return toChartData(charts.data.accountBalanceHistory(ledger, selectedId, ymAdd(end, -(HISTORY_MONTHS - 1)), end));
     },
     `${selectedId ?? ""}|${today}`,
   );

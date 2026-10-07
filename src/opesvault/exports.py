@@ -9,6 +9,7 @@ Interchange format (version 1, docs/13 §5):
 import csv
 import io
 import json
+import re
 from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
@@ -36,6 +37,21 @@ LEDGER_COLUMNS = (
 )
 
 
+# Cells a spreadsheet would read as a formula (OWASP's CSV injection list: '=', '+', '-', '@', tab, CR).
+_FORMULA_START = ("=", "+", "-", "@", "\t", "\r")
+_PLAIN_NUMBER = re.compile(r"[+-]?\d+(\.\d+)?")
+
+
+def spreadsheet_text(text: str) -> str:
+    """A free-text cell (description, name) a spreadsheet will not run: a leading "'" when it could be a formula."""
+    return "'" + text if text.startswith(_FORMULA_START) else text
+
+
+def spreadsheet_cell(text: str) -> str:
+    """A cell that may hold a number or text: a plain number (like '-1485.00') is kept, anything else is guarded."""
+    return text if _PLAIN_NUMBER.fullmatch(text) else spreadsheet_text(text)
+
+
 def ledger_csv(ledger: Ledger) -> bytes:
     """One row per posting (debit positive, credit negative), so totals re-balance in any spreadsheet."""
     out = io.StringIO()
@@ -53,15 +69,15 @@ def ledger_csv(ledger: Ledger) -> bytes:
                     op.version,
                     op.status.value,
                     op.kind.value,
-                    op.description,
+                    spreadsheet_text(op.description),
                     op.occurred_on.isoformat() if op.occurred_on else "",
                     op.cash_date.isoformat() if op.cash_date else "",
                     str(op.competence) if op.competence else "",
-                    account.name,
+                    spreadsheet_text(account.name),
                     account.type.value,
                     format(posting.amount, "f"),
                     op.currency,
-                    members.get(posting.member_id, "") if posting.member_id else "",
+                    spreadsheet_text(members.get(posting.member_id, "")) if posting.member_id else "",
                     op.origin.kind.value,
                 )
             )

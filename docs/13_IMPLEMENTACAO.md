@@ -17,7 +17,7 @@ Versão 1.1 • 02/10/2026. Registra o que foi construído em cada fase do roadm
 | `vault/` | Cofre SQLCipher (gravação completa ou incremental), worker transitório, backup, troca de senha e desbloqueio da tela |
 | `ui/` | Janela principal (`main_window`, com as partes em `shell/`), preferências do computador (`preferences`) e uma página por seção do `07` (as grandes em pacotes: `pages/ledger`, `investments`, `tax`, `imports`, `accounts`); edição completa de lançamentos (`operation_edit`), assistente de primeiro uso (`setup_wizard`), ajuda F1 (`help`), bloqueio visual (`idle_lock`) |
 | `diagnostics.py` | Registro técnico só com códigos e ganchos globais de exceção (`14` §2) |
-| `exports.py` | Exportações explícitas (CSV do livro e JSON de intercâmbio) |
+| `exports.py` | Exportações explícitas (CSV do livro e JSON de intercâmbio). No CSV, texto livre que começa com `=`, `+`, `-`, `@`, tabulação ou retorno de carro ganha um `'` na frente, para a planilha não o executar como fórmula (`19` §12.1, achado 12) |
 | `registry.py` | Lista explícita dos módulos que registram tipos persistidos e guardas |
 
 Persistência: o domínio vira registros `(id, tipo, JSON)` dentro do snapshot. Decimais são gravados como texto e datas em ISO. Abrir um cofre exige conhecer todos os tipos; um tipo desconhecido (versão mais nova) é recusado.

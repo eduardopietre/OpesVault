@@ -1,5 +1,5 @@
 /** Relatórios: the image and the values leave the project only after asking; the year-end report; states. */
-import { exporting, formatBrl } from "@opesvault/domain";
+import { Dec, charts, exporting, formatBrl } from "@opesvault/domain";
 import { act, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { annualReportData } from "../../src/pages/relatorios/annual.ts";
@@ -81,6 +81,17 @@ describe("Relatórios: exporting", () => {
     expect(lines[1]).toMatch(/^\d{4}-\d{2};\d+(\.\d+)?;\d+(\.\d+)?$/);
     expect(lines.at(-2)).toMatch(/^Total;/);
     expect(lines.at(-1)).toMatch(/^Média;/);
+  });
+
+  it("neutralizes formulas in the names and items of the CSV, not in the values", () => {
+    const { chart, point, series } = charts.data;
+    const made = chart("t", "BRL", [
+      series("+Série", [point("=cmd()", Dec.parse("-10.50")), point("2026-01", Dec.parse("3"))]),
+    ]);
+    const lines = valuesCsv(made).replace("\uFEFF", "").split("\n");
+    expect(lines[0]).toBe("item;'+Série");
+    expect(lines).toContain("'=cmd();-10.50");
+    expect(lines).toContain("2026-01;3");
   });
 });
 

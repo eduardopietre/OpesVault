@@ -7,17 +7,8 @@ import { DateField, MoneyField, Select } from "@opesvault/ui";
 import { useMemo, useState } from "react";
 import { useWorkspace } from "../data/react.tsx";
 import { assetAccounts } from "./account_choices.ts";
-import {
-  Caption,
-  FormDialog,
-  FormGrid,
-  FullRow,
-  dateText,
-  editableMoney,
-  readDate,
-  readMoney,
-  useFormAct,
-} from "./livro_form.tsx";
+import { Caption, FormDialog, FormGrid, FullRow, useFormAct } from "./livro_form.tsx";
+import { dateText, editableMoney, readDate, readMoney } from "./form_readers.ts";
 
 export interface SharingReceiveDialogProps {
   open: boolean;

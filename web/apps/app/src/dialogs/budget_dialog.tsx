@@ -5,7 +5,7 @@
 import type { Dec } from "@opesvault/domain";
 import { Button, Dialog, MoneyField, Select, type SelectOption } from "@opesvault/ui";
 import { useState } from "react";
-import { readAmount } from "./budget_logic.ts";
+import { readAmount } from "./form_readers.ts";
 
 export interface BudgetDialogProps {
   open: boolean;

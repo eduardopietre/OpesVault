@@ -14,13 +14,11 @@ import {
   FormGrid,
   FullRow,
   NONE,
-  dateText,
   memberFromChoice,
   memberOptions,
-  readDate,
-  readMoney,
   useFormAct,
 } from "./livro_form.tsx";
+import { dateText, readDate, readMoney } from "./form_readers.ts";
 
 const { model, service } = investments;
 

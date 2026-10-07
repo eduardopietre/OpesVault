@@ -33,7 +33,6 @@ import {
   SUGGESTION_MONTHS,
   applyGrid,
   averageSpending,
-  editableAmount,
   expenseCategoryOptions,
   gridRows,
   type GridChange,
@@ -49,6 +48,7 @@ import { EditButton } from "../../components/list_parts.tsx";
 import { useLock } from "../../data/read_only.ts";
 import { useDialog } from "../../data/dialog.ts";
 import { cents } from "../../data/money.ts";
+import { editableMoney } from "../../dialogs/form_readers.ts";
 
 type Row = dom.budget.BudgetRow;
 
@@ -197,7 +197,7 @@ export function Page() {
   /** The one-value dialog: a given category is edited, without one the user chooses it. */
   const define = (categoryId: string | null, at: YearMonth = month) => {
     const line = categoryId ? dom.budget.lineFor(workspace.ledger, categoryId, at) : null;
-    one.show({ categoryId, month: at, amount: line ? editableAmount(line.amount) : "" });
+    one.show({ categoryId, month: at, amount: line ? editableMoney(line.amount) : "" });
   };
 
   const saveOne = (categoryId: string, amount: Dec): boolean => {

@@ -34,17 +34,14 @@ import {
   competenceChoice,
   competenceFromChoice,
   competenceOptions,
-  dateText,
   memberFromChoice,
   memberOptions,
   optionalDateValue,
-  plainMoney,
-  readDate,
-  readMoney,
   readOptionalDate,
   useFormAct,
   type OptionalDateValue,
 } from "./livro_form.tsx";
+import { dateText, plainMoney, readDate, readMoney } from "./form_readers.ts";
 
 // ── shared rules ────────────────────────────────
 

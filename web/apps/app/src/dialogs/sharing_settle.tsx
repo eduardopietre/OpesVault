@@ -6,16 +6,8 @@ import { DomainError, dom, type Dec, type Id } from "@opesvault/domain";
 import { DateField, MoneyField, Select, TextField } from "@opesvault/ui";
 import { useMemo, useState } from "react";
 import { useWorkspace } from "../data/react.tsx";
-import {
-  FormDialog,
-  FormGrid,
-  FullRow,
-  dateText,
-  editableMoney,
-  readDate,
-  readMoney,
-  useFormAct,
-} from "./livro_form.tsx";
+import { FormDialog, FormGrid, FullRow, useFormAct } from "./livro_form.tsx";
+import { dateText, editableMoney, readDate, readMoney } from "./form_readers.ts";
 
 export interface SharingSettleDialogProps {
   open: boolean;

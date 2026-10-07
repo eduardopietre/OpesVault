@@ -2,8 +2,9 @@
  * What the budget dialogs share, free of React: the expense categories as options, amounts as the field
  * reads and writes them, and the grid's differences (desktop `BudgetGridDialog.values/apply`).
  */
-import { AccountType, Dec, dom, formatBrl, queries, ymAdd, type Ledger, type YearMonth } from "@opesvault/domain";
-import { normalizeMoneyInput, type SelectOption } from "@opesvault/ui";
+import { AccountType, Dec, dom, queries, ymAdd, type Ledger, type YearMonth } from "@opesvault/domain";
+import { type SelectOption } from "@opesvault/ui";
+import { editableMoney, readAmount } from "./form_readers.ts";
 
 /** "Casa › Aluguel": the expense categories with their parent, in alphabetical order (desktop `category_items`). */
 export function expenseCategoryOptions(ledger: Ledger): SelectOption[] {
@@ -12,17 +13,6 @@ export function expenseCategoryOptions(ledger: Ledger): SelectOption[] {
     return { id: account.id, label: parent ? `${parent.name} › ${account.name}` : account.name };
   });
   return options.sort((a, b) => a.label.localeCompare(b.label, "pt-BR"));
-}
-
-/** A planned amount as typed in the field: "2.350,00". */
-export function editableAmount(value: Dec): string {
-  return formatBrl(value).replace("R$", "").trim();
-}
-
-/** The amount typed in a field as an exact decimal; null when empty or not an amount. */
-export function readAmount(text: string): Dec | null {
-  const canonical = normalizeMoneyInput(text);
-  return canonical === null ? null : Dec.from(canonical);
 }
 
 export interface GridRow {
@@ -72,7 +62,7 @@ export function gridRows(
     return {
       categoryId: option.id,
       name: option.label,
-      text: line ? editableAmount(line.amount) : suggestion ? editableAmount(suggestion) : "",
+      text: line ? editableMoney(line.amount) : suggestion ? editableMoney(suggestion) : "",
       current: line ? line.amount : null,
       previous: before ? before.amount : null,
       spent: spending.get(option.id) ?? null,
@@ -88,7 +78,7 @@ export function fillFromPrevious(
   const next: Record<string, string> = { ...texts };
   for (const row of rows) {
     if (row.previous !== null && !(next[row.categoryId] ?? "").trim()) {
-      next[row.categoryId] = editableAmount(row.previous);
+      next[row.categoryId] = editableMoney(row.previous);
     }
   }
   return next;

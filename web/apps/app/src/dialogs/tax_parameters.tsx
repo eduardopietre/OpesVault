@@ -8,8 +8,9 @@ import { Button, IconButton, MoneyField, TextField } from "@opesvault/ui";
 import { Plus, X } from "lucide-react";
 import { useRef, useState } from "react";
 import { useWorkspace } from "../data/react.tsx";
-import { Caption, FormDialog, FormGrid, FullRow, editableMoney, readMoney, useFormAct } from "./livro_form.tsx";
-import { percentText, readPercent } from "./tax_fields.tsx";
+import { Caption, FormDialog, FormGrid, FullRow, useFormAct } from "./livro_form.tsx";
+import { percentText } from "./tax_fields.tsx";
+import { editableMoney, readMoney, readPercent } from "./form_readers.ts";
 
 interface BracketRow {
   key: number;

@@ -5,7 +5,7 @@
  * A CPF or CNPJ is personal data: it only lives in the field the person types it in and in the project.
  * Nothing here logs it, puts it in a message or keeps it anywhere else.
  */
-import { Dec, DomainError, MoneyError, catalogs, formatDecimalBr, parseBrl, tax } from "@opesvault/domain";
+import { Dec, DomainError, catalogs, formatDecimalBr, tax } from "@opesvault/domain";
 import { Combobox, TextField, type SelectOption } from "@opesvault/ui";
 import { useMemo, type ReactNode } from "react";
 
@@ -14,21 +14,6 @@ import { useMemo, type ReactNode } from "react";
 /** 0.075 becomes "7,5" as typed, not "7,500" (the stored fraction carries extra places). */
 export function percentText(rate: Dec | null): string {
   return rate === null ? "" : formatDecimalBr(rate.mul(100).normalize());
-}
-
-/** "15" or "27,5" (percent) to 0.15 or 0.275; empty stays unknown. */
-export function readPercent(text: string, label: string): Dec | null {
-  const raw = text.trim().replace("%", "").trim();
-  if (!raw) return null;
-  let value: Dec;
-  try {
-    value = parseBrl(raw);
-  } catch (error) {
-    if (error instanceof MoneyError) throw new DomainError(`${label}: use um percentual como 15 ou 27,5.`);
-    throw error;
-  }
-  if (value.isNegative() || value.gt(100)) throw new DomainError(`${label}: informe entre 0 e 100.`);
-  return value.div(100);
 }
 
 // ── CPF and CNPJ ─────────────────────────────────

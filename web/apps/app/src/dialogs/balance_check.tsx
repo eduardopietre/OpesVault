@@ -7,7 +7,8 @@ import { DateField, MoneyField, Select, TextField } from "@opesvault/ui";
 import { useMemo, useState } from "react";
 import { useWorkspace } from "../data/react.tsx";
 import { balanceAccounts } from "./account_choices.ts";
-import { Caption, FormDialog, FormGrid, FullRow, dateText, readDate, readMoney, useFormAct } from "./livro_form.tsx";
+import { Caption, FormDialog, FormGrid, FullRow, useFormAct } from "./livro_form.tsx";
+import { dateText, readDate, readMoney } from "./form_readers.ts";
 
 export interface BalanceCheckDialogProps {
   open: boolean;

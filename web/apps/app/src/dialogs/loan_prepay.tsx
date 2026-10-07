@@ -2,12 +2,13 @@
  * Amortização antecipada (desktop `PrepaymentDialog`): simulates an early repayment as the user types, and
  * registering it is a separate, explicit choice. A simulation never records anything.
  */
-import { DomainError, dom, formatBrl, parseBrl } from "@opesvault/domain";
+import { DomainError, dom, formatBrl } from "@opesvault/domain";
 import { DateField, MoneyField, Select, type SelectOption } from "@opesvault/ui";
 import { useMemo, useState } from "react";
 import { useWorkspace } from "../data/react.tsx";
 import { liquidAccounts } from "./account_choices.ts";
-import { Caption, FormDialog, dateText, readDate, readMoney, useFormAct } from "./livro_form.tsx";
+import { Caption, FormDialog, useFormAct } from "./livro_form.tsx";
+import { dateText, readDate, readMoney } from "./form_readers.ts";
 
 export interface PrepaymentDialogProps {
   open: boolean;
@@ -45,8 +46,8 @@ export function PrepaymentDialog({ open, onClose, plan, onDone }: PrepaymentDial
 
   const lines = useMemo(() => {
     try {
-      const value = parseBrl(amount.trim());
-      if (!value.isPositive()) return null;
+      const value = readMoney(amount, { allowEmpty: true });
+      if (!value?.isPositive()) return null;
       return simulationLines(dom.loans.simulatePrepayment(ledger, plan.id, value, mode as dom.loans.PrepaymentMode));
     } catch {
       return null;

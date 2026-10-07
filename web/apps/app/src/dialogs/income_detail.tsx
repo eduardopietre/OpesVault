@@ -7,8 +7,9 @@ import { DomainError, cashDate, formatBrl, tax, type Id } from "@opesvault/domai
 import { MoneyField, Select } from "@opesvault/ui";
 import { useState } from "react";
 import { useWorkspace } from "../data/react.tsx";
-import { Caption, FormDialog, FormGrid, FullRow, editableMoney, readMoney, useFormAct } from "./livro_form.tsx";
+import { Caption, FormDialog, FormGrid, FullRow, useFormAct } from "./livro_form.tsx";
 import { dateOr } from "../data/money.ts";
+import { editableMoney, readMoney } from "./form_readers.ts";
 
 const KINDS = Object.entries(tax.model.INCOME_KIND_LABELS).map(([id, label]) => ({ id, label }));
 

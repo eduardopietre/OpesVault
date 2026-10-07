@@ -15,14 +15,11 @@ import {
   FormGrid,
   FullRow,
   OptionalDateField,
-  dateText,
-  editableMoney,
   optionalDateValue,
-  readDate,
-  readMoney,
   readOptionalDate,
   useFormAct,
 } from "./livro_form.tsx";
+import { dateText, editableMoney, readDate, readMoney } from "./form_readers.ts";
 
 type Rule = dom.recurrence.RecurrenceRule;
 type Frequency = Rule["frequency"];

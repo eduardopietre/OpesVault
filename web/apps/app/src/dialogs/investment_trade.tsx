@@ -8,8 +8,9 @@ import { DomainError, investments, type Id } from "@opesvault/domain";
 import { DateField, MoneyField, Select, TextField, type SelectOption } from "@opesvault/ui";
 import { useState } from "react";
 import { useWorkspace } from "../data/react.tsx";
-import { cashAccounts, readQuantity } from "./investment_forms.ts";
-import { Caption, FormDialog, FormGrid, NONE, dateText, readDate, readMoney, useFormAct } from "./livro_form.tsx";
+import { cashAccounts } from "./investment_forms.ts";
+import { Caption, FormDialog, FormGrid, NONE, useFormAct } from "./livro_form.tsx";
+import { dateText, readDate, readMoney, readQuantity } from "./form_readers.ts";
 
 const { trades } = investments;
 

@@ -12,12 +12,11 @@ import {
   FormGrid,
   FullRow,
   OptionalDateField,
-  editableMoney,
   optionalDateValue,
-  readMoney,
   readOptionalDate,
   useFormAct,
 } from "./livro_form.tsx";
+import { editableMoney, readMoney } from "./form_readers.ts";
 
 type Item = importing.importModel.ExtractedItem;
 

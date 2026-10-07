@@ -7,8 +7,9 @@ import { DomainError, OperationKind, dom, type Dec, type Id, type Ledger } from 
 import { Checkbox, DateField, MoneyField, TextField } from "@opesvault/ui";
 import { useMemo, useState } from "react";
 import { useWorkspace } from "../data/react.tsx";
-import { Caption, FormDialog, dateText, readDate, readMoney, useFormAct } from "./livro_form.tsx";
+import { Caption, FormDialog, useFormAct } from "./livro_form.tsx";
 import { moneyOr } from "../data/money.ts";
+import { dateText, readDate, readMoney } from "./form_readers.ts";
 
 const { banking } = dom;
 

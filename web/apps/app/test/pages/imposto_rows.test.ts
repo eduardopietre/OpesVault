@@ -20,9 +20,10 @@ import {
   variableNotes,
   yearOptions,
 } from "../../src/pages/imposto/rows.ts";
-import { maskTaxId, percentText, readPercent, taxIdProblem, readTaxId } from "../../src/dialogs/tax_fields.tsx";
+import { maskTaxId, percentText, taxIdProblem, readTaxId } from "../../src/dialogs/tax_fields.tsx";
 import { readBrackets } from "../../src/dialogs/tax_parameters.tsx";
 import { browserExtractor } from "../../src/data/pdf.ts";
+import { readPercent } from "../../src/dialogs/form_readers.ts";
 
 const TODAY = makeDate(2026, 10, 6);
 const name = (id: string | null) => (id ? "Ana" : "—");

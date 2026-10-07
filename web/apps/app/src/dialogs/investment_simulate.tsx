@@ -8,10 +8,11 @@ import { DomainError, formatBrl, investments, type Dec, type Id, type IsoDate } 
 import { Badge, Button, DateField, Dialog, MoneyField, Select, type SelectOption } from "@opesvault/ui";
 import { useState } from "react";
 import { useWorkspace } from "../data/react.tsx";
-import { Caption, dateText, editableMoney, readDate, readMoney } from "./livro_form.tsx";
+import { Caption } from "./livro_form.tsx";
 import { percent } from "./investment_forms.ts";
 import type { RedemptionPrefill } from "./investment_redeem.tsx";
 import { moneyOr } from "../data/money.ts";
+import { dateText, editableMoney, readDate, readMoney } from "./form_readers.ts";
 
 const { performance, simulation } = investments;
 

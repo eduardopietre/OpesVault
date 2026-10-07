@@ -24,7 +24,6 @@ import { AnimatePresence, motion } from "motion/react";
 import { ChevronRight, Copy, FolderPlus, History, Plus, Trash2, Users } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { ASSET_SUBTYPES, LIABILITY_SUBTYPES, SUBTYPE_LABELS } from "../dialogs/accounts_labels.ts";
-import { readDate, readMoney } from "../dialogs/livro_form.tsx";
 import { RecoverProjectDialog } from "../dialogs/settings_recover.tsx";
 import { RestoreBackupDialog } from "../dialogs/settings_backup_restore.tsx";
 import type { OpenProgress, ProjectSummary } from "../services/types.ts";
@@ -32,6 +31,7 @@ import { useServices, useSession, useSessionActions } from "../session.tsx";
 import { markScreenShown } from "../shell/entry_focus.ts";
 import { AuthLayout } from "./AuthLayout.tsx";
 import { MIN_PASSWORD, messageOf } from "./auth.tsx";
+import { readDate, readMoney } from "../dialogs/form_readers.ts";
 
 function updated(iso: string): string {
   const date = new Date(iso);

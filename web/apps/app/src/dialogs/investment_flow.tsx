@@ -8,7 +8,8 @@ import { DateField, MoneyField, Select } from "@opesvault/ui";
 import { useState } from "react";
 import { useWorkspace } from "../data/react.tsx";
 import { cashAccounts } from "./investment_forms.ts";
-import { Caption, FormDialog, FormGrid, dateText, readDate, readMoney, useFormAct } from "./livro_form.tsx";
+import { Caption, FormDialog, FormGrid, useFormAct } from "./livro_form.tsx";
+import { dateText, readDate, readMoney } from "./form_readers.ts";
 
 const { service } = investments;
 

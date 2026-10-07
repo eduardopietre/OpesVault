@@ -4,24 +4,14 @@
  * the project together with the report. The reading is generic and not yet validated with real documents, so
  * every line is checked by the person.
  */
-import {
-  AccountType,
-  DomainError,
-  Dec,
-  MoneyError,
-  formatBrl,
-  parseBrl,
-  session as sessions,
-  sortedBy,
-  tax,
-  type Id,
-} from "@opesvault/domain";
+import { AccountType, DomainError, session as sessions, sortedBy, tax, type Id } from "@opesvault/domain";
 import { Button, IconButton, Select, TextField, type SelectOption } from "@opesvault/ui";
 import { Plus, X } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { useWorkspace } from "../data/react.tsx";
 import { Caption, FormDialog, FormGrid, FullRow, useFormAct } from "./livro_form.tsx";
 import { TaxIdField, readTaxId } from "./tax_fields.tsx";
+import { readMoney, editableMoney } from "./form_readers.ts";
 
 const FIELDS: SelectOption[] = Object.entries(tax.model.FIELD_LABELS).map(([id, label]) => ({ id, label }));
 
@@ -129,7 +119,7 @@ export function ReportDialog({
       key: index,
       field: line.field,
       label: line.label,
-      value: formatBrl(line.amount).replace("R$", "").trim(),
+      value: editableMoney(line.amount),
     })),
   );
 
@@ -142,15 +132,7 @@ export function ReportDialog({
     rows.forEach((row, index) => {
       const raw = row.value.trim();
       if (!raw) return;
-      let amount: Dec;
-      try {
-        amount = parseBrl(raw);
-      } catch (error) {
-        if (error instanceof MoneyError) {
-          throw new DomainError(`Valor inválido na linha ${index + 1}. Use o formato 1.234,56.`);
-        }
-        throw error;
-      }
+      const amount = readMoney(raw, { where: `na linha ${index + 1}` });
       out.push(
         tax.model.ReportLineSchema.parse({
           field: row.field,

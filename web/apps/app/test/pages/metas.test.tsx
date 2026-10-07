@@ -1,6 +1,7 @@
 import { charts, dom, formatBrl, makeDate, ymOf, type Id } from "@opesvault/domain";
 import { act as reactAct, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { pinToday } from "../clock.ts";
 import {
   NONE,
   dateOrNone,
@@ -33,6 +34,7 @@ describe("Metas rows", () => {
 });
 
 describe("Metas", () => {
+  pinToday(2026, 10, 6);
   it("shows each goal's progress, what is missing, the monthly need and the recent pace", async () => {
     const { ledger, workspace } = await open();
     const [goal] = goals(ledger);

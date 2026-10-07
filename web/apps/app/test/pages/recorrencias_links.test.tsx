@@ -1,6 +1,7 @@
 import { dom, makeDate, type IsoDate } from "@opesvault/domain";
 import { act as reactAct, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { pinToday } from "../clock.ts";
 import { alertLink, eventLink } from "../../src/data/links.ts";
 import { forecastId, forecastWindow, ruleRef } from "../../src/pages/recorrencias/rows.ts";
 import { flat, linkCount, openPage, rowOf, rules, seedRule } from "./recorrencias_harness.tsx";
@@ -22,6 +23,7 @@ async function goTo(o: Opened, search: { ref?: string; act?: string }) {
 const selected = (table: HTMLElement, id: string) => rowOf(table, id)?.getAttribute("aria-selected");
 
 describe("Recorrências: vindo de outras páginas (useReveal)", () => {
+  pinToday(2026, 10, 6);
   it("selects the forecast named by '<ruleId>:<date>' and does not act without an act", async () => {
     const o = await openPage("/recorrencias", "Recorrências");
     const rule = rules(o.ledger)[0]!;

@@ -1,6 +1,7 @@
 import { dom, formatBrl, makeDate, type IsoDate } from "@opesvault/domain";
 import { act as reactAct, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { pinToday } from "../clock.ts";
 import {
   FORECAST_LABELS,
   candidateKey,
@@ -64,6 +65,7 @@ describe("Recorrências rows", () => {
 });
 
 describe("Recorrências", () => {
+  pinToday(2026, 10, 6);
   it("lists the rules, the forecasts with their state in words and the yearly cost of the commitments", async () => {
     const { ledger, workspace } = await open();
     const rule = rules(ledger)[0]!;

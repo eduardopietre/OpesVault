@@ -9,6 +9,7 @@ import { describe, expect, it, vi } from "vitest";
 import { BANK_OFX } from "../../../../packages/domain/src/demo_docs/index.ts";
 import { batches, file, importFiles, lastBatch, openImport } from "./importar_harness.tsx";
 import { fakePdfRender } from "./importar_pdf_mock.ts";
+import { addressSettles } from "../navigations.ts";
 
 vi.mock("../../src/data/pdf_render.ts", async () =>
   fakePdfRender(await vi.importActual<typeof import("../../src/data/pdf_render.ts")>("../../src/data/pdf_render.ts")),
@@ -23,7 +24,7 @@ describe("Importar e revisar: links que chegam", () => {
     await o.router.navigate({ to: "/importar", search: { ref: demo.id } });
     expect(await screen.findByRole("heading", { level: 2, name: "fatura-nubank-03.pdf" })).toBeTruthy();
     // the link is consumed: the address is clean again
-    await waitFor(() => expect(o.router.state.location.search).toEqual({}));
+    await addressSettles(o.router, {});
     // the table is ready for the keyboard
     await waitFor(() => expect(document.activeElement?.getAttribute("aria-label")).toBe("Itens extraídos"));
     // the same link followed later is a new request

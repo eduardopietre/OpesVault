@@ -17,6 +17,7 @@ import {
   rowsWith,
   type Opened,
 } from "./livro_harness.tsx";
+import { addressSettles } from "../navigations.ts";
 
 const rowCount = () => grid().querySelectorAll("[data-row-id]").length;
 
@@ -38,7 +39,7 @@ describe("Livro: vindo de outras páginas (useReveal)", () => {
       expect(grid().querySelector(`[data-row-id="${op.id}"]`)?.getAttribute("aria-selected")).toBe("true"),
     );
     // the link is consumed: a reload or a back does not repeat it
-    expect(o.router.state.location.search).toEqual({});
+    await addressSettles(o.router, {});
   });
 
   it("filters by a category and month, including its subcategories, and sets the shared month", async () => {

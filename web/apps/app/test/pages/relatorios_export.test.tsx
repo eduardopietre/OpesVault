@@ -7,6 +7,7 @@ import { REPORTS, buildChart, valuesCsv } from "../../src/pages/relatorios/repor
 import { choose, setViewport } from "./livro_harness.tsx";
 import { openPrint, openReport, openReports, paramsOf } from "./relatorios_harness.tsx";
 import { cellText } from "../../src/pages/visao-geral/report.ts";
+import { addressSettles } from "../navigations.ts";
 
 vi.mock("../../../../packages/ui/src/chart/echarts.ts", () => import("./fake_echarts.ts"));
 
@@ -131,7 +132,7 @@ describe("Relatórios: the year-end closing", () => {
     await screen.findByRole("heading", { level: 1, name: `${data.project} — fechamento de 2025` });
     expect(router.state.location.pathname).toBe("/imprimir/relatorio-anual");
     await waitFor(() => expect(print).toHaveBeenCalledTimes(1), { timeout: 3000 });
-    await waitFor(() => expect(router.state.location.search).toEqual({ ano: "2025" }));
+    await addressSettles(router, { ano: "2025" });
     for (const title of [
       `Bens e dívidas em 31/12/2025`,
       "Receitas do ano por categoria",

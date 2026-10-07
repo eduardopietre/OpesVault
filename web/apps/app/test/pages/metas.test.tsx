@@ -11,6 +11,7 @@ import {
   summaryLine,
 } from "../../src/pages/metas/rows.ts";
 import { accountId, flat, openPage, rowOf, undoOnce } from "./recorrencias_harness.tsx";
+import { addressSettles } from "../navigations.ts";
 
 vi.mock("../../../../packages/ui/src/chart/echarts.ts", () => import("./fake_echarts.ts"));
 
@@ -257,7 +258,7 @@ describe("Metas", () => {
     await waitFor(() => expect(rowOf(table, second.id)!.getAttribute("aria-selected")).toBe("true"));
     expect(await screen.findByRole("table", { name: "Valores de Meta: Zeladoria" })).toBeTruthy();
     expect(screen.queryByRole("dialog")).toBeNull();
-    expect(router.state.location.search).toEqual({});
+    await addressSettles(router, {});
     const first = goals(ledger)[0]!;
     await reactAct(async () => {
       await router.navigate({ to: "/metas", search: { ref: first.id, act: "editar" } });

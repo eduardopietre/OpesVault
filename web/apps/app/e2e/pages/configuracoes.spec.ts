@@ -317,7 +317,8 @@ test.describe("links and the rest of the flow", () => {
     ] as const) {
       await page.goto(`/configuracoes?demo&ref=${ref}`);
       await expect(page.getByRole("tab", { name: tab, exact: true })).toHaveAttribute("aria-selected", "true");
-      await expect.poll(() => new URL(page.url()).search).toBe("");
+      // the page consumed the ref: the address has no search left
+      await expect(page).toHaveURL(/\/configuracoes$/);
     }
   });
 

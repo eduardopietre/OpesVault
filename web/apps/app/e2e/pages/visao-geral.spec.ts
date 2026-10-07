@@ -129,6 +129,20 @@ test.describe("visão geral: every action", () => {
     expect(errors).toEqual([]);
   });
 
+  test("the demonstration opens on its last complete month, the same in Orçamento", async ({ page }) => {
+    const errors = watchErrors(page);
+    await openDemo(page, "/visao-geral", { month: "demo" });
+    // October 2026 is partial: September has the demonstration's entries (a card purchase, the gym)
+    const picker = page.getByRole("group", { name: "Mês" });
+    await expect(picker.getByRole("button", { name: /setembro de 2026/i })).toBeVisible();
+    await page.keyboard.press("Alt+2");
+    await expect(page.getByRole("heading", { level: 1, name: "Orçamento" })).toBeVisible();
+    await expect(page.getByRole("button", { name: /setembro de 2026/i })).toBeVisible();
+    // without a plan for September: the plan from the last three months is the next step
+    await expect(page.getByRole("button", { name: "Criar a partir dos últimos 3 meses…" })).toBeVisible();
+    expect(errors).toEqual([]);
+  });
+
   test("lines of the tables open the operations; the month, member and sections work", async ({ page }) => {
     const errors = watchErrors(page);
     const addresses = await recordAddresses(page);

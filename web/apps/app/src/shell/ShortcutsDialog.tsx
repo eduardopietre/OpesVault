@@ -73,11 +73,7 @@ export function ShortcutsDialog({ open, onOpenChange }: { open: boolean; onOpenC
     >
       <ShortcutTable items={general} caption="Em todas as telas" />
       {screens.map((where) => (
-        <ShortcutTable
-          key={where}
-          items={SHORTCUTS.filter((item) => item.where === where)}
-          caption={`Em ${where}`}
-        />
+        <ShortcutTable key={where} items={SHORTCUTS.filter((item) => item.where === where)} caption={`Em ${where}`} />
       ))}
       <h3 className="mb-2 text-body font-semibold">Seções</h3>
       <SectionKeys />

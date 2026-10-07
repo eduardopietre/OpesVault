@@ -323,7 +323,7 @@ export function AppShell() {
               footer={footer}
               selectedId={current?.id ?? null}
               onNavigate={go}
-          onPreload={preload}
+              onPreload={preload}
               collapsed={collapsed}
             />
           </div>

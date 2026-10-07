@@ -314,7 +314,10 @@ export function LedgerDialogs({ host, onCreated }: LedgerDialogsProps) {
           confirmLabel="Salvar filtro"
           emptyMessage="Dê um nome ao filtro."
           onSubmit={(name) => {
-            const saved = act((l) => dom.savedFilters.saveFilter(l, snapshotFilter(spec.filter, name)), "salvar filtro");
+            const saved = act(
+              (l) => dom.savedFilters.saveFilter(l, snapshotFilter(spec.filter, name)),
+              "salvar filtro",
+            );
             notify(`Filtro “${saved.name}” salvo no projeto.`);
           }}
         />

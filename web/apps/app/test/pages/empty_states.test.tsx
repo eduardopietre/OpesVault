@@ -32,7 +32,9 @@ describe("Orçamento without a plan", () => {
     );
     await user.click(primary);
     const dialog = await screen.findByRole("dialog", { name: "Orçamento de abril de 2026" });
-    expect(within(dialog).getByText(/a média do gasto de cada categoria de janeiro de 2026 a março de 2026/)).toBeTruthy();
+    expect(
+      within(dialog).getByText(/a média do gasto de cada categoria de janeiro de 2026 a março de 2026/),
+    ).toBeTruthy();
     // each category starts with its average: the three months' spending divided by three, in cents
     const spent = queries.expensesByCategory(ledger, ym(2026, 1), ym(2026, 3));
     const expected = averageSpending(ledger, april);

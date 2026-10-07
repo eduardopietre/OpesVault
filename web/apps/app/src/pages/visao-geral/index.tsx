@@ -31,6 +31,7 @@ import { chooseMonth, useSharedMonth } from "../../data/month.ts";
 import { useGoTo } from "../../data/navigation.ts";
 import { useLater } from "../../data/later.ts";
 import { useAct, useLedger, useLedgerVersion, useWorkspace } from "../../data/react.tsx";
+import { useSession } from "../../session.tsx";
 import type { Workspace } from "../../data/workspace.ts";
 import { OverviewReasonDialog } from "../../dialogs/overview_reason.tsx";
 import { useBackupAlerts } from "../configuracoes/backup_state.ts";
@@ -89,13 +90,16 @@ export function Page() {
   const monthKey = ymStr(month);
   const readOnlyHint = "Este projeto está aberto só para leitura: outra aba ou aparelho está editando.";
 
-  // Opens on the latest month with activity, not on an empty current month (once per opening).
+  // Opens on the latest month with activity, not on an empty current month (once per opening). A project that
+  // brings its own month (the demonstration's last complete month) already set it when it opened.
+  const startMonth = useSession().open?.startMonth ?? null;
   useEffect(() => {
     if (placed.has(workspace)) return;
     placed.add(workspace);
+    if (startMonth) return;
     const latest = latestActivityMonth(workspace.ledger, today);
     if (latest) chooseMonth(latest);
-  }, [workspace, today]);
+  }, [workspace, today, startMonth]);
 
   const members = useLedger((ledger) => [...ledger.members.values()].filter((m) => m.active), "members");
   const memberOptions = useMemo<SelectOption[]>(

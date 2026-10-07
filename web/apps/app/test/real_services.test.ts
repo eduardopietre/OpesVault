@@ -90,7 +90,7 @@ describe("real services", () => {
     expect(queries.balance(ws.ledger, bank.id).toFixed()).toBe("876.55");
     // Undo is one step per action, and the undo is synced too.
     ws.act((l) => l.recordExpense(bank.id, food, "1.00", "2026-01-06" as IsoDate, "Engano"));
-    expect(ws.undo()).toBe("lançamento");
+    expect(ws.undo()).toBe("novo lançamento");
     await ws.settled();
 
     // A failing action leaves nothing behind.

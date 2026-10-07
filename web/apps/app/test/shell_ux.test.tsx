@@ -117,8 +117,7 @@ describe("named undo", () => {
       // a screen that knows what the person did names it
       const ids = rents(ledger);
       workspace.act(
-        (l) =>
-          edits.reclassify(l, ids, category(l, "Saúde"), "teste"),
+        (l) => edits.reclassify(l, ids, category(l, "Saúde"), "teste"),
         actionName("reclassificar", ids.length, "lançamento", "lançamentos"),
       );
       expect(workspace.undoStack.undoLabel()).toBe("reclassificar 3 lançamentos");
@@ -132,10 +131,7 @@ describe("named undo", () => {
     await screen.findByRole("heading", { level: 1, name: "Livro financeiro" });
     const ids = rents(workspace.ledger);
     reactAct(() => {
-      workspace.act(
-        (l) => edits.reclassify(l, ids, category(l, "Saúde"), "teste"),
-        "reclassificar 3 lançamentos",
-      );
+      workspace.act((l) => edits.reclassify(l, ids, category(l, "Saúde"), "teste"), "reclassificar 3 lançamentos");
     });
     const undo = await screen.findByRole("button", { name: "Desfazer: reclassificar 3 lançamentos" });
     expect(undo.getAttribute("title")).toBe("Desfazer: reclassificar 3 lançamentos (Ctrl+Z)");
@@ -182,8 +178,16 @@ describe("the demonstration's month", () => {
     ] as const) {
       if (path !== "/visao-geral") await reactAct(() => router.navigate({ to: path }));
       if (title) await screen.findByRole("heading", { level: 1, name: title });
-      const pickers = await screen.findAllByRole("group", { name: /mês|Mês|período/ });
-      expect(pickers.some((group) => label.test(group.textContent ?? "")), path).toBe(true);
+      // the month every page reads; the Livro shows it with "Mês" as its period, Relatórios for monthly reports
+      expect(sharedMonth(), path).toEqual(expected);
+      if (path === "/livro" || path === "/relatorios") continue;
+      await waitFor(() => {
+        const pickers = screen.getAllByRole("button", { name: /Escolher outro mês/ });
+        expect(
+          pickers.map((button) => button.getAttribute("aria-label")).some((name) => label.test(name ?? "")),
+          `${path}: ${pickers.map((button) => button.getAttribute("aria-label")).join(" | ")}`,
+        ).toBe(true);
+      });
     }
     // a project of one's own opens on the current month
     const plain = await mountOther();
@@ -234,7 +238,11 @@ describe("keyboard shortcuts", () => {
     }
     expect(h["redo"]).toHaveBeenCalledTimes(2);
     // every handler is in the list the sheet and the tooltips read
-    for (const id of Object.keys(h)) expect(SHORTCUTS.some((item) => item.id === id), id).toBe(true);
+    for (const id of Object.keys(h))
+      expect(
+        SHORTCUTS.some((item) => item.id === id),
+        id,
+      ).toBe(true);
   });
 
   it("`?` does not fire while typing or with a dialog open", () => {

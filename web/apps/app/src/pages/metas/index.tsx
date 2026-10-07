@@ -28,15 +28,7 @@ import { tableHeight } from "../../data/table_height.ts";
 import { GoalDialog } from "../../dialogs/goal_dialog.tsx";
 import { ReasonDialog } from "../../dialogs/livro_prompts.tsx";
 import { goalColumns } from "./columns.tsx";
-import {
-  dateOrNone,
-  goalExample,
-  goalRows,
-  moneyOrNone,
-  reachedLabel,
-  summaryLine,
-  type GoalExample,
-} from "./rows.ts";
+import { dateOrNone, goalExample, goalRows, moneyOrNone, reachedLabel, summaryLine, type GoalExample } from "./rows.ts";
 
 type Goal = dom.goals.Goal;
 

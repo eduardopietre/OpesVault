@@ -134,7 +134,7 @@ for (const size of SIZES) {
         await expect(page.getByText(/a linha de origem de cada item aparece aqui/)).toBeVisible();
 
         // a drop anywhere in the app (here on another page) brings the files to the page and reads them
-        await page.goto("/livro?demo");
+        await page.goto("/livro?demo&mes=atual");
         await expect(page.locator("h1").first()).toBeVisible();
         await dropOnApp(page, [{ ...CSV, name: "solto.csv", buffer: Buffer.from(CSV.buffer.toString() + "\n") }]);
         await expect(page).toHaveURL(/\/importar/);

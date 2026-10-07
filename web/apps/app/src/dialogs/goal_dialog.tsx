@@ -103,7 +103,7 @@ export function GoalDialog({ open, onClose, goal = null, example = null, onDone 
           ? start.target
             ? "Um exemplo para começar: uma reserva de emergência de seis meses de gastos (pela média dos últimos três meses), em um ano. Mude o que quiser; a meta não movimenta dinheiro."
             : "Um exemplo para começar: uma reserva de emergência em um ano. Informe o valor e mude o que quiser; a meta não movimenta dinheiro."
-          :"Acompanha quanto falta e em que ritmo o projeto chega lá. Não movimenta dinheiro."
+          : "Acompanha quanto falta e em que ritmo o projeto chega lá. Não movimenta dinheiro."
       }
       confirmLabel={goal ? "Salvar" : "Criar meta"}
       onConfirm={confirm}

@@ -102,7 +102,7 @@ test.describe("the walk", () => {
           };
         });
         const walker = new Walker(page, errors, view.path, { root: "body", limit: 40 });
-        await page.goto(`${view.path}${view.query ? `${view.query}&demo` : "?demo"}`);
+        await page.goto(`${view.path}${view.query ? `${view.query}&demo&mes=atual` : "?demo&mes=atual"}`);
         await expect(page.locator("h1").first()).toBeVisible();
         await settle(page, 600);
         expect(errors).toEqual([]);

@@ -275,10 +275,7 @@ export function Page() {
             description="Cadastre uma conta de investimento no banco onde ela fica, com as características (tipo, rentabilidade, vencimento). Depois, acompanhe aqui avaliações, aportes, resgates e rentabilidade."
             actions={
               <>
-                <EditButton
-                  variant="primary"
-                  onClick={() => goTo("contas", { ref: "bancarias", act: "investimento" })}
-                >
+                <EditButton variant="primary" onClick={() => goTo("contas", { ref: "bancarias", act: "investimento" })}>
                   Cadastrar conta de investimento…
                 </EditButton>
                 <EditButton onClick={() => dialog.show({ kind: "position" })}>Novo investimento…</EditButton>

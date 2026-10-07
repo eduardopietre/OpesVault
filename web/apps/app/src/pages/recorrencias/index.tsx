@@ -109,15 +109,10 @@ export function Page() {
       return;
     }
     const rule = selectedRule;
-    act(
-      (ledger) => dom.recurrence.updateRule(ledger, { ...rule, paused: !rule.paused }, "pausar/retomar"),
-      {
-        done: rule.paused
-          ? `Recorrência “${rule.description}” retomada.`
-          : `Recorrência “${rule.description}” pausada.`,
-        label: rule.paused ? "retomar recorrência" : "pausar recorrência",
-      },
-    );
+    act((ledger) => dom.recurrence.updateRule(ledger, { ...rule, paused: !rule.paused }, "pausar/retomar"), {
+      done: rule.paused ? `Recorrência “${rule.description}” retomada.` : `Recorrência “${rule.description}” pausada.`,
+      label: rule.paused ? "retomar recorrência" : "pausar recorrência",
+    });
   };
 
   const createFromCandidate = (key: string | null = pickCandidate) => {

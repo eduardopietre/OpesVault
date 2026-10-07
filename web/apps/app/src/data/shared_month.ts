@@ -9,7 +9,8 @@ export function monthOfDate(date: IsoDate | string): YearMonth {
   return { year: Number(date.slice(0, 4)), month: Number(date.slice(5, 7)) };
 }
 
-function localMonth(): YearMonth {
+/** This device's current month. */
+export function localMonth(): YearMonth {
   const now = new Date();
   return { year: now.getFullYear(), month: now.getMonth() + 1 };
 }

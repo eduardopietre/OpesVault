@@ -250,7 +250,13 @@ export function Review({ batchId, selected, onSelect, queue, ai }: ReviewProps) 
       description: "O item deixa de ser tratado como repetição e vira um lançamento novo ao ser aprovado.",
     });
     if (reason === null) return;
-    if (attempt(() => workspace.act((ledger) => importing.pipeline.keepSeparate(ledger, id, reason), "manter item separado") ?? true)) {
+    if (
+      attempt(
+        () =>
+          workspace.act((ledger) => importing.pipeline.keepSeparate(ledger, id, reason), "manter item separado") ??
+          true,
+      )
+    ) {
       advance(id);
     }
   };
@@ -265,7 +271,13 @@ export function Review({ batchId, selected, onSelect, queue, ai }: ReviewProps) 
       description: "O item não vira lançamento. O motivo fica registrado.",
     });
     if (reason === null) return;
-    if (attempt(() => workspace.act((ledger) => importing.pipeline.rejectItems(ledger, [id], reason), "rejeitar item importado") ?? true)) {
+    if (
+      attempt(
+        () =>
+          workspace.act((ledger) => importing.pipeline.rejectItems(ledger, [id], reason), "rejeitar item importado") ??
+          true,
+      )
+    ) {
       advance(id);
     }
   };

@@ -358,14 +358,14 @@ export class Walker {
     this.left.push(`${label} → ${here}`);
     if (/^\/(boas-vindas|entrar|projetos|criar-conta)/.test(here)) {
       // The session ended (the walk restarts from the demonstration project).
-      await this.#page.goto(`${this.#path}?demo`);
+      await this.#page.goto(`${this.#path}?demo&mes=atual`);
       await this.#page.locator("h1").first().waitFor({ state: "visible", timeout: 10_000 });
       return;
     }
     await this.#page.goBack();
     await this.#page.locator("h1").first().waitFor({ state: "visible", timeout: 10_000 });
     if (new URL(this.#page.url()).pathname !== this.#path) {
-      await this.#page.goto(`${this.#path}?demo`);
+      await this.#page.goto(`${this.#path}?demo&mes=atual`);
       await this.#page.locator("h1").first().waitFor({ state: "visible", timeout: 10_000 });
     }
   }

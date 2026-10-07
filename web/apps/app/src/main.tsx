@@ -3,6 +3,7 @@ import "@opesvault/ui/styles.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App.tsx";
+import { chooseMonth, localMonth } from "./data/shared_month.ts";
 import { devicePreferences, readIdleLock, tabHolder } from "./preferences.ts";
 import { UpdatePrompt } from "./pwa/UpdatePrompt.tsx";
 import { createAppRouter, preloadProjectScreens } from "./router.tsx";
@@ -47,7 +48,11 @@ async function start() {
     const actions = sessionActions(services, session);
     await actions.signIn(DEMO.email, DEMO.password);
     await actions.openProject(fake.demoProjectId, DEMO.projectPassword);
+    // "?demo&mes=atual": the current month instead of the demonstration's last complete one (the e2e tests
+    // written around this month's data).
+    if (url.searchParams.get("mes") === "atual") chooseMonth(localMonth());
     url.searchParams.delete("demo");
+    url.searchParams.delete("mes");
     history.replaceState(null, "", url.pathname + url.search + url.hash);
   }
 

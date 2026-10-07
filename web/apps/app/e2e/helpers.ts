@@ -33,9 +33,13 @@ export function watchErrors(page: Page): string[] {
   return errors;
 }
 
-/** Opens a path with the demonstration project already open. */
-export async function openDemo(page: Page, path: string): Promise<void> {
-  await page.goto(`${path}?demo`);
+/**
+ * Opens a path with the demonstration project already open. The tests were written around this month's data
+ * (the budget's states, the bill due on the 10th, today's recurrence), so they start on the current month;
+ * `{ month: "demo" }` keeps the demonstration's own month (its last complete one), as a visitor sees it.
+ */
+export async function openDemo(page: Page, path: string, { month = "current" }: { month?: "current" | "demo" } = {}) {
+  await page.goto(`${path}?demo${month === "current" ? "&mes=atual" : ""}`);
   await expect(page.locator("h1").first()).toBeVisible();
 }
 

@@ -210,10 +210,10 @@ export function Page() {
     const op = single;
     if (!file || op === null) return;
     const bytes = new Uint8Array(await file.arrayBuffer());
-    act(
-      (_ledger, session) => dom.attachments.attach(session, op.id, file.name, bytes),
-      { done: "Comprovante anexado e guardado cifrado no projeto.", label: "anexar comprovante" },
-    );
+    act((_ledger, session) => dom.attachments.attach(session, op.id, file.name, bytes), {
+      done: "Comprovante anexado e guardado cifrado no projeto.",
+      label: "anexar comprovante",
+    });
   };
   /** Takes a receipt off the selected entry (one act); a file nothing else uses leaves the project with it. */
   const detachReceipt = async () => {
@@ -278,13 +278,10 @@ export function Page() {
   };
   const markReviewed = () => {
     if (!targets.length) return;
-    act(
-      (l) => targets.reduce((n, id) => n + dom.anomalies.markReviewed(l, id), 0),
-      {
-        done: `${targets.length} lançamento(s) conferido(s); avisos de duplicidade ou valor silenciados.`,
-        label: actionName("conferir", targets.length, "lançamento", "lançamentos"),
-      },
-    );
+    act((l) => targets.reduce((n, id) => n + dom.anomalies.markReviewed(l, id), 0), {
+      done: `${targets.length} lançamento(s) conferido(s); avisos de duplicidade ou valor silenciados.`,
+      label: actionName("conferir", targets.length, "lançamento", "lançamentos"),
+    });
   };
   const reimbursement = () => {
     const op = needOne();

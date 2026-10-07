@@ -206,10 +206,10 @@ export function Page() {
 
   const saveOne = (categoryId: string, amount: Dec): boolean => {
     const at = one?.month ?? month;
-    const saved = act(
-      (ledger) => dom.budget.setBudget(ledger, categoryId, at, amount),
-      { done: `Orçamento de ${lower(at)} atualizado.`, label: `orçamento de ${lower(at)}` },
-    );
+    const saved = act((ledger) => dom.budget.setBudget(ledger, categoryId, at, amount), {
+      done: `Orçamento de ${lower(at)} atualizado.`,
+      label: `orçamento de ${lower(at)}`,
+    });
     return saved !== undefined;
   };
 
@@ -241,13 +241,10 @@ export function Page() {
       notify("Nenhuma alteração no orçamento.");
       return true;
     }
-    const changed = act(
-      (ledger) => applyGrid(ledger, at, changes),
-      {
-        done: `Orçamento de ${lower(at)}: ${plural(changes.length, "categoria alterada", "categorias alteradas")}.`,
-        label: `orçamento de ${lower(at)}`,
-      },
-    );
+    const changed = act((ledger) => applyGrid(ledger, at, changes), {
+      done: `Orçamento de ${lower(at)}: ${plural(changes.length, "categoria alterada", "categorias alteradas")}.`,
+      label: `orçamento de ${lower(at)}`,
+    });
     return changed !== undefined;
   };
 

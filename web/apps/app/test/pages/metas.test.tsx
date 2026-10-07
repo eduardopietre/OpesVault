@@ -2,17 +2,10 @@ import { charts, dom, formatBrl, makeDate, ymOf, type Id } from "@opesvault/doma
 import { act as reactAct, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { pinToday } from "../clock.ts";
-import {
-  NONE,
-  dateOrNone,
-  moneyOrNone,
-  nameOf,
-  reachedLabel,
-  shareLabel,
-  summaryLine,
-} from "../../src/pages/metas/rows.ts";
+import { nameOf, reachedLabel, shareLabel, summaryLine } from "../../src/pages/metas/rows.ts";
 import { accountId, flat, openPage, rowOf, undoOnce } from "./recorrencias_harness.tsx";
 import { addressSettles } from "../navigations.ts";
+import { DASH as NONE, dateOr as dateOrNone, moneyOr as moneyOrNone } from "../../src/data/money.ts";
 
 vi.mock("../../../../packages/ui/src/chart/echarts.ts", () => import("./fake_echarts.ts"));
 

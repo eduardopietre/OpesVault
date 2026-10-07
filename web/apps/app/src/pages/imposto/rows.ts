@@ -10,7 +10,6 @@ import {
   cashDate,
   dom,
   formatBrl,
-  formatDateBr,
   tax,
   type Dec,
   type Id,
@@ -18,6 +17,7 @@ import {
   type Ledger,
   type YearMonth,
 } from "@opesvault/domain";
+import { moneyOr, dateOr, DASH } from "../../data/money.ts";
 
 export interface Row {
   id: string;
@@ -39,13 +39,6 @@ export const SEVERITY_TONES: Readonly<Record<dom.alerts.Severity, IssueTone>> = 
   info: "neutral",
 };
 
-export const DASH = "—";
-
-/** Money, or "—" when unknown. */
-export const fmt = (value: Dec | null | undefined): string =>
-  value === null || value === undefined ? DASH : formatBrl(value);
-/** A date, or "—". */
-export const fmtDate = (value: IsoDate | null | undefined): string => (value ? formatDateBr(value) : DASH);
 /** Money only when there is something (a non-zero amount), else "—". */
 const optional = (value: Dec | null | undefined): string => (value && !value.isZero() ? formatBrl(value) : DASH);
 export const monthText = (month: YearMonth): string => `${String(month.month).padStart(2, "0")}/${month.year}`;
@@ -98,11 +91,11 @@ export function taxableRows(found: tax.declaration.Income, name: Names): Row[] {
       r.payer,
       taxId(r.tax_id),
       name(r.member_id),
-      fmt(r.taxable) + (r.net_only ? " *" : ""),
-      fmt(r.social_security),
-      fmt(r.withheld),
-      fmt(r.thirteenth),
-      fmt(r.thirteenth_withheld),
+      moneyOr(r.taxable) + (r.net_only ? " *" : ""),
+      moneyOr(r.social_security),
+      moneyOr(r.withheld),
+      moneyOr(r.thirteenth),
+      moneyOr(r.thirteenth_withheld),
     ],
   }));
 }
@@ -115,7 +108,7 @@ export function otherIncomeRows(found: tax.declaration.Income, name: Names): Row
       r.source,
       r.subject === tax.model.NatureSubject.CATEGORY || r.tax_id ? taxId(r.tax_id) : DASH,
       name(r.member_id),
-      fmt(r.amount),
+      moneyOr(r.amount),
       optional(r.withheld),
     ],
   }));
@@ -127,9 +120,9 @@ export function carneLeaoRows(found: tax.declaration.Income, name: Names): Row[]
     cells: [
       monthText(m.month),
       name(m.member_id),
-      fmt(m.amount),
-      m.paid.isZero() ? "não registrado" : fmt(m.paid),
-      fmtDate(tax.variableIncome.dueDate(m.month)),
+      moneyOr(m.amount),
+      m.paid.isZero() ? "não registrado" : moneyOr(m.paid),
+      dateOr(tax.variableIncome.dueDate(m.month)),
     ],
   }));
 }
@@ -146,9 +139,9 @@ export function paymentRows(found: readonly tax.declaration.PaymentRow[], name: 
         r.payee,
         taxId(r.tax_id),
         name(r.beneficiary_id),
-        fmt(r.paid),
+        moneyOr(r.paid),
         optional(r.not_deductible),
-        fmt(tax.declaration.paymentNet(r)),
+        moneyOr(tax.declaration.paymentNet(r)),
         `${count - r.without_receipt} de ${count}`,
       ],
     };
@@ -165,8 +158,8 @@ export function assetRows(found: readonly tax.declaration.AssetRow[]): Row[] {
       r.name,
       r.description,
       r.subject !== "declared" ? taxId(r.tax_id) : DASH,
-      fmt(r.previous),
-      fmt(r.current),
+      moneyOr(r.previous),
+      moneyOr(r.current),
     ],
   }));
 }
@@ -174,7 +167,7 @@ export function assetRows(found: readonly tax.declaration.AssetRow[]): Row[] {
 export function debtRows(found: readonly tax.declaration.DebtRow[]): Row[] {
   return found.map((d) => ({
     id: d.account_id,
-    cells: [d.name, taxId(d.tax_id), fmt(d.previous.abs()), fmt(d.current.abs())],
+    cells: [d.name, taxId(d.tax_id), moneyOr(d.previous.abs()), moneyOr(d.current.abs())],
   }));
 }
 
@@ -186,15 +179,15 @@ export function variableRows(found: readonly tax.variableIncome.MonthResult[]): 
     cells: [
       monthText(r.month),
       tax.model.BUCKET_LABELS[r.bucket] + (r.approximate ? " *" : ""),
-      fmt(r.sales),
-      fmt(r.result),
+      moneyOr(r.sales),
+      moneyOr(r.result),
       optional(r.exempt_gain),
       optional(r.compensated),
-      fmt(r.base),
-      fmt(r.tax),
+      moneyOr(r.base),
+      moneyOr(r.tax),
       optional(r.withheld),
-      fmt(r.due),
-      fmtDate(r.due_date),
+      moneyOr(r.due),
+      dateOr(r.due_date),
       optional(r.paid),
     ],
   }));
@@ -207,7 +200,7 @@ export function variableNotes(
   const notes: string[] = [];
   const losses = [...carried]
     .filter(([, value]) => !value.isZero())
-    .map(([bucket, value]) => `${tax.model.BUCKET_LABELS[bucket]}: ${fmt(value)}`);
+    .map(([bucket, value]) => `${tax.model.BUCKET_LABELS[bucket]}: ${moneyOr(value)}`);
   if (losses.length) notes.push("Prejuízo a compensar no fim do ano — " + losses.join("; ") + ".");
   if (found.some((r) => r.approximate)) {
     notes.push("* Day trade separado pelo preço médio das compras do mesmo dia; confira com a nota.");
@@ -226,19 +219,19 @@ export function simulationRows(comparison: tax.simulation.Comparison): Row[] {
   const simple = comparison.simplified;
   const full = comparison.itemized;
   const cell = (model: tax.simulation.Model | null, key: "deductions" | "base" | "tax") =>
-    fmt(model === null ? null : model[key]);
+    moneyOr(model === null ? null : model[key]);
   return [
-    { id: "taxable", cells: ["Rendimentos tributáveis", fmt(comparison.taxable), fmt(comparison.taxable)] },
+    { id: "taxable", cells: ["Rendimentos tributáveis", moneyOr(comparison.taxable), moneyOr(comparison.taxable)] },
     { id: "deductions", cells: ["Desconto ou deduções", cell(simple, "deductions"), cell(full, "deductions")] },
     { id: "base", cells: ["Base de cálculo", cell(simple, "base"), cell(full, "base")] },
     { id: "tax", cells: ["Imposto devido", cell(simple, "tax"), cell(full, "tax")] },
-    { id: "paid", cells: ["Imposto já pago ou retido", fmt(comparison.withheld), fmt(comparison.withheld)] },
+    { id: "paid", cells: ["Imposto já pago ou retido", moneyOr(comparison.withheld), moneyOr(comparison.withheld)] },
     {
       id: "balance",
       cells: [
         "A pagar (+) ou a restituir (−)",
-        fmt(tax.simulation.balanceOf(comparison, simple)),
-        fmt(tax.simulation.balanceOf(comparison, full)),
+        moneyOr(tax.simulation.balanceOf(comparison, simple)),
+        moneyOr(tax.simulation.balanceOf(comparison, full)),
       ],
     },
   ];
@@ -254,7 +247,7 @@ export function simulationNotes(comparison: tax.simulation.Comparison): string {
     ["Fora da base", comparison.left_out],
   ] as const) {
     if (values.size) {
-      notes.push(`${title}: ` + [...values].map(([label, value]) => `${label} ${fmt(value)}`).join("; ") + ".");
+      notes.push(`${title}: ` + [...values].map(([label, value]) => `${label} ${moneyOr(value)}`).join("; ") + ".");
     }
   }
   return notes.join(" ");
@@ -285,9 +278,9 @@ export function checkRows(found: readonly tax.statements.Check[]): Row[] {
       id: c.field,
       cells: [
         tax.model.FIELD_LABELS[c.field],
-        fmt(c.informed),
-        c.recorded !== null ? fmt(c.recorded) : "sem registro",
-        tax.statements.matches(c) || difference === null ? DASH : fmt(difference),
+        moneyOr(c.informed),
+        c.recorded !== null ? moneyOr(c.recorded) : "sem registro",
+        tax.statements.matches(c) || difference === null ? DASH : moneyOr(difference),
       ],
     };
   });

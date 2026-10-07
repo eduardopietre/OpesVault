@@ -3,13 +3,14 @@
  * (gross, tax withheld, INSS) of each deposit, or "receipts" to attach the receipt of each payment. The list
  * stays open while each one is done.
  */
-import { Dec, DomainError, cashDate, dom, formatBrl, formatDateBr, type Id, type Ledger, tax } from "@opesvault/domain";
+import { Dec, DomainError, cashDate, dom, formatBrl, type Id, type Ledger, tax } from "@opesvault/domain";
 import { Button, DataTable, ElidedText, type DataColumn } from "@opesvault/ui";
 import { useRef, useState } from "react";
 import { useLedger, useWorkspace } from "../data/react.tsx";
 import { Caption, FormDialog, useFormAct } from "./livro_form.tsx";
 import { IncomeDetailDialog } from "./income_detail.tsx";
 import { READ_ONLY_TIP } from "../data/read_only.ts";
+import { dateOr, moneyOr } from "../data/money.ts";
 
 export type OperationsMode = "detail" | "receipts";
 
@@ -37,16 +38,14 @@ export function operationLines(ledger: Ledger, ids: readonly Id[], mode: Operati
     if (mode === "detail") {
       const detail = tax.records.detailOf(ledger, id);
       status = detail
-        ? [detail.gross, detail.withheld, detail.social_security]
-            .map((v) => (v === null ? "—" : formatBrl(v)))
-            .join(" / ")
+        ? [detail.gross, detail.withheld, detail.social_security].map((v) => moneyOr(v)).join(" / ")
         : "não detalhado";
     } else {
       const found = dom.attachments.ofOperation(ledger, id);
       status = found.length ? `${found.length} anexo(s)` : "falta";
     }
     const day = cashDate(op);
-    out.push({ id, date: day ? formatDateBr(day) : "—", description: op.description, value: formatBrl(value), status });
+    out.push({ id, date: dateOr(day), description: op.description, value: formatBrl(value), status });
   }
   return out;
 }

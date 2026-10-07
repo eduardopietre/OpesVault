@@ -44,10 +44,11 @@ import { useSharedMonth } from "../../data/month.ts";
 import { useGoTo, useReveal } from "../../data/navigation.ts";
 import { useUndo } from "../../shell/undo.tsx";
 import { toChartData } from "../../data/chart_data.ts";
-import { STATE_LABELS, cents, categoryRef, parseCategoryRef, plural, summaryLine, usedPercent } from "./rows.ts";
+import { STATE_LABELS, categoryRef, parseCategoryRef, plural, summaryLine, usedPercent } from "./rows.ts";
 import { EditButton } from "../../components/list_parts.tsx";
 import { useLock } from "../../data/read_only.ts";
 import { useDialog } from "../../data/dialog.ts";
+import { cents } from "../../data/money.ts";
 
 type Row = dom.budget.BudgetRow;
 

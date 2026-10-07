@@ -18,11 +18,12 @@ import { describe, expect, it, vi } from "vitest";
 import { App } from "../../src/App.tsx";
 import { chooseMonth } from "../../src/data/month.ts";
 import { toChartData } from "../../src/data/chart_data.ts";
-import { categoryRef, cents, parseCategoryRef, summaryLine, usedPercent } from "../../src/pages/orcamento/rows.ts";
+import { categoryRef, parseCategoryRef, summaryLine, usedPercent } from "../../src/pages/orcamento/rows.ts";
 import { createAppRouter } from "../../src/router.tsx";
 import { DEMO, createFakeServices } from "../../src/services/fake.ts";
 import { SessionStore } from "../../src/session.tsx";
 import { addressSettles, navigations, wentTo } from "../navigations.ts";
+import { cents } from "../../src/data/money.ts";
 
 // happy-dom has no canvas: the chart itself is not drawn here (the e2e tests do); its table is.
 vi.mock("../../../../packages/ui/src/chart/echarts.ts", () => ({

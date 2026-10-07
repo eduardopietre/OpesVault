@@ -8,6 +8,7 @@ import { RadioGroup } from "@opesvault/ui";
 import { useMemo, useState } from "react";
 import { useWorkspace } from "../data/react.tsx";
 import { Caption, FormDialog, useFormAct } from "./livro_form.tsx";
+import { dateOr } from "../data/money.ts";
 
 type Forecast = dom.recurrence.Forecast;
 
@@ -37,7 +38,7 @@ export function RecurrenceLinkDialog({ open, onClose, forecast, candidates, onDo
           : null;
         return {
           value: op.id,
-          label: `${when ? formatDateBr(when) : "—"} ${op.description}`,
+          label: `${dateOr(when)} ${op.description}`,
           ...(value ? { description: formatBrl(value) } : {}),
         };
       }),

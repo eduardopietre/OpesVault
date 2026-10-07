@@ -2,7 +2,7 @@
  * Financiamentos (desktop `accounts/loans.py`): each contract with its schedule, what is left to pay and early
  * payments. The schedule is computed from the contract; the ledger's balance is the reference.
  */
-import { charts, dom, formatDateBr, type Id } from "@opesvault/domain";
+import { charts, dom, type Id } from "@opesvault/domain";
 import { ChartView, Collapsible, MenuButton, notify } from "@opesvault/ui";
 import { useState } from "react";
 import { useGoTo } from "../../data/navigation.ts";
@@ -14,9 +14,10 @@ import { FigureCard, Money } from "../../components/figures.tsx";
 import { toChartData } from "../../data/chart_data.ts";
 import { type TabReveal, EditButton, Empty, ListTable, Toolbar, useTabReveal } from "../../components/list_parts.tsx";
 import type { TierColumn } from "../../components/tier_columns.ts";
-import { cents, installmentRows, loanRows, money, nextInstallment, type InstallmentRow, type LoanRow } from "./rows.ts";
+import { installmentRows, loanRows, nextInstallment, type InstallmentRow, type LoanRow } from "./rows.ts";
 import { useDialog } from "../../data/dialog.ts";
 import { useLock } from "../../data/read_only.ts";
+import { cents, moneyOr, dateOr } from "../../data/money.ts";
 
 const { loans } = dom;
 
@@ -35,7 +36,7 @@ const COLUMNS: TierColumn<LoanRow>[] = [
   {
     id: "outstanding",
     header: "Saldo devedor",
-    cell: (r) => money(r.outstanding),
+    cell: (r) => moneyOr(r.outstanding),
     sortValue: (r) => cents(r.outstanding),
     align: "end",
     width: 135,
@@ -44,7 +45,7 @@ const COLUMNS: TierColumn<LoanRow>[] = [
   {
     id: "inLedger",
     header: "No livro",
-    cell: (r) => money(r.inLedger),
+    cell: (r) => moneyOr(r.inLedger),
     sortValue: (r) => cents(r.inLedger),
     align: "end",
     width: 135,
@@ -64,7 +65,7 @@ const SCHEDULE_COLUMNS: TierColumn<InstallmentRow>[] = [
   {
     id: "payment",
     header: "Parcela",
-    cell: (r) => money(r.payment),
+    cell: (r) => moneyOr(r.payment),
     sortValue: (r) => cents(r.payment),
     align: "end",
     width: 120,
@@ -73,7 +74,7 @@ const SCHEDULE_COLUMNS: TierColumn<InstallmentRow>[] = [
   {
     id: "amortization",
     header: "Amortização",
-    cell: (r) => money(r.amortization),
+    cell: (r) => moneyOr(r.amortization),
     sortValue: (r) => cents(r.amortization),
     align: "end",
     width: 120,
@@ -82,7 +83,7 @@ const SCHEDULE_COLUMNS: TierColumn<InstallmentRow>[] = [
   {
     id: "interest",
     header: "Juros",
-    cell: (r) => money(r.interest),
+    cell: (r) => moneyOr(r.interest),
     sortValue: (r) => cents(r.interest),
     align: "end",
     width: 110,
@@ -91,7 +92,7 @@ const SCHEDULE_COLUMNS: TierColumn<InstallmentRow>[] = [
   {
     id: "fees",
     header: "Seguros e tarifas",
-    cell: (r) => money(r.fees),
+    cell: (r) => moneyOr(r.fees),
     sortValue: (r) => cents(r.fees),
     align: "end",
     width: 130,
@@ -100,7 +101,7 @@ const SCHEDULE_COLUMNS: TierColumn<InstallmentRow>[] = [
   {
     id: "balanceAfter",
     header: "Saldo após",
-    cell: (r) => money(r.balanceAfter),
+    cell: (r) => moneyOr(r.balanceAfter),
     sortValue: (r) => cents(r.balanceAfter),
     align: "end",
     width: 130,
@@ -227,7 +228,7 @@ export function LoansTab({ reveal }: { reveal?: TabReveal<LoanReveal> | null }) 
                   value: status.overdue,
                   tone: status.overdue ? "negative" : undefined,
                 },
-                { label: "Termina em", value: status.end ? formatDateBr(status.end) : "—" },
+                { label: "Termina em", value: dateOr(status.end) },
               ]}
             />
           </div>

@@ -10,6 +10,7 @@ import type { ReactNode } from "react";
 import type { TierColumn } from "../../components/tier_columns.ts";
 import { Warn } from "../../components/list_parts.tsx";
 import type { Row } from "./rows.ts";
+import { cents } from "../../data/money.ts";
 
 type Kind = "text" | "money" | "date" | "month" | "count";
 
@@ -28,8 +29,7 @@ const MISSING = new Set(["falta", "a definir", "A definir", "não registrado", "
 /** The exact cents of a money cell ("R$ 1.234,56 *", "-R$ 10,00"), or null for a dash or text. */
 export function moneySort(text: string): bigint | null {
   try {
-    const value = parseBrl(text.replace("R$", "").replace("*", "").trim());
-    return BigInt(value.quantize("0.01", "ROUND_HALF_UP").toFixed().replace(".", ""));
+    return cents(parseBrl(text.replace("R$", "").replace("*", "").trim()));
   } catch (error) {
     if (error instanceof MoneyError) return null;
     throw error;

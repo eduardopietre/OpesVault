@@ -8,6 +8,7 @@ import { AnimatePresence, motion } from "motion/react";
 import type { Link } from "../../data/links.ts";
 import { eventLink } from "../../data/links.ts";
 import { KIND_LABELS, dayTitle } from "./rows.ts";
+import { cents } from "../../data/money.ts";
 
 type AgendaEvent = dom.agenda.AgendaEvent;
 
@@ -79,7 +80,7 @@ export function EntriesTable({ rows, selectedId, onSelect, onOpen }: EntriesTabl
       id: "valor",
       header: "Valor",
       cell: (r) => formatBrl(r.event.amount.abs()),
-      sortValue: (r) => r.event.amount.abs().toFixed().padStart(20, "0"),
+      sortValue: (r) => cents(r.event.amount.abs()),
       align: "end",
       width: 120,
     },

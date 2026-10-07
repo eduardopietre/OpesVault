@@ -3,17 +3,9 @@
  * (assets and debts on 31/12, income by category, investments, deductible expenses by person), so the print
  * view can draw them with React instead of injecting HTML. A test compares the two section by section.
  */
-import {
-  AccountType,
-  cashDate,
-  dom,
-  exporting,
-  formatDateBr,
-  sortedBy,
-  type Dec,
-  type Ledger,
-} from "@opesvault/domain";
+import { AccountType, cashDate, dom, exporting, sortedBy, type Dec, type Ledger } from "@opesvault/domain";
 import type { ReportTable } from "../visao-geral/report.ts";
+import { dateOr } from "../../data/money.ts";
 
 export interface DeductibleGroupData {
   /** "Saúde — Ana", the bold line above the table. */
@@ -86,7 +78,7 @@ export function annualReportData(ledger: Ledger, year: number): AnnualReportData
         numeric: [2],
         rows: group.lines.map((line) => {
           const when = cashDate(line.operation) ?? line.operation.occurred_on;
-          return [when ? formatDateBr(when) : "—", line.operation.description, line.amount];
+          return [dateOr(when), line.operation.description, line.amount];
         }),
       },
     };

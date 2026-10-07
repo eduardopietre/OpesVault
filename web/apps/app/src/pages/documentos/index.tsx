@@ -2,7 +2,7 @@
  * Documentos (desktop `ui/pages/documents_page.py`): every file stored in the project, imports and receipts,
  * what uses each one and the original itself, drawn in the tab only when asked for (docs/03 §6).
  */
-import { dom, exporting, formatDateBr, type Id, type IsoDate } from "@opesvault/domain";
+import { dom, exporting, type Id } from "@opesvault/domain";
 import {
   Adaptive,
   Button,
@@ -24,8 +24,7 @@ import { DocumentPanel } from "./panel.tsx";
 import { documentRows, fileSize, summaryLine, type DocumentRow, type ReceiptUse } from "./rows.ts";
 import { exportUnencrypted, NOT_ENCRYPTED } from "../../data/export_file.ts";
 import { DOCUMENT_MIME, type DocumentKind } from "../../data/use_document.ts";
-
-const day = (date: IsoDate | null) => (date ? formatDateBr(date) : "—");
+import { dateOr } from "../../data/money.ts";
 
 const COLUMNS: DataColumn<DocumentRow>[] = [
   {
@@ -36,7 +35,7 @@ const COLUMNS: DataColumn<DocumentRow>[] = [
     grow: 2,
     width: 160,
   },
-  { id: "date", header: "Data", cell: (row) => day(row.date), sortValue: (row) => row.date ?? "", width: 112 },
+  { id: "date", header: "Data", cell: (row) => dateOr(row.date), sortValue: (row) => row.date ?? "", width: 112 },
   {
     id: "where",
     header: "Conta ou cartão",

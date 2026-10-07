@@ -2,7 +2,7 @@
  * Reembolsos e acertos (desktop `ui/pages/sharing_page.py`): money others will pay back, and who owes whom
  * inside the project, with the expenses that form each balance and the settlements already recorded.
  */
-import { dom, formatBrl, formatDateBr, type Dec, type Id, type IsoDate } from "@opesvault/domain";
+import { dom, formatBrl, type Dec, type Id } from "@opesvault/domain";
 import {
   Adaptive,
   Button,
@@ -28,7 +28,6 @@ import { OverviewReasonDialog } from "../../dialogs/overview_reason.tsx";
 import { SharingReceiveDialog } from "../../dialogs/sharing_receive.tsx";
 import { SharingSettleDialog } from "../../dialogs/sharing_settle.tsx";
 import {
-  cents,
   findReimbursement,
   sharesOf,
   sharingView,
@@ -41,9 +40,9 @@ import {
 import { EditButton } from "../../components/list_parts.tsx";
 import { useLock } from "../../data/read_only.ts";
 import { useDialog } from "../../data/dialog.ts";
+import { cents, dateOr } from "../../data/money.ts";
 
 const money = (value: Dec) => formatBrl(value);
-const day = (date: IsoDate | null) => (date ? formatDateBr(date) : "—");
 
 const STATE_VIEW = {
   pending: { icon: <Clock aria-hidden="true" className="size-4 shrink-0" />, tone: "text-warning" },
@@ -66,7 +65,7 @@ function StateLabel({ row }: { row: ReimbursementRow }) {
 const text = (value: string) => <ElidedText>{value}</ElidedText>;
 
 const REIMBURSEMENT_COLUMNS: DataColumn<ReimbursementRow>[] = [
-  { id: "date", header: "Data", cell: (r) => day(r.date), sortValue: (r) => r.date ?? "", width: 112, priority: 2 },
+  { id: "date", header: "Data", cell: (r) => dateOr(r.date), sortValue: (r) => r.date ?? "", width: 112, priority: 2 },
   {
     id: "description",
     header: "Lançamento",
@@ -130,7 +129,7 @@ const BALANCE_COLUMNS: DataColumn<BalanceRow>[] = [
 ];
 
 const SHARE_COLUMNS: DataColumn<ShareRow>[] = [
-  { id: "date", header: "Data", cell: (r) => day(r.date), sortValue: (r) => r.date ?? "", width: 112, priority: 2 },
+  { id: "date", header: "Data", cell: (r) => dateOr(r.date), sortValue: (r) => r.date ?? "", width: 112, priority: 2 },
   {
     id: "description",
     header: "Lançamento",
@@ -150,7 +149,7 @@ const SHARE_COLUMNS: DataColumn<ShareRow>[] = [
 ];
 
 const HISTORY_COLUMNS: DataColumn<SettlementRow>[] = [
-  { id: "date", header: "Data", cell: (r) => day(r.date), sortValue: (r) => r.date, width: 112 },
+  { id: "date", header: "Data", cell: (r) => dateOr(r.date), sortValue: (r) => r.date, width: 112 },
   { id: "debtor", header: "Quem pagou", cell: (r) => text(r.debtor), sortValue: (r) => r.debtor, grow: 1, width: 110 },
   {
     id: "creditor",

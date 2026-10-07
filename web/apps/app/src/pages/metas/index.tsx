@@ -27,10 +27,11 @@ import { tableHeight } from "../../data/table_height.ts";
 import { GoalDialog } from "../../dialogs/goal_dialog.tsx";
 import { ReasonDialog } from "../../dialogs/livro_prompts.tsx";
 import { goalColumns } from "./columns.tsx";
-import { dateOrNone, goalExample, goalRows, moneyOrNone, reachedLabel, summaryLine, type GoalExample } from "./rows.ts";
+import { goalExample, goalRows, reachedLabel, summaryLine, type GoalExample } from "./rows.ts";
 import { EditButton } from "../../components/list_parts.tsx";
 import { useLock } from "../../data/read_only.ts";
 import { useDialog } from "../../data/dialog.ts";
+import { moneyOr, dateOr } from "../../data/money.ts";
 
 type Goal = dom.goals.Goal;
 
@@ -106,12 +107,12 @@ export function Page() {
     ? [
         {
           label: "Falta por mês",
-          value: moneyOrNone(p.neededPerMonth),
+          value: moneyOr(p.neededPerMonth),
           note: p.monthsLeft === null ? "Sem prazo" : `${p.monthsLeft} mês(es) até o prazo`,
         },
-        { label: "Ritmo recente", value: moneyOrNone(p.pace), note: "Média por mês nos últimos meses com registros" },
+        { label: "Ritmo recente", value: moneyOr(p.pace), note: "Média por mês nos últimos meses com registros" },
         { label: "Alcança em", value: reachedLabel(p.reachedOnPace), note: "Se o ritmo recente continuar" },
-        { label: "Prazo", value: dateOrNone(selected?.goal.target_date ?? null) },
+        { label: "Prazo", value: dateOr(selected?.goal.target_date ?? null) },
       ]
     : [];
 

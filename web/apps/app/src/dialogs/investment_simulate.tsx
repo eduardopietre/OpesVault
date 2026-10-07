@@ -11,6 +11,7 @@ import { useWorkspace } from "../data/react.tsx";
 import { Caption, dateText, editableMoney, readDate, readMoney } from "./livro_form.tsx";
 import { percent } from "./investment_forms.ts";
 import type { RedemptionPrefill } from "./investment_redeem.tsx";
+import { moneyOr } from "../data/money.ts";
 
 const { performance, simulation } = investments;
 
@@ -155,7 +156,7 @@ export function InvestmentSimulateDialog({
                 hint={sim.cost_method}
               />
               <Row label="Ganho" value={money(sim.gain)} />
-              <Row label="Base do imposto" value={sim.tax_base === null ? "—" : money(sim.tax_base)} />
+              <Row label="Base do imposto" value={moneyOr(sim.tax_base)} />
               <Row label="Regra" value={sim.rule} />
               <Row label="Imposto" value={money(sim.tax)} estimated />
               <Row label="Taxas" value={formatBrl(sim.fees)} />

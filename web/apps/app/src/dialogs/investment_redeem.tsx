@@ -3,12 +3,13 @@
  * `complete`). Net credited now = gross − tax withheld − fees; tax due later stays a liability until paid. A
  * redemption known only by its net is incomplete: results that use it say so, until it is completed.
  */
-import { DomainError, investments, formatBrl, formatDateBr, type Id } from "@opesvault/domain";
+import { DomainError, investments, formatDateBr, type Id } from "@opesvault/domain";
 import { Checkbox, DateField, MoneyField, Select } from "@opesvault/ui";
 import { useState } from "react";
 import { useWorkspace } from "../data/react.tsx";
 import { cashAccounts } from "./investment_forms.ts";
 import { Caption, FormDialog, FormGrid, FullRow, dateText, readDate, readMoney, useFormAct } from "./livro_form.tsx";
+import { moneyOr } from "../data/money.ts";
 
 const { service } = investments;
 
@@ -206,8 +207,8 @@ export function InvestmentCompleteDialog({ open, onClose, onDone, eventId }: Flo
       <FormGrid columns={1}>
         {current ? (
           <Caption>
-            Resgate de {formatDateBr(current.on)} com líquido {current.net ? formatBrl(current.net) : "—"}. O líquido
-            informado deve bater com o bruto menos imposto e taxas.
+            Resgate de {formatDateBr(current.on)} com líquido {moneyOr(current.net)}. O líquido informado deve bater com
+            o bruto menos imposto e taxas.
           </Caption>
         ) : null}
         <MoneyField label="Valor bruto" value={gross} onChange={setGross} data-autofocus="" />

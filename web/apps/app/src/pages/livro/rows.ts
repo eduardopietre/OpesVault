@@ -22,11 +22,11 @@ import {
   type Operation,
   type YearMonth,
   formatBrl,
-  formatDateBr,
   yearOf,
   monthOf,
 } from "@opesvault/domain";
 import { monthName } from "@opesvault/ui";
+import { cents, DASH } from "../../data/money.ts";
 
 export const KIND_LABELS: Readonly<Record<OperationKind, string>> = {
   [OperationKind.OPENING_BALANCE]: "Saldo de abertura",
@@ -109,7 +109,7 @@ export function operationAmount(op: Operation): string {
 
 /** Cents as a bigint, to sort amounts exactly. */
 export function amountKey(op: Operation): bigint {
-  return operationTotal(op).mul(100).toIntegral("ROUND_HALF_UP").toBigInt();
+  return cents(operationTotal(op));
 }
 
 export function operationAccounts(ledger: Ledger, op: Operation): string {
@@ -129,11 +129,7 @@ export function shortMonth(month: YearMonth): string {
 }
 
 export function competenceLabel(op: Operation): string {
-  return op.accrual_month ? shortMonth(op.accrual_month) : "—";
-}
-
-export function dateLabel(date: IsoDate | null): string {
-  return date ? formatDateBr(date) : "—";
+  return op.accrual_month ? shortMonth(op.accrual_month) : DASH;
 }
 
 // ── the filters ─────────────────────────────────

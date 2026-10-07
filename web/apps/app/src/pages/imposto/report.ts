@@ -4,8 +4,9 @@
  * so the print view can draw them with React instead of injecting HTML. A test compares the two section by
  * section.
  */
-import { dom, exporting, formatDateBr, tax, type Id, type IsoDate, type Ledger } from "@opesvault/domain";
+import { dom, exporting, tax, type Id, type IsoDate, type Ledger } from "@opesvault/domain";
 import type { ReportTable } from "../visao-geral/report.ts";
+import { dateOr } from "../../data/money.ts";
 
 export interface ReportSection {
   id: string;
@@ -57,12 +58,7 @@ export function taxReportData(ledger: Ledger, year: number, today: IsoDate, decl
           title: "Dependentes",
           headers: ["Nome", "CPF", "Nascimento", "Relação"],
           numeric: [],
-          rows: deps.map((d) => [
-            d.name,
-            tid(d.cpf),
-            d.birth_date ? formatDateBr(d.birth_date) : "—",
-            d.relation || "—",
-          ]),
+          rows: deps.map((d) => [d.name, tid(d.cpf), dateOr(d.birth_date), d.relation || "—"]),
         },
       });
     }

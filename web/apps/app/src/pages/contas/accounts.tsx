@@ -21,8 +21,9 @@ import {
   useTabReveal,
 } from "../../components/list_parts.tsx";
 import type { TierColumn } from "../../components/tier_columns.ts";
-import { accountRows, cents, checkRows, money, type AccountRow, type CheckRow } from "./rows.ts";
+import { accountRows, checkRows, type AccountRow, type CheckRow } from "./rows.ts";
 import { useDialog } from "../../data/dialog.ts";
+import { cents, moneyOr } from "../../data/money.ts";
 
 const HISTORY_MONTHS = 12;
 
@@ -59,7 +60,7 @@ const COLUMNS: TierColumn<AccountRow>[] = [
   {
     id: "balance",
     header: "Saldo",
-    cell: (r) => money(r.balance),
+    cell: (r) => moneyOr(r.balance),
     sortValue: (r) => cents(r.balance),
     align: "end",
     width: 125,
@@ -227,7 +228,7 @@ export function AccountsTab({ reveal }: { reveal?: TabReveal<AccountReveal> | nu
               .find((r) => r.check.id === check.id);
             if (found?.matches) notify("Saldo conferido: confere com o banco.");
             else if (found) {
-              notify(`Saldo conferido: diferença de ${money(found.difference)}. Procure o lançamento.`, {
+              notify(`Saldo conferido: diferença de ${moneyOr(found.difference)}. Procure o lançamento.`, {
                 tone: "warning",
               });
             }

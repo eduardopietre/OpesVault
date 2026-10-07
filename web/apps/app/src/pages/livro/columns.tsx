@@ -11,11 +11,11 @@ import {
   ORIGIN_LABELS,
   amountKey,
   competenceLabel,
-  dateLabel,
   operationAccounts,
   operationAmount,
   operationDate,
 } from "./rows.ts";
+import { dateOr } from "../../data/money.ts";
 
 export const SELECT_COLUMN = "marcar";
 
@@ -71,7 +71,7 @@ export function ledgerColumns({ ledger, checked, onCheck, hidden, cards }: Colum
       id: "data",
       header: "Data",
       width: 104,
-      cell: (op) => <span className={dim(op)}>{dateLabel(operationDate(op))}</span>,
+      cell: (op) => <span className={dim(op)}>{dateOr(operationDate(op))}</span>,
       sortValue: (op) => operationDate(op),
     },
     {
@@ -160,7 +160,7 @@ export function LedgerCard({ ledger, op }: { ledger: Ledger; op: Operation }) {
       <div className={cn("flex min-w-0 items-baseline gap-3 text-caption", active && "text-secondary")}>
         <span className="min-w-0 flex-1 truncate">{operationAccounts(ledger, op)}</span>
         {active ? null : <span className="shrink-0 font-medium">Cancelado</span>}
-        <span className="shrink-0 tabular-nums">{dateLabel(operationDate(op))}</span>
+        <span className="shrink-0 tabular-nums">{dateOr(operationDate(op))}</span>
       </div>
     </div>
   );

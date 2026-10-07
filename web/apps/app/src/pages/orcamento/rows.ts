@@ -20,11 +20,6 @@ export function usedPercent(used: Dec): string {
   return `${used.mul(100).quantize("1", "ROUND_HALF_UP").toFixed()}%`;
 }
 
-/** Exact cents for sorting a money column. */
-export function cents(value: Dec): bigint {
-  return BigInt(value.quantize("0.01", "ROUND_HALF_UP").toFixed().replace(".", ""));
-}
-
 /** How many categories, with the right plural ("1 categoria estourada", "2 categorias estouradas"). */
 export function plural(count: number, one: string, many: string): string {
   return `${count} ${count === 1 ? one : many}`;

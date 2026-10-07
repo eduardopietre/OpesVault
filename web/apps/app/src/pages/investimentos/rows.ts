@@ -18,14 +18,14 @@ import {
   type Ledger,
 } from "@opesvault/domain";
 import { percent } from "../../dialogs/investment_forms.ts";
-import { cents, plural } from "../contas/rows.ts";
+import { plural } from "../contas/rows.ts";
 import { planXirr, type XirrPlan } from "./xirr.ts";
+import { cents, moneyOr, dateOr, DASH } from "../../data/money.ts";
 
 const { service, model, performance, profile: prof, trades, returns, benchmarks } = investments;
 const { banking } = dom;
 const { importModel, importStore } = importing;
 
-export const DASH = "—";
 export const MATURITY_WARNING_DAYS = 30;
 
 export const EVENT_LABELS: Readonly<Record<investments.model.EventKind, string>> = {
@@ -46,7 +46,6 @@ export const QUALITY_LABELS: Readonly<Record<investments.performance.Quality, st
   unavailable: "indisponível",
 };
 
-const money = (value: Dec | null): string => (value === null ? DASH : formatBrl(value));
 const toneOf = (value: Dec | null): "positive" | "negative" | null =>
   value === null ? null : value.isPositive() ? "positive" : value.isNegative() ? "negative" : null;
 
@@ -100,9 +99,7 @@ export function portfolioRows(ledger: Ledger, today: IsoDate): PortfolioRow[] {
       unrealized: gain.value !== null ? formatBrl(gain.value) : "indisponível",
       unrealizedSort: cents(gain.value),
       unrealizedTone: toneOf(gain.value),
-      realized:
-        (done.value !== null ? formatBrl(done.value) : DASH) +
-        (done.quality === performance.Quality.INCOMPLETE ? " (incompleto)" : ""),
+      realized: moneyOr(done.value) + (done.quality === performance.Quality.INCOMPLETE ? " (incompleto)" : ""),
       realizedSort: cents(done.value),
       closed: pos.closed,
     });
@@ -228,12 +225,12 @@ export function eventRows(ledger: Ledger, positionId: Id): EventRow[] {
     date: formatDateBr(e.on),
     kind: EVENT_LABELS[e.kind],
     incomplete: e.quality === model.EventQuality.INCOMPLETE,
-    gross: money(e.gross),
+    gross: moneyOr(e.gross),
     grossSort: cents(e.gross),
-    cost: money(e.cost_attributed),
+    cost: moneyOr(e.cost_attributed),
     tax: e.gross !== null ? formatBrl(e.tax_withheld.add(e.tax_due_later)) : "a discriminar",
     fees: formatBrl(e.fees),
-    net: money(e.net),
+    net: moneyOr(e.net),
     quality: e.quality === model.EventQuality.INCOMPLETE ? "incompleto" : "completo",
     note: e.note ?? "",
   }));
@@ -433,10 +430,10 @@ export function noteRows(ledger: Ledger): NoteRow[] {
     out.push({
       id: `batch:${batch.id}`,
       number: batch.header.note_number ?? DASH,
-      date: batch.header.trade_date ? formatDateBr(batch.header.trade_date) : DASH,
+      date: dateOr(batch.header.trade_date),
       dateSort: batch.header.trade_date ?? "9999-12-31",
       trades: plural(trading.length, "negócio", "negócios"),
-      gross: money(total),
+      gross: moneyOr(total),
       fees: DASH,
       tax: DASH,
       assets: [...new Set(trading.map((i) => i.ticker ?? i.description))].join(", "),

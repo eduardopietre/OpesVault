@@ -3,19 +3,10 @@
  * words the review shows for batches, items and where a suggested category came from, one row per imported
  * document and one per extracted item, and the facts of a document with the verdict of each check.
  */
-import {
-  AccountType,
-  formatBrl,
-  formatDateBr,
-  importing,
-  type Dec,
-  type Id,
-  type IsoDate,
-  type Ledger,
-  type session,
-} from "@opesvault/domain";
+import { AccountType, importing, type Dec, type Id, type IsoDate, type Ledger, type session } from "@opesvault/domain";
 import type { SelectOption } from "@opesvault/ui";
 import { categoryItems } from "../../dialogs/account_choices.ts";
+import { dateOr, moneyOr } from "../../data/money.ts";
 
 type Batch = importing.importModel.ImportBatch;
 type Item = importing.importModel.ExtractedItem;
@@ -79,9 +70,6 @@ export function itemNotes(item: Item): string {
   if (item.status === ItemStatus.DUPLICATE) notes.push("já existe no livro: aprovar só vincula a evidência");
   return notes.join("; ");
 }
-
-export const money = (value: Dec | null): string => (value === null ? "—" : formatBrl(value));
-export const day = (date: IsoDate | null): string => (date ? formatDateBr(date) : "—");
 
 /** Waiting for the user's decision: validated and ready, or with something to check. */
 export const isPending = (item: Item): boolean =>
@@ -152,8 +140,8 @@ export interface Verdict {
 export function verdicts(batch: Batch): Verdict[] {
   return batch.reconciliations.map((r) => ({
     label: r.label,
-    expected: money(r.expected),
-    computed: money(r.computed),
+    expected: moneyOr(r.expected),
+    computed: moneyOr(r.computed),
     verdict: r.ok === true ? "confere" : r.ok === false ? "diverge" : "não comparável",
     tone: r.ok === true ? "positive" : r.ok === false ? "negative" : "neutral",
   }));
@@ -164,10 +152,10 @@ export function factsLine(batch: Batch): string {
   const h = batch.header;
   const parts = [h.institution || "Instituição não identificada", STATUS_LABELS[batch.status]];
   if (batch.parser_id) parts.push(`layout ${batch.parser_id} v${batch.parser_version ?? ""}`);
-  if (h.due_on) parts.push(`vencimento ${day(h.due_on)}`);
-  if (h.total !== null) parts.push(`total ${money(h.total)}`);
-  if (h.period_start || h.period_end) parts.push(`período ${day(h.period_start)} a ${day(h.period_end)}`);
-  if (h.net_amount !== null) parts.push(`líquido ${money(h.net_amount)}`);
+  if (h.due_on) parts.push(`vencimento ${dateOr(h.due_on)}`);
+  if (h.total !== null) parts.push(`total ${moneyOr(h.total)}`);
+  if (h.period_start || h.period_end) parts.push(`período ${dateOr(h.period_start)} a ${dateOr(h.period_end)}`);
+  if (h.net_amount !== null) parts.push(`líquido ${moneyOr(h.net_amount)}`);
   return parts.join(" · ");
 }
 

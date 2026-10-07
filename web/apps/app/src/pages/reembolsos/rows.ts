@@ -145,11 +145,6 @@ export function summaryLine(view: SharingView): string {
   return parts.join(" · ");
 }
 
-/** Exact cents for sorting a money column. */
-export function cents(value: Dec): bigint {
-  return BigInt(value.quantize("0.01", "ROUND_HALF_UP").toFixed().replace(".", ""));
-}
-
 /**
  * What a link from another screen names: a reimbursement ("reembolso:<id>" or its bare id) or the expense it
  * refunds (the operation id, as the Livro shows it).

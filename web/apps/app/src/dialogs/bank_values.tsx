@@ -3,11 +3,12 @@
  * Each balance becomes a check against the app; with "Ajustar o saldo" the difference is posted as an
  * adjustment on that date. Investments receive a valuation. What is left empty is not recorded.
  */
-import { DomainError, OperationKind, dom, formatBrl, type Dec, type Id, type Ledger } from "@opesvault/domain";
+import { DomainError, OperationKind, dom, type Dec, type Id, type Ledger } from "@opesvault/domain";
 import { Checkbox, DateField, MoneyField, TextField } from "@opesvault/ui";
 import { useMemo, useState } from "react";
 import { useWorkspace } from "../data/react.tsx";
 import { Caption, FormDialog, dateText, readDate, readMoney, useFormAct } from "./livro_form.tsx";
+import { moneyOr } from "../data/money.ts";
 
 const { banking } = dom;
 
@@ -98,9 +99,7 @@ export function ValuesDialog({ open, onClose, bankId, onDone }: ValuesDialogProp
               </div>
               <div className="min-w-0">
                 <div className="text-caption text-secondary">No aplicativo</div>
-                <div className="text-body tabular-nums">
-                  {app.get(value.ref) ? formatBrl(app.get(value.ref)!) : "—"}
-                </div>
+                <div className="text-body tabular-nums">{moneyOr(app.get(value.ref))}</div>
               </div>
               <div className="min-w-0">
                 <div aria-hidden="true" className="text-caption text-secondary">

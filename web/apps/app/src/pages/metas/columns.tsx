@@ -4,8 +4,8 @@
 import { formatBrl } from "@opesvault/domain";
 import { Badge, DURATION, EASE, ElidedText, useMotionPreset, type DataColumn } from "@opesvault/ui";
 import { motion } from "motion/react";
-import { cents } from "../orcamento/rows.ts";
-import { dateOrNone, moneyOrNone, nameOf, reachedShort, shareLabel, sortCents, type GoalRow } from "./rows.ts";
+import { nameOf, reachedShort, shareLabel, sortCents, type GoalRow } from "./rows.ts";
+import { cents, moneyOr, dateOr } from "../../data/money.ts";
 
 /** The bar fills to the share reached (full and green when reached); the words next to it say the same. */
 export function ShareBar({ row, wide = true }: { row: GoalRow; wide?: boolean }) {
@@ -79,7 +79,7 @@ export const GOAL_COLUMNS: DataColumn<GoalRow>[] = [
   {
     id: "prazo",
     header: "Prazo",
-    cell: (r) => dateOrNone(r.goal.target_date),
+    cell: (r) => dateOr(r.goal.target_date),
     sortValue: (r) => r.goal.target_date,
     width: 104,
     priority: 2,
@@ -87,7 +87,7 @@ export const GOAL_COLUMNS: DataColumn<GoalRow>[] = [
   {
     id: "mes",
     header: "Por mês",
-    cell: (r) => moneyOrNone(r.progress.neededPerMonth),
+    cell: (r) => moneyOr(r.progress.neededPerMonth),
     sortValue: (r) => sortCents(r.progress.neededPerMonth),
     align: "end",
     width: 116,
@@ -96,7 +96,7 @@ export const GOAL_COLUMNS: DataColumn<GoalRow>[] = [
   {
     id: "ritmo",
     header: "Ritmo recente",
-    cell: (r) => moneyOrNone(r.progress.pace),
+    cell: (r) => moneyOr(r.progress.pace),
     sortValue: (r) => sortCents(r.progress.pace),
     align: "end",
     width: 116,

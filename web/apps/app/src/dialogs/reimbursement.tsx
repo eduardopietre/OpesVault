@@ -2,17 +2,7 @@
  * Reembolso a receber (desktop `ReimbursementDialog`): marks an expense as something a health plan, an
  * employer or someone else will pay back. The expected amount starts at the expense's total.
  */
-import {
-  AccountType,
-  DomainError,
-  Dec,
-  ZERO,
-  cashDate,
-  dom,
-  formatBrl,
-  formatDateBr,
-  type Operation,
-} from "@opesvault/domain";
+import { AccountType, DomainError, Dec, ZERO, cashDate, dom, formatBrl, type Operation } from "@opesvault/domain";
 import { DateField, MoneyField, TextField } from "@opesvault/ui";
 import { useState } from "react";
 import { useWorkspace } from "../data/react.tsx";
@@ -27,6 +17,7 @@ import {
   readMoney,
   useFormAct,
 } from "./livro_form.tsx";
+import { dateOr } from "../data/money.ts";
 
 export interface ReimbursementDialogProps {
   open: boolean;
@@ -64,7 +55,7 @@ export function ReimbursementDialog({ open, onClose, operation: op, onDone }: Re
       <FormGrid>
         <FullRow>
           <Caption>
-            {op.description} · {when ? formatDateBr(when) : "—"} · {formatBrl(total)}
+            {op.description} · {dateOr(when)} · {formatBrl(total)}
           </Caption>
         </FullRow>
         <FullRow>

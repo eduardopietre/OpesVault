@@ -33,7 +33,7 @@ forEachScreen(({ suffix }) => {
     await page.keyboard.press("Escape");
     await dialogOf(page, "Editar recorrência").waitFor({ state: "hidden" });
     await page.getByRole("button", { name: "Nova recorrência…" }).click();
-    await page.getByRole("button", { name: "Criar recorrência" }).click();
+    await page.getByRole("button", { name: "Criar recorrência", exact: true }).click();
     await settle(page);
     await screenshot(page, `recorrencias-nova-${suffix}`);
   });

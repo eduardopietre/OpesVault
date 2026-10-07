@@ -33,6 +33,7 @@ import {
 } from "@opesvault/ui";
 import { useCallback, useState, type ReactNode } from "react";
 import { useWorkspace } from "../data/react.tsx";
+import { READ_ONLY_TIP } from "../data/read_only.ts";
 
 type Session = sessions.Session;
 
@@ -105,9 +106,7 @@ export function FormDialog({
             type="submit"
             busy={busy}
             disabled={(!closeOnly && (readOnly || confirmDisabled)) || false}
-            title={
-              !closeOnly && readOnly ? "Outra aba ou aparelho está editando este projeto; aqui só leitura." : undefined
-            }
+            title={!closeOnly && readOnly ? READ_ONLY_TIP : undefined}
           >
             {closeOnly ? "Fechar" : confirmLabel}
           </Button>

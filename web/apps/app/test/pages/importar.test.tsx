@@ -335,7 +335,7 @@ describe("Importar e revisar: só leitura e atalhos", () => {
     expect((screen.getByRole("button", { name: "Aprovar prontos" }) as HTMLButtonElement).disabled).toBe(true);
     // a file that still arrives is refused with a notice
     fireEvent.change(picker(), { target: { files: [file(BANK_OFX, "extrato.ofx")] } });
-    expect(await screen.findByText(/aberto só para leitura/)).toBeTruthy();
+    expect(await screen.findByText(/aqui só leitura/)).toBeTruthy();
     expect(o.worker.received).toHaveLength(0);
   });
 

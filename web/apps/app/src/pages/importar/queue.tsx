@@ -13,6 +13,7 @@ import { READ_FAILED, ReadCancelled, parser } from "../../data/parser_client.ts"
 import { useWorkspace } from "../../data/react.tsx";
 import { ImportPasswordDialog } from "../../dialogs/import_password.tsx";
 import type { ImportAi } from "./ai.tsx";
+import { READ_ONLY_TIP } from "../../data/read_only.ts";
 
 type Analysis = importing.pipeline.Analysis;
 type ImportRequest = importing.pipeline.ImportRequest;
@@ -220,7 +221,7 @@ export function useImportQueue({ ai, onImported }: { ai: ImportAi; onImported: (
   const addFiles = useCallback(
     (chosen: readonly File[]) => {
       if (workspace.readOnly) {
-        notify("Este projeto está aberto só para leitura: outra aba ou aparelho está editando.", { tone: "warning" });
+        notify(READ_ONLY_TIP, { tone: "warning" });
         return;
       }
       const accepted = chosen.filter((file) =>

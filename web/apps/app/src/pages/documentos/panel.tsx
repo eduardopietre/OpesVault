@@ -13,6 +13,7 @@ import { PdfPasswordRequired, renderPdf, type RenderedPdf } from "../../data/pdf
 import { useWorkspace } from "../../data/react.tsx";
 import { DocumentsPasswordDialog } from "../../dialogs/documents_password.tsx";
 import { fileSize, usedBy, type DocumentRow, type ReceiptUse } from "./rows.ts";
+import { READ_ONLY_TIP } from "../../data/read_only.ts";
 
 type Kind = "pdf" | "png" | "jpeg" | "other";
 
@@ -139,7 +140,7 @@ export function DocumentPanel({
 
   const needsPassword = drawing.state === "password";
   const ready = loaded.state === "ready";
-  const tip = locked ? "Outra aba ou outro aparelho está editando este projeto; aqui só leitura." : undefined;
+  const tip = locked ? READ_ONLY_TIP : undefined;
   const removeNote = !row.free ? `Em uso por ${usedBy(row)}: desfaça o vínculo para poder remover.` : null;
 
   return (

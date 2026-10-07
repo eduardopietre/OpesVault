@@ -12,18 +12,11 @@ import { PayInstallmentDialog } from "../../dialogs/loan_pay.tsx";
 import { PrepaymentDialog } from "../../dialogs/loan_prepay.tsx";
 import { FigureCard, Money } from "../../components/figures.tsx";
 import { toChartData } from "../../data/chart_data.ts";
-import {
-  type TabReveal,
-  EditButton,
-  Empty,
-  ListTable,
-  Toolbar,
-  useDialog,
-  useLock,
-  useTabReveal,
-} from "../../components/list_parts.tsx";
+import { type TabReveal, EditButton, Empty, ListTable, Toolbar, useTabReveal } from "../../components/list_parts.tsx";
 import type { TierColumn } from "../../components/tier_columns.ts";
 import { cents, installmentRows, loanRows, money, nextInstallment, type InstallmentRow, type LoanRow } from "./rows.ts";
+import { useDialog } from "../../data/dialog.ts";
+import { useLock } from "../../data/read_only.ts";
 
 const { loans } = dom;
 

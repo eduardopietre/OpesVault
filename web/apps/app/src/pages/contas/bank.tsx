@@ -11,18 +11,11 @@ import { BankAccountDialog } from "../../dialogs/bank_account.tsx";
 import { InvestmentDialog } from "../../dialogs/bank_investment.tsx";
 import { ValuesDialog } from "../../dialogs/bank_values.tsx";
 import { useUndo } from "../../shell/undo.tsx";
-import {
-  type TabReveal,
-  EditButton,
-  Empty,
-  ListTable,
-  Toolbar,
-  useDialog,
-  useLock,
-  useTabReveal,
-} from "../../components/list_parts.tsx";
+import { type TabReveal, EditButton, Empty, ListTable, Toolbar, useTabReveal } from "../../components/list_parts.tsx";
 import type { TierColumn } from "../../components/tier_columns.ts";
 import { bankRows, partRows, whereLine, type BankRow, type PartRow } from "./rows.ts";
+import { useDialog } from "../../data/dialog.ts";
+import { useLock } from "../../data/read_only.ts";
 
 const { banking } = dom;
 

@@ -7,7 +7,6 @@
 import { Dec, DomainError, ZERO, dom, formatBrl, formatDateBr, type Operation } from "@opesvault/domain";
 import {
   Adaptive,
-  Button,
   Collapsible,
   DataTable,
   EmptyState,
@@ -31,21 +30,20 @@ import { RecurrenceRuleDialog } from "../../dialogs/recurrence_rule.tsx";
 import { useUndo } from "../../shell/undo.tsx";
 import { FORECAST_LABELS, candidateKey, forecastId, forecastWindow, parseRecurrenceRef, summaryLine } from "./rows.ts";
 import { CANDIDATE_COLUMNS, COMMITMENT_COLUMNS, FORECAST_COLUMNS, RULE_COLUMNS } from "./tables.tsx";
+import { EditButton } from "../../components/list_parts.tsx";
+import { useLock } from "../../data/read_only.ts";
+import { useDialog } from "../../data/dialog.ts";
 
 type Rule = dom.recurrence.RecurrenceRule;
 type Forecast = dom.recurrence.Forecast;
 type Candidate = dom.subscriptions.Candidate;
 
-const LOCKED = "Outra aba ou outro aparelho está editando este projeto. Atualize para editar.";
-
 interface RuleDialogState {
-  key: number;
   rule: Rule | null;
   suggestion: Candidate | null;
 }
 
 interface LinkDialogState {
-  key: number;
   forecast: Forecast;
   candidates: Operation[];
 }
@@ -57,8 +55,7 @@ export function Page() {
   const { undo } = useUndo();
   const preset = useMotionPreset();
   const phone = useMediaQuery("(max-width: 639px)");
-  const locked = workspace.readOnly;
-  const lockTip = locked ? LOCKED : undefined;
+  const { locked } = useLock();
   const today = workspace.today();
   const [start, end] = forecastWindow(today);
 
@@ -70,11 +67,10 @@ export function Page() {
   const [pickRule, setPickRule] = useState<string | null>(null);
   const [pickForecast, setPickForecast] = useState<string | null>(null);
   const [pickCandidate, setPickCandidate] = useState<string | null>(null);
-  const [ruleDialog, setRuleDialog] = useState<RuleDialogState | null>(null);
-  const [ruleOpen, setRuleOpen] = useState(false);
-  const [linkDialog, setLinkDialog] = useState<LinkDialogState | null>(null);
-  const [linkOpen, setLinkOpen] = useState(false);
-  const counter = useRef(0);
+  const ruleSlot = useDialog<RuleDialogState>();
+  const linkSlot = useDialog<LinkDialogState>();
+  const ruleDialog = ruleSlot.spec;
+  const linkDialog = linkSlot.spec;
   const forecastBox = useRef<HTMLDivElement>(null);
   const commitmentBox = useRef<HTMLDivElement>(null);
 
@@ -90,8 +86,7 @@ export function Page() {
   // ── rules ───────────────────────────────────────
 
   const openRuleDialog = (rule: Rule | null, suggestion: Candidate | null = null) => {
-    setRuleDialog({ key: ++counter.current, rule, suggestion });
-    setRuleOpen(true);
+    ruleSlot.show({ rule, suggestion });
   };
 
   const edit = (id: string | null = pickRule) => {
@@ -136,8 +131,7 @@ export function Page() {
       notify("Nenhum lançamento compatível (conta, valor e data).");
       return;
     }
-    setLinkDialog({ key: ++counter.current, forecast, candidates: found });
-    setLinkOpen(true);
+    linkSlot.show({ forecast, candidates: found });
   };
 
   const linkSelected = () => {
@@ -232,14 +226,9 @@ export function Page() {
 
   const nothing = rules.length === 0 && candidates.length === 0;
   const newButton = (primary: boolean) => (
-    <Button
-      variant={primary ? "primary" : "secondary"}
-      onClick={() => openRuleDialog(null)}
-      disabled={locked}
-      title={lockTip}
-    >
+    <EditButton variant={primary ? "primary" : "secondary"} onClick={() => openRuleDialog(null)}>
       Nova recorrência…
-    </Button>
+    </EditButton>
   );
   const commitmentsOpen = storedOpen || forcedOpen;
   const total = Dec.sum(
@@ -284,9 +273,9 @@ export function Page() {
         prefKey="recorrencias/candidatas"
         description="Cobranças com a mesma descrição e valor parecido em meses seguidos, sem recorrência. Nada é criado sozinho."
         actions={
-          <Button size="sm" onClick={() => createFromCandidate()} disabled={locked} title={lockTip}>
+          <EditButton size="sm" onClick={() => createFromCandidate()}>
             Criar recorrência…
-          </Button>
+          </EditButton>
         }
       >
         <DataTable
@@ -327,12 +316,12 @@ export function Page() {
               description="Contas fixas e receitas esperadas."
               actions={
                 <>
-                  <Button size="sm" onClick={() => edit()} disabled={locked} title={lockTip}>
+                  <EditButton size="sm" onClick={() => edit()}>
                     Editar…
-                  </Button>
-                  <Button size="sm" onClick={toggle} disabled={locked} title={lockTip}>
+                  </EditButton>
+                  <EditButton size="sm" onClick={toggle}>
                     {selectedRule ? (selectedRule.paused ? "Retomar" : "Pausar") : "Pausar ou retomar"}
-                  </Button>
+                  </EditButton>
                 </>
               }
             >
@@ -357,9 +346,9 @@ export function Page() {
                 description="De 3 meses atrás a 6 meses à frente. Previsões nunca alteram saldos."
                 actions={
                   <>
-                    <Button size="sm" onClick={linkSelected} disabled={locked} title={lockTip}>
+                    <EditButton size="sm" onClick={linkSelected}>
                       Vincular realizado…
-                    </Button>
+                    </EditButton>
                     <MenuButton
                       label="Mais"
                       items={[
@@ -420,9 +409,9 @@ export function Page() {
 
       {ruleDialog ? (
         <RecurrenceRuleDialog
-          key={ruleDialog.key}
-          open={ruleOpen}
-          onClose={() => setRuleOpen(false)}
+          key={ruleSlot.key}
+          open={ruleSlot.open}
+          onClose={ruleSlot.close}
           rule={ruleDialog.rule}
           suggestion={ruleDialog.suggestion}
           onDone={(rule, created) => {
@@ -439,9 +428,9 @@ export function Page() {
       ) : null}
       {linkDialog ? (
         <RecurrenceLinkDialog
-          key={linkDialog.key}
-          open={linkOpen}
-          onClose={() => setLinkOpen(false)}
+          key={linkSlot.key}
+          open={linkSlot.open}
+          onClose={linkSlot.close}
           forecast={linkDialog.forecast}
           candidates={linkDialog.candidates}
           onDone={() => notify("Previsão vinculada ao lançamento.")}

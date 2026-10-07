@@ -18,11 +18,11 @@ import {
   ListTable,
   Toolbar,
   Warn,
-  useDialog,
   useTabReveal,
 } from "../../components/list_parts.tsx";
 import type { TierColumn } from "../../components/tier_columns.ts";
 import { accountRows, cents, checkRows, money, type AccountRow, type CheckRow } from "./rows.ts";
+import { useDialog } from "../../data/dialog.ts";
 
 const HISTORY_MONTHS = 12;
 

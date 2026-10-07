@@ -46,13 +46,13 @@ import {
   verdicts,
   type ItemRow,
 } from "./rows.ts";
+import { READ_ONLY_TIP } from "../../data/read_only.ts";
 
 const { BatchStatus, ItemKind, ItemStatus } = importing.importModel;
 
 /** Below this width the items are cards: the columns that always show need about 550 px. */
 const CARDS_BELOW = 560;
 const NO_SELECTION = "Selecione um item da lista.";
-const READ_ONLY = "Outra aba ou aparelho está editando este projeto; aqui só leitura.";
 
 const STATUS_TONE: Record<string, "neutral" | "accent" | "positive" | "negative" | "warning"> = {
   [ItemStatus.NEEDS_REVIEW]: "warning",
@@ -397,7 +397,7 @@ export function Review({ batchId, selected, onSelect, queue, ai }: ReviewProps) 
   ];
 
   const checks = verdicts(batch);
-  const readOnlyTip = readOnly ? READ_ONLY : undefined;
+  const readOnlyTip = readOnly ? READ_ONLY_TIP : undefined;
   const moreEntries: MenuEntry[] = [
     {
       id: "keep-separate",

@@ -5,7 +5,6 @@
  */
 import { charts, dom, formatBrl, ymOf } from "@opesvault/domain";
 import {
-  Button,
   ChartPanel,
   DataTable,
   ElidedText,
@@ -29,13 +28,13 @@ import { GoalDialog } from "../../dialogs/goal_dialog.tsx";
 import { ReasonDialog } from "../../dialogs/livro_prompts.tsx";
 import { goalColumns } from "./columns.tsx";
 import { dateOrNone, goalExample, goalRows, moneyOrNone, reachedLabel, summaryLine, type GoalExample } from "./rows.ts";
+import { EditButton } from "../../components/list_parts.tsx";
+import { useLock } from "../../data/read_only.ts";
+import { useDialog } from "../../data/dialog.ts";
 
 type Goal = dom.goals.Goal;
 
-const LOCKED = "Outra aba ou outro aparelho está editando este projeto. Atualize para editar.";
-
 interface EditState {
-  key: number;
   goal: Goal | null;
   /** A new goal that starts from the example (the empty page's "Definir uma meta…"). */
   example?: GoalExample;
@@ -47,8 +46,7 @@ export function Page() {
   const phone = useMediaQuery("(max-width: 639px)");
   const [measure, tableWidth] = useElementWidth<HTMLElement>();
   const columns = useMemo(() => goalColumns(tableWidth), [tableWidth]);
-  const locked = workspace.readOnly;
-  const lockTip = locked ? LOCKED : undefined;
+  const { locked } = useLock();
   const today = workspace.today();
 
   const rows = useLedger((ledger) => goalRows(ledger, today), today);
@@ -60,20 +58,16 @@ export function Page() {
     `${selected?.id ?? ""}|${today}`,
   );
 
-  const [edit, setEdit] = useState<EditState | null>(null);
-  const [editOpen, setEditOpen] = useState(false);
-  const [archive, setArchive] = useState<Goal | null>(null);
-  const [archiveOpen, setArchiveOpen] = useState(false);
-  const counter = useRef(0);
+  const edit = useDialog<EditState>();
+  const archiveDialog = useDialog<Goal>();
   const detail = useRef<HTMLDivElement>(null);
+  const archive = archiveDialog.spec;
 
   const openEdit = (goal: Goal | null) => {
-    setEdit({ key: ++counter.current, goal });
-    setEditOpen(true);
+    edit.show({ goal });
   };
   const openExample = () => {
-    setEdit({ key: ++counter.current, goal: null, example: goalExample(workspace.ledger, today) });
-    setEditOpen(true);
+    edit.show({ goal: null, example: goalExample(workspace.ledger, today) });
   };
 
   const editSelected = () => {
@@ -89,8 +83,7 @@ export function Page() {
       notify("Selecione uma meta.");
       return;
     }
-    setArchive(selected.goal);
-    setArchiveOpen(true);
+    archiveDialog.show(selected.goal);
   };
 
   // A link from another page: the goal opens, selected, with its chart; "editar" also opens the form.
@@ -103,14 +96,9 @@ export function Page() {
   });
 
   const newButton = (primary: boolean) => (
-    <Button
-      variant={primary ? "primary" : "secondary"}
-      onClick={() => openEdit(null)}
-      disabled={locked}
-      title={lockTip}
-    >
+    <EditButton variant={primary ? "primary" : "secondary"} onClick={() => openEdit(null)}>
       Nova meta…
-    </Button>
+    </EditButton>
   );
 
   const p = selected?.progress ?? null;
@@ -152,12 +140,10 @@ export function Page() {
             description="Defina uma meta de patrimônio ou de saldo para acompanhar quanto falta e em que ritmo o projeto chega lá. Comece pelo exemplo de uma reserva de emergência e ajuste os valores."
             actions={
               <>
-                <Button variant="primary" onClick={openExample} disabled={locked} title={lockTip}>
+                <EditButton variant="primary" onClick={openExample}>
                   Definir uma meta…
-                </Button>
-                <Button onClick={() => openEdit(null)} disabled={locked} title={lockTip}>
-                  Começar do zero…
-                </Button>
+                </EditButton>
+                <EditButton onClick={() => openEdit(null)}>Começar do zero…</EditButton>
               </>
             }
           />
@@ -198,12 +184,12 @@ export function Page() {
                       {formatBrl(selected.progress.current)} de {formatBrl(selected.goal.target)}
                     </div>
                   </div>
-                  <Button size="sm" onClick={editSelected} disabled={locked} title={lockTip}>
+                  <EditButton size="sm" onClick={editSelected}>
                     Editar meta…
-                  </Button>
-                  <Button size="sm" onClick={archiveSelected} disabled={locked} title={lockTip}>
+                  </EditButton>
+                  <EditButton size="sm" onClick={archiveSelected}>
                     {selected.goal.archived ? "Reativar…" : "Arquivar…"}
-                  </Button>
+                  </EditButton>
                 </div>
                 <div className="grid grid-cols-2 gap-3 medium:grid-cols-4">
                   {figures.map((figure) => (
@@ -226,13 +212,13 @@ export function Page() {
         </>
       )}
 
-      {edit ? (
+      {edit.spec ? (
         <GoalDialog
           key={edit.key}
-          open={editOpen}
-          onClose={() => setEditOpen(false)}
-          goal={edit.goal}
-          example={edit.example ?? null}
+          open={edit.open}
+          onClose={edit.close}
+          goal={edit.spec.goal}
+          example={edit.spec.example ?? null}
           onDone={(goal, created) => {
             setPick(goal.id);
             notify(created ? "Meta criada." : "Meta atualizada.");
@@ -241,9 +227,9 @@ export function Page() {
       ) : null}
       {archive ? (
         <ReasonDialog
-          key={archive.id}
-          open={archiveOpen}
-          onClose={() => setArchiveOpen(false)}
+          key={archiveDialog.key}
+          open={archiveDialog.open}
+          onClose={archiveDialog.close}
           title={archive.archived ? "Reativar meta" : "Arquivar meta"}
           confirmLabel={archive.archived ? "Reativar" : "Arquivar"}
           description={

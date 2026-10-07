@@ -7,6 +7,7 @@
 import { DomainError, importing, tax, type Id } from "@opesvault/domain";
 import { notify } from "@opesvault/ui";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useDialog } from "../../data/dialog.ts";
 import { browserExtractor } from "../../data/pdf.ts";
 import { DocumentsPasswordDialog } from "../../dialogs/documents_password.tsx";
 import type { ReportDialogProps } from "../../dialogs/tax_report.tsx";
@@ -20,7 +21,6 @@ interface Waiting {
   name: string;
   data: Uint8Array;
   source: ReportSourcePick;
-  key: number;
 }
 
 const UNREADABLE = "Não foi possível ler este arquivo. Use Mais › Novo informe sem arquivo.";
@@ -29,9 +29,9 @@ export function useReportImport(year: number, onRead: (props: ParsedProps) => vo
   const input = useRef<HTMLInputElement>(null);
   const source = useRef<ReportSourcePick>(null);
   const [busy, setBusy] = useState(false);
-  const [waiting, setWaiting] = useState<Waiting | null>(null);
-  const [asking, setAsking] = useState(false);
-  const counter = useRef(0);
+  const asking = useDialog<Waiting>();
+  const waiting = asking.spec;
+  const show = asking.show;
   const read = useRef(onRead);
   useEffect(() => {
     read.current = onRead;
@@ -49,8 +49,7 @@ export function useReportImport(year: number, onRead: (props: ParsedProps) => vo
             error.problem === importing.source.SourceProblem.WRONG_PASSWORD)
         ) {
           if (password !== null) throw new DomainError("Senha incorreta. Tente de novo.");
-          setWaiting({ name, data, source: from, key: ++counter.current });
-          setAsking(true);
+          show({ name, data, source: from });
           return;
         }
         notify(UNREADABLE, { tone: "negative" });
@@ -69,7 +68,7 @@ export function useReportImport(year: number, onRead: (props: ParsedProps) => vo
       if (password === null) read.current(props);
       else window.setTimeout(() => read.current(props), 0);
     },
-    [year],
+    [year, show],
   );
 
   const chosen = async (file: File | undefined) => {
@@ -107,9 +106,9 @@ export function useReportImport(year: number, onRead: (props: ParsedProps) => vo
       />
       {waiting ? (
         <DocumentsPasswordDialog
-          key={waiting.key}
-          open={asking}
-          onClose={() => setAsking(false)}
+          key={asking.key}
+          open={asking.open}
+          onClose={asking.close}
           name={waiting.name}
           onSubmit={(password) => parse(waiting.name, waiting.data, waiting.source, password)}
         />

@@ -9,6 +9,7 @@ import { useRef, useState } from "react";
 import { useLedger, useWorkspace } from "../data/react.tsx";
 import { Caption, FormDialog, useFormAct } from "./livro_form.tsx";
 import { IncomeDetailDialog } from "./income_detail.tsx";
+import { READ_ONLY_TIP } from "../data/read_only.ts";
 
 export type OperationsMode = "detail" | "receipts";
 
@@ -151,9 +152,7 @@ export function OperationsDialog({ open, onClose, operationIds, mode }: Operatio
             variant="primary"
             onClick={() => start()}
             disabled={selected === null || workspace.readOnly}
-            title={
-              workspace.readOnly ? "Outra aba ou aparelho está editando este projeto; aqui só leitura." : undefined
-            }
+            title={workspace.readOnly ? READ_ONLY_TIP : undefined}
           >
             {mode === "detail" ? "Detalhar…" : "Anexar comprovante…"}
           </Button>

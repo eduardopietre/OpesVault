@@ -10,17 +10,11 @@ import { useLedger, useWorkspace } from "../../data/react.tsx";
 import { cardItems } from "../../dialogs/account_choices.ts";
 import { BillPaymentDialog, type BillSummary } from "../../dialogs/bill_payment.tsx";
 import { toChartData } from "../../data/chart_data.ts";
-import {
-  type TabReveal,
-  Empty,
-  ListTable,
-  Toolbar,
-  useDialog,
-  useLock,
-  useTabReveal,
-} from "../../components/list_parts.tsx";
+import { type TabReveal, Empty, ListTable, Toolbar, useTabReveal } from "../../components/list_parts.tsx";
 import type { TierColumn } from "../../components/tier_columns.ts";
 import { billRows, cents, defaultBill, money, type BillRow } from "./rows.ts";
+import { useDialog } from "../../data/dialog.ts";
+import { useLock } from "../../data/read_only.ts";
 
 const { cards } = dom;
 

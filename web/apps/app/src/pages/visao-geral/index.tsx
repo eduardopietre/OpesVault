@@ -47,6 +47,7 @@ import {
   monthFigures,
 } from "./rows.ts";
 import { BalancesTable, CategoriesTable, ComparisonTable } from "./tables.tsx";
+import { READ_ONLY_TIP } from "../../data/read_only.ts";
 
 const NO_ALERTS: ReturnType<typeof dom.alerts.alerts> = [];
 
@@ -88,7 +89,6 @@ export function Page() {
   const [dialog, setDialog] = useState<"close" | "reopen" | null>(null);
   const today = workspace.today();
   const monthKey = ymStr(month);
-  const readOnlyHint = "Este projeto está aberto só para leitura: outra aba ou aparelho está editando.";
 
   // Opens on the latest month with activity, not on an empty current month (once per opening). A project that
   // brings its own month (the demonstration's last complete month) already set it when it opened.
@@ -310,7 +310,7 @@ export function Page() {
 
   const readOnlyWrap = (button: ReactNode) =>
     readOnly ? (
-      <span title={readOnlyHint} className="inline-flex">
+      <span title={READ_ONLY_TIP} className="inline-flex">
         {button}
       </span>
     ) : (

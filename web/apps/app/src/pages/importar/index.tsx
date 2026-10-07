@@ -31,6 +31,7 @@ import { ACCEPT, ReadingStrip, useImportQueue } from "./queue.tsx";
 import { Review } from "./review.tsx";
 import { batchRows, evidenceOf, queueContext, waitingItems, type BatchRow } from "./rows.ts";
 import { DocumentViewer } from "./viewer.tsx";
+import { READ_ONLY_TIP } from "../../data/read_only.ts";
 
 const QUEUE_COLUMNS: DataColumn<BatchRow>[] = [
   {
@@ -111,7 +112,7 @@ export function Page() {
 
   const choose = () => {
     if (readOnly) {
-      notify("Este projeto está aberto só para leitura: outra aba ou aparelho está editando.", { tone: "warning" });
+      notify(READ_ONLY_TIP, { tone: "warning" });
       return;
     }
     picker.current?.click();
@@ -168,11 +169,7 @@ export function Page() {
       icon={<FileUp />}
       onClick={choose}
       disabled={readOnly}
-      title={
-        readOnly
-          ? "Outra aba ou aparelho está editando este projeto; aqui só leitura."
-          : "PDF, CSV ou OFX (Ctrl+I); ou arraste para cá"
-      }
+      title={readOnly ? READ_ONLY_TIP : "PDF, CSV ou OFX (Ctrl+I); ou arraste para cá"}
     >
       Importar arquivos…
     </Button>

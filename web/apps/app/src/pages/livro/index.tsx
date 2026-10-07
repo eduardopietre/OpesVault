@@ -70,7 +70,8 @@ import { useLedgerAi } from "./ai.tsx";
 import { COLUMN_TITLES, LedgerCard, REQUIRED_COLUMNS, ledgerColumns } from "./columns.tsx";
 import { downloadFile, operationsCsv } from "./export.ts";
 import { FilterBar, activeFilterCount, useFilterChoices } from "./filters.tsx";
-import { LedgerDialogs, useDialogHost, type DialogSpec } from "./host.tsx";
+import { LedgerDialogs, type DialogSpec } from "./host.tsx";
+import { useDialog } from "../../data/dialog.ts";
 import { OperationDetails, SelectionNote } from "./inspector.tsx";
 import {
   EMPTY_FILTERS,
@@ -111,7 +112,7 @@ export function Page() {
   const [pickedChecks, setPickedChecks] = useState<ReadonlySet<string>>(EMPTY_SET);
   const [hidden, setHidden] = useState<ReadonlySet<string>>(() => readHidden(preferences.get(HIDDEN_COLUMNS_KEY)));
   const [details, setDetails] = useState<{ band: string; open: boolean } | null>(null);
-  const host = useDialogHost();
+  const host = useDialog<DialogSpec>();
   const [measureTable, tableWidth] = useElementWidth<HTMLDivElement>();
   const cards = tableWidth > 0 && tableWidth < 640;
   const phone = band === "phone";

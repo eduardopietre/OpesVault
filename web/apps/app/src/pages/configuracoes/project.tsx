@@ -11,8 +11,7 @@ import { messageOfFailure } from "../../dialogs/settings_form.tsx";
 import { useSession, useSessionActions } from "../../session.tsx";
 import { memberRows } from "../contas/rows.ts";
 import { Block, Note, TabColumn } from "./parts.tsx";
-
-const READ_ONLY_HINT = "Outra aba ou aparelho está editando este projeto; aqui só leitura.";
+import { READ_ONLY_TIP } from "../../data/read_only.ts";
 
 export function ProjectTab() {
   const session = useSession();
@@ -70,14 +69,14 @@ export function ProjectTab() {
             maxLength={80}
             error={error}
             disabled={readOnly}
-            title={readOnly ? READ_ONLY_HINT : undefined}
+            title={readOnly ? READ_ONLY_TIP : undefined}
             fieldClassName="tablet:max-w-[420px] tablet:flex-1"
           />
           <Button
             type="submit"
             busy={busy}
             disabled={readOnly || name.trim() === current}
-            title={readOnly ? READ_ONLY_HINT : undefined}
+            title={readOnly ? READ_ONLY_TIP : undefined}
           >
             Renomear
           </Button>

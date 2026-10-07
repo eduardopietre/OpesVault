@@ -5,9 +5,27 @@ export function casefold(text: string): string {
   return text.toLowerCase().replaceAll("ß", "ss").replaceAll("ς", "σ");
 }
 
-/** Python's string ordering: by code point, not by UTF-16 unit or locale. */
+/**
+ * Python's string ordering: by code point, not by UTF-16 unit or locale.
+ *
+ * UTF-16 units order like code points until a surrogate is involved: the first differing pair
+ * of units decides unless one of them is a surrogate, and then the code points are compared.
+ * A text that is a prefix of the other in units comes first in code points too.
+ */
 export function cmpStr(a: string, b: string): number {
   if (a === b) return 0;
+  const n = Math.min(a.length, b.length);
+  for (let i = 0; i < n; i++) {
+    const x = a.charCodeAt(i);
+    const y = b.charCodeAt(i);
+    if (x === y) continue;
+    if ((x & 0xf800) === 0xd800 || (y & 0xf800) === 0xd800) return cmpCodePoints(a, b);
+    return x < y ? -1 : 1;
+  }
+  return a.length < b.length ? -1 : 1;
+}
+
+function cmpCodePoints(a: string, b: string): number {
   const ai = a[Symbol.iterator]();
   const bi = b[Symbol.iterator]();
   for (;;) {
@@ -47,7 +65,8 @@ function cmpValue(x: unknown, y: unknown): number {
 export function sortedBy<T>(items: Iterable<T>, key: (item: T) => unknown, reverse = false): T[] {
   const decorated = [...items].map((item, index) => ({ item, index, k: key(item) }));
   decorated.sort((a, b) => {
-    const c = Array.isArray(a.k) && Array.isArray(b.k) ? cmpKeys(a.k, b.k) : cmpKeys([a.k], [b.k]);
+    // A scalar key compares as a one-element tuple would.
+    const c = Array.isArray(a.k) && Array.isArray(b.k) ? cmpKeys(a.k, b.k) : cmpValue(a.k, b.k);
     // Python's reverse=True keeps equal elements in their original order.
     return c !== 0 ? (reverse ? -c : c) : a.index - b.index;
   });

@@ -5,24 +5,15 @@
  * and decrypted only when this document is shown (`loadDocument`) and live in this tab. A protected PDF asks
  * for its password to be shown; that password opens the view and is not kept.
  */
-import { DomainError, dom, type Id } from "@opesvault/domain";
+import { type Id } from "@opesvault/domain";
 import { Button, IconButton, Skeleton, useElementWidth, useReduceMotion } from "@opesvault/ui";
 import { ChevronLeft, ChevronRight, FileQuestion, KeyRound } from "lucide-react";
 import { motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { PdfPasswordRequired, openPdf, type OpenPdf } from "../../data/pdf_render.ts";
-import { useWorkspace } from "../../data/react.tsx";
+import { openPdf } from "../../data/pdf_render.ts";
 import { DocumentsPasswordDialog } from "../../dialogs/documents_password.tsx";
 import { boxStyle, type EvidenceView } from "./rows.ts";
-
-type Loaded =
-  { state: "loading" } | { state: "error"; message: string } | { state: "ready"; bytes: Uint8Array; pdf: boolean };
-
-type Opening =
-  | { state: "idle" }
-  | { state: "password"; incorrect: boolean }
-  | { state: "ready"; pages: number }
-  | { state: "failed" };
+import { useDocument, usePdfView } from "../../data/use_document.ts";
 
 export interface DocumentViewerProps {
   documentId: Id | null;
@@ -47,12 +38,7 @@ export function DocumentViewer({ documentId, name, evidence }: DocumentViewerPro
 }
 
 function Viewing({ documentId, name, evidence }: DocumentViewerProps & { documentId: Id }) {
-  const workspace = useWorkspace();
   const reduce = useReduceMotion();
-  const [loaded, setLoaded] = useState<Loaded>({ state: "loading" });
-  const [attempt, setAttempt] = useState(0);
-  const [opening, setOpening] = useState<Opening>({ state: "idle" });
-  const [asking, setAsking] = useState(false);
   const [page, setPage] = useState(1);
   const [points, setPoints] = useState<{ width: number; height: number } | null>(null);
   const [measure, width] = useElementWidth<HTMLDivElement>();
@@ -66,72 +52,20 @@ function Viewing({ documentId, name, evidence }: DocumentViewerProps & { documen
   );
   const host = useRef<HTMLDivElement>(null);
   const boxElement = useRef<HTMLDivElement>(null);
-  const pdf = useRef<OpenPdf | null>(null);
-  const token = useRef(0);
 
   // The original is fetched when this document is shown, and again if that failed and the person tries once more.
-  useEffect(() => {
-    let alive = true;
-    workspace.loadDocument(documentId).then(
-      (bytes) => {
-        if (!alive) return;
-        setLoaded({ state: "ready", bytes, pdf: dom.attachments.kindOf(bytes) === "pdf" });
-      },
-      (error: unknown) => {
-        if (!alive) return;
-        setLoaded({
-          state: "error",
-          message: error instanceof DomainError ? error.message : "Não foi possível abrir este documento.",
-        });
-      },
-    );
-    return () => {
-      alive = false;
-    };
-  }, [workspace, documentId, attempt]);
-
-  /** Opens the PDF (with the password the person typed, if any); the handle stays for page changes. */
-  const open = async (bytes: Uint8Array, password?: string): Promise<"ok" | "password" | "failed"> => {
-    const mine = ++token.current;
-    try {
-      const opened = await openPdf(bytes, password);
-      if (mine !== token.current) {
-        opened.destroy();
-        return "ok";
-      }
-      pdf.current?.destroy();
-      pdf.current = opened;
-      setOpening({ state: "ready", pages: opened.pages });
-      return "ok";
-    } catch (error) {
-      if (mine !== token.current) return "ok";
-      if (error instanceof PdfPasswordRequired) {
-        setOpening({ state: "password", incorrect: error.incorrect });
-        return "password";
-      }
-      setOpening({ state: "failed" });
-      return "failed";
-    }
-  };
-
-  useEffect(() => {
-    if (loaded.state !== "ready" || !loaded.pdf) return;
-    const bytes = loaded.bytes;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- opening the file is the effect; its outcome is state
-    void open(bytes);
-    return () => {
-      token.current += 1;
-      pdf.current?.destroy();
-      pdf.current = null;
-    };
-  }, [loaded]);
-
-  const submitPassword = async (password: string) => {
-    if (loaded.state !== "ready") return;
-    const outcome = await open(loaded.bytes, password);
-    if (outcome === "password") throw new DomainError("Senha incorreta. Tente de novo.");
-    if (outcome === "failed") throw new DomainError("Não foi possível abrir este PDF.");
-  };
+  const { loaded, retry } = useDocument(documentId, "Não foi possível abrir este documento.");
+  const isPdf = loaded.state === "ready" && loaded.kind === "pdf";
+  // The PDF is opened (with the password the person typed, if any); the handle stays for page changes.
+  const {
+    opening,
+    handle: pdf,
+    asking,
+    ask,
+    stopAsking,
+    fail,
+    submitPassword,
+  } = usePdfView(isPdf ? loaded.bytes : null, openPdf);
 
   // The page of the selected item is shown.
   const wanted = evidence?.page ?? null;
@@ -160,13 +94,13 @@ function Viewing({ documentId, name, evidence }: DocumentViewerProps & { documen
         setPoints(drawing.points);
       },
       () => {
-        if (alive) setOpening({ state: "failed" });
+        if (alive) fail();
       },
     );
     return () => {
       alive = false;
     };
-  }, [opening, current, drawWidth, width, pages, name]);
+  }, [opening, current, drawWidth, width, pages, name, pdf, fail]);
 
   // The box is brought to the middle of what is visible.
   const box = evidence?.box && points && evidence.page === current ? boxStyle(evidence.box, points) : null;
@@ -182,7 +116,7 @@ function Viewing({ documentId, name, evidence }: DocumentViewerProps & { documen
   }, [box?.top, box?.left, points, reduce]);
 
   const needsPassword = opening.state === "password";
-  const structured = loaded.state === "ready" && !loaded.pdf;
+  const structured = loaded.state === "ready" && !isPdf;
 
   return (
     <div className="flex min-w-0 flex-col gap-2" aria-busy={loaded.state === "loading"}>
@@ -194,18 +128,11 @@ function Viewing({ documentId, name, evidence }: DocumentViewerProps & { documen
       {loaded.state === "error" ? (
         <div role="alert" className="flex flex-col items-start gap-3">
           <p className="text-body text-negative">{loaded.message}</p>
-          <Button
-            onClick={() => {
-              setLoaded({ state: "loading" });
-              setAttempt((n) => n + 1);
-            }}
-          >
-            Tentar de novo
-          </Button>
+          <Button onClick={retry}>Tentar de novo</Button>
         </div>
       ) : null}
 
-      {loaded.state === "ready" && loaded.pdf ? (
+      {isPdf ? (
         <>
           <div className="flex min-h-8 flex-wrap items-center gap-2">
             {pages > 0 ? (
@@ -230,7 +157,7 @@ function Viewing({ documentId, name, evidence }: DocumentViewerProps & { documen
               </>
             ) : null}
             {needsPassword ? (
-              <Button size="sm" variant="primary" icon={<KeyRound />} onClick={() => setAsking(true)}>
+              <Button size="sm" variant="primary" icon={<KeyRound />} onClick={ask}>
                 Informar senha…
               </Button>
             ) : null}
@@ -301,7 +228,7 @@ function Viewing({ documentId, name, evidence }: DocumentViewerProps & { documen
       <DocumentsPasswordDialog
         key={`${documentId}:${asking}`}
         open={asking}
-        onClose={() => setAsking(false)}
+        onClose={stopAsking}
         name={name}
         onSubmit={submitPassword}
       />

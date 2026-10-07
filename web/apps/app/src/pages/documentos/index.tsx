@@ -23,6 +23,7 @@ import { useUndo } from "../../shell/undo.tsx";
 import { DocumentPanel } from "./panel.tsx";
 import { documentRows, fileSize, summaryLine, type DocumentRow, type ReceiptUse } from "./rows.ts";
 import { exportUnencrypted, NOT_ENCRYPTED } from "../../data/export_file.ts";
+import { DOCUMENT_MIME, type DocumentKind } from "../../data/use_document.ts";
 
 const day = (date: IsoDate | null) => (date ? formatDateBr(date) : "—");
 
@@ -62,13 +63,6 @@ const COLUMNS: DataColumn<DocumentRow>[] = [
     priority: 3,
   },
 ];
-
-const MIME = {
-  pdf: "application/pdf",
-  png: "image/png",
-  jpeg: "image/jpeg",
-  other: "application/octet-stream",
-} as const;
 
 export function Page() {
   const workspace = useWorkspace();
@@ -150,12 +144,12 @@ export function Page() {
     });
   };
 
-  const save = async (row: DocumentRow, bytes: Uint8Array, kind: keyof typeof MIME) => {
+  const save = async (row: DocumentRow, bytes: Uint8Array, kind: DocumentKind) => {
     await exportUnencrypted({
       title: "Salvar o original sem criptografia?",
       text: `${exporting.WARNING} O arquivo “${row.name}” (${fileSize(row.size)}) vai para a pasta de downloads deste aparelho.`,
       confirmLabel: "Salvar o original",
-      save: () => saveFile(row.name, bytes, MIME[kind]),
+      save: () => saveFile(row.name, bytes, DOCUMENT_MIME[kind]),
       done: `Arquivo salvo. ${NOT_ENCRYPTED}`,
     });
   };

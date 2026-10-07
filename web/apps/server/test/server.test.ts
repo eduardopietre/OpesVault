@@ -1,26 +1,13 @@
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { loadConfig, loadSecret } from "../src/config.ts";
-import { testServer, type TestServer } from "./helpers.ts";
+import { JSON_HEADERS, useTestServer } from "./helpers.ts";
 
-let test: TestServer | null = null;
-afterEach(async () => {
-  await test?.dispose();
-  test = null;
-});
+const fixture = useTestServer();
 
 const SECRET = "A".repeat(43);
-const CSRF = { "X-OpesVault": "1", "Content-Type": "application/json" };
-
-async function api(path: string, init: RequestInit = {}): Promise<Response> {
-  return fetch(`${test!.server.url}${path}`, init);
-}
-
-async function post(path: string, body: unknown, headers: Record<string, string> = {}): Promise<Response> {
-  return api(path, { method: "POST", headers: { ...CSRF, ...headers }, body: JSON.stringify(body) });
-}
 
 function expectSecurityHeaders(response: Response): void {
   const csp = response.headers.get("content-security-policy")!;
@@ -39,8 +26,8 @@ function expectSecurityHeaders(response: Response): void {
 
 describe("HTTP surface", () => {
   it("answers health with strict headers and no caching", async () => {
-    test = await testServer();
-    const response = await api("/api/v1/health");
+    await fixture.start();
+    const response = await fixture.call("/api/v1/health");
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ ok: true });
     expect(response.headers.get("cache-control")).toBe("no-store");
@@ -49,8 +36,8 @@ describe("HTTP surface", () => {
   });
 
   it("requires the CSRF header on every mutating request", async () => {
-    test = await testServer();
-    const without = await api("/api/v1/auth/signup", {
+    await fixture.start();
+    const without = await fixture.call("/api/v1/auth/signup", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email: "ana@example.com", loginSecret: SECRET }),
@@ -58,30 +45,36 @@ describe("HTTP surface", () => {
     expect(without.status).toBe(403);
     expect(await without.json()).toEqual({ error: "forbidden" });
     expectSecurityHeaders(without);
-    const wrong = await post(
+    const wrong = await fixture.post(
       "/api/v1/auth/signup",
       { email: "ana@example.com", loginSecret: SECRET },
       { "X-OpesVault": "0" },
     );
     expect(wrong.status).toBe(403);
-    expect((await post("/api/v1/auth/signup", { email: "ana@example.com", loginSecret: SECRET })).status).toBe(200);
+    expect((await fixture.post("/api/v1/auth/signup", { email: "ana@example.com", loginSecret: SECRET })).status).toBe(
+      200,
+    );
   });
 
   it("refuses malformed and oversized bodies", async () => {
-    test = await testServer();
-    const malformed = await api("/api/v1/auth/signin", { method: "POST", headers: CSRF, body: "{not json" });
+    await fixture.start();
+    const malformed = await fixture.call("/api/v1/auth/signin", {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: "{not json",
+    });
     expect(malformed.status).toBe(400);
     expect(await malformed.json()).toEqual({ error: "invalid" });
-    const extra = await post("/api/v1/auth/signin", { email: "a@b.c", loginSecret: SECRET, password: "x" });
+    const extra = await fixture.post("/api/v1/auth/signin", { email: "a@b.c", loginSecret: SECRET, password: "x" });
     expect(await extra.json()).toEqual({ error: "invalid" });
-    const huge = await post("/api/v1/auth/signin", { email: "a@b.c", loginSecret: "A".repeat(300 * 1024) });
+    const huge = await fixture.post("/api/v1/auth/signin", { email: "a@b.c", loginSecret: "A".repeat(300 * 1024) });
     expect(huge.status).toBe(413);
     expect(await huge.json()).toEqual({ error: "too_large" });
   });
 
   it("answers unknown API routes with a JSON 404", async () => {
-    test = await testServer();
-    const response = await api("/api/v1/nothing");
+    await fixture.start();
+    const response = await fixture.call("/api/v1/nothing");
     expect(response.status).toBe(404);
     expect(await response.json()).toEqual({ error: "not_found" });
   });
@@ -89,8 +82,8 @@ describe("HTTP surface", () => {
 
 describe("sessions and cookies", () => {
   it("sets an HttpOnly, SameSite=Strict cookie, Secure with the __Host- prefix when configured", async () => {
-    test = await testServer({ secureCookies: true });
-    const response = await post("/api/v1/auth/signup", { email: "ana@example.com", loginSecret: SECRET });
+    await fixture.start({ secureCookies: true });
+    const response = await fixture.post("/api/v1/auth/signup", { email: "ana@example.com", loginSecret: SECRET });
     const cookie = response.headers.get("set-cookie")!;
     expect(cookie).toMatch(/^__Host-opesvault-session=/);
     expect(cookie).toContain("HttpOnly");
@@ -102,8 +95,8 @@ describe("sessions and cookies", () => {
   });
 
   it("can drop Secure for local development over http", async () => {
-    test = await testServer({ secureCookies: false });
-    const response = await post("/api/v1/auth/signup", { email: "ana@example.com", loginSecret: SECRET });
+    await fixture.start({ secureCookies: false });
+    const response = await fixture.post("/api/v1/auth/signup", { email: "ana@example.com", loginSecret: SECRET });
     const cookie = response.headers.get("set-cookie")!;
     expect(cookie).toMatch(/^opesvault-session=/);
     expect(cookie).not.toContain("Secure");
@@ -111,14 +104,14 @@ describe("sessions and cookies", () => {
   });
 
   it("stores only hashes of session tokens and login secrets", async () => {
-    test = await testServer();
+    const test = await fixture.start();
     const loginSecret = "SegredoDeLogin_" + "x".repeat(30);
-    const response = await post("/api/v1/auth/signup", { email: "ana@example.com", loginSecret });
+    const response = await fixture.post("/api/v1/auth/signup", { email: "ana@example.com", loginSecret });
     const token = /opesvault-session=([^;]+)/.exec(response.headers.get("set-cookie")!)![1]!;
     await test.server.close();
     const db = readdirSync(test.dataDir)
       .filter((name) => name.startsWith("opesvault.db"))
-      .map((name) => readFileSync(join(test!.dataDir, name)).toString("latin1"))
+      .map((name) => readFileSync(join(test.dataDir, name)).toString("latin1"))
       .join("");
     expect(db).toContain("ana@example.com");
     expect(db).not.toContain(token);
@@ -127,7 +120,7 @@ describe("sessions and cookies", () => {
   });
 
   it("sessions expire after 30 days", async () => {
-    test = await testServer();
+    const test = await fixture.start();
     const client = test.client();
     await client.signUp("ana@example.com", SECRET);
     test.advance(29 * 24 * 3600 * 1000);
@@ -139,34 +132,48 @@ describe("sessions and cookies", () => {
 
 describe("rate limits", () => {
   it("limits sign-in attempts per IP", async () => {
-    test = await testServer({ ipAttemptsPerMinute: 3 });
+    const test = await fixture.start({ ipAttemptsPerMinute: 3 });
     for (let i = 0; i < 3; i++) {
-      expect((await post("/api/v1/auth/signin", { email: "x@example.com", loginSecret: SECRET })).status).toBe(401);
+      expect((await fixture.post("/api/v1/auth/signin", { email: "x@example.com", loginSecret: SECRET })).status).toBe(
+        401,
+      );
     }
-    const blocked = await post("/api/v1/auth/signin", { email: "x@example.com", loginSecret: SECRET });
+    const blocked = await fixture.post("/api/v1/auth/signin", { email: "x@example.com", loginSecret: SECRET });
     expect(blocked.status).toBe(429);
     expect(await blocked.json()).toEqual({ error: "rate_limited" });
     test.advance(61_000);
-    expect((await post("/api/v1/auth/signin", { email: "x@example.com", loginSecret: SECRET })).status).toBe(401);
+    expect((await fixture.post("/api/v1/auth/signin", { email: "x@example.com", loginSecret: SECRET })).status).toBe(
+      401,
+    );
   });
 
   it("limits failed sign-ins per email, even the right secret, until the window passes", async () => {
-    test = await testServer({ emailFailuresPer15Minutes: 2 });
-    await post("/api/v1/auth/signup", { email: "ana@example.com", loginSecret: SECRET });
+    const test = await fixture.start({ emailFailuresPer15Minutes: 2 });
+    await fixture.post("/api/v1/auth/signup", { email: "ana@example.com", loginSecret: SECRET });
     const wrong = "B".repeat(43);
-    expect((await post("/api/v1/auth/signin", { email: "ana@example.com", loginSecret: wrong })).status).toBe(401);
-    expect((await post("/api/v1/auth/signin", { email: "Ana@example.com", loginSecret: wrong })).status).toBe(401);
-    expect((await post("/api/v1/auth/signin", { email: "ana@example.com", loginSecret: SECRET })).status).toBe(429);
+    expect((await fixture.post("/api/v1/auth/signin", { email: "ana@example.com", loginSecret: wrong })).status).toBe(
+      401,
+    );
+    expect((await fixture.post("/api/v1/auth/signin", { email: "Ana@example.com", loginSecret: wrong })).status).toBe(
+      401,
+    );
+    expect((await fixture.post("/api/v1/auth/signin", { email: "ana@example.com", loginSecret: SECRET })).status).toBe(
+      429,
+    );
     // Another email is not affected.
-    expect((await post("/api/v1/auth/signin", { email: "bia@example.com", loginSecret: SECRET })).status).toBe(401);
+    expect((await fixture.post("/api/v1/auth/signin", { email: "bia@example.com", loginSecret: SECRET })).status).toBe(
+      401,
+    );
     test.advance(15 * 60_000 + 1000);
-    expect((await post("/api/v1/auth/signin", { email: "ana@example.com", loginSecret: SECRET })).status).toBe(200);
+    expect((await fixture.post("/api/v1/auth/signin", { email: "ana@example.com", loginSecret: SECRET })).status).toBe(
+      200,
+    );
   });
 
   it("behind a trusted proxy, counts by the forwarded client IP", async () => {
-    test = await testServer({ ipAttemptsPerMinute: 1, trustProxy: true });
+    await fixture.start({ ipAttemptsPerMinute: 1, trustProxy: true });
     const from = (ip: string) =>
-      post(
+      fixture.post(
         "/api/v1/auth/signin",
         { email: "x@example.com", loginSecret: SECRET },
         { "X-Forwarded-For": `1.1.1.1, ${ip}` },
@@ -179,7 +186,7 @@ describe("rate limits", () => {
 
 describe("logs", () => {
   it("carry only method, route template, status, duration and the opaque project id", async () => {
-    test = await testServer();
+    const test = await fixture.start();
     const client = test.client();
     const secret = "LoginSecretQueNaoPodeAparecer_" + "z".repeat(20);
     await client.loginSalt("segredo.email@example.com");
@@ -231,29 +238,29 @@ describe("static app", () => {
 
   it("serves files, falls back to index.html for app routes and never leaves the folder", async () => {
     const dir = site();
-    test = await testServer({ staticDir: dir });
-    const index = await api("/");
+    await fixture.start({ staticDir: dir });
+    const index = await fixture.call("/");
     expect(index.status).toBe(200);
     expect(index.headers.get("content-type")).toContain("text/html");
     expect(index.headers.get("cache-control")).toBe("no-cache");
     expectSecurityHeaders(index);
-    expect(await (await api("/livro/2026-10")).text()).toContain("OpesVault");
-    const asset = await api("/assets/app-1234.js");
+    expect(await (await fixture.call("/livro/2026-10")).text()).toContain("OpesVault");
+    const asset = await fixture.call("/assets/app-1234.js");
     expect(asset.headers.get("content-type")).toContain("text/javascript");
     expect(asset.headers.get("cache-control")).toContain("immutable");
-    expect((await api("/manifest.webmanifest")).headers.get("content-type")).toBe("application/manifest+json");
-    expect((await api("/assets/missing.js")).status).toBe(404);
+    expect((await fixture.call("/manifest.webmanifest")).headers.get("content-type")).toBe("application/manifest+json");
+    expect((await fixture.call("/assets/missing.js")).status).toBe(404);
     for (const attack of ["/..%2f..%2f..%2fetc%2fpasswd", "/%2e%2e/%2e%2e/etc/passwd", "/assets/..%2f..%2fsecret"]) {
-      const response = await api(attack);
+      const response = await fixture.call(attack);
       expect(await response.text()).not.toContain("root:");
     }
     rmSync(dir, { recursive: true, force: true });
   });
 
   it("without an app, only the API answers", async () => {
-    test = await testServer();
-    expect((await api("/")).status).toBe(404);
-    expect((await api("/api/v1/health")).status).toBe(200);
+    await fixture.start();
+    expect((await fixture.call("/")).status).toBe(404);
+    expect((await fixture.call("/api/v1/health")).status).toBe(200);
   });
 });
 

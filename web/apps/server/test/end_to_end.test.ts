@@ -6,7 +6,6 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { cookieJarFetch, HttpBackend } from "@opesvault/backend-http";
-import type { KdfParams } from "@opesvault/crypto";
 import {
   BackendError,
   ProjectVault,
@@ -17,24 +16,21 @@ import {
   type SyncBackend,
 } from "@opesvault/vault";
 import { IDBFactory, IDBKeyRange } from "fake-indexeddb";
-import { afterEach, describe, expect, it } from "vitest";
-import { testServer, type TestServer } from "./helpers.ts";
+import { describe, expect, it } from "vitest";
+import { useTestServer } from "./helpers.ts";
+import { TEST_KDF } from "@opesvault/vault/testing";
 
-const KDF: KdfParams = { algorithm: "argon2id", memoryKiB: 8192, iterations: 1, parallelism: 1 };
 const op = (id: string, description: string): PlainRecord => ({ kind: "operation", id, payload: { description } });
 
-let test: TestServer;
-afterEach(async () => {
-  await test.dispose();
-});
+const fixture = useTestServer();
 
-async function browser(backend: SyncBackend = test.client()) {
+async function browser(backend: SyncBackend = fixture.current.client()) {
   const cache = await VaultCache.open({ factory: new IDBFactory(), keyRange: IDBKeyRange });
   return {
     backend,
     cache,
     vault: (projectId: string) =>
-      new ProjectVault({ backend, cache, projectId, kdf: KDF, pushDelayMs: 10, pollMs: 50, retryMs: 50 }),
+      new ProjectVault({ backend, cache, projectId, kdf: TEST_KDF, pushDelayMs: 10, pollMs: 50, retryMs: 50 }),
   };
 }
 
@@ -47,20 +43,20 @@ function filesUnder(dir: string): string[] {
 
 describe("two browsers through the server", () => {
   it("one edits, the other reads, takes over and edits; the first turns read-only", async () => {
-    test = await testServer();
+    await fixture.start();
     const ana = await browser();
-    await signUp(ana.backend, "ana@example.com", "conta da ana", KDF);
+    await signUp(ana.backend, "ana@example.com", "conta da ana", TEST_KDF);
     const { vault: editor } = await ProjectVault.create({
       backend: ana.backend,
       cache: ana.cache,
-      kdf: KDF,
+      kdf: TEST_KDF,
       name: "Casa",
       password: "senha do projeto",
       pushDelayMs: 10,
       pollMs: 50,
     });
     const bia = await browser();
-    await signUp(bia.backend, "bia@example.com", "conta da bia", KDF);
+    await signUp(bia.backend, "bia@example.com", "conta da bia", TEST_KDF);
     await ana.backend.addMember(editor.projectId, "bia@example.com");
 
     const reader = bia.vault(editor.projectId);
@@ -96,7 +92,7 @@ describe("two browsers through the server", () => {
 
 describe("network failures", () => {
   it("a dropped response in the middle of a push neither loses nor duplicates", async () => {
-    test = await testServer();
+    const test = await fixture.start();
     let drop = false;
     const jar = cookieJarFetch();
     const flaky: typeof fetch = async (input, init) => {
@@ -108,11 +104,11 @@ describe("network failures", () => {
       return response;
     };
     const ana = await browser(new HttpBackend({ baseUrl: test.server.url, fetch: flaky }));
-    await signUp(ana.backend, "ana@example.com", "conta da ana", KDF);
+    await signUp(ana.backend, "ana@example.com", "conta da ana", TEST_KDF);
     const { vault } = await ProjectVault.create({
       backend: ana.backend,
       cache: ana.cache,
-      kdf: KDF,
+      kdf: TEST_KDF,
       name: "Casa",
       password: "senha",
     });
@@ -129,13 +125,13 @@ describe("network failures", () => {
   });
 
   it("an unreachable server is offline, and changes wait", async () => {
-    test = await testServer();
+    const test = await fixture.start();
     const ana = await browser();
-    await signUp(ana.backend, "ana@example.com", "conta da ana", KDF);
+    await signUp(ana.backend, "ana@example.com", "conta da ana", TEST_KDF);
     const { vault } = await ProjectVault.create({
       backend: ana.backend,
       cache: ana.cache,
-      kdf: KDF,
+      kdf: TEST_KDF,
       name: "Casa",
       password: "senha",
       retryMs: 60_000,
@@ -155,13 +151,13 @@ describe("network failures", () => {
 
 describe("restart", () => {
   it("a restarted server keeps accounts, sessions, projects, records, blobs and the lease", async () => {
-    test = await testServer();
+    const test = await fixture.start();
     const ana = await browser();
-    await signUp(ana.backend, "ana@example.com", "conta da ana", KDF);
+    await signUp(ana.backend, "ana@example.com", "conta da ana", TEST_KDF);
     const { vault } = await ProjectVault.create({
       backend: ana.backend,
       cache: ana.cache,
-      kdf: KDF,
+      kdf: TEST_KDF,
       name: "Casa",
       password: "senha",
     });
@@ -177,7 +173,7 @@ describe("restart", () => {
     await vault.lock();
 
     const other = await browser();
-    await signIn(other.backend, "ana@example.com", "conta da ana", KDF);
+    await signIn(other.backend, "ana@example.com", "conta da ana", TEST_KDF);
     const fresh = other.vault(vault.projectId);
     await fresh.unlock("senha");
     expect(fresh.get("operation", "1")).toEqual(op("1", "persistente"));
@@ -188,13 +184,13 @@ describe("restart", () => {
   });
 
   it("nothing on the server's disk is plaintext", async () => {
-    test = await testServer();
+    const test = await fixture.start();
     const ana = await browser();
-    await signUp(ana.backend, "ana@example.com", "senha-da-conta-secreta", KDF);
+    await signUp(ana.backend, "ana@example.com", "senha-da-conta-secreta", TEST_KDF);
     const { vault, recoveryKey } = await ProjectVault.create({
       backend: ana.backend,
       cache: ana.cache,
-      kdf: KDF,
+      kdf: TEST_KDF,
       name: "Família Secreta",
       password: "senha-do-projeto-secreta",
     });
@@ -224,7 +220,7 @@ describe("restart", () => {
 
 describe("errors map to codes", () => {
   it("unauthorized without a session; offline for a server that is gone", async () => {
-    test = await testServer();
+    const test = await fixture.start();
     const client = test.client();
     await expect(client.listProjects()).rejects.toEqual(new BackendError("unauthorized"));
     const nowhere = new HttpBackend({ baseUrl: "http://127.0.0.1:9", fetch: cookieJarFetch() });

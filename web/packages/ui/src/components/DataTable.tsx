@@ -22,6 +22,7 @@ import {
   type ReactNode,
 } from "react";
 import { cn } from "../cn.ts";
+import { compareLabels } from "../format.ts";
 import { useElementWidth } from "../hooks.ts";
 import { BAND } from "../tokens.ts";
 
@@ -97,7 +98,7 @@ function compare(a: SortValue, b: SortValue): number {
   if (a === b) return 0;
   if (a === null || a === undefined) return 1;
   if (b === null || b === undefined) return -1;
-  if (typeof a === "string" && typeof b === "string") return a.localeCompare(b, "pt-BR", { sensitivity: "base" });
+  if (typeof a === "string" && typeof b === "string") return compareLabels(a, b);
   return a < b ? -1 : a > b ? 1 : 0;
 }
 

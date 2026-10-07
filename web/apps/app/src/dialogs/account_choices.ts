@@ -6,14 +6,13 @@
 import {
   AccountSubtype,
   AccountType,
-  cmpStr,
   isLiquid,
   sortedBy,
   type Id,
   type Ledger,
   type LedgerAccount,
 } from "@opesvault/domain";
-import type { SelectOption } from "@opesvault/ui";
+import { compareLabels, type SelectOption } from "@opesvault/ui";
 
 const byName = (accounts: Iterable<LedgerAccount>) => sortedBy(accounts, (a) => a.name);
 
@@ -44,7 +43,7 @@ export function categoryItems(ledger: Ledger, kind: AccountType): SelectOption[]
   return ledger
     .categories(kind)
     .map((a) => ({ id: a.id, label: label(a) }))
-    .sort((a, b) => cmpStr(a.label, b.label));
+    .sort((a, b) => compareLabels(a.label, b.label));
 }
 
 /** The active members (and `keep`, even if it was deactivated), in the project's order. */
@@ -76,7 +75,7 @@ export function postableAccounts(ledger: Ledger, keep: ReadonlySet<Id>): SelectO
     if (account.subtype === AccountSubtype.CATEGORY && parent !== undefined) label = `${parent.name} › ${label}`;
     items.push({ id: account.id, label: `${TYPE_PREFIX[account.type] ?? account.type}: ${label}` });
   }
-  return items.sort((a, b) => a.label.toLowerCase().localeCompare(b.label.toLowerCase(), "pt-BR"));
+  return items.sort((a, b) => compareLabels(a.label, b.label));
 }
 
 /** `current` when it is not among `options` (an archived account): shown by its own name. */

@@ -12,7 +12,7 @@ import {
   type Id,
   type LedgerAccount,
 } from "@opesvault/domain";
-import { DateField, MoneyField, Select, TextField, type SelectOption } from "@opesvault/ui";
+import { compareLabels, DateField, MoneyField, Select, TextField, type SelectOption } from "@opesvault/ui";
 import { useMemo, useState } from "react";
 import { useWorkspace } from "../data/react.tsx";
 import { ASSET_SUBTYPES, LIABILITY_SUBTYPES, SUBTYPE_LABELS, memberChoices } from "./accounts_labels.ts";
@@ -34,10 +34,7 @@ const SUBTYPES: SelectOption[] = [...ASSET_SUBTYPES, ...LIABILITY_SUBTYPES].map(
 
 /** Names of the banks for the institution field's suggestions (the COMPE list, desktop `institution_edit`). */
 export function BankNameList({ id }: { id: string }) {
-  const names = useMemo(
-    () => [...new Set(catalogs.banks().map((b) => b.name))].sort((a, b) => a.localeCompare(b, "pt-BR")),
-    [],
-  );
+  const names = useMemo(() => [...new Set(catalogs.banks().map((b) => b.name))].sort(compareLabels), []);
   return (
     <datalist id={id}>
       {names.map((name) => (

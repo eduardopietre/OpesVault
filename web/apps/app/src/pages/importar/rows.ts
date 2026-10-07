@@ -4,7 +4,7 @@
  * document and one per extracted item, and the facts of a document with the verdict of each check.
  */
 import { AccountType, importing, type Dec, type Id, type IsoDate, type Ledger, type session } from "@opesvault/domain";
-import type { SelectOption } from "@opesvault/ui";
+import { compareLabels, type SelectOption } from "@opesvault/ui";
 import { categoryItems } from "../../dialogs/account_choices.ts";
 import { dateOr, moneyOr } from "../../data/money.ts";
 
@@ -212,7 +212,7 @@ export function targetOptions(ledger: Ledger, kind: Item["kind"]): SelectOption[
   const income = categoryItems(ledger, AccountType.INCOME);
   const balance = [...ledger.accounts.values()]
     .filter((a) => a.type === AccountType.ASSET || a.type === AccountType.LIABILITY)
-    .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"))
+    .sort((a, b) => compareLabels(a.name, b.name))
     .map((a) => ({ id: a.id, label: `↔ ${a.name}` }));
   const choices =
     kind === ItemKind.CREDIT

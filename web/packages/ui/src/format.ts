@@ -214,3 +214,10 @@ export function formatBytes(bytes: number): string {
   }
   return `${value.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} ${units[unit]}`;
 }
+
+const LABELS = new Intl.Collator("pt-BR", { sensitivity: "base" });
+
+/** Order of names shown to people: Portuguese, ignoring case and accents ("Água" before "Viagem"). */
+export function compareLabels(a: string, b: string): number {
+  return LABELS.compare(a, b);
+}

@@ -3,6 +3,7 @@
  * to reach an object here (the desktop keeps these in each tab; here they are testable on their own, like
  * `pages/tax/rows.py`).
  */
+import { compareLabels } from "@opesvault/ui";
 import {
   AccountType,
   Dec,
@@ -198,7 +199,7 @@ export function accountRows(ledger: Ledger): AccountRow[] {
   const latest = balanceChecks.latest(ledger);
   return [...ledger.accounts.values()]
     .filter((a) => a.type === AccountType.ASSET || a.type === AccountType.LIABILITY)
-    .sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }))
+    .sort((a, b) => compareLabels(a.name, b.name))
     .map((a) => ({
       id: a.id,
       name: a.name,
@@ -263,7 +264,7 @@ export function holderNames(ledger: Ledger, item: dom.banking.BankAccount): stri
 export function openBankAccounts(ledger: Ledger): dom.banking.BankAccount[] {
   return [...banking.bankAccounts(ledger).values()]
     .filter((b) => !b.archived)
-    .sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }));
+    .sort((a, b) => compareLabels(a.name, b.name));
 }
 
 export function bankRows(ledger: Ledger, today: IsoDate): BankRow[] {
@@ -439,7 +440,7 @@ export interface LoanRow {
 
 export function loanRows(ledger: Ledger, today: IsoDate): LoanRow[] {
   return [...loans.plans(ledger).values()]
-    .sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }))
+    .sort((a, b) => compareLabels(a.name, b.name))
     .map((plan) => {
       const current = loans.status(ledger, plan.id, today);
       const following = current.nextDue;

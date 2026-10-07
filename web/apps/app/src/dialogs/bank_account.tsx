@@ -4,7 +4,16 @@
  * existing ledger account. The investments held there come in through "Novo investimento".
  */
 import { DomainError, catalogs, dom, type Dec, type Id, type IsoDate } from "@opesvault/domain";
-import { Checkbox, Combobox, DateField, MoneyField, Select, TextField, type SelectOption } from "@opesvault/ui";
+import {
+  Checkbox,
+  Combobox,
+  compareLabels,
+  DateField,
+  MoneyField,
+  Select,
+  TextField,
+  type SelectOption,
+} from "@opesvault/ui";
 import { useMemo, useState } from "react";
 import { useWorkspace } from "../data/react.tsx";
 import { memberChoices } from "./accounts_labels.ts";
@@ -76,7 +85,7 @@ export function BankAccountDialog({ open, onClose, item, onDone }: BankAccountDi
     const subtype = banking.PART_SUBTYPES[part];
     return [...ledger.accounts.values()]
       .filter((a) => a.subtype === subtype && !a.archived && banking.ofAccount(ledger, a.id) === null)
-      .sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }))
+      .sort((a, b) => compareLabels(a.name, b.name))
       .map((a) => ({ id: a.id, label: `Usar ${a.name}` }));
   };
 

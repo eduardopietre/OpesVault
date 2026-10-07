@@ -3,7 +3,7 @@
  * (a trip, a renovation) and never change a value. An installment plan is tagged as a whole.
  */
 import { dom, DomainError, type Id } from "@opesvault/domain";
-import { Select, TextField } from "@opesvault/ui";
+import { compareLabels, Select, TextField } from "@opesvault/ui";
 import { useId, useMemo, useState } from "react";
 import { useWorkspace } from "../data/react.tsx";
 import { Caption, FormDialog, useFormAct } from "./livro_form.tsx";
@@ -27,10 +27,7 @@ export function TagDialog({ open, onClose, operationIds, onDone }: TagDialogProp
   const listId = useId();
   const known = useMemo(() => dom.tags.allTags(ledger), [ledger]);
   const current = useMemo(
-    () =>
-      [...new Set(operationIds.flatMap((id) => dom.tags.tagsOf(ledger, id)))].sort((a, b) =>
-        a.toLowerCase().localeCompare(b.toLowerCase(), "pt-BR"),
-      ),
+    () => [...new Set(operationIds.flatMap((id) => dom.tags.tagsOf(ledger, id)))].sort((a, b) => compareLabels(a, b)),
     [ledger, operationIds],
   );
   const [tag, setTag] = useState("");

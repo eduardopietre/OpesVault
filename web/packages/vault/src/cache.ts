@@ -31,6 +31,11 @@ export interface CachedProject {
   readonly sealedName: B64 | null;
   /** Goes up with every write to the project's records (absent before the first one). */
   readonly generation?: number;
+  /**
+   * A first download was stopped halfway (cancelled, closed tab, network): the rows up to `cursor` are stored and
+   * the rest is still to come, so the next open goes on with it the same way (absent or false otherwise).
+   */
+  readonly downloading?: boolean;
 }
 
 export interface CachedRecord {
@@ -213,15 +218,18 @@ export class VaultCache {
   }
 
   /**
-   * Stores a pulled page in one transaction: the server's records (tombstones included), pending
-   * entries the page proved were already accepted, and the new cursor.
+   * Stores pulled records in one transaction: the server's records (tombstones included; one page, or several
+   * pages of a first download in order, the later version of a record last), pending entries they proved were
+   * already accepted, and the new cursor. `downloading` marks a first download that goes on after these rows.
+   * Returns the generation the rows were written at.
    */
   async applyPull(
     projectId: string,
     records: readonly SealedRecord[],
     cursor: number,
     acknowledged: readonly string[],
-  ): Promise<void> {
+    downloading = false,
+  ): Promise<number> {
     const tx = this.#db.transaction(["records", "pending", "projects"], "readwrite");
     const projects = tx.objectStore("projects");
     const current = (await request(projects.get(projectId))) as CachedProject | undefined;
@@ -232,8 +240,9 @@ export class VaultCache {
     }
     const pendingStore = tx.objectStore("pending");
     for (const id of acknowledged) pendingStore.delete([projectId, id]);
-    projects.put({ projectId, envelope: null, sealedName: null, ...current, cursor, generation: gen });
+    projects.put({ projectId, envelope: null, sealedName: null, ...current, cursor, generation: gen, downloading });
     await done(tx);
+    return gen;
   }
 
   /**

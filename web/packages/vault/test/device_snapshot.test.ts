@@ -114,6 +114,25 @@ describe("the device snapshot (docs/19 §8)", () => {
     await again.lock();
   });
 
+  it("is compressed, and one of the earlier, uncompressed format is dropped and written again", async () => {
+    const { dev, projectId, holder } = await project();
+    const first = await open(dev, projectId, holder);
+    await writeSnapshot(dev, projectId);
+    await first.lock();
+    const good = (await dev.cache.getSnapshot(projectId))!;
+    expect(good.sealed[0]).toBe(2); // format 2: gzip inside the seal
+    const old = good.sealed.slice();
+    old[0] = 1;
+    await dev.cache.removeSnapshot(projectId);
+    await dev.cache.putSnapshot({ ...good, sealed: old });
+    const again = await open(dev, projectId, holder);
+    expect(again.get("operation", "3")).toEqual(op("3", "três"));
+    expect(await dev.cache.getSnapshot(projectId)).toBeNull();
+    await writeSnapshot(dev, projectId);
+    expect((await dev.cache.getSnapshot(projectId))!.sealed[0]).toBe(2);
+    await again.lock();
+  });
+
   it("a snapshot from a later generation than the cache is never used", async () => {
     const { dev, projectId, holder } = await project();
     const first = await open(dev, projectId, holder);

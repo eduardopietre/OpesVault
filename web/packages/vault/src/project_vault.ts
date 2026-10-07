@@ -50,7 +50,7 @@ import {
   type SyncBackend,
 } from "./backend.ts";
 import { BlobCache } from "./blob_cache.ts";
-import type { CachedSnapshot, PendingChange, VaultCache } from "./cache.ts";
+import type { CachedRecord, CachedSnapshot, PendingChange, VaultCache } from "./cache.ts";
 import { IdleTimer, systemTimers, type Timers } from "./timers.ts";
 
 export type { PlainRecord } from "@opesvault/crypto";
@@ -153,8 +153,35 @@ export interface ProjectVaultOptions {
   /** Decrypted attachments kept in memory while unlocked. */
   readonly blobCacheBytes?: number;
   readonly pullPageSize?: number;
+  /** Records a download stores per IndexedDB transaction (default `DOWNLOAD_BATCH`). */
+  readonly downloadBatch?: number;
   /** When the device snapshot is written (defaults: `SNAPSHOT_MIN`, `SNAPSHOT_STALE`, `SNAPSHOT_DELAY_MS`). */
   readonly deviceSnapshot?: { readonly minRecords?: number; readonly stale?: number; readonly delayMs?: number };
+}
+
+/**
+ * How opening a project goes, for a progress indicator (a first download on a new device takes a while):
+ * - `download`: records received from the server and stored, sealed, in this device's cache;
+ * - `open`: records being decrypted.
+ */
+export interface UnlockProgress {
+  readonly phase: "download" | "open";
+  /** Records received (download) or decrypted (open) so far. */
+  readonly done: number;
+  /** Records to decrypt (open); null for the download, whose record count the server does not tell. */
+  readonly total: number | null;
+  /** Share of the work done, from 0 to 1 (the download's is by server revision); null when not known. */
+  readonly fraction: number | null;
+}
+
+export interface UnlockOptions {
+  readonly onProgress?: (progress: UnlockProgress) => void;
+  /**
+   * Cancels opening: `unlock` rejects with the signal's reason and the vault stays locked. What a first download
+   * stored so far stays in the cache, consistent (every write carries its cursor), and the next open goes on
+   * from there.
+   */
+  readonly signal?: AbortSignal;
 }
 
 export interface CreateProjectOptions extends Omit<ProjectVaultOptions, "projectId"> {
@@ -233,15 +260,30 @@ const SNAPSHOT_STALE = 500;
 /** …a moment after the last of them, when nothing is pending (writing it costs a fraction of a second). */
 const SNAPSHOT_DELAY_MS = 5000;
 
-/** Decrypts many records, a batch at a time; a record that fails to open is `null` (damaged). */
-async function openMany(keys: ProjectKeys, items: readonly SealedItem[]): Promise<Map<string, PlainRecord | null>> {
+/** Records a first download stores in one IndexedDB transaction (several pulled pages): fewer, bigger writes. */
+const DOWNLOAD_BATCH = 8000;
+
+/**
+ * Decrypts many records, a batch at a time; a record that fails to open is `null` (damaged). `onBatch` hears
+ * how many are done after each batch; when it returns false the rest is left out (the caller is giving up).
+ */
+async function openMany(
+  keys: ProjectKeys,
+  items: readonly SealedItem[],
+  onBatch?: (done: number) => boolean,
+): Promise<Map<string, PlainRecord | null>> {
   const out = new Map<string, PlainRecord | null>();
   for (let i = 0; i < items.length; i += OPEN_BATCH) {
     const batch = items.slice(i, i + OPEN_BATCH);
     const opened = await Promise.all(batch.map((item) => keys.openRecord(item.id, item.ciphertext).catch(() => null)));
     batch.forEach((item, k) => out.set(item.id, opened[k]!));
+    if (onBatch !== undefined && !onBatch(Math.min(i + OPEN_BATCH, items.length))) break;
   }
   return out;
+}
+
+function abortReason(signal: AbortSignal): unknown {
+  return signal.reason ?? new DOMException("The operation was aborted.", "AbortError");
 }
 
 /** Records the time since `since` as a `performance.measure` (docs/18 W12 measurements); returns now. */
@@ -267,6 +309,7 @@ export class ProjectVault {
   readonly #retryMs: number;
   readonly #pollMs: number;
   readonly #pageSize: number;
+  readonly #downloadBatch: number;
   #idle: IdleTimer | null;
   readonly #blobs: BlobCache;
 
@@ -302,6 +345,12 @@ export class ProjectVault {
   #snapshotTimer: unknown = null;
   readonly #snapshotRule: { readonly minRecords: number; readonly stale: number; readonly delayMs: number };
   #lastError: string | null = null;
+  /** While `unlock` runs: who hears its progress, and what cancels it. */
+  #progress: ((progress: UnlockProgress) => void) | null = null;
+  /** The project's revision on the server when last listed (the end of a download), null before. */
+  #serverRevision: number | null = null;
+  /** The cache holds a first download stopped halfway: the next pull goes on with it as a download. */
+  #resumeDownload = false;
 
   #wantPull = false;
   #wantPush = false;
@@ -338,6 +387,7 @@ export class ProjectVault {
     this.#retryMs = options.retryMs ?? 5000;
     this.#pollMs = options.pollMs ?? 15_000;
     this.#pageSize = options.pullPageSize ?? LIMITS.defaultPullLimit;
+    this.#downloadBatch = options.downloadBatch ?? DOWNLOAD_BATCH;
     this.#blobs = new BlobCache(options.blobCacheBytes ?? 64 * 1024 * 1024);
     const idle = options.idleLockMs ?? null;
     this.#idle = idle === null ? null : new IdleTimer(idle, () => void this.lock(), this.#timers);
@@ -464,9 +514,41 @@ export class ProjectVault {
 
   // ---------------------------------------------------------------- unlock and lock
 
-  /** Opens the project with the shared project password. A wrong password is `wrong_password`. */
-  async unlock(password: string): Promise<void> {
+  /**
+   * Opens the project with the shared project password. A wrong password is `wrong_password`. On a device that
+   * never opened the project this includes downloading it, which `options` can follow and cancel.
+   */
+  async unlock(password: string, options: UnlockOptions = {}): Promise<void> {
     if (this.#keys !== null) return;
+    const { signal } = options;
+    signal?.throwIfAborted();
+    this.#progress = options.onProgress ?? null;
+    let onAbort: () => void = () => undefined;
+    // Cancelling answers at once; the work stops at its next step (a page being fetched is not waited for).
+    const aborted =
+      signal === undefined
+        ? null
+        : new Promise<never>((_, reject) => {
+            onAbort = () => {
+              reject(abortReason(signal));
+              void this.lock();
+            };
+            signal.addEventListener("abort", onAbort, { once: true });
+          });
+    const work = this.#unlock(password, signal);
+    try {
+      if (aborted === null) await work;
+      else {
+        work.catch(() => undefined);
+        await Promise.race([work, aborted]);
+      }
+    } finally {
+      signal?.removeEventListener("abort", onAbort);
+      this.#progress = null;
+    }
+  }
+
+  async #unlock(password: string, signal: AbortSignal | undefined): Promise<void> {
     let t = performance.now();
     // Read while the password is checked: it is ciphertext, and only the key opens it.
     const snapshot = this.#cache.getSnapshot(this.projectId).catch(() => null);
@@ -479,7 +561,7 @@ export class ProjectVault {
       throw vaultErrorFromCrypto(error);
     }
     span("kdf", t);
-    await this.#open(keys, snapshot);
+    await this.#open(keys, snapshot, signal);
   }
 
   /**
@@ -572,6 +654,17 @@ export class ProjectVault {
     await this.#queue.catch(() => undefined);
     this.#keys.destroy();
     this.#keys = null;
+    this.#forget();
+    const lease = this.#lease;
+    this.#lease = null;
+    this.#locking = false;
+    this.#update();
+    await this.#syncRun?.catch(() => undefined);
+    if (lease !== null) await this.#flushLocked(lease);
+  }
+
+  /** Drops every plaintext record and what goes with it (the keys are dropped by the caller). */
+  #forget(): void {
     this.#plain.clear();
     this.#refs.clear();
     this.#known.clear();
@@ -586,12 +679,6 @@ export class ProjectVault {
     this.#heldBy = null;
     this.#mode = "none";
     this.#lastError = null;
-    const lease = this.#lease;
-    this.#lease = null;
-    this.#locking = false;
-    this.#update();
-    await this.#syncRun?.catch(() => undefined);
-    if (lease !== null) await this.#flushLocked(lease);
   }
 
   #envelopeOptions(): { kdf?: KdfParams; random: RandomSource } {
@@ -637,14 +724,45 @@ export class ProjectVault {
     await this.#cache.updateProject(this.projectId, { envelope: stored });
   }
 
-  async #open(keys: ProjectKeys, snapshot?: Promise<CachedSnapshot | null>): Promise<void> {
+  async #open(keys: ProjectKeys, snapshot?: Promise<CachedSnapshot | null>, signal?: AbortSignal): Promise<void> {
     this.#generation += 1;
     const generation = this.#generation;
+    const live = () => generation === this.#generation && signal?.aborted !== true;
+    try {
+      await this.#openCached(keys, live, snapshot);
+    } catch (error) {
+      keys.destroy();
+      throw error;
+    }
+    if (!live()) {
+      keys.destroy();
+      // Cancelled (or locked) before the keys were kept: nothing read stays in memory.
+      if (this.#keys === null) this.#forget();
+      return;
+    }
+    this.#damagedChanged();
+    this.#keys = keys;
+    this.#mode = "none";
+    this.#idle?.touch();
+    this.#update();
+    const t = performance.now();
+    await this.#connect();
+    span("connect", t);
+    this.#scheduleSnapshot();
+  }
+
+  /** Reads what this device has of the project into memory (before the keys are kept: nothing shows it yet). */
+  async #openCached(
+    keys: ProjectKeys,
+    live: () => boolean,
+    snapshot: Promise<CachedSnapshot | null> | undefined,
+  ): Promise<void> {
     const cached = await this.#cache.getProject(this.projectId);
     const pending = await this.#cache.listPending(this.projectId);
     this.#cursor = cached?.cursor ?? 0;
     this.#sealedName = cached?.sealedName ?? null;
-    const entries = await this.#readCachedEntries(keys, cached?.generation, snapshot);
+    this.#resumeDownload = cached?.downloading === true;
+    const entries = await this.#readCachedEntries(keys, cached?.generation, live, snapshot);
     let t = performance.now();
     this.#loadEntries(entries, new Set());
     t = span("load", t);
@@ -670,18 +788,7 @@ export class ProjectVault {
         this.#name = null;
       }
     }
-    if (generation !== this.#generation) {
-      keys.destroy();
-      return;
-    }
-    this.#damagedChanged();
-    this.#keys = keys;
-    this.#mode = "none";
-    this.#idle?.touch();
-    this.#update();
-    await this.#connect();
-    span("connect", t);
-    this.#scheduleSnapshot();
+    span("pending", t);
   }
 
   /**
@@ -692,6 +799,7 @@ export class ProjectVault {
   async #readCachedEntries(
     keys: ProjectKeys,
     generation: number | undefined,
+    live: () => boolean,
     snapshot?: Promise<CachedSnapshot | null>,
   ): Promise<OpenedEntry[]> {
     let t = performance.now();
@@ -702,11 +810,37 @@ export class ProjectVault {
     }
     const records = await this.#cache.listRecords(this.projectId);
     t = span("cache-read", t);
-    const opened = await openMany(
-      keys,
-      records.flatMap((r) => (r.ciphertext === null ? [] : [{ id: r.id, ciphertext: r.ciphertext }])),
-    );
+    const opened = await this.#openReporting(keys, records, live);
     span("decrypt", t);
+    return this.#entriesOf(records, opened);
+  }
+
+  /** Decrypts cached rows, telling the unlock's listener how far it got; stops early once `live` says so. */
+  async #openReporting(
+    keys: ProjectKeys,
+    rows: readonly CachedRecord[],
+    live: () => boolean,
+  ): Promise<Map<string, PlainRecord | null>> {
+    const sealed = rows.flatMap((r) => (r.ciphertext === null ? [] : [{ id: r.id, ciphertext: r.ciphertext }]));
+    const total = sealed.length;
+    const report = (done: number) => this.#report({ phase: "open", done, total, fraction: total ? done / total : 1 });
+    if (this.#progress !== null && total > 0) report(0);
+    return openMany(keys, sealed, (done) => {
+      report(done);
+      return live();
+    });
+  }
+
+  #report(progress: UnlockProgress): void {
+    try {
+      this.#progress?.(progress);
+    } catch {
+      // a listener's failure is not the vault's
+    }
+  }
+
+  /** Cached rows as entries, with what `opened` made of them. */
+  #entriesOf(records: readonly CachedRecord[], opened: ReadonlyMap<string, PlainRecord | null>): OpenedEntry[] {
     return records.map((r): OpenedEntry => {
       if (r.ciphertext === null) return [r.id, r.revision, "tombstone"];
       const plain = opened.get(r.id) ?? null;
@@ -716,10 +850,12 @@ export class ProjectVault {
 
   /**
    * Puts opened entries in memory. Records in `keep` (with a local change waiting) only get their revision: their
-   * in-memory version is the local one. Returns the records that were opened, for `#emitRemote`.
+   * in-memory version is the local one. A tombstone of a record in memory removes it. Returns what changed, for
+   * `#emitRemote`.
    */
-  #loadEntries(entries: readonly OpenedEntry[], keep: ReadonlySet<string>): PlainRecord[] {
+  #loadEntries(entries: readonly OpenedEntry[], keep: ReadonlySet<string>): RemoteChange {
     const opened: PlainRecord[] = [];
+    const deletes: RecordRef[] = [];
     for (const entry of entries) {
       const [id, revision, state] = entry;
       this.#known.set(id, revision);
@@ -727,6 +863,8 @@ export class ProjectVault {
       if (state === "tombstone") {
         this.#tombstones.add(id);
         this.#damaged.delete(id);
+        const ref = this.#refs.get(id);
+        if (ref !== undefined && this.#plain.delete(recordKey(ref.kind, ref.id))) deletes.push(ref);
       } else if (state === "damaged") this.#damaged.add(id);
       else {
         const plain = entry[3];
@@ -737,7 +875,7 @@ export class ProjectVault {
         opened.push(plain);
       }
     }
-    return opened;
+    return { upserts: opened, deletes };
   }
 
   /**
@@ -872,6 +1010,7 @@ export class ProjectVault {
     this.#online = true;
     const summary = summaries.find((project) => project.projectId === this.projectId);
     if (summary === undefined) throw new BackendError("forbidden");
+    this.#serverRevision = summary.revision;
     if (summary.sealedName !== this.#sealedName && this.#keys !== null) {
       this.#sealedName = summary.sealedName;
       await this.#cache.updateProject(this.projectId, { sealedName: summary.sealedName });
@@ -1117,48 +1256,107 @@ export class ProjectVault {
   }
 
   async #pullAll(generation: number): Promise<void> {
-    // Nothing of the project in memory yet (a device that never opened it): pages are only stored, sealed as
-    // they come, and opened together at the end. A page that touches a local change goes the
-    // usual way (it may be a conflict), after what was stored so far is loaded.
-    let fresh = this.#known.size === 0;
+    // A download (nothing of the project in memory yet, or a first download stopped halfway): pages are only stored,
+    // sealed as they come, several to a transaction, and opened together at the end. A page that touches a local
+    // change goes the usual way (it may be a conflict), after what was stored so far is loaded.
+    let download = this.#known.size === 0 || this.#resumeDownload;
+    const startCursor = this.#cursor;
+    const startKnown = this.#known.size;
+    const resuming = download && startKnown > 0;
+    let next = this.#cursor;
+    let received = 0;
+    /** Pages pulled and not yet stored, and how many records they hold. */
+    let held: PullResult[] = [];
+    let heldRecords = 0;
+    /** The cache's generation before this download's first write (its rows are those written after it). */
+    let since: number | null = null;
     let stored = 0;
+    const report = () => {
+      if (this.#progress === null) return;
+      const target = this.#serverRevision;
+      const fraction =
+        target !== null && target > startCursor
+          ? Math.min(1, Math.max(0, (next - startCursor) / (target - startCursor)))
+          : null;
+      this.#report({ phase: "download", done: (resuming ? startKnown : 0) + received, total: null, fraction });
+    };
+    /** Stores the held pages in one transaction; `more`: the download goes on after them. */
+    const store = async (more: boolean) => {
+      const pages = held;
+      held = [];
+      heldRecords = 0;
+      await this.#exclusive(async () => {
+        if (generation !== this.#generation) return;
+        if (pages.some((page) => page.records.some((r) => this.#pending.has(r.id)))) {
+          // A local change was staged meanwhile: these pages go the usual way.
+          if (stored > 0) await this.#loadStored(generation, since);
+          stored = 0;
+          download = false;
+          this.#resumeDownload = false;
+          for (const page of pages) await this.#applyPage(page, generation);
+          return;
+        }
+        const records = pages.flatMap((page) => page.records);
+        const cursor = pages.at(-1)?.revision ?? this.#cursor;
+        const gen = await this.#cache.applyPull(this.projectId, records, cursor, [], more);
+        since ??= gen - 1;
+        this.#snapshotStale += records.length;
+        this.#cursor = cursor;
+        this.#resumeDownload = more;
+        stored += records.length;
+      });
+    };
+    report();
     for (;;) {
-      const size = fresh ? Math.max(this.#pageSize, LIMITS.maxPullLimit) : this.#pageSize;
-      const page = await this.#backend.pull(this.projectId, this.#cursor, size);
+      const size = download ? Math.max(this.#pageSize, LIMITS.maxPullLimit) : this.#pageSize;
+      const page = await this.#backend.pull(this.projectId, next, size);
       if (generation !== this.#generation) return;
       this.#online = true;
-      if (fresh && page.revision >= this.#cursor && !page.records.some((r) => this.#pending.has(r.id))) {
-        await this.#exclusive(async () => {
-          if (generation !== this.#generation) return;
-          await this.#cache.applyPull(this.projectId, page.records, page.revision, []);
-          this.#snapshotStale += page.records.length;
-          this.#cursor = page.revision;
-        });
-        stored += page.records.length;
+      received += page.records.length;
+      if (download && page.revision >= next && !page.records.some((r) => this.#pending.has(r.id))) {
+        held.push(page);
+        heldRecords += page.records.length;
+        next = page.revision;
+        if (!page.more || heldRecords >= this.#downloadBatch) await store(page.more);
       } else {
-        if (stored > 0) await this.#exclusive(() => this.#loadStored(generation));
+        if (held.length > 0) await store(false);
+        if (generation !== this.#generation) return;
+        if (stored > 0) await this.#exclusive(() => this.#loadStored(generation, since));
         stored = 0;
-        fresh = false;
+        download = false;
+        this.#resumeDownload = false;
         await this.#exclusive(() => this.#applyPage(page, generation));
+        next = this.#cursor;
       }
+      report();
       if (!page.more) break;
     }
-    if (stored > 0) await this.#exclusive(() => this.#loadStored(generation));
+    if (generation !== this.#generation) return;
+    if (stored > 0) await this.#exclusive(() => this.#loadStored(generation, since));
     if (this.#lastError !== null && this.#lastError !== "server_behind") this.#lastError = null;
   }
 
-  /** Opens what `#pullAll` stored without opening (a first download) and tells the listeners. */
-  async #loadStored(generation: number): Promise<void> {
+  /**
+   * Opens what `#pullAll` stored without opening (a download) and tells the listeners: every cached record when
+   * nothing was in memory, else the rows written after generation `since`.
+   */
+  async #loadStored(generation: number, since: number | null): Promise<void> {
     const keys = this.#keys;
     if (keys === null || generation !== this.#generation) return;
     const t = performance.now();
-    const entries = await this.#readCachedEntries(keys, undefined);
-    if (generation !== this.#generation || this.#keys !== keys) return;
-    const upserts = this.#loadEntries(entries, new Set(this.#pending.keys()));
+    const live = () => generation === this.#generation && this.#keys === keys;
+    let entries: OpenedEntry[];
+    if (this.#known.size === 0 || since === null) entries = await this.#readCachedEntries(keys, undefined, live);
+    else {
+      const rows = await this.#cache.listRecordsSince(this.projectId, since);
+      entries = this.#entriesOf(rows, await this.#openReporting(keys, rows, live));
+    }
+    if (!live()) return;
+    const change = this.#loadEntries(entries, new Set(this.#pending.keys()));
     span("first-download-open", t);
     this.#damagedChanged();
     this.#update();
-    if (upserts.length > 0) this.#emitRemote({ upserts, deletes: [] });
+    this.#emitRemote(change);
   }
 
   async #applyPage(page: PullResult, generation: number): Promise<void> {

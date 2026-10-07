@@ -41,7 +41,7 @@ for (const size of SIZES) {
         await page.screenshot({ path: `${OUT}livro-detalhes-${suffix}.png` });
         if (size.width < 1440) await closeOverlay(page, "Detalhes do lançamento");
 
-        await page.getByRole("button", { name: "Novo lançamento" }).click();
+        await page.getByRole("button", { name: "Novo lançamento", exact: true }).click();
         await page.getByRole("menuitem", { name: "Despesa" }).click();
         const dialog = page.getByRole("dialog", { name: "Despesa" });
         await dialog.waitFor();

@@ -329,7 +329,7 @@ test.describe("hostile strings in the other free-text places", () => {
     const descriptions = ['=1+1;"a"', "+SUM(1)", "-2+3", '@cmd "q"; next'];
     await page.getByRole("searchbox", { name: "Buscar lançamentos" }).fill("");
     for (const description of descriptions) {
-      await page.getByRole("button", { name: "Novo lançamento" }).click();
+      await page.getByRole("button", { name: "Novo lançamento", exact: true }).click();
       await page.getByRole("menuitem", { name: "Despesa", exact: true }).click();
       const dialog = page.getByRole("dialog", { name: "Despesa" });
       await dialog.getByLabel("Descrição", { exact: true }).fill(description);

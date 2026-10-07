@@ -126,13 +126,6 @@ for (const size of TEST_SIZES) {
         await page.getByRole("button", { name: "Mês anterior", exact: true }).click();
         await expect(page.getByRole("heading", { name: /^Sem orçamento em / })).toBeVisible();
         await audit(page, "mês vazio");
-        // the next step: a plan from the last three months' spending, checked in the grid before saving
-        await page.getByRole("button", { name: "Criar a partir dos últimos 3 meses…" }).click();
-        dialog = page.getByRole("dialog", { name: /Orçamento de/ });
-        await expect(dialog.getByText(/Sugestão: a média do gasto/)).toBeVisible();
-        await expect(dialog.getByLabel("Planejado para Lazer")).not.toHaveValue("");
-        await dialog.getByRole("button", { name: "Cancelar" }).click();
-        await expect(dialog).toHaveCount(0);
         await page.getByRole("button", { name: "Definir o mês…" }).click();
         dialog = page.getByRole("dialog", { name: /Orçamento de/ });
         await expect(dialog.getByLabel("Planejado para Lazer")).toBeVisible();

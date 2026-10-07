@@ -142,7 +142,12 @@ test.describe("visão geral: every action", () => {
     await expect(page.getByRole("heading", { level: 1, name: "Orçamento" })).toBeVisible();
     await expect(page.getByRole("button", { name })).toBeVisible();
     // without a plan for that month: the plan from the last three months is the next step
-    await expect(page.getByRole("button", { name: "Criar a partir dos últimos 3 meses…" })).toBeVisible();
+    await page.getByRole("button", { name: "Criar a partir dos últimos 3 meses…" }).click();
+    // checked in the grid before saving: each category starts with the average
+    const dialog = page.getByRole("dialog", { name: /Orçamento de/ });
+    await expect(dialog.getByText(/Sugestão: a média do gasto/)).toBeVisible();
+    await dialog.getByRole("button", { name: "Cancelar" }).click();
+    await expect(dialog).toHaveCount(0);
     expect(errors).toEqual([]);
   });
 

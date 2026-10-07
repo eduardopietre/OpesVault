@@ -3,11 +3,12 @@
  * Every notice is a link to the place and the action where it is solved; the severity is said in words.
  */
 import { dom } from "@opesvault/domain";
-import { Badge, Button, useElementWidth, useMotionPreset, type BadgeTone } from "@opesvault/ui";
+import { Badge, Button, useElementWidth, useMotionPreset } from "@opesvault/ui";
 import { AnimatePresence, motion } from "motion/react";
 import { BellRing } from "lucide-react";
 import { useState } from "react";
 import { alertLink, type Link } from "../../data/links.ts";
+import { SEVERITY_TONES } from "../../data/text.ts";
 
 /** Notices shown before "Mostrar todos". */
 export const MAX_VISIBLE = 6;
@@ -20,11 +21,6 @@ const SEVERITY_WORDS: Readonly<Record<dom.alerts.Severity, string>> = {
   urgent: "Atrasado",
   soon: "Em breve",
   info: "Aguardando",
-};
-const SEVERITY_TONES: Readonly<Record<dom.alerts.Severity, BadgeTone>> = {
-  urgent: "negative",
-  soon: "warning",
-  info: "neutral",
 };
 
 /** "R$ 1.371,50" never breaks between the symbol and the number. */

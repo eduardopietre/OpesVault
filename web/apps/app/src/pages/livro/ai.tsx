@@ -7,10 +7,11 @@
  */
 import { edits, importing, type Id, type Ledger, type Operation, isActive } from "@opesvault/domain";
 import { decide, notify } from "@opesvault/ui";
-import { AI_OFF, failureText, modelLabel, plural, useAiClient } from "../../data/ai.ts";
+import { AI_OFF, failureText, modelLabel, useAiClient } from "../../data/ai.ts";
 import { useWorkspace } from "../../data/react.tsx";
 import { useAiRun, type AiReviewDialogProps } from "../../dialogs/ai_review.tsx";
 import { useFormAct } from "../../dialogs/livro_form.tsx";
+import { plural } from "../../data/text.ts";
 
 /** Operations per run: a whole year of a busy family, minutes on a GPU. */
 export const REVIEW_LIMIT = 2000;

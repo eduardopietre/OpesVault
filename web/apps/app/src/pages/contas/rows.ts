@@ -25,14 +25,10 @@ import {
 } from "@opesvault/domain";
 import { ROLE_LABELS, subtypeLabel } from "../../dialogs/accounts_labels.ts";
 import { cents, moneyOr, DASH } from "../../data/money.ts";
+import { plural } from "../../data/text.ts";
 
 const { banking, balanceChecks, cards, loans } = dom;
 const { profile: prof } = investments;
-
-/** How many, with the right plural ("1 conta", "2 contas"). */
-export function plural(count: number, one: string, many: string): string {
-  return `${count} ${count === 1 ? one : many}`;
-}
 
 // ── tabs ─────────────────────────────────────────
 

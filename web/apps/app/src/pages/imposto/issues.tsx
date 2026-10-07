@@ -4,12 +4,11 @@
  * alone; the button names the pending item it is for.
  */
 import type { tax } from "@opesvault/domain";
-import { Badge, Button, useElementWidth, useMotionPreset, type BadgeTone } from "@opesvault/ui";
+import { Badge, Button, useElementWidth, useMotionPreset } from "@opesvault/ui";
 import { AnimatePresence, motion } from "motion/react";
 import { CircleCheck } from "lucide-react";
-import { ISSUE_ACTIONS, SEVERITY_TONES, SEVERITY_WORDS } from "./rows.ts";
-
-const TONES: Record<string, BadgeTone> = { negative: "negative", warning: "warning", neutral: "neutral" };
+import { ISSUE_ACTIONS, SEVERITY_WORDS } from "./rows.ts";
+import { SEVERITY_TONES } from "../../data/text.ts";
 
 /** "R$ 1.371,50" never breaks between the symbol and the number. */
 const together = (value: string) => value.replaceAll("R$ ", "R$ ");
@@ -59,10 +58,7 @@ export function IssueList({ issues, onResolve }: IssueListProps) {
                 className="border-t border-separator py-3 first:border-t-0 first:pt-0"
               >
                 <div className={compact ? "flex flex-col items-start" : "flex items-start gap-3"}>
-                  <Badge
-                    tone={TONES[SEVERITY_TONES[issue.severity]] ?? "neutral"}
-                    className="mt-0.5 w-20 shrink-0 px-2"
-                  >
+                  <Badge tone={SEVERITY_TONES[issue.severity]} className="mt-0.5 w-20 shrink-0 px-2">
                     {SEVERITY_WORDS[issue.severity]}
                   </Badge>
                   <div className={compact ? "mt-1 min-w-0" : "min-w-0 flex-1"}>

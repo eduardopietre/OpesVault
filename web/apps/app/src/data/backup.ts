@@ -16,13 +16,13 @@ export function documentBlobRefs(record: { readonly kind: string; readonly paylo
   return [{ id: payload.blob_id, sha256: typeof payload.sha256 === "string" ? payload.sha256 : undefined }];
 }
 
+const BACKUP_FILE_EXTENSION = ".ovbackup";
+
 /** "opesvault-backup-2026-10-06.ovbackup": no name of the project in the file name. */
 export function backupFileName(date: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
-  return `opesvault-backup-${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}.ovbackup`;
+  return `opesvault-backup-${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}${BACKUP_FILE_EXTENSION}`;
 }
-
-export const BACKUP_FILE_EXTENSION = ".ovbackup";
 
 /** Preference key of the day of the last backup made on this device, per project. */
 export function lastBackupKey(projectId: string): string {

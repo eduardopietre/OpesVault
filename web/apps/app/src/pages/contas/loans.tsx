@@ -18,6 +18,7 @@ import { installmentRows, loanRows, nextInstallment, type InstallmentRow, type L
 import { useDialog } from "../../data/dialog.ts";
 import { useLock } from "../../data/read_only.ts";
 import { cents, moneyOr, dateOr } from "../../data/money.ts";
+import { accountRef } from "../livro/rows.ts";
 
 const { loans } = dom;
 
@@ -188,7 +189,7 @@ export function LoansTab({ reveal }: { reveal?: TabReveal<LoanReveal> | null }) 
               label: "Ver lançamentos do financiamento",
               onSelect: () =>
                 selectedPlan
-                  ? go("livro", { ref: `conta:${selectedPlan.liability_account_id}` })
+                  ? go("livro", { ref: accountRef(selectedPlan.liability_account_id) })
                   : notify("Selecione um financiamento."),
             },
           ]}

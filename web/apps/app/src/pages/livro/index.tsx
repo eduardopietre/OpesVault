@@ -85,9 +85,9 @@ import {
   toOperationFilter,
   type FilterState,
 } from "./rows.ts";
-import { monthLabel } from "../../dialogs/livro_form.tsx";
 import { actionName } from "../../data/action_names.ts";
 import { exportUnencrypted } from "../../data/export_file.ts";
+import { monthLabel } from "../../data/text.ts";
 
 const HIDDEN_COLUMNS_KEY = "livro/colunas-ocultas";
 const EMPTY_SET: ReadonlySet<string> = new Set();

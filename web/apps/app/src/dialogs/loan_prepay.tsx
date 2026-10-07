@@ -20,7 +20,7 @@ export interface PrepaymentDialogProps {
 const MODES: SelectOption[] = Object.entries(dom.loans.MODE_LABELS).map(([id, label]) => ({ id, label }));
 
 /** The lines of the simulation, or null while the amount is not one. */
-export function simulationLines(sim: dom.loans.PrepaymentSimulation): string[] {
+function simulationLines(sim: dom.loans.PrepaymentSimulation): string[] {
   const lines = [
     `Juros a pagar: ${formatBrl(sim.interestBefore)} → ${formatBrl(sim.interestAfter)} (economia ${formatBrl(sim.interestSaved)})`,
     `Parcelas restantes: ${sim.installmentsBefore} → ${sim.installmentsAfter}`,

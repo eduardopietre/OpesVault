@@ -24,6 +24,7 @@ import type { TierColumn } from "../../components/tier_columns.ts";
 import { accountRows, checkRows, type AccountRow, type CheckRow } from "./rows.ts";
 import { useDialog } from "../../data/dialog.ts";
 import { cents, moneyOr } from "../../data/money.ts";
+import { accountRef } from "../livro/rows.ts";
 
 const HISTORY_MONTHS = 12;
 
@@ -151,7 +152,7 @@ export function AccountsTab({ reveal }: { reveal?: TabReveal<AccountReveal> | nu
         <Button
           onClick={() => {
             const id = needsAccount();
-            if (id) go("livro", { ref: `conta:${id}` });
+            if (id) go("livro", { ref: accountRef(id) });
           }}
         >
           Ver lançamentos

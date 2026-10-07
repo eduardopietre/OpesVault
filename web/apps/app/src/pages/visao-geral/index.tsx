@@ -15,7 +15,6 @@ import {
   PageHeader,
   Section,
   Select,
-  formatMonth,
   menuButton,
   useMotionPreset,
   usePreferences,
@@ -48,6 +47,7 @@ import {
 } from "./rows.ts";
 import { BalancesTable, CategoriesTable, ComparisonTable } from "./tables.tsx";
 import { READ_ONLY_TIP } from "../../data/read_only.ts";
+import { monthLabel } from "../../data/text.ts";
 
 const NO_ALERTS: ReturnType<typeof dom.alerts.alerts> = [];
 
@@ -67,8 +67,6 @@ function openingOf(workspace: Workspace): string {
 
 /** The months already placed on the latest activity (once per opening, so a month the user picks stays). */
 const placed = new WeakSet<Workspace>();
-
-const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
 /** What blocks closing the month: a notice of the domain, with the place where it is solved when there is one. */
 function pendingLink(item: string): Link | null {
@@ -145,7 +143,7 @@ export function Page() {
     setHidden(false);
   };
 
-  const monthName = capitalize(formatMonth(month));
+  const monthName = monthLabel(month);
   const openOperations = (accountId: string) => go("livro", { ref: filterRef(accountId, month, memberValid) });
   const goLink = (link: Link) =>
     go(link.page, { ...(link.ref ? { ref: link.ref } : {}), ...(link.act ? { act: link.act } : {}) });

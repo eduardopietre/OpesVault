@@ -18,9 +18,9 @@ import {
   type Ledger,
 } from "@opesvault/domain";
 import { percent } from "../../dialogs/investment_forms.ts";
-import { plural } from "../contas/rows.ts";
 import { planXirr, type XirrPlan } from "./xirr.ts";
 import { cents, moneyOr, dateOr, DASH } from "../../data/money.ts";
+import { plural } from "../../data/text.ts";
 
 const { service, model, performance, profile: prof, trades, returns, benchmarks } = investments;
 const { banking } = dom;

@@ -4,9 +4,10 @@
  * (no deadline, no history) stays unknown: "—", never zero.
  */
 import { Dec, addMonthsClamped, dom, queries, ymAdd, ymOf, type IsoDate, type YearMonth } from "@opesvault/domain";
-import { formatMonth, formatMonthShort } from "@opesvault/ui";
+import { formatMonthShort } from "@opesvault/ui";
 import { usedPercent } from "../orcamento/rows.ts";
 import { cents, DASH } from "../../data/money.ts";
+import { monthLabel } from "../../data/text.ts";
 
 type Goal = dom.goals.Goal;
 
@@ -35,8 +36,7 @@ export function shareLabel(progress: dom.goals.Progress): string {
 /** "Outubro de 2027", when the recent pace reaches the target. */
 export function reachedLabel(month: YearMonth | null): string {
   if (month === null) return DASH;
-  const text = formatMonth(month);
-  return text.charAt(0).toUpperCase() + text.slice(1);
+  return monthLabel(month);
 }
 
 /** "out/27": the short form the table has room for; the details below it say the month in full. */

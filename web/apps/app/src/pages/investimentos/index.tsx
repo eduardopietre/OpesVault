@@ -44,6 +44,7 @@ import { Detail } from "./detail.tsx";
 import { eventRows, noteRows, parseReveal, portfolioRows, summaryLine, valuationRows, type NoteRow } from "./rows.ts";
 import { useDialog } from "../../data/dialog.ts";
 import { useLock } from "../../data/read_only.ts";
+import { accountRef } from "../livro/rows.ts";
 
 const { service, model } = investments;
 
@@ -313,7 +314,7 @@ export function Page() {
                   onValuate={() => dialog.show({ kind: "valuation", positionId: selected.id })}
                   onProfile={profile}
                   onSeeEntries={() =>
-                    goTo("livro", { ref: `conta:${service.position(ledger, selected.id).account_id}` })
+                    goTo("livro", { ref: accountRef(service.position(ledger, selected.id).account_id) })
                   }
                   onUse={useValuation}
                   onFix={fixValuation}

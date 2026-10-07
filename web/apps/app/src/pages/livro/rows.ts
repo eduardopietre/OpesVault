@@ -271,6 +271,9 @@ export type Reveal =
       member: Id | null;
     };
 
+/** The `ref` that opens the Livro filtered to one account. */
+export const accountRef = (accountId: Id): string => `conta:${accountId}`;
+
 /**
  * The `ref` another page passes to "Ver lançamentos": an operation id, `categoria:<id>:<AAAA-MM>`,
  * `conta:<id>` or `marcador:<tag id>` (the tag's name).

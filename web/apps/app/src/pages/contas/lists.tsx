@@ -16,6 +16,7 @@ import { type TabReveal, EditButton, Empty, ListTable, Toolbar, useTabReveal } f
 import type { TierColumn } from "../../components/tier_columns.ts";
 import { useDialog } from "../../data/dialog.ts";
 import { cents, moneyOr } from "../../data/money.ts";
+import { accountRef } from "../livro/rows.ts";
 
 // ── cards ────────────────────────────────────────
 
@@ -79,7 +80,7 @@ export function CardsTab({ reveal }: { reveal?: TabReveal<Id> | null }) {
         <Button
           onClick={() => {
             if (!selected) notify("Selecione um cartão.");
-            else go("livro", { ref: `conta:${ledger.cards.get(selected.id)?.liability_account_id ?? ""}` });
+            else go("livro", { ref: accountRef(ledger.cards.get(selected.id)?.liability_account_id ?? "") });
           }}
         >
           Ver lançamentos

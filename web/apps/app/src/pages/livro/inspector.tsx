@@ -8,8 +8,8 @@ import { Badge, Button, Figure } from "@opesvault/ui";
 import { FileText, Paperclip, Pencil, TriangleAlert } from "lucide-react";
 import type { ReactNode } from "react";
 import { KIND_LABELS, ORIGIN_LABELS, operationAmount } from "./rows.ts";
-import { monthLabel } from "../../dialogs/livro_form.tsx";
 import { dateOr } from "../../data/money.ts";
+import { monthLabel } from "../../data/text.ts";
 
 export const HISTORY_ACTIONS: Readonly<Record<string, string>> = {
   create: "criado",

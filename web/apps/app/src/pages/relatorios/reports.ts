@@ -27,6 +27,7 @@ import { formatBrDate, formatMonth, formatValue, type ChartUnit, type SelectOpti
 import { encodeRef } from "../../data/links.ts";
 import { balanceAccounts, categoryItems, memberItems } from "../../dialogs/account_choices.ts";
 import { csvRow } from "../../data/csv.ts";
+import { capitalize } from "../../data/text.ts";
 
 type Chart = charts.data.Chart;
 type Point = charts.data.Point;
@@ -243,7 +244,7 @@ export function subtitle(key: ReportKey, params: Params): string {
   switch (key) {
     case "comparison": {
       const text = formatMonth(params.end);
-      return `${text.charAt(0).toUpperCase()}${text.slice(1)} comparado aos meses anteriores`;
+      return `${capitalize(text)} comparado aos meses anteriores`;
     }
     case "projected_balance":
       return "A partir de hoje, com o que já está registrado";

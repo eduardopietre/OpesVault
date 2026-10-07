@@ -18,12 +18,13 @@ import {
   ymParse,
   ymStr,
 } from "@opesvault/domain";
-import { Button, Checkbox, DateField, Dialog, formatMonth, type SelectOption } from "@opesvault/ui";
+import { Button, Checkbox, DateField, Dialog, type SelectOption } from "@opesvault/ui";
 import { useCallback, useState, type ReactNode } from "react";
 import { useWorkspace } from "../data/react.tsx";
 import { READ_ONLY_TIP } from "../data/read_only.ts";
 import { dateText, readDate } from "./form_readers.ts";
 import { memberItems } from "./account_choices.ts";
+import { monthLabel } from "../data/text.ts";
 
 type Session = sessions.Session;
 
@@ -152,14 +153,6 @@ export function Caption({ children }: { children: ReactNode }) {
 
 /** Value of a Select that stands for "none" (the project, no member, the month of the date…). */
 export const NONE = "__none";
-
-export function capitalize(text: string): string {
-  return text.charAt(0).toUpperCase() + text.slice(1);
-}
-
-export function monthLabel(month: YearMonth): string {
-  return capitalize(formatMonth(month));
-}
 
 /** "Mês da data" and the months around `around` (two years each way), plus `value` when outside. */
 export function competenceOptions(value: YearMonth | null, around: IsoDate): SelectOption[] {

@@ -25,7 +25,7 @@ interface OperationLine {
 const text = (value: string) => <ElidedText>{value}</ElidedText>;
 
 /** The rows of the dialog: date, description, value and the payslip or the receipts of each operation. */
-export function operationLines(ledger: Ledger, ids: readonly Id[], mode: OperationsMode): OperationLine[] {
+function operationLines(ledger: Ledger, ids: readonly Id[], mode: OperationsMode): OperationLine[] {
   const out: OperationLine[] = [];
   for (const id of ids) {
     const op = ledger.operations.get(id);

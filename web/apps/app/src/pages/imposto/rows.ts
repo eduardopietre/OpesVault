@@ -32,12 +32,6 @@ export const SEVERITY_WORDS: Readonly<Record<dom.alerts.Severity, string>> = {
   soon: "Em breve",
   info: "Conferir",
 };
-export type IssueTone = "negative" | "warning" | "neutral";
-export const SEVERITY_TONES: Readonly<Record<dom.alerts.Severity, IssueTone>> = {
-  urgent: "negative",
-  soon: "warning",
-  info: "neutral",
-};
 
 /** Money only when there is something (a non-zero amount), else "—". */
 const optional = (value: Dec | null | undefined): string => (value && !value.isZero() ? formatBrl(value) : DASH);

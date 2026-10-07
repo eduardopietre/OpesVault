@@ -14,6 +14,7 @@ import { sha256 } from "@noble/hashes/sha2.js";
 
 import { Ledger, type LedgerRecord } from "./domain/ledger.ts";
 import { type Id, newId } from "./lib/ids.ts";
+import { KeyError } from "./lib/py.ts";
 import { UndoStack } from "./undo.ts";
 
 export interface DocumentMeta {
@@ -45,12 +46,7 @@ export function verifyDocument(document: Document): boolean {
 }
 
 /** Python's `KeyError` for a document id that is not in the session. */
-export class DocumentNotFound extends Error {
-  constructor(documentId: Id) {
-    super(documentId);
-    this.name = "KeyError";
-  }
-}
+export class DocumentNotFound extends KeyError {}
 
 /** What one sync sends, tagged with the edit it reflects (the web's `FrozenSnapshot`). */
 export interface PendingSync {

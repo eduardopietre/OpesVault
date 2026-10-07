@@ -30,6 +30,7 @@ import type { Id } from "../lib/ids.ts";
 import { zId } from "../lib/schema.ts";
 import * as records from "../tax/records.ts";
 import { TaxSubject } from "../tax/model.ts";
+import { getOrThrow } from "./error.ts";
 import { DomainError, Ledger } from "./ledger.ts";
 import {
   AccountSubtype,
@@ -245,8 +246,7 @@ export function create(ledger: Ledger, item: BankAccount, options: CreateOptions
 
 /** Saves changes (bank, numbers, holders) and adds missing parts; ledger accounts follow. */
 export function update(ledger: Ledger, item: BankAccount, add: readonly Part[] = []): BankAccount {
-  const current = bankAccounts(ledger).get(item.id);
-  if (current === undefined) throw new DomainError("Conta bancária inexistente.");
+  const current = getOrThrow(bankAccounts(ledger), item.id, "Conta bancária inexistente.");
   check(ledger, item);
   let next = item;
   for (const part of add) {
@@ -375,8 +375,7 @@ export function recordValues(
   today: IsoDate,
   options: RecordValuesOptions = {},
 ): Recorded {
-  const item = bankAccounts(ledger).get(bankId);
-  if (item === undefined) throw new DomainError("Conta bancária inexistente.");
+  const item = getOrThrow(bankAccounts(ledger), bankId, "Conta bancária inexistente.");
   if (on > today) throw new DomainError("A data não pode estar no futuro.");
   const accounts = new Set(components(item).map(([, accountId]) => accountId));
   const held = new Set(positionsOf(ledger, bankId));

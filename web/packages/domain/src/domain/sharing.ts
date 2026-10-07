@@ -19,6 +19,7 @@ import { Dec } from "../lib/dec.ts";
 import type { Id } from "../lib/ids.ts";
 import { zDate, zDec, zId } from "../lib/schema.ts";
 import { sortedBy } from "../lib/text.ts";
+import { getOrThrow } from "./error.ts";
 import { DomainError, Ledger } from "./ledger.ts";
 import { AccountType, cashDate, operation, type Operation, OperationKind, type Posting, zEntityId } from "./model.ts";
 import { allocate, isCents, toDecimal, ZERO } from "./money.ts";
@@ -136,8 +137,7 @@ function head(text: string, n: number): string {
 
 /** Records the money received as a refund of the original categories, in proportion. */
 export function receive(ledger: Ledger, reimbursementId: Id, accountId: Id, amount: unknown, on: IsoDate): Operation {
-  const item = reimbursements(ledger).get(reimbursementId);
-  if (item === undefined) throw new DomainError("Reembolso inexistente.");
+  const item = getOrThrow(reimbursements(ledger), reimbursementId, "Reembolso inexistente.");
   if (item.denied) throw new DomainError("Reembolso negado não recebe valores.");
   const original = ledger.operations.get(item.operation_id);
   if (original === undefined) throw new DomainError("O lançamento reembolsado não existe mais.");
@@ -176,8 +176,7 @@ export function receive(ledger: Ledger, reimbursementId: Id, accountId: Id, amou
 }
 
 export function deny(ledger: Ledger, reimbursementId: Id, reason: string): Reimbursement {
-  const item = reimbursements(ledger).get(reimbursementId);
-  if (item === undefined) throw new DomainError("Reembolso inexistente.");
+  const item = getOrThrow(reimbursements(ledger), reimbursementId, "Reembolso inexistente.");
   if (!reason.trim()) throw new DomainError("Informe o motivo.");
   return ledger.put("reimbursement", { ...item, denied: true, version: item.version + 1 }, { reason });
 }

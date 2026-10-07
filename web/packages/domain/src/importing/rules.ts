@@ -8,6 +8,7 @@
  */
 import { z } from "zod";
 
+import { getOrThrow } from "../domain/error.ts";
 import { DomainError, Ledger } from "../domain/ledger.ts";
 import { AccountSubtype, type AccountType, zEntityId } from "../domain/model.ts";
 import type { Id } from "../lib/ids.ts";
@@ -99,8 +100,7 @@ export function addRule(
 }
 
 export function updateRule(ledger: Ledger, rule: CategoryRule, reason: string): CategoryRule {
-  const current = rules(ledger).get(rule.id);
-  if (current === undefined) throw new DomainError("Regra inexistente.");
+  const current = getOrThrow(rules(ledger), rule.id, "Regra inexistente.");
   if (normalize(rule.pattern).length < MIN_PATTERN)
     throw new DomainError(`O texto da regra precisa ter ao menos ${MIN_PATTERN} caracteres.`);
   const updated: CategoryRule = { ...rule, pattern: normalize(rule.pattern), version: current.version + 1 };
@@ -110,8 +110,7 @@ export function updateRule(ledger: Ledger, rule: CategoryRule, reason: string): 
 
 /** Rules are switched off, not erased, so the history keeps why a category was suggested. */
 export function setActive(ledger: Ledger, ruleId: Id, active: boolean, reason: string): CategoryRule {
-  const current = rules(ledger).get(ruleId);
-  if (current === undefined) throw new DomainError("Regra inexistente.");
+  const current = getOrThrow(rules(ledger), ruleId, "Regra inexistente.");
   return updateRule(ledger, { ...current, active }, reason);
 }
 

@@ -5,6 +5,7 @@
  * Every money movement is a ledger operation (postings on the position's cost
  * account); valuations live apart and never create flows (docs/04 §3).
  */
+import { getOrThrow } from "../domain/error.ts";
 import { DomainError, type Ledger } from "../domain/ledger.ts";
 import {
   AccountSubtype,
@@ -87,8 +88,7 @@ export function eventsOf(ledger: Ledger, positionId: Id): InvestmentEvent[] {
 }
 
 export function position(ledger: Ledger, positionId: Id): Position {
-  const found = positions(ledger).get(positionId);
-  if (found === undefined) throw new DomainError("Posição inexistente.");
+  const found = getOrThrow(positions(ledger), positionId, "Posição inexistente.");
   return found;
 }
 
@@ -272,8 +272,7 @@ export function correctValuation(
   reason: string,
   nature: ValueNature | null = null,
 ): Valuation {
-  const current = valuations(ledger).get(valuationId);
-  if (current === undefined) throw new DomainError("Avaliação inexistente.");
+  const current = getOrThrow(valuations(ledger), valuationId, "Avaliação inexistente.");
   if (!reason.trim()) throw new DomainError("Correções exigem motivo.");
   const updated: Valuation = { ...current, value: toDecimal(value), ...(nature !== null ? { nature } : {}) };
   return ledger.put("valuation", updated, { reason });

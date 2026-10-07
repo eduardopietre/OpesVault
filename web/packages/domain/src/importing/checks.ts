@@ -6,6 +6,7 @@
 import { daysBetween } from "../lib/dates.ts";
 import type { Dec } from "../lib/dec.ts";
 import type { Id } from "../lib/ids.ts";
+import { KeyError } from "../lib/py.ts";
 import type { Ledger } from "../domain/ledger.ts";
 import { AccountType, cashDate } from "../domain/model.ts";
 import { ZERO } from "../domain/money.ts";
@@ -271,9 +272,4 @@ export function refreshBatch(ledger: Ledger, batchId: Id): ImportBatch {
 }
 
 /** Python's `KeyError` for a batch or item id that is not in the ledger. */
-export class BatchNotFound extends Error {
-  constructor(id: Id) {
-    super(id);
-    this.name = "KeyError";
-  }
-}
+export class BatchNotFound extends KeyError {}

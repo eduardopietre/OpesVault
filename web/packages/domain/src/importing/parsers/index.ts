@@ -2,6 +2,7 @@
  * Parser catalog (docs/05 §1): support is declared per layout, never per bank name.
  * Port of `importing/parsers/__init__.py`.
  */
+import { KeyError } from "../../lib/py.ts";
 import { ItauBankPdf } from "./bank.ts";
 import type { Parser } from "./base.ts";
 import { SinacorNotePdf } from "./brokerage.ts";
@@ -25,12 +26,7 @@ export const DETECTION_THRESHOLD = 0.6;
 export const AMBIGUITY_MARGIN = 0.15;
 
 /** Python raises KeyError for an unknown layout id. */
-export class UnknownParser extends Error {
-  constructor(parserId: string) {
-    super(parserId);
-    this.name = "KeyError";
-  }
-}
+export class UnknownParser extends KeyError {}
 
 export function parserById(parserId: string): Parser {
   const found = PARSERS.find((p) => p.id === parserId);

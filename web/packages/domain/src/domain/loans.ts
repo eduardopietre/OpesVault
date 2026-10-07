@@ -20,6 +20,7 @@ import { KeyError } from "../lib/py.ts";
 import { zDate, zDec, zId } from "../lib/schema.ts";
 import { sortedBy } from "../lib/text.ts";
 import * as queries from "./queries.ts";
+import { getOrThrow } from "./error.ts";
 import { DomainError, Ledger } from "./ledger.ts";
 import {
   AccountSubtype,
@@ -351,8 +352,7 @@ export function createLoan(
 }
 
 export function updateLoan(ledger: Ledger, plan: LoanPlan, reason: string): LoanPlan {
-  const current = plans(ledger).get(plan.id);
-  if (current === undefined) throw new DomainError("Financiamento inexistente.");
+  const current = getOrThrow(plans(ledger), plan.id, "Financiamento inexistente.");
   checkAccounts(ledger, plan);
   schedule(plan);
   return ledger.put("loan_plan", { ...plan, version: current.version + 1 }, { reason });
@@ -367,12 +367,10 @@ export function payInstallment(
   amount: unknown = null,
   fromAccount: Id | null = null,
 ): Operation {
-  const plan = plans(ledger).get(planId);
-  if (plan === undefined) throw new DomainError("Financiamento inexistente.");
+  const plan = getOrThrow(plans(ledger), planId, "Financiamento inexistente.");
   if (paidNumbers(ledger, planId).has(number)) throw new DomainError("Esta parcela já foi paga.");
   const items = new Map(planSchedule(ledger, planId).map((i) => [i.number, i]));
-  const item = items.get(number);
-  if (item === undefined) throw new DomainError("Parcela inexistente.");
+  const item = getOrThrow(items, number, "Parcela inexistente.");
   const value = amount === null || amount === undefined ? item.payment : toDecimal(amount);
   if (value.lt(item.payment)) {
     throw new DomainError("O valor pago é menor que a parcela. Pagamento parcial não é registrado como parcela.");
@@ -410,8 +408,7 @@ export function prepay(
   mode: PrepaymentMode,
   fromAccount: Id | null = null,
 ): LoanPrepayment {
-  const plan = plans(ledger).get(planId);
-  if (plan === undefined) throw new DomainError("Financiamento inexistente.");
+  const plan = getOrThrow(plans(ledger), planId, "Financiamento inexistente.");
   const value = toDecimal(amount);
   if (!value.isPositive() || !isCents(value)) throw new DomainError("Informe um valor positivo em reais e centavos.");
   const current = status(ledger, planId, on);

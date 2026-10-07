@@ -117,6 +117,8 @@ export class Ledger {
   journal: JournalEntry[] | null = null;
   /** Per-ledger caches (query index…), invalidated by `changeCount`. */
   readonly caches = new Map<string, { readonly at: number; readonly value: unknown }>();
+  /** Per-ledger caches that read only some kinds (`cachedFor`), keyed on `changesOf`. */
+  private readonly kindCaches = new Map<string, { readonly stamp: string; readonly value: unknown }>();
 
   private metaValue: LedgerMeta;
   private readonly store = new Map<string, TrackedMap<unknown>>();
@@ -182,6 +184,19 @@ export class Ledger {
     if (hit && hit.at === this.changeCount) return hit.value as T;
     const value = compute();
     this.caches.set(key, { at: this.changeCount, value });
+    return value;
+  }
+
+  /**
+   * A cached value computed only from the collections of `kinds`: recomputed after one of them
+   * changes, kept while other kinds change. Values are shared: never hand out a mutable part.
+   */
+  cachedFor<T>(key: string, kinds: readonly string[], compute: () => T): T {
+    const stamp = this.changesOf(...kinds).join(",");
+    const hit = this.kindCaches.get(key);
+    if (hit && hit.stamp === stamp) return hit.value as T;
+    const value = compute();
+    this.kindCaches.set(key, { stamp, value });
     return value;
   }
 

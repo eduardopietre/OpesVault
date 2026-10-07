@@ -19,7 +19,7 @@ import type { Id } from "../lib/ids.ts";
 import { zDate, zDec, zId } from "../lib/schema.ts";
 import { display, isCnpj } from "../tax/ids.ts";
 import { AssetClass } from "./model.ts";
-import { getOrKeyError, head, pyEquals } from "../lib/py.ts";
+import { getOrKeyError, pyEquals, pyHead } from "../lib/py.ts";
 import { assets, positions } from "./service.ts";
 
 function values<T extends Record<string, string>>(o: T): [T[keyof T], ...T[keyof T][]] {
@@ -233,5 +233,5 @@ export function description(ledger: Ledger, positionId: Id): string | null {
   if (profile.maturity) parts.push(`vencimento em ${formatDateBr(profile.maturity)}`);
   const bank = profile.bank_account_id ? bankAccounts(ledger).get(profile.bank_account_id) : undefined;
   if (bank !== undefined) parts.push(`custodiado em ${where(bank)}`);
-  return head(parts.join("; "), 512);
+  return pyHead(parts.join("; "), 512);
 }

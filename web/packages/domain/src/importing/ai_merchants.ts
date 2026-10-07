@@ -9,6 +9,7 @@
  * operations costs one line. The approval records which model suggested the name.
  */
 import type { Id } from "../lib/ids.ts";
+import { pyLen } from "../lib/py.ts";
 import { DomainError, type Ledger } from "../domain/ledger.ts";
 import { isActive } from "../domain/model.ts";
 import type { OllamaClient } from "../ai/ollama.ts";
@@ -61,13 +62,6 @@ export interface NameOutcome {
   cancelled: boolean;
 }
 
-/** Python's `len(str)`: code points. */
-function len(text: string): number {
-  let n = 0;
-  for (const _ of text) n++;
-  return n;
-}
-
 /**
  * The merchants of these operations (only income and expenses: a transfer is no merchant).
  * Merchants that already have an approved name are left out unless `renamed`.
@@ -80,7 +74,7 @@ export function planNames(ledger: Ledger, operationIds: readonly Id[], renamed =
     const op = ledger.operations.get(opId);
     if (op === undefined || !isActive(op) || categoryOf(ledger, op) === null) continue;
     const key = m.keyOf(op.description);
-    if (len(key) < 3 || (approved.has(key) && !renamed)) continue;
+    if (pyLen(key) < 3 || (approved.has(key) && !renamed)) continue;
     found.set(key, [...(found.get(key) ?? []), op.description]);
   }
   const keys = [...found.keys()];

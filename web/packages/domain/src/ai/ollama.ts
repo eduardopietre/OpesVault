@@ -22,6 +22,7 @@
  * `OLLAMA_ORIGINS` set to the app's origin.
  */
 import { Dec } from "../lib/dec.ts";
+import { collapseSpaces, pyHead, pySplit } from "../lib/py.ts";
 import { cmpStr } from "../lib/text.ts";
 import * as prompts from "./prompts.ts";
 
@@ -424,26 +425,9 @@ function isCloud(name: string): boolean {
   return name.endsWith("-cloud") || name.includes(":cloud");
 }
 
-// Python whitespace includes the separators U+001C-001F.
-const PY_WS = new RegExp(
-  // eslint-disable-next-line no-control-regex
-  "[\\t\\n\\v\\f\\r\\x1c-\\x1f \\x85\\xa0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000]+",
-  "u",
-);
-
-/** `str.split()` */
-function words(text: string): string[] {
-  return text.split(PY_WS).filter(Boolean);
-}
-
-/** `text[:n]` in code points. */
-function head(text: string, n: number): string {
-  return text.length <= n ? text : [...text].slice(0, n).join("");
-}
-
 /** One line per description, so a document's text cannot fake another line of the listing. */
 export function clean(description: string, limit: number): string {
-  return head(words(description).join(" "), limit);
+  return pyHead(collapseSpaces(description), limit);
 }
 
 function letters(text: string): string {
@@ -460,10 +444,10 @@ function letters(text: string): string {
  * → "José da Silva" passes and "PADARIA" → "Carrefour" does not).
  */
 export function plausibleName(description: string, name: string): string | null {
-  const tidy = words(name).join(" ");
+  const tidy = collapseSpaces(name);
   if (!tidy || NONE.has(tidy.toUpperCase()) || [...tidy].length > MAX_NAME) return null;
   const source = letters(description);
-  if (!words(tidy).some((w) => letters(w).length >= 3 && source.includes(letters(w)))) return null;
+  if (!pySplit(tidy).some((w) => letters(w).length >= 3 && source.includes(letters(w)))) return null;
   return tidy;
 }
 
@@ -604,7 +588,7 @@ export class OllamaClient {
       clearTimeout(timer);
     }
     if (status >= 400) {
-      const detail = head(text, 300);
+      const detail = pyHead(text, 300);
       if (status === 404 && detail.includes("not found")) throw this.missing();
       throw new HttpError(status, detail);
     }

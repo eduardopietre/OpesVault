@@ -18,6 +18,7 @@
  */
 import type { IsoDate } from "../lib/dates.ts";
 import type { Id } from "../lib/ids.ts";
+import { pyLen } from "../lib/py.ts";
 import { cmpKeys, sortedBy } from "../lib/text.ts";
 import type { Ledger } from "../domain/ledger.ts";
 import { AccountSubtype, AccountType, cashDate, type Operation } from "../domain/model.ts";
@@ -38,13 +39,6 @@ const DATE_MIN = "0001-01-01" as IsoDate;
 
 export function merchantKey(description: string): string {
   return suggestPattern(description);
-}
-
-/** Python's `len(str)`: code points. */
-function len(text: string): number {
-  let n = 0;
-  for (const _ of text) n++;
-  return n;
 }
 
 /** One categorized operation: when, where (the money account), which category and its text. */
@@ -159,7 +153,7 @@ export function knowledge(ledger: Ledger): Knowledge {
       seenPlans.add(op.installment.plan_id);
     }
     const key = merchantKey(op.description);
-    if (len(key) < MIN_KEY_LENGTH) continue;
+    if (pyLen(key) < MIN_KEY_LENGTH) continue;
     const category = categoryOf(ledger, op);
     if (category === null) continue;
     const [categoryId, kind, accountId] = category;
@@ -191,7 +185,7 @@ export function suggest(
 ): Suggestion | null {
   const kinds: AccountType[] = typeof wanted === "string" ? [wanted] : [...wanted];
   const key = merchantKey(description);
-  if (len(key) < MIN_KEY_LENGTH) return null;
+  if (pyLen(key) < MIN_KEY_LENGTH) return null;
   const learned = knowledge(ledger);
   for (const kind of kinds) {
     const exact = learned.get(knowledgeKey(key, kind));
@@ -202,7 +196,7 @@ export function suggest(
     if (!kinds.includes(entry.kind) || !key.startsWith(entry.key)) continue;
     const next = key.slice(entry.key.length, entry.key.length + 1);
     if (next !== " " && next !== ".") continue;
-    if (best === null || len(entry.key) > len(best.key)) best = entry; // max() keeps the first
+    if (best === null || pyLen(entry.key) > pyLen(best.key)) best = entry; // max() keeps the first
   }
   return best === null ? null : best.decide(accountId);
 }

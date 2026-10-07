@@ -10,7 +10,8 @@
  * no DOM, no canvas, no network, no font fetching.
  */
 import { DocFormat } from "./model.ts";
-import { pyHead, pyLen, PyRe, pyStrip, PY_WS } from "./parsers/base.ts";
+import { PY_WS, pyHead, pyLen, pyStrip } from "../lib/py.ts";
+import { PyRe } from "./parsers/base.ts";
 
 export const MAX_DOCUMENT_BYTES = 50 * 1024 * 1024;
 export const MAX_PAGES = 300;

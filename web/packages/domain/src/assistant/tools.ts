@@ -32,9 +32,9 @@ import {
 } from "../lib/dates.ts";
 import { Dec } from "../lib/dec.ts";
 import type { Id } from "../lib/ids.ts";
-import { PyRe, pyLen } from "../importing/parsers/base.ts";
+import { PyRe } from "../importing/parsers/base.ts";
 import { casefold, sortedBy } from "../lib/text.ts";
-import { collapseSpaces, strip } from "../lib/py.ts";
+import { collapseSpaces, pyLen, pyStrip } from "../lib/py.ts";
 
 export const MAX_ROWS = 50; // rows a read returns at most; the total says how many matched
 export const SHORT_ID = 8;
@@ -119,7 +119,7 @@ function laxInt(value: unknown): { ok: bigint } | { error: string } {
     return { ok: BigInt(value.toIntegral("ROUND_FLOOR").toFixed()) };
   }
   if (typeof value === "string") {
-    const trimmed = strip(value);
+    const trimmed = pyStrip(value);
     if (INT_TEXT.test(trimmed))
       return { ok: BigInt(trimmed.replaceAll("_", "").replace(/\..*$/, "").replace(/^\+/, "")) };
     return { error: "Input should be a valid integer, unable to parse string as an integer" };
@@ -491,8 +491,8 @@ export function fromIsoFormat(text: string): IsoDate | null {
 }
 
 export function day(input: string | null, what = "data"): IsoDate | null {
-  if (input === null || !strip(input)) return null;
-  const found = fromIsoFormat(strip(input));
+  if (input === null || !pyStrip(input)) return null;
+  const found = fromIsoFormat(pyStrip(input));
   if (found === null) throw new ToolError(`${what} inválida: use AAAA-MM-DD.`);
   return found;
 }
@@ -501,7 +501,7 @@ const MONTH_TEXT = new PyRe(String.raw`\s*(\d{4})-(\d{1,2})\s*`);
 
 /** AAAA-MM; a year outside 1900..2999 is not a ToolError (YearMonth refuses it, as on the desktop). */
 export function month(input: string | null, what = "mês"): YearMonth | null {
-  if (input === null || !strip(input)) return null;
+  if (input === null || !pyStrip(input)) return null;
   const found = MONTH_TEXT.fullmatch(input);
   if (found === null || !(Number(found[2]) >= 1 && Number(found[2]) <= 12))
     throw new ToolError(`${what} inválido: use AAAA-MM.`);
@@ -572,7 +572,7 @@ export function shortId(opId: Id): string {
 }
 
 export function findOperation(ledger: Ledger, ref: string): Operation {
-  const text = strip(ref).toLowerCase().replaceAll("-", "");
+  const text = pyStrip(ref).toLowerCase().replaceAll("-", "");
   if (pyLen(text) < SHORT_ID || !/^[0-9a-f]+$/.test(text))
     throw new ToolError(`id de lançamento inválido: '${ref}'. Use o 'id' devolvido por search_operations.`);
   const found = [...ledger.operations.values()].filter((op) => hex(op.id).startsWith(text));

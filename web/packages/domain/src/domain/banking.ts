@@ -23,7 +23,7 @@ import { profiles } from "../investments/profile.ts";
 import { addValuation, assets, correctValuation, positions, valuationsOf } from "../investments/service.ts";
 import { formatDateBr, type IsoDate } from "../lib/dates.ts";
 import { record as recordBalanceCheck } from "./balance_checks.ts";
-import { collapseSpaces, getOrKeyError, head, pyEquals } from "../lib/py.ts";
+import { collapseSpaces, getOrKeyError, pyEquals, pyHead } from "../lib/py.ts";
 import { Dec } from "../lib/dec.ts";
 import type { Id } from "../lib/ids.ts";
 import { zId } from "../lib/schema.ts";
@@ -166,9 +166,9 @@ export function build(fields: BuildFields): BankAccount {
   if (!label) throw new DomainError("Escolha o banco ou informe o nome da instituição.");
   const title = collapseSpaces(fields.name) || (found ? found.short_name : label);
   return BankAccountSchema.parse({
-    name: head(title, 120),
+    name: pyHead(title, 120),
     bank_code: found ? found.code : null,
-    bank_name: head(label, 150),
+    bank_name: pyHead(label, 150),
     branch: clean(fields.branch, "Agência"),
     number: clean(fields.number, "Conta"),
     holder_id: fields.holder_id,
@@ -179,10 +179,10 @@ export function build(fields: BuildFields): BankAccount {
 function newPartAccount(ledger: Ledger, item: BankAccount, part: Part): LedgerAccount {
   return ledger.addAccount(
     LedgerAccountSchema.parse({
-      name: head(`${item.name} — ${PART_LABELS[part].toLowerCase()}`, 120),
+      name: pyHead(`${item.name} — ${PART_LABELS[part].toLowerCase()}`, 120),
       type: AccountType.ASSET,
       subtype: PART_SUBTYPES[part],
-      institution: head(item.bank_name, 120),
+      institution: pyHead(item.bank_name, 120),
       masked_number: masked(item),
       holders: holders(item),
     }),
@@ -252,7 +252,7 @@ export function archive(ledger: Ledger, bankId: Id): void {
 function masked(item: BankAccount): string | null {
   const parts = [item.branch ? `ag ${item.branch}` : "", item.number ? `c ${item.number}` : ""];
   const text = parts.filter(Boolean).join(" ");
-  return head(text, 32) || null;
+  return pyHead(text, 32) || null;
 }
 
 /** Holders, institution and number go to the ledger accounts and the investments held there. */
@@ -262,7 +262,7 @@ function sync(ledger: Ledger, item: BankAccount): void {
     const updated: LedgerAccount = {
       ...account,
       holders: holders(item),
-      institution: head(item.bank_name, 120),
+      institution: pyHead(item.bank_name, 120),
       masked_number: masked(item),
     };
     if (!pyEquals(updated, account)) ledger.updateAccount(updated, "dados da conta bancária");
@@ -406,7 +406,7 @@ export function adjustBalance(ledger: Ledger, accountId: Id, on: IsoDate, inform
   return ledger.addOperation(
     operation({
       kind: OperationKind.OPENING_BALANCE,
-      description: head(
+      description: pyHead(
         first
           ? `Saldo de abertura — ${account.name}`
           : `Ajuste ao saldo informado em ${formatDateBr(on)} — ${account.name}`,

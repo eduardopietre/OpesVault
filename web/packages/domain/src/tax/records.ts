@@ -10,7 +10,7 @@ import { isAssetCode } from "../catalogs/irpf.ts";
 import { AssetClass } from "../investments/model.ts";
 import { profileOf, TaxTreatment } from "../investments/profile.ts";
 import { category, positions, TAX_CATEGORY } from "../investments/service.ts";
-import { collapseSpaces, getOrKeyError, head, pyEquals } from "../lib/py.ts";
+import { capitalize, collapseSpaces, getOrKeyError, pyEquals, pyHead } from "../lib/py.ts";
 import * as ids from "./ids.ts";
 import {
   ASSET_GROUPS,
@@ -46,12 +46,6 @@ import {
   VariableIncomeRulesSchema,
   requireYear,
 } from "./model.ts";
-
-/** Python's `str.capitalize()`: the first character upper case, the rest lower case. */
-function capitalize(text: string): string {
-  const [first = "", ...rest] = [...text];
-  return first.toUpperCase() + rest.join("").toLowerCase();
-}
 
 function isBlank(value: unknown): boolean {
   return value === null || value === undefined || (typeof value === "string" && !value.trim());
@@ -100,7 +94,7 @@ export function setIdentity(
     throw new DomainError("Escolha o estabelecimento.");
   }
   const number = ids.normalize(taxId);
-  const label = head(collapseSpaces(name ?? ""), 150) || null;
+  const label = pyHead(collapseSpaces(name ?? ""), 150) || null;
   const current = identity(ledger, subject, ref);
   if (current === null) {
     return ledger.put("tax_identity", TaxIdentitySchema.parse({ subject, ref, tax_id: number, name: label }));
@@ -161,7 +155,7 @@ export function setMemberInfo(ledger: Ledger, memberId: Id, fields: MemberInfoFi
     cpf: number,
     birth_date: fields.birth_date,
     declared_by: declaredBy,
-    relation: head((fields.relation ?? "").trim(), 60) || null,
+    relation: pyHead((fields.relation ?? "").trim(), 60) || null,
   };
   const current = memberInfo(ledger, memberId);
   if (current === null)
@@ -333,7 +327,7 @@ export function setFiling(
   description: string,
 ): AssetFiling {
   checkCode(group, code);
-  const text = head(collapseSpaces(description), 512);
+  const text = pyHead(collapseSpaces(description), 512);
   const current = filingOf(ledger, subject, ref);
   if (current === null) {
     return ledger.put("asset_filing", AssetFilingSchema.parse({ subject, ref, group, code, description: text }));
@@ -435,10 +429,10 @@ export function saveReport(
     source,
     source_id: sourceId,
     payer_tax_id: number,
-    payer_name: head((options.payer_name ?? "").trim(), 150) || null,
+    payer_name: pyHead((options.payer_name ?? "").trim(), 150) || null,
     document_id: options.document_id ?? null,
     lines: [...lines],
-    note: head((options.note ?? "").trim(), 500) || null,
+    note: pyHead((options.note ?? "").trim(), 500) || null,
   };
   const reportId = options.report_id ?? null;
   const current = reportId !== null ? (reports(ledger).get(reportId) ?? null) : null;
@@ -515,7 +509,7 @@ export function setVariableRules(
     money(rule.exempt_sales_limit, "o limite de vendas isentas");
   }
   const current = [...allVariableRules(ledger).values()].find((r) => r.valid_from === validFrom);
-  const text = head((source || "").trim(), 300) || "informado pelo usuário";
+  const text = pyHead((source || "").trim(), 300) || "informado pelo usuário";
   if (current === undefined) {
     return ledger.put(
       "variable_income_rules",
@@ -611,7 +605,7 @@ export function setMark(
     if (current !== null) marks(ledger).delete(current.id);
     return;
   }
-  const text = head((note ?? "").trim(), 300) || null;
+  const text = pyHead((note ?? "").trim(), 300) || null;
   if (current === null) {
     ledger.put("tax_checklist_mark", ChecklistMarkSchema.parse({ year, key, received, note: text }));
   } else if (current.received !== received || current.note !== text) {

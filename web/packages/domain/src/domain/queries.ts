@@ -10,11 +10,11 @@ import {
   AccountType,
   cashDate,
   competence,
-  isBalanceSheet,
   isLiquid,
   type LedgerAccount,
   type Operation,
   OperationKind,
+  type Posting,
 } from "./model.ts";
 import { ZERO } from "./money.ts";
 
@@ -173,14 +173,17 @@ export function makeMonthFlow(): MonthFlow {
   };
 }
 
-/** Internal when money only moves between balance-sheet accounts inside the perimeter. */
-export function isInternal(ledger: Ledger, op: Operation, perimeter: ReadonlySet<Id> | null = null): boolean {
-  for (const p of op.postings) {
-    const account = ledger.account(p.account_id);
-    if (!isBalanceSheet(account) || account.type === AccountType.EQUITY) return false;
-    if (perimeter !== null && !perimeter.has(p.account_id)) return false;
-  }
-  return true;
+/** The postings of `op` into accounts of `type`, in order (an unknown account raises "Conta inexistente."). */
+export function postingsOfType(ledger: Ledger, op: Operation, type: AccountType): Posting[] {
+  return op.postings.filter((p) => ledger.account(p.account_id).type === type);
+}
+
+/** What `op` moved into accounts of `type`: the sum of those postings, as booked. */
+export function amountOfType(ledger: Ledger, op: Operation, type: AccountType): Dec {
+  return Dec.sum(
+    postingsOfType(ledger, op, type).map((p) => p.amount),
+    ZERO,
+  );
 }
 
 /**

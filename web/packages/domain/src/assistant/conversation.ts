@@ -18,7 +18,7 @@
 import type { ModelTurn } from "../ai/ollama.ts";
 import { DomainError, type Ledger } from "../domain/ledger.ts";
 import { type IsoDate, today as localToday } from "../lib/dates.ts";
-import { strip } from "../lib/py.ts";
+import { pyStrip } from "../lib/py.ts";
 import * as edits from "./edits.ts";
 import * as reads from "./reads.ts";
 import { type PreparedEdit, Registry, ToolError, resultText } from "./tools.ts";
@@ -81,7 +81,7 @@ export class Conversation {
 
   ask(text: string): void {
     this.trim();
-    this.messages.push({ role: "user", content: strip(text) });
+    this.messages.push({ role: "user", content: pyStrip(text) });
     this.invalid = this.steps = 0;
   }
 
@@ -118,7 +118,7 @@ export class Conversation {
     this.steps += 1;
     const step: Step = { answer: null, activity: [], pending: [], links: [], stop: null };
     if (!turn.tool_calls.length) {
-      const content = strip(turn.content);
+      const content = pyStrip(turn.content);
       let reason: string | null = null;
       if (!content) reason = "resposta vazia; responda ao usuário ou chame uma ferramenta.";
       else if (looksLikeCall(content))

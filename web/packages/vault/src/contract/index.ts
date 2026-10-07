@@ -12,6 +12,7 @@
  * `a` and `b` are two independent clients (two browsers, two people) of one fresh, empty server.
  * `advanceTime` moves the server's clock forward (lease expiry).
  */
+import { randomId } from "@opesvault/crypto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   BackendError,
@@ -38,11 +39,6 @@ function randomB64(chars: number): B64 {
   let out = "";
   for (const byte of bytes) out += B64_ALPHABET[byte & 63]!;
   return out;
-}
-
-function hexId(): string {
-  const bytes = globalThis.crypto.getRandomValues(new Uint8Array(16));
-  return [...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 function envelope(): EnvelopeContent {
@@ -90,12 +86,12 @@ export function runSyncBackendContract(name: string, makeBackendPair: () => Prom
     }
 
     async function project(owner: SyncBackend = a): Promise<string> {
-      const id = hexId();
+      const id = randomId();
       await owner.createProject(id, randomB64(40), envelope());
       return id;
     }
 
-    function record(base = 0, id = hexId()): PushRecord {
+    function record(base = 0, id = randomId()): PushRecord {
       return { id, baseRevision: base, ciphertext: randomB64(120) };
     }
 
@@ -152,7 +148,7 @@ export function runSyncBackendContract(name: string, makeBackendPair: () => Prom
     describe("projects", () => {
       it("creates and lists a project for its owner only", async () => {
         await twoAccounts();
-        const id = hexId();
+        const id = randomId();
         const sealed = randomB64(40);
         const summary = await a.createProject(id, sealed, envelope());
         expect(summary).toMatchObject({ projectId: id, sealedName: sealed, revision: 0, role: "owner" });
@@ -169,12 +165,12 @@ export function runSyncBackendContract(name: string, makeBackendPair: () => Prom
         const id = await project();
         await rejects(b.createProject(id, randomB64(40), envelope()), "conflict");
         await rejects(a.createProject("not-an-id", randomB64(40), envelope()), "invalid");
-        await rejects(a.createProject(hexId().toUpperCase(), randomB64(40), envelope()), "invalid");
+        await rejects(a.createProject(randomId().toUpperCase(), randomB64(40), envelope()), "invalid");
       });
 
       it("treats a missing and a foreign project the same way", async () => {
         await twoAccounts();
-        await rejects(b.getEnvelope(hexId()), "forbidden");
+        await rejects(b.getEnvelope(randomId()), "forbidden");
       });
 
       it("renames for any member", async () => {
@@ -200,7 +196,7 @@ export function runSyncBackendContract(name: string, makeBackendPair: () => Prom
 
       it("needs a session", async () => {
         await rejects(a.listProjects(), "unauthorized");
-        await rejects(a.createProject(hexId(), randomB64(40), envelope()), "unauthorized");
+        await rejects(a.createProject(randomId(), randomB64(40), envelope()), "unauthorized");
       });
     });
 
@@ -259,7 +255,7 @@ export function runSyncBackendContract(name: string, makeBackendPair: () => Prom
     describe("envelope", () => {
       it("gets and replaces it with the expected revision", async () => {
         await twoAccounts();
-        const id = hexId();
+        const id = randomId();
         const first = envelope();
         await a.createProject(id, randomB64(40), first);
         expect(await a.getEnvelope(id)).toEqual({ ...first, revision: 1 });
@@ -289,9 +285,9 @@ export function runSyncBackendContract(name: string, makeBackendPair: () => Prom
       it("needs the current edit lease to push", async () => {
         await twoAccounts();
         const id = await project();
-        await rejects(a.push(id, hexId(), [record()]), "no_lease");
+        await rejects(a.push(id, randomId(), [record()]), "no_lease");
         const lease = await a.acquireEditLease(id, "tab-a");
-        await rejects(a.push(id, hexId(), [record()]), "no_lease");
+        await rejects(a.push(id, randomId(), [record()]), "no_lease");
         expect((await a.push(id, lease.leaseId, [record()])).ok).toBe(true);
       });
 
@@ -385,14 +381,14 @@ export function runSyncBackendContract(name: string, makeBackendPair: () => Prom
         await a.addMember(id, "bia@example.com");
         expect((await b.pull(id, 0)).records).toHaveLength(1);
         // A member without the lease cannot write, even knowing its id.
-        await rejects(b.push(id, hexId(), [record()]), "no_lease");
+        await rejects(b.push(id, randomId(), [record()]), "no_lease");
       });
 
       it("enforces size limits and refuses malformed pushes", async () => {
         await twoAccounts();
         const id = await project();
         const { leaseId } = await a.acquireEditLease(id, "tab-a");
-        const big = { id: hexId(), baseRevision: 0, ciphertext: "A".repeat(LIMITS.maxRecordCiphertext + 1) };
+        const big = { id: randomId(), baseRevision: 0, ciphertext: "A".repeat(LIMITS.maxRecordCiphertext + 1) };
         await rejects(a.push(id, leaseId, [big]), "too_large");
         const many = Array.from({ length: LIMITS.maxPushRecords + 1 }, () => record());
         await rejects(a.push(id, leaseId, many), "too_large");
@@ -400,7 +396,7 @@ export function runSyncBackendContract(name: string, makeBackendPair: () => Prom
         await rejects(a.push(id, leaseId, [twice, twice]), "invalid");
         await rejects(a.push(id, leaseId, []), "invalid");
         await rejects(a.push(id, leaseId, [{ id: "x", baseRevision: 0, ciphertext: "AAAA" }]), "invalid");
-        await rejects(a.push(id, leaseId, [{ id: hexId(), baseRevision: -1, ciphertext: "AAAA" }]), "invalid");
+        await rejects(a.push(id, leaseId, [{ id: randomId(), baseRevision: -1, ciphertext: "AAAA" }]), "invalid");
         expect((await a.pull(id, 0)).records).toEqual([]);
       });
     });
@@ -410,7 +406,7 @@ export function runSyncBackendContract(name: string, makeBackendPair: () => Prom
         await twoAccounts();
         const id = await project();
         const { leaseId } = await a.acquireEditLease(id, "tab-a");
-        const blobId = hexId();
+        const blobId = randomId();
         const data = new Uint8Array(70_000).map((_, i) => (i * 31) & 255);
         await a.putBlob(id, leaseId, blobId, data);
         expect(Array.from(await a.getBlob(id, blobId))).toEqual(Array.from(data));
@@ -419,7 +415,7 @@ export function runSyncBackendContract(name: string, makeBackendPair: () => Prom
         expect(Array.from(await a.getBlob(id, blobId))).toEqual([1, 2, 3]);
         await a.deleteBlob(id, leaseId, blobId);
         await rejects(a.getBlob(id, blobId), "not_found");
-        await rejects(a.getBlob(id, hexId()), "not_found");
+        await rejects(a.getBlob(id, randomId()), "not_found");
         await rejects(a.getBlob(id, "../../etc/passwd"), "invalid");
       });
 
@@ -427,13 +423,13 @@ export function runSyncBackendContract(name: string, makeBackendPair: () => Prom
         await twoAccounts();
         const id = await project();
         const { leaseId } = await a.acquireEditLease(id, "tab-a");
-        const blobId = hexId();
+        const blobId = randomId();
         await a.putBlob(id, leaseId, blobId, new Uint8Array([9]));
         await rejects(b.getBlob(id, blobId), "forbidden");
-        await rejects(b.putBlob(id, leaseId, hexId(), new Uint8Array([1])), "forbidden");
+        await rejects(b.putBlob(id, leaseId, randomId(), new Uint8Array([1])), "forbidden");
         await rejects(b.deleteBlob(id, leaseId, blobId), "forbidden");
-        await rejects(a.putBlob(id, hexId(), hexId(), new Uint8Array([1])), "no_lease");
-        await rejects(a.deleteBlob(id, hexId(), blobId), "no_lease");
+        await rejects(a.putBlob(id, randomId(), randomId(), new Uint8Array([1])), "no_lease");
+        await rejects(a.deleteBlob(id, randomId(), blobId), "no_lease");
         await a.addMember(id, "bia@example.com");
         expect(Array.from(await b.getBlob(id, blobId))).toEqual([9]);
       });
@@ -442,14 +438,14 @@ export function runSyncBackendContract(name: string, makeBackendPair: () => Prom
         await twoAccounts();
         const id = await project();
         const { leaseId } = await a.acquireEditLease(id, "tab-a");
-        await rejects(a.putBlob(id, leaseId, hexId(), new Uint8Array(LIMITS.maxBlobBytes + 1)), "too_large");
+        await rejects(a.putBlob(id, leaseId, randomId(), new Uint8Array(LIMITS.maxBlobBytes + 1)), "too_large");
       });
 
       it("deleting the project deletes its blobs", async () => {
         await twoAccounts();
         const id = await project();
         const { leaseId } = await a.acquireEditLease(id, "tab-a");
-        const blobId = hexId();
+        const blobId = randomId();
         await a.putBlob(id, leaseId, blobId, new Uint8Array([1]));
         await a.deleteProject(id);
         await rejects(a.getBlob(id, blobId), "forbidden");
@@ -487,7 +483,7 @@ export function runSyncBackendContract(name: string, makeBackendPair: () => Prom
         expect((await a.currentLease(id))?.email).toBe("bia@example.com");
         await rejects(a.push(id, old.leaseId, [record()]), "no_lease");
         await rejects(a.renewEditLease(id, old.leaseId), "no_lease");
-        await rejects(a.putBlob(id, old.leaseId, hexId(), new Uint8Array([1])), "no_lease");
+        await rejects(a.putBlob(id, old.leaseId, randomId(), new Uint8Array([1])), "no_lease");
         // Releasing a lease that is no longer current changes nothing.
         await a.releaseEditLease(id, old.leaseId);
         expect((await a.currentLease(id))?.leaseId).toBe(taken.leaseId);

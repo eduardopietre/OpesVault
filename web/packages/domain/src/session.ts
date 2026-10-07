@@ -11,6 +11,7 @@
  * desktop.
  */
 import { sha256 } from "@noble/hashes/sha2.js";
+import { bytesToHex } from "@noble/hashes/utils.js";
 
 import { Ledger, type LedgerRecord } from "./domain/ledger.ts";
 import { type Id, newId } from "./lib/ids.ts";
@@ -31,7 +32,7 @@ export interface Document {
 }
 
 export function sha256Hex(data: Uint8Array): string {
-  return Array.from(sha256(data), (b) => b.toString(16).padStart(2, "0")).join("");
+  return bytesToHex(sha256(data));
 }
 
 export function documentFromBytes(originalName: string, data: Uint8Array): Document {

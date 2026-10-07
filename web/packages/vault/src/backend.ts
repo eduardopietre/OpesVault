@@ -24,8 +24,8 @@
 /** Base64url text of bytes. */
 export type B64 = string;
 
-/** Project, record and blob ids: 128 bits as lowercase hex. */
-export const ID_PATTERN = /^[0-9a-f]{32}$/;
+/** Project, record and blob ids: 128 bits as lowercase hex (crypto's `randomId`). */
+export { ID_PATTERN } from "@opesvault/crypto/random";
 
 /** A lease holder label: opaque text chosen by the client (a random tab id), not personal data. */
 export const HOLDER_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;

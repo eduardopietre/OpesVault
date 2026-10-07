@@ -1,5 +1,6 @@
 /** Entity identifiers: lowercase canonical UUID strings, as the desktop persisted them. */
 import { sha1 } from "@noble/hashes/legacy.js";
+import { bytesToHex } from "@noble/hashes/utils.js";
 
 export type Id = string;
 
@@ -12,10 +13,6 @@ export function isId(text: string): boolean {
 /** A random (version 4) id. */
 export function newId(): Id {
   return globalThis.crypto.randomUUID();
-}
-
-function hex(bytes: Uint8Array): string {
-  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 function format(h: string): Id {
@@ -34,5 +31,5 @@ export function uuid5(namespace: Id, name: string): Id {
   const digest = sha1(input).slice(0, 16);
   digest[6] = (digest[6]! & 0x0f) | 0x50;
   digest[8] = (digest[8]! & 0x3f) | 0x80;
-  return format(hex(digest));
+  return format(bytesToHex(digest));
 }

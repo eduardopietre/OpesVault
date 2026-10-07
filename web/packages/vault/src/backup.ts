@@ -23,6 +23,7 @@ import {
   type KdfParams,
   type PlainRecord,
   type RandomSource,
+  toHex,
 } from "@opesvault/crypto";
 import { BackendError, type SyncBackend } from "./backend.ts";
 import type { VaultCache } from "./cache.ts";
@@ -178,10 +179,7 @@ export interface ScanHandlers {
 }
 
 async function sha256Hex(data: Bytes): Promise<string> {
-  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", data));
-  let out = "";
-  for (const byte of digest) out += byte.toString(16).padStart(2, "0");
-  return out;
+  return toHex(new Uint8Array(await crypto.subtle.digest("SHA-256", data)));
 }
 
 async function scan(

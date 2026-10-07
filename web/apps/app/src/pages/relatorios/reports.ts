@@ -13,6 +13,7 @@ import {
   ZERO,
   charts,
   dom,
+  exporting,
   ymAdd,
   ymFirstDay,
   ymLastDay,
@@ -379,8 +380,11 @@ export function valuesCsv(chart: Chart): string {
   const [headers, rows] = charts.data.tableRows(chart);
   const field = (value: string) => (/[;"\n\r]/.test(value) ? `"${value.replaceAll('"', '""')}"` : value);
   const lines = [
-    ["item", ...headers],
-    ...rows.map((row) => [row.x ?? row.label, ...row.values.map((value) => (value === null ? "" : value.toFixed()))]),
+    ["item", ...headers.map(exporting.spreadsheetText)],
+    ...rows.map((row) => [
+      exporting.spreadsheetCell(row.x ?? row.label),
+      ...row.values.map((value) => (value === null ? "" : value.toFixed())),
+    ]),
   ];
   return String.fromCharCode(0xfeff) + lines.map((line) => line.map(field).join(";")).join("\n") + "\n";
 }

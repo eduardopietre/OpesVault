@@ -4,6 +4,7 @@ import { act as reactAct, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { alertLink, eventLink } from "../../src/data/links.ts";
 import { cdbOf, dialog, openInvestimentos, rowOf, selectedRow, table } from "./investimentos_harness.tsx";
+import { addressSettles, navigations } from "../navigations.ts";
 
 vi.mock("../../../../packages/ui/src/chart/echarts.ts", async () => await import("./fake_echarts.ts"));
 
@@ -31,14 +32,14 @@ describe("Links into Investimentos", () => {
     await follow(opened.router, id);
     expect(await screen.findByRole("heading", { level: 2, name: "LCI Banco Z" })).toBeTruthy();
     expect(selectedRow(await table("Investimentos"))!.getAttribute("data-row-id")).toBe(id);
-    await waitFor(() => expect(opened.router.state.location.search).toEqual({}));
+    await addressSettles(opened.router, {});
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
   it("a ref that is not a position of this project is ignored", async () => {
     const opened = await openInvestimentos();
     await follow(opened.router, "nao-existe");
-    await waitFor(() => expect(opened.router.state.location.search).toEqual({}));
+    await addressSettles(opened.router, {});
     expect(selectedRow(await table("Investimentos"))!.getAttribute("data-row-id")).toBe(cdbOf(opened.ledger));
   });
 
@@ -95,7 +96,7 @@ describe("Links into Investimentos", () => {
       expect(link.page).toBe("investimentos");
       await follow(opened.router, link.ref!, link.act);
       expect(await screen.findByRole("heading", { level: 2, name: "CDB vencendo" })).toBeTruthy();
-      await waitFor(() => expect(opened.router.state.location.search).toEqual({}));
+      await addressSettles(opened.router, {});
     }
     // the maturity is a warning figure with the days left
     expect(await screen.findByText(/em 5 dias/)).toBeTruthy();
@@ -104,11 +105,7 @@ describe("Links into Investimentos", () => {
 
 describe("Links out of Investimentos", () => {
   async function watch(opened: Opened) {
-    const seen: { pathname: string; search: unknown }[] = [];
-    opened.router.subscribe("onBeforeNavigate", (event) =>
-      seen.push({ pathname: event.toLocation.pathname, search: event.toLocation.search }),
-    );
-    return seen;
+    return navigations(opened.router);
   }
 
   it("'Ver lançamentos' goes to the Livro filtered by the investment's account", async () => {

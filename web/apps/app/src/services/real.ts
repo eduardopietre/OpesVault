@@ -19,7 +19,7 @@ import {
   type SyncBackend,
   VaultCache,
   VaultError,
-  requestPersistentStorage,
+  persistentStorage,
   signIn as vaultSignIn,
   signUp as vaultSignUp,
 } from "@opesvault/vault";
@@ -33,6 +33,7 @@ import {
   type OpenProject,
   type ProjectSummary,
   type ProjectSyncStatus,
+  type SyncDetail,
 } from "./types.ts";
 
 export interface RealServicesOptions {
@@ -63,6 +64,9 @@ const BACKUP_MESSAGES: Record<BackupError["code"], string> = {
 /** The user-facing message for a failure of the vault or the server. */
 export function serviceError(error: unknown): ServiceError {
   if (error instanceof ServiceError) return error;
+  if (error instanceof DOMException && error.name === "AbortError") {
+    return new ServiceError("cancelled", "A abertura do projeto foi cancelada.");
+  }
   if (error instanceof VaultError) {
     switch (error.code) {
       case "wrong_password":
@@ -134,13 +138,26 @@ export function createRealServices(options: RealServicesOptions = {}): AppServic
   let workspace: Workspace | null = null;
   let summary: ProjectSummary | null = null;
   let unsubscribeVault: (() => void) | null = null;
-  const syncListeners = new Set<(status: ProjectSyncStatus) => void>();
+  const syncListeners = new Set<(status: ProjectSyncStatus, detail?: SyncDetail) => void>();
   let idleMs: number | null = options.idleLockMs === undefined ? 15 * 60_000 : options.idleLockMs;
   let unwatchActivity: (() => void) | null = null;
+  /** Asked once per page load (a browser may ask the person): whether IndexedDB may be erased under pressure. */
+  let persistence: Promise<"persisted" | "denied" | "unavailable"> | null = null;
+  let storageAtRisk = false;
+  const askPersistence = () => {
+    persistence ??= persistentStorage();
+    void persistence.then((state) => {
+      if (storageAtRisk === (state === "denied")) return;
+      storageAtRisk = state === "denied";
+      report();
+    });
+  };
 
   const report = () => {
-    const status: ProjectSyncStatus = vault ? vault.getSnapshot().status : "locked";
-    for (const listener of syncListeners) listener(status);
+    const snapshot = vault?.getSnapshot();
+    const status: ProjectSyncStatus = snapshot ? snapshot.status : "locked";
+    const detail = { pending: snapshot?.pending ?? 0, storageAtRisk };
+    for (const listener of syncListeners) listener(status, detail);
   };
 
   const summaryOf = (
@@ -206,6 +223,7 @@ export function createRealServices(options: RealServicesOptions = {}): AppServic
     workspace = ws;
     summary = { ...projectSummary, name };
     report();
+    askPersistence();
     return openedOf(ws, summary);
   };
 
@@ -229,7 +247,7 @@ export function createRealServices(options: RealServicesOptions = {}): AppServic
       return guard(async () => {
         const session = await vaultSignIn(backend, email, password, options.kdf);
         account = { id: session.accountId, name: nameFromEmail(session.email), email: session.email };
-        void requestPersistentStorage();
+        askPersistence();
         return account;
       });
     },
@@ -237,7 +255,7 @@ export function createRealServices(options: RealServicesOptions = {}): AppServic
       return guard(async () => {
         const session = await vaultSignUp(backend, email, password, options.kdf);
         account = { id: session.accountId, name: name.trim() || nameFromEmail(session.email), email: session.email };
-        void requestPersistentStorage();
+        askPersistence();
         return account;
       });
     },
@@ -298,14 +316,17 @@ export function createRealServices(options: RealServicesOptions = {}): AppServic
         return { project, recoveryKey };
       });
     },
-    async openProject(projectId, password) {
+    async openProject(projectId, password, openOptions = {}) {
       return guard(async () => {
         if (vault?.projectId === projectId && vault.unlocked && workspace && summary) {
           return openedOf(workspace, summary);
         }
         await detach(true);
         const v = await makeVault(projectId);
-        await v.unlock(password);
+        await v.unlock(password, {
+          ...(openOptions.onProgress ? { onProgress: openOptions.onProgress } : {}),
+          ...(openOptions.signal ? { signal: openOptions.signal } : {}),
+        });
         const listed = (await backend.listProjects()).find((p) => p.projectId === projectId);
         const members = await backend.listMembers(projectId).catch(() => []);
         const base = listed

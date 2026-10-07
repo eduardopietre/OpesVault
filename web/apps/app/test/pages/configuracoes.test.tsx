@@ -6,6 +6,7 @@ import { AI_PORT_KEY, setAiTransport } from "../../src/data/ai.ts";
 import { DEMO } from "../../src/services/fake.ts";
 import { FakeOllama } from "./fake_ollama.ts";
 import { closed, dialog, goTab, openSettings, type } from "./configuracoes_harness.tsx";
+import { addressSettles } from "../navigations.ts";
 
 vi.mock("../../../../packages/ui/src/chart/echarts.ts", async () => await import("./fake_echarts.ts"));
 
@@ -43,7 +44,7 @@ describe("Configurações page", () => {
       const { router } = await openSettings(`/configuracoes?ref=${ref}`);
       await waitFor(() => expect(screen.getByRole("tab", { name: tab }).getAttribute("aria-selected")).toBe("true"));
       // the ref is consumed: the URL is clean again
-      await waitFor(() => expect(router.state.location.search).toEqual({}));
+      await addressSettles(router, {});
       document.body.innerHTML = "";
     }
   });

@@ -1,6 +1,7 @@
 import { charts, dom, formatBrl, makeDate, ymOf, type Id } from "@opesvault/domain";
 import { act as reactAct, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { pinToday } from "../clock.ts";
 import {
   NONE,
   dateOrNone,
@@ -11,6 +12,7 @@ import {
   summaryLine,
 } from "../../src/pages/metas/rows.ts";
 import { accountId, flat, openPage, rowOf, undoOnce } from "./recorrencias_harness.tsx";
+import { addressSettles } from "../navigations.ts";
 
 vi.mock("../../../../packages/ui/src/chart/echarts.ts", () => import("./fake_echarts.ts"));
 
@@ -32,6 +34,7 @@ describe("Metas rows", () => {
 });
 
 describe("Metas", () => {
+  pinToday(2026, 10, 6);
   it("shows each goal's progress, what is missing, the monthly need and the recent pace", async () => {
     const { ledger, workspace } = await open();
     const [goal] = goals(ledger);
@@ -257,7 +260,7 @@ describe("Metas", () => {
     await waitFor(() => expect(rowOf(table, second.id)!.getAttribute("aria-selected")).toBe("true"));
     expect(await screen.findByRole("table", { name: "Valores de Meta: Zeladoria" })).toBeTruthy();
     expect(screen.queryByRole("dialog")).toBeNull();
-    expect(router.state.location.search).toEqual({});
+    await addressSettles(router, {});
     const first = goals(ledger)[0]!;
     await reactAct(async () => {
       await router.navigate({ to: "/metas", search: { ref: first.id, act: "editar" } });

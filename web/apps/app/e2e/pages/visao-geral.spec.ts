@@ -6,8 +6,8 @@ import AxeBuilder from "@axe-core/playwright";
 import { animationsDone } from "../helpers.ts";
 import { expect, test, type Page } from "@playwright/test";
 import {
-  SCHEMES,
-  SIZES,
+  TEST_SCHEMES,
+  TEST_SIZES,
   expectNoHorizontalOverflow,
   openDemo,
   recordAddresses,
@@ -43,8 +43,8 @@ async function stubPrint(page: Page) {
 
 const prints = (page: Page) => page.evaluate(() => (window as unknown as { __prints: number }).__prints);
 
-for (const size of SIZES) {
-  for (const scheme of SCHEMES) {
+for (const size of TEST_SIZES) {
+  for (const scheme of TEST_SCHEMES) {
     test.describe(`visão geral ${size.width}x${size.height} ${scheme}`, () => {
       test.use({ viewport: size, colorScheme: scheme });
 
@@ -132,13 +132,16 @@ test.describe("visão geral: every action", () => {
   test("the demonstration opens on its last complete month, the same in Orçamento", async ({ page }) => {
     const errors = watchErrors(page);
     await openDemo(page, "/visao-geral", { month: "demo" });
-    // October 2026 is partial: September has the demonstration's entries (a card purchase, the gym)
+    // this month is partial: the month before has the demonstration's entries (the demo is built around today)
+    const now = new Date();
+    const last = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const name = new RegExp(last.toLocaleDateString("pt-BR", { month: "long", year: "numeric" }), "i");
     const picker = page.getByRole("group", { name: "Mês" });
-    await expect(picker.getByRole("button", { name: /setembro de 2026/i })).toBeVisible();
+    await expect(picker.getByRole("button", { name })).toBeVisible();
     await page.keyboard.press("Alt+2");
     await expect(page.getByRole("heading", { level: 1, name: "Orçamento" })).toBeVisible();
-    await expect(page.getByRole("button", { name: /setembro de 2026/i })).toBeVisible();
-    // without a plan for September: the plan from the last three months is the next step
+    await expect(page.getByRole("button", { name })).toBeVisible();
+    // without a plan for that month: the plan from the last three months is the next step
     await expect(page.getByRole("button", { name: "Criar a partir dos últimos 3 meses…" })).toBeVisible();
     expect(errors).toEqual([]);
   });

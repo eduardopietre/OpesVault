@@ -12,6 +12,18 @@ const noFloatMoney = [
   },
 ];
 
+// Destination pages consume `ref`/`act` (`useReveal`) and replace the address, so a test that reads the search
+// after navigating may find it already cleared. Where a link went is checked with `test/navigations.ts`.
+const noSearchAfterNavigating = [
+  "MemberExpression[property.name='search'][object.name='location']",
+  "MemberExpression[property.name='search'][object.property.name=/^(location|toLocation)$/]",
+  "MemberExpression[property.name=/^search(Params)?$/][object.type='NewExpression'][object.callee.name='URL'][object.arguments.0.callee.property.name='url']",
+].map((selector) => ({
+  selector,
+  message:
+    "Não leia a busca do endereço depois de navegar: a página de destino consome ref/act. Use navigations()/wentTo() ou addressSettles() de apps/app/test/navigations.ts (no e2e, recordAddresses ou toHaveURL).",
+}));
+
 export default tseslint.config(
   { ignores: ["**/node_modules", "**/dist", "**/coverage", "**/build", "**/playwright-report", "**/test-results"] },
   js.configs.recommended,
@@ -85,5 +97,10 @@ export default tseslint.config(
   {
     files: ["**/test/**/*.{ts,tsx}", "**/*.test.{ts,tsx}", "**/e2e/**/*.ts"],
     rules: { "no-restricted-globals": "off", "@typescript-eslint/no-non-null-assertion": "off" },
+  },
+  {
+    files: ["apps/app/test/**/*.{ts,tsx}", "apps/app/e2e/**/*.ts"],
+    ignores: ["apps/app/test/navigations.ts"],
+    rules: { "no-restricted-syntax": ["error", ...noFloatMoney, ...noSearchAfterNavigating] },
   },
 );

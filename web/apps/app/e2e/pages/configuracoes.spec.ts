@@ -10,8 +10,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   DEMO,
-  SCHEMES,
-  SIZES,
+  TEST_SCHEMES,
+  TEST_SIZES,
   animationsDone,
   expectNoHorizontalOverflow,
   openDemo,
@@ -80,8 +80,8 @@ async function fakeOllama(page: Page, ps: { size: number; size_vram: number } | 
   });
 }
 
-for (const size of SIZES) {
-  for (const scheme of SCHEMES) {
+for (const size of TEST_SIZES) {
+  for (const scheme of TEST_SCHEMES) {
     test.describe(`${size.width}x${size.height} ${scheme}`, () => {
       test.use({ viewport: size, colorScheme: scheme, contextOptions: { reducedMotion: "reduce" } });
 
@@ -317,7 +317,8 @@ test.describe("links and the rest of the flow", () => {
     ] as const) {
       await page.goto(`/configuracoes?demo&ref=${ref}`);
       await expect(page.getByRole("tab", { name: tab, exact: true })).toHaveAttribute("aria-selected", "true");
-      await expect.poll(() => new URL(page.url()).search).toBe("");
+      // the page consumed the ref: the address has no search left
+      await expect(page).toHaveURL(/\/configuracoes$/);
     }
   });
 

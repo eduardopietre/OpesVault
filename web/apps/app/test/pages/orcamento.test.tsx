@@ -22,7 +22,7 @@ import { categoryRef, cents, parseCategoryRef, summaryLine, usedPercent } from "
 import { createAppRouter } from "../../src/router.tsx";
 import { DEMO, createFakeServices } from "../../src/services/fake.ts";
 import { SessionStore } from "../../src/session.tsx";
-import { navigations, wentTo } from "../navigations.ts";
+import { addressSettles, navigations, wentTo } from "../navigations.ts";
 
 // happy-dom has no canvas: the chart itself is not drawn here (the e2e tests do); its table is.
 vi.mock("../../../../packages/ui/src/chart/echarts.ts", () => ({
@@ -326,7 +326,7 @@ describe("Orçamento", () => {
     });
     const dialog = await screen.findByRole("dialog", { name: /Orçamento de/ });
     expect((within(dialog).getByLabelText(/Planejado para o mês/) as HTMLInputElement).value).toBe("120,00");
-    await waitFor(() => expect(probe.router.state.location.search).toEqual({}));
+    await addressSettles(probe.router, {});
   });
 
   it("disables every editing control while another tab or device is editing", async () => {

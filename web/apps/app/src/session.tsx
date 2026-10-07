@@ -6,7 +6,7 @@
 import { cancelAllDecisions, clearToasts, type SyncState } from "@opesvault/ui";
 import { createContext, useContext, useMemo, useSyncExternalStore, type ReactNode } from "react";
 import { chooseMonth, monthOfDate } from "./data/shared_month.ts";
-import type { Account, AppServices, OpenProject } from "./services/types.ts";
+import type { Account, AppServices, OpenOptions, OpenProject } from "./services/types.ts";
 
 export interface SessionState {
   account: Account | null;
@@ -17,6 +17,10 @@ export interface SessionState {
   sync: SyncState;
   operatorId: string | null;
   online: boolean;
+  /** Changes made here and not yet sent to the server. */
+  pending: number;
+  /** The browser may erase this device's data (persistent storage denied). */
+  storageAtRisk: boolean;
 }
 
 const EMPTY: SessionState = {
@@ -27,6 +31,8 @@ const EMPTY: SessionState = {
   sync: "synced",
   operatorId: null,
   online: true,
+  pending: 0,
+  storageAtRisk: false,
 };
 
 export class SessionStore {
@@ -62,7 +68,7 @@ export interface SessionActions {
   signIn(email: string, password: string): Promise<void>;
   signUp(input: { name: string; email: string; password: string }): Promise<void>;
   signOut(): Promise<void>;
-  openProject(id: string, password: string): Promise<void>;
+  openProject(id: string, password: string, options?: OpenOptions): Promise<void>;
   closeProject(): Promise<void>;
   /** Opens a project with its recovery key, setting a new password. */
   recoverProject(id: string, recoveryKey: string, newPassword: string): Promise<void>;
@@ -80,8 +86,11 @@ export function sessionActions(services: AppServices, store: SessionStore): Sess
   /** Follows the vault: sync state in the top bar, and an idle lock decided by the vault itself. */
   const watch = () => {
     unwatch?.();
-    unwatch = services.watchSync((status) => {
+    unwatch = services.watchSync((status, detail) => {
       const state = store.get();
+      const pending = detail?.pending ?? 0;
+      const storageAtRisk = detail?.storageAtRisk ?? false;
+      if (pending !== state.pending || storageAtRisk !== state.storageAtRisk) store.update({ pending, storageAtRisk });
       if (status === "locked") {
         if (state.open) {
           cancelAllDecisions();
@@ -116,8 +125,8 @@ export function sessionActions(services: AppServices, store: SessionStore): Sess
       forget();
       store.update({ ...EMPTY, online: store.get().online });
     },
-    async openProject(id, password) {
-      const open = await services.openProject(id, password);
+    async openProject(id, password, options) {
+      const open = await services.openProject(id, password, options);
       const operatorId = open.members[0]?.id ?? null;
       open.workspace.setOperator(operatorName(open, operatorId));
       chooseMonth(open.startMonth ?? monthOfDate(open.workspace.today()));
@@ -149,7 +158,7 @@ export function sessionActions(services: AppServices, store: SessionStore): Sess
       unwatch = null;
       await services.closeProject();
       forget();
-      store.update({ open: null, locked: false, lockedName: null, operatorId: null });
+      store.update({ open: null, locked: false, lockedName: null, operatorId: null, pending: 0 });
     },
     async lock() {
       const name = store.get().open?.project.name ?? null;

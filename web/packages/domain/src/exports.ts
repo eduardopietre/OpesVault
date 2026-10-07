@@ -61,6 +61,20 @@ export const LEDGER_COLUMNS = [
   "origem",
 ] as const;
 
+/** Cells a spreadsheet would read as a formula (OWASP's CSV injection list: '=', '+', '-', '@', tab, CR). */
+const FORMULA_START = /^[=+\-@\t\r]/;
+const PLAIN_NUMBER = /^[+-]?\d+(\.\d+)?$/;
+
+/** A free-text cell (description, name) that a spreadsheet will not run: a leading "'" when it could be a formula. */
+export function spreadsheetText(text: string): string {
+  return FORMULA_START.test(text) ? "'" + text : text;
+}
+
+/** A cell that may hold a number or text: a plain number (like "-1485.00") is kept, anything else is guarded. */
+export function spreadsheetCell(text: string): string {
+  return PLAIN_NUMBER.test(text) ? text : spreadsheetText(text);
+}
+
 /** Python's `csv.writer(delimiter=";", lineterminator="\n")` with the default minimal quoting. */
 function csvField(value: string | number): string {
   const text = String(value);
@@ -88,15 +102,15 @@ export function ledgerCsv(ledger: Ledger): Uint8Array {
         op.version,
         op.status,
         op.kind,
-        op.description,
+        spreadsheetText(op.description),
         op.occurred_on ?? "",
         cashDate(op) ?? "",
         comp ? ymStr(comp) : "",
-        account.name,
+        spreadsheetText(account.name),
         account.type,
         posting.amount.toFixed(),
         op.currency,
-        posting.member_id ? (members.get(posting.member_id) ?? "") : "",
+        posting.member_id ? spreadsheetText(members.get(posting.member_id) ?? "") : "",
         op.origin.kind,
       ]);
     }

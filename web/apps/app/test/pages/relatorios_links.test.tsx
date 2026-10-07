@@ -14,6 +14,7 @@ import {
 } from "../../src/pages/relatorios/reports.ts";
 import { account, choose } from "./livro_harness.tsx";
 import { openReport, openReports, paramsOf, valuesTable } from "./relatorios_harness.tsx";
+import { addressSettles } from "../navigations.ts";
 
 vi.mock("../../../../packages/ui/src/chart/echarts.ts", () => import("./fake_echarts.ts"));
 
@@ -31,7 +32,7 @@ describe("Relatórios: reports opened by link (ref)", () => {
       await router.navigate({ to: "/relatorios", search: { ref: "projected_balance" } });
     });
     await waitFor(() => expect(current()).toBe("Saldo projetado"));
-    expect(router.state.location.search).toEqual({});
+    await addressSettles(router, {});
     await act(async () => {
       await router.navigate({ to: "/relatorios", search: { ref: "comparison" } });
     });
@@ -48,7 +49,7 @@ describe("Relatórios: reports opened by link (ref)", () => {
 
   it("ignores a ref that is not a report", async () => {
     const { router } = await openReports("/relatorios?ref=nada");
-    await waitFor(() => expect(router.state.location.search).toEqual({}));
+    await addressSettles(router, {});
     expect(current()).toBe("Entradas e saídas mensais");
     expect(isReportKey("nada")).toBe(false);
   });

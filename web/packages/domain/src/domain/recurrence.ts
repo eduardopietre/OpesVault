@@ -163,7 +163,7 @@ export function candidates(ledger: Ledger, forecast: Forecast): Operation[] {
   const out: Operation[] = [];
   for (const op of ledger.activeOperations()) {
     if (linkedOps.has(op.id)) continue;
-    const when = cashDate(op) ?? op.occurred_on;
+    const when = cashDate(op);
     if (when === null || Math.abs(daysBetween(when, forecast.dueOn)) > rule.window_days) continue;
     const accounts = new Set(op.postings.map((p) => p.account_id));
     if (!accounts.has(rule.account_id) || !accounts.has(rule.counterpart_id)) continue;

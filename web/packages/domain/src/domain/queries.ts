@@ -49,7 +49,7 @@ export class QueryIndex {
   constructor(ledger: Ledger) {
     const dated = new Map<Id, [IsoDate, Dec][]>();
     for (const op of ledger.activeOperations()) {
-      const when = cashDate(op) ?? op.occurred_on;
+      const when = cashDate(op);
       for (const p of op.postings) {
         if (when === null) this.undated.set(p.account_id, (this.undated.get(p.account_id) ?? ZERO).add(p.amount));
         else {

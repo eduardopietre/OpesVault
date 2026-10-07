@@ -14,7 +14,7 @@ import * as merchants from "../domain/merchants.ts";
 import { AccountType, cashDate, isActive, type Operation } from "../domain/model.ts";
 import { formatBrl } from "../domain/money.ts";
 import * as tags from "../domain/tags.ts";
-import { formatDateBr } from "../lib/dates.ts";
+import { formatDateBr, ymBr } from "../lib/dates.ts";
 import type { Id } from "../lib/ids.ts";
 import { ItemStatus } from "../importing/model.ts";
 import * as learning from "../importing/learning.ts";
@@ -266,7 +266,7 @@ function prepareBudget(ledger: Ledger, args: Args): PreparedEdit {
 
   return {
     tool: "set_budget",
-    summary: `Orçamento de ${label} em ${String(at.month).padStart(2, "0")}/${at.year}: ${formatBrl(value)}`,
+    summary: `Orçamento de ${label} em ${ymBr(at)}: ${formatBrl(value)}`,
     details: [`Antes: ${before}.`],
     apply,
   };

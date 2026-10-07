@@ -153,6 +153,11 @@ export function formatDateBr(d: IsoDate): string {
   return `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}`;
 }
 
+/** "10/2026": Python's `f"{month.month:02d}/{month.year}"`. */
+export function ymBr(m: YearMonth): string {
+  return `${String(m.month).padStart(2, "0")}/${m.year}`;
+}
+
 // ── competence months ───────────────────────────────
 
 /** A competence month, persisted as {"year": 2026, "month": 10} like the desktop's YearMonth. */

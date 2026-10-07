@@ -145,7 +145,7 @@ export function knowledge(ledger: Ledger): Knowledge {
 function learn(ledger: Ledger): Knowledge {
   const found: Knowledge = new Map();
   const seenPlans = new Set<Id>();
-  const when = (o: Operation) => cashDate(o) ?? o.occurred_on ?? DATE_MIN;
+  const when = (o: Operation) => cashDate(o) ?? DATE_MIN;
   for (const op of sortedBy(ledger.activeOperations(), when)) {
     if (op.installment !== null) {
       if (seenPlans.has(op.installment.plan_id)) continue; // one purchase in installments is one choice

@@ -116,7 +116,7 @@ export function annual(ledger: Ledger, year: number): DeductibleGroup[] {
   const groups = new Map<string, DeductibleGroup>();
   const kinds = new Map<Id, DeductibleKind | null>();
   for (const op of ledger.activeOperations()) {
-    const when = cashDate(op) ?? op.occurred_on;
+    const when = cashDate(op);
     if (when === null || yearOf(when) !== year) continue;
     for (const p of op.postings) {
       if (!kinds.has(p.account_id)) {

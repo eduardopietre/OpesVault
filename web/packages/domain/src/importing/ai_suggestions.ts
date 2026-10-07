@@ -159,7 +159,7 @@ function wordsOf(description: string): Set<string> {
 }
 
 function when(op: Operation): IsoDate {
-  return cashDate(op) ?? op.occurred_on ?? DATE_MIN;
+  return cashDate(op) ?? DATE_MIN;
 }
 
 /**

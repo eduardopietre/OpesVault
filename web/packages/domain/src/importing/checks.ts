@@ -229,7 +229,7 @@ function matchExistingOperation(
     if (i.operation_id !== null && sameAccountBatches.has(i.batch_id)) alreadyLinked.add(i.operation_id);
   for (const op of ledger.activeOperations()) {
     if (claimed.has(op.id) || alreadyLinked.has(op.id)) continue;
-    const when = cashDate(op) ?? op.occurred_on;
+    const when = cashDate(op);
     if (when === null || Math.abs(daysBetween(when, item.occurred_on)) > MATCH_WINDOW_DAYS) continue;
     for (const posting of op.postings) {
       if (posting.account_id !== batch.account_id) continue;

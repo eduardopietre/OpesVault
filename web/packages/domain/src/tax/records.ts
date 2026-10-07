@@ -3,7 +3,7 @@ import { DomainError, type Ledger } from "../domain/ledger.ts";
 import { AccountSubtype, AccountType, isActive, isLiquid } from "../domain/model.ts";
 import { isCents, toDecimal, ZERO } from "../domain/money.ts";
 import { postingsOfType } from "../domain/queries.ts";
-import type { IsoDate, YearMonth } from "../lib/dates.ts";
+import { type IsoDate, type YearMonth, ymBr } from "../lib/dates.ts";
 import { groupBy, indexBy } from "../lib/collections.ts";
 import { Dec } from "../lib/dec.ts";
 import { type Id, isId } from "../lib/ids.ts";
@@ -582,14 +582,9 @@ export function recordPayment(
   const account = ledger.accounts.get(fromAccount);
   if (account === undefined || !isLiquid(account)) throw new DomainError("Escolha a conta de onde saiu o pagamento.");
   const tax = category(ledger, AccountType.EXPENSE, TAX_CATEGORY);
-  const op = ledger.recordExpense(
-    fromAccount,
-    tax,
-    value,
-    paidOn,
-    `${PURPOSE_LABELS[purpose]} — ${String(month.month).padStart(2, "0")}/${month.year}`,
-    { member_id: memberId },
-  );
+  const op = ledger.recordExpense(fromAccount, tax, value, paidOn, `${PURPOSE_LABELS[purpose]} — ${ymBr(month)}`, {
+    member_id: memberId,
+  });
   return ledger.put(
     "tax_payment",
     TaxPaymentSchema.parse({

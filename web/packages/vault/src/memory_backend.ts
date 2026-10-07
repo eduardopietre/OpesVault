@@ -15,6 +15,7 @@ import {
   type Envelope,
   type EnvelopeContent,
   type ProjectMember,
+  type ProjectRole,
   type ProjectSummary,
   type PullResult,
   type PushRecord,
@@ -54,7 +55,7 @@ interface Project {
   readonly createdAt: string;
   revision: number;
   envelope: Envelope;
-  readonly members: Map<string, "owner" | "member">;
+  readonly members: Map<string, ProjectRole>;
   readonly records: Map<string, SealedRecord>;
   readonly blobs: Map<string, Uint8Array>;
   lease: Lease | null;
@@ -241,7 +242,7 @@ export class MemoryBackend implements SyncBackend {
     return this.#call(() => this.#server.loginSalt(checkEmail(email)));
   }
 
-  #summary(project: { id: string; sealedName: B64; createdAt: string; revision: number }, role: "owner" | "member") {
+  #summary(project: { id: string; sealedName: B64; createdAt: string; revision: number }, role: ProjectRole) {
     return {
       projectId: project.id,
       sealedName: project.sealedName,

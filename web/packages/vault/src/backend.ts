@@ -57,6 +57,10 @@ export interface AccountSession {
   readonly email: string;
 }
 
+/** The caller's or a member's role in a project. */
+export const PROJECT_ROLES = ["owner", "member"] as const;
+export type ProjectRole = (typeof PROJECT_ROLES)[number];
+
 export interface ProjectSummary {
   readonly projectId: string;
   /** The project's name is encrypted too: the server lists projects without knowing them. */
@@ -65,7 +69,7 @@ export interface ProjectSummary {
   /** The project's record revision (see the rules above). */
   readonly revision: number;
   /** The caller's role in the project. */
-  readonly role: "owner" | "member";
+  readonly role: ProjectRole;
 }
 
 /** The project key wrapped by the password key and by the recovery key (docs/19 §4). */
@@ -82,6 +86,17 @@ export interface EnvelopeContent {
   readonly wrappedByPassword: B64;
   readonly recoverySalt: B64 | null;
   readonly wrappedByRecovery: B64 | null;
+}
+
+/** Exactly the fields of `EnvelopeContent` (an `Envelope` also has its revision), as a fresh object. */
+export function envelopeContent(envelope: EnvelopeContent): EnvelopeContent {
+  return {
+    version: envelope.version,
+    kdf: { ...envelope.kdf },
+    wrappedByPassword: envelope.wrappedByPassword,
+    recoverySalt: envelope.recoverySalt,
+    wrappedByRecovery: envelope.wrappedByRecovery,
+  };
 }
 
 export interface Envelope extends EnvelopeContent {
@@ -124,20 +139,23 @@ export interface EditLease {
   readonly expiresAt: string;
 }
 
-export type BackendErrorCode =
-  | "unauthorized"
-  | "forbidden"
-  | "not_found"
-  | "conflict"
-  /** Someone else holds an unexpired edit lease. */
-  | "lease_held"
-  /** The lease given is not the project's current, unexpired lease (expired, released or taken over). */
-  | "no_lease"
-  | "too_large"
-  | "rate_limited"
-  | "offline"
-  | "invalid"
-  | "server";
+/** Every error code of the wire contract; an HTTP adapter accepts no other code from a server. */
+export const BACKEND_ERROR_CODES = [
+  "unauthorized",
+  "forbidden",
+  "not_found",
+  "conflict",
+  // Someone else holds an unexpired edit lease.
+  "lease_held",
+  // The lease given is not the project's current, unexpired lease (expired, released or taken over).
+  "no_lease",
+  "too_large",
+  "rate_limited",
+  "offline",
+  "invalid",
+  "server",
+] as const;
+export type BackendErrorCode = (typeof BACKEND_ERROR_CODES)[number];
 
 export class BackendError extends Error {
   readonly code: BackendErrorCode;
@@ -153,7 +171,7 @@ export class BackendError extends Error {
 export interface ProjectMember {
   readonly accountId: string;
   readonly email: string;
-  readonly role: "owner" | "member";
+  readonly role: ProjectRole;
 }
 
 export interface PushRecord {

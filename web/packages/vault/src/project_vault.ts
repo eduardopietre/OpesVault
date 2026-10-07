@@ -39,6 +39,7 @@ import {
 } from "@opesvault/crypto";
 import {
   BackendError,
+  envelopeContent,
   ID_PATTERN,
   LEASE_MS,
   LIMITS,
@@ -213,16 +214,6 @@ function vaultErrorFromCrypto(error: unknown): unknown {
     }
   }
   return error;
-}
-
-function envelopeContent(envelope: EnvelopeContent): EnvelopeContent {
-  return {
-    version: envelope.version,
-    kdf: { ...envelope.kdf },
-    wrappedByPassword: envelope.wrappedByPassword,
-    recoverySalt: envelope.recoverySalt,
-    wrappedByRecovery: envelope.wrappedByRecovery,
-  };
 }
 
 const LOCKED_SNAPSHOT: VaultSnapshot = Object.freeze({

@@ -6,8 +6,8 @@ import AxeBuilder from "@axe-core/playwright";
 import { animationsDone } from "../helpers.ts";
 import { expect, test, type Page } from "@playwright/test";
 import {
-  SCHEMES,
-  SIZES,
+  TEST_SCHEMES,
+  TEST_SIZES,
   expectNoHorizontalOverflow,
   openDemo,
   recordAddresses,
@@ -33,8 +33,8 @@ async function audit(page: Page, label: string) {
   ).toEqual([]);
 }
 
-for (const size of SIZES) {
-  for (const scheme of SCHEMES) {
+for (const size of TEST_SIZES) {
+  for (const scheme of TEST_SCHEMES) {
     test.describe(`${size.width}x${size.height} ${scheme}`, () => {
       test.use({ viewport: size, colorScheme: scheme, contextOptions: { reducedMotion: "reduce" } });
 

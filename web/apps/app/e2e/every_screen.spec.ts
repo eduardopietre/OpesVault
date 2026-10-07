@@ -1,20 +1,22 @@
 /**
  * Every screen, end to end (successor of the desktop's `tests/test_every_screen.py`, docs/15 TA-31):
- *   - each destination and each print view, with the demonstration project, at four sizes: every enabled button,
- *     tab, switch, combo box and menu item is clicked, every dialog that opens is filled and submitted (or
- *     closed), and after each action there is no console error, no horizontal overflow, at most one undo step
- *     (reverted by Ctrl+Z) and no stuck modal (`e2e/walk.ts`);
+ *   - each destination and each print view, with the demonstration project, at four sizes (`pnpm e2e:full`;
+ *     1280x800 only in the fast `pnpm e2e`): every enabled button, tab, switch, combo box and menu item is
+ *     clicked, every dialog that opens is filled and submitted (or closed), and after each action there is no
+ *     console error, no horizontal overflow, at most one undo step (reverted by Ctrl+Z) and no stuck modal
+ *     (`e2e/walk.ts`);
  *   - the states without a project: signed out, signed in without a project, locked and after closing the
  *     project, every route redirects or stays locked without errors and without data of the previous project.
  * The local AI is answered by the test (`fakeOllama`): a real Ollama is never contacted.
  */
 import { expect, test, type Page } from "@playwright/test";
 import { PAGES } from "../src/pages.tsx";
-import { DEMO, SIZES, openDemo, settle, watchErrors } from "./helpers.ts";
+import { DEMO, FULL, SIZES, openDemo, settle, watchErrors } from "./helpers.ts";
 import { fakeOllama } from "./pages/livro_helpers.ts";
 import { Walker } from "./walk.ts";
 
-const WALK_SIZES = [SIZES[0], SIZES[1], SIZES[2], SIZES[4]] as const;
+// Four sizes in the full suite, 1280x800 in the fast one.
+const WALK_SIZES = FULL ? [SIZES[0], SIZES[1], SIZES[2], SIZES[4]] : [SIZES[1]];
 
 /** Values that exist only in the demonstration project: none may be on screen without it. */
 /**

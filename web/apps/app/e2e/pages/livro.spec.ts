@@ -7,7 +7,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { animationsDone } from "../helpers.ts";
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { SCHEMES, SIZES, expectNoHorizontalOverflow, openDemo, settle, watchErrors } from "../helpers.ts";
+import { TEST_SCHEMES, TEST_SIZES, expectNoHorizontalOverflow, openDemo, settle, watchErrors } from "../helpers.ts";
 import { fakeOllama, pickRow } from "./livro_helpers.ts";
 
 const PNG = Buffer.from(
@@ -65,8 +65,8 @@ const total = async (page: Page) => {
   return Number(/(?:de )?(\d+) lançamentos?$/.exec(text)?.[1] ?? "0");
 };
 
-for (const size of SIZES) {
-  for (const scheme of SCHEMES) {
+for (const size of TEST_SIZES) {
+  for (const scheme of TEST_SCHEMES) {
     test.describe(`livro ${size.width}x${size.height} ${scheme}`, () => {
       test.use({ viewport: size, colorScheme: scheme, contextOptions: { reducedMotion: "reduce" } });
 

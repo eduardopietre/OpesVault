@@ -3,7 +3,14 @@
  * every dialog submitted, no console errors, no sideways scroll at the five sizes, axe clean, light and dark.
  */
 import { expect, test, type Page } from "@playwright/test";
-import { SCHEMES, SIZES, expectNoHorizontalOverflow, recordAddresses, settle, watchErrors } from "../helpers.ts";
+import {
+  TEST_SCHEMES,
+  TEST_SIZES,
+  expectNoHorizontalOverflow,
+  recordAddresses,
+  settle,
+  watchErrors,
+} from "../helpers.ts";
 import { audit, tableOf } from "../helpers.ts";
 
 /** The demonstration project on the year its tax data is in. */
@@ -31,8 +38,8 @@ async function leave(page: Page, name: string | RegExp) {
   await expect(box).toBeHidden();
 }
 
-for (const size of SIZES) {
-  for (const scheme of SCHEMES) {
+for (const size of TEST_SIZES) {
+  for (const scheme of TEST_SCHEMES) {
     test.describe(`imposto ${size.width}x${size.height} ${scheme}`, () => {
       test.use({ viewport: size, colorScheme: scheme, contextOptions: { reducedMotion: "reduce" } });
       const phone = size.width < 640;

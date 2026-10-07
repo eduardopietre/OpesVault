@@ -32,6 +32,26 @@ export const DEMO = {
   projectPassword: "senha-do-projeto",
 } as const;
 
+/** A one-pixel PNG, for a receipt or note picked as a file. */
+export const ONE_PIXEL_PNG = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+  "base64",
+);
+
+/** Replaces `window.print` (from the next page load on) with a counter that `prints` reads. */
+export async function stubPrint(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    (window as unknown as { __prints: number }).__prints = 0;
+    window.print = () => {
+      (window as unknown as { __prints: number }).__prints++;
+    };
+  });
+}
+
+/** How many times the page asked to print since it loaded (see `stubPrint`). */
+export const prints = (page: Page): Promise<number> =>
+  page.evaluate(() => (window as unknown as { __prints: number }).__prints);
+
 /** Collects console errors, uncaught exceptions and CSP violations of a page. */
 export function watchErrors(page: Page): string[] {
   const errors: string[] = [];
@@ -149,16 +169,32 @@ export async function animationsDone(page: Page): Promise<void> {
   });
 }
 
+export interface AuditOptions {
+  /** Moves the pointer to the corner first: a hovered button is another color (default true). */
+  restPointer?: boolean;
+  /** How long to let entry animations and lazy charts settle before waiting for the animations (default 250 ms). */
+  settleMs?: number;
+  /**
+   * Leaves the notices (`[data-tone]`) out of the audit: one fading in or out has the contrast of its
+   * half-transparent text for a moment (default true).
+   */
+  skipNotices?: boolean;
+  /** Waits until the notices have dismissed themselves, so they are measured gone (default false). */
+  awaitNotices?: boolean;
+}
+
 /** An accessibility audit of the resting state of the page (WCAG 2.x A and AA, plus 2.2 AA). */
-export async function audit(page: Page, label: string) {
-  await page.mouse.move(1, 1); // a hovered button is another color: audit the resting state
-  await settle(page, 250);
+export async function audit(page: Page, label: string, options: AuditOptions = {}) {
+  const { restPointer = true, settleMs = 250, skipNotices = true, awaitNotices = false } = options;
+  if (restPointer) await page.mouse.move(1, 1);
+  if (awaitNotices) {
+    await expect(page.locator('section[aria-label="Avisos"] [data-tone]')).toHaveCount(0, { timeout: 15_000 });
+  }
+  await settle(page, settleMs);
   await animationsDone(page);
-  const result = await new AxeBuilder({ page })
-    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
-    // a notice fading in or out has the contrast of its half-transparent text for a moment
-    .exclude("[data-tone]")
-    .analyze();
+  let axe = new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]);
+  if (skipNotices) axe = axe.exclude("[data-tone]");
+  const result = await axe.analyze();
   expect(
     result.violations.map(
       (violation) =>
@@ -169,6 +205,12 @@ export async function audit(page: Page, label: string) {
     ),
   ).toEqual([]);
 }
+
+/** `audit` with these options, for a spec that audits all its states the same way. */
+export const auditWith =
+  (options: AuditOptions) =>
+  (page: Page, label: string): Promise<void> =>
+    audit(page, label, options);
 
 /**
  * A table by its name. The same data is a card list ("listbox") when the room it has is narrow, which depends on

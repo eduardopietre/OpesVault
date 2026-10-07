@@ -2,27 +2,18 @@
  * Calendário end to end: the month by day, the list of due dates, every button and link, the phone's list of
  * days, no console errors, no sideways scrolling at the five sizes and axe clean, in light and dark.
  */
-import AxeBuilder from "@axe-core/playwright";
-import { animationsDone } from "../helpers.ts";
-import { expect, test, type Page } from "@playwright/test";
-import { TEST_SCHEMES, TEST_SIZES, expectNoHorizontalOverflow, openDemo, settle, watchErrors } from "../helpers.ts";
+import {
+  auditWith,
+  TEST_SCHEMES,
+  TEST_SIZES,
+  expectNoHorizontalOverflow,
+  openDemo,
+  settle,
+  watchErrors,
+} from "../helpers.ts";
+import { expect, test } from "@playwright/test";
 
-async function audit(page: Page, label: string) {
-  await settle(page, 300);
-  await animationsDone(page);
-  const result = await new AxeBuilder({ page })
-    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
-    .analyze();
-  expect(
-    result.violations.map(
-      (v) =>
-        `${label}: ${v.id} (${v.impact}) ${v.nodes
-          .map((n) => n.target.join(" "))
-          .slice(0, 3)
-          .join(", ")}`,
-    ),
-  ).toEqual([]);
-}
+const audit = auditWith({ restPointer: false, settleMs: 300, skipNotices: false });
 
 for (const size of TEST_SIZES) {
   for (const scheme of TEST_SCHEMES) {

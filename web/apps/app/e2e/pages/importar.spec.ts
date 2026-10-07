@@ -13,6 +13,8 @@ import {
   recordAddresses,
   settle,
   watchErrors,
+  audit,
+  tableOf,
 } from "../helpers.ts";
 import {
   AMBIGUOUS,
@@ -28,7 +30,7 @@ import {
 } from "./importar_helpers.ts";
 import { PROTECTED_PDF_PASSWORD } from "../protected_pdf.ts";
 import { fakeOllama } from "./livro_helpers.ts";
-import { audit, tableOf } from "../helpers.ts";
+import { dialogOf, giveReason, menu } from "../ui.ts";
 
 const items = (page: Page) => tableOf(page, "Itens extraídos");
 const queue = (page: Page) => tableOf(page, "Documentos importados");
@@ -39,18 +41,6 @@ async function pick(page: Page, description: string) {
   const target = row(items(page), description);
   await target.getByText(description, { exact: true }).click();
   await expect(target).toHaveAttribute("aria-selected", "true");
-}
-
-async function reasonDialog(page: Page, title: string, reason: string, confirm: string) {
-  const dialog = page.getByRole("dialog", { name: title });
-  await dialog.getByLabel(/Motivo/).fill(reason);
-  await dialog.getByRole("button", { name: confirm, exact: true }).click();
-  await expect(dialog).toHaveCount(0);
-}
-
-async function more(page: Page, item: string | RegExp) {
-  await page.getByRole("button", { name: "Mais", exact: true }).click();
-  await page.getByRole("menuitem", { name: item }).click();
 }
 
 for (const size of TEST_SIZES) {
@@ -210,7 +200,7 @@ for (const size of TEST_SIZES) {
         // approve one item (a partial approval asks for its reason) and see it in the Livro
         await pick(page, "Mercado Bom Preço");
         await page.getByRole("button", { name: "Aprovar selecionado" }).click();
-        await reasonDialog(page, "Aprovação parcial", "Conferi só o mercado", "Aprovar");
+        await giveReason(dialogOf(page, "Aprovação parcial"), "Conferi só o mercado", "Aprovar");
         await expect(page.getByText("1 operação(ões) criada(s), 0 evidência(s) vinculada(s).")).toBeVisible();
         await page.locator("[data-row-id]").filter({ hasText: "Aprovado" }).first().click();
         await page.getByRole("button", { name: "Ver no Livro" }).click();
@@ -244,16 +234,16 @@ for (const size of TEST_SIZES) {
         await page.getByRole("option", { name: "Banco A", exact: true }).click();
         await expect(row(items(page), "PIX ALUGUEL")).toContainText("Já registrado");
         await pick(page, "PIX ALUGUEL");
-        await more(page, /^Manter separado…/);
-        await reasonDialog(page, "Manter como lançamento separado", "Dois aluguéis", "Manter separado");
+        await menu(page, "Mais", /^Manter separado…/);
+        await giveReason(dialogOf(page, "Manter como lançamento separado"), "Dois aluguéis", "Manter separado");
         await expect(row(items(page), "PIX ALUGUEL")).toContainText("Pronto");
 
         // a card statement of a CSV: one item is rejected with a reason
         await chooseFiles(page, [CSV]);
         await expect(readNotice(page, "fatura.csv")).toBeVisible();
         await pick(page, "Loja Z");
-        await more(page, /^Rejeitar item…/);
-        await reasonDialog(page, "Rejeitar item", "Compra que não é nossa", "Rejeitar");
+        await menu(page, "Mais", /^Rejeitar item…/);
+        await giveReason(dialogOf(page, "Rejeitar item"), "Compra que não é nossa", "Rejeitar");
         await expect(row(items(page), "Loja Z")).toContainText("Rejeitado");
 
         // a document two layouts recognize: the person chooses, and it is read again

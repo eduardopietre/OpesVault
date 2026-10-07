@@ -4,36 +4,11 @@
  * the shortcut to the Livro, cancel and "Nova conversa"; the four ways the local AI can be unavailable; no
  * console errors, no sideways scroll at the five sizes, axe clean, light and dark.
  */
-import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
-import {
-  TEST_SCHEMES,
-  TEST_SIZES,
-  animationsDone,
-  expectNoHorizontalOverflow,
-  openDemo,
-  settle,
-  watchErrors,
-} from "../helpers.ts";
+import { TEST_SCHEMES, TEST_SIZES, expectNoHorizontalOverflow, openDemo, watchErrors, auditWith } from "../helpers.ts";
 import { ask, firstIdOf, idle, scriptedOllama } from "./assistente_helpers.ts";
 
-async function audit(page: Page, label: string) {
-  await page.mouse.move(1, 1); // a hovered button is another color: audit the resting state
-  await settle(page, 300);
-  await animationsDone(page);
-  const result = await new AxeBuilder({ page })
-    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
-    .analyze();
-  expect(
-    result.violations.map(
-      (violation) =>
-        `${label}: ${violation.id} (${violation.impact}) ${violation.nodes
-          .map((node) => `${node.target.join(" ")} ${node.failureSummary ?? ""}`)
-          .slice(0, 3)
-          .join(", ")}`,
-    ),
-  ).toEqual([]);
-}
+const audit = auditWith({ settleMs: 300, skipNotices: false });
 
 const log = (page: Page) => page.getByRole("log", { name: "Conversa com o assistente" });
 const dialog = (page: Page) => page.getByRole("dialog", { name: "Aprovar alteração" });

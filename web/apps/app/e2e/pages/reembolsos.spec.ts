@@ -11,14 +11,16 @@ import {
   recordAddresses,
   settle,
   watchErrors,
+  audit,
+  goTo,
+  tableOf,
 } from "../helpers.ts";
-import { audit, goTo, tableOf } from "../helpers.ts";
+import { giveReason } from "../ui.ts";
 
 for (const size of TEST_SIZES) {
   for (const scheme of TEST_SCHEMES) {
     test.describe(`reembolsos ${size.width}x${size.height} ${scheme}`, () => {
       test.use({ viewport: size, colorScheme: scheme, contextOptions: { reducedMotion: "reduce" } });
-      const phone = size.width < 640;
 
       test("every button and dialog works, cleanly", async ({ page }) => {
         const errors = watchErrors(page);
@@ -29,12 +31,12 @@ for (const size of TEST_SIZES) {
         await goTo(page, "b", /\/reembolsos$/);
         await expect(page.getByRole("heading", { level: 1, name: "Reembolsos e acertos" })).toBeVisible();
 
-        const reimbursements = tableOf(page, "Reembolsos", phone);
-        const balances = tableOf(page, "Saldos entre integrantes", phone);
+        const reimbursements = tableOf(page, "Reembolsos");
+        const balances = tableOf(page, "Saldos entre integrantes");
         await expect(reimbursements).toBeVisible();
         await expect(reimbursements.getByText("Recebido em parte").first()).toBeVisible();
         await expect(balances.getByText("Bruno").first()).toBeVisible();
-        await expect(tableOf(page, "Despesas que formam o saldo", phone).getByText("Presente do Bruno")).toBeVisible();
+        await expect(tableOf(page, "Despesas que formam o saldo").getByText("Presente do Bruno")).toBeVisible();
         await settle(page);
         await expectNoHorizontalOverflow(page);
         await audit(page, "reembolsos");
@@ -83,7 +85,7 @@ for (const size of TEST_SIZES) {
         await dialog.getByLabel("Observação").fill("Pix de sábado");
         await dialog.getByRole("button", { name: "Registrar", exact: true }).click();
         await expect(dialog).toBeHidden();
-        const history = tableOf(page, "Acertos registrados", phone);
+        const history = tableOf(page, "Acertos registrados");
         await expect(history.getByText("R$ 30,00")).toBeVisible();
 
         // double click on a balance opens the settlement already filled
@@ -100,9 +102,7 @@ for (const size of TEST_SIZES) {
         await dialog.getByRole("button", { name: "Marcar como negado" }).click();
         await expect(dialog.getByText("O motivo é obrigatório.")).toBeVisible();
         await audit(page, "reembolso negado");
-        await dialog.getByLabel("Motivo").fill("Fora da cobertura");
-        await dialog.getByRole("button", { name: "Marcar como negado" }).click();
-        await expect(dialog).toBeHidden();
+        await giveReason(dialog, "Fora da cobertura", "Marcar como negado", "Motivo");
         await expect(reimbursements.getByText("Negado").first()).toBeVisible();
 
         // Ver lançamento (reimbursement) and the share's, each in the Livro, and back
@@ -112,7 +112,7 @@ for (const size of TEST_SIZES) {
         await expect(page.getByRole("heading", { level: 1, name: "Livro financeiro" })).toBeVisible();
         await page.goBack();
         await expect(page.getByRole("heading", { level: 1, name: "Reembolsos e acertos" })).toBeVisible();
-        await tableOf(page, "Despesas que formam o saldo", phone).getByText("Presente do Bruno").click();
+        await tableOf(page, "Despesas que formam o saldo").getByText("Presente do Bruno").click();
         await page
           .getByText("Selecionado:")
           .locator("xpath=../..")
@@ -140,7 +140,7 @@ for (const size of TEST_SIZES) {
         await openDemo(page, "/reembolsos");
         await expect(page.getByRole("heading", { name: "Reembolsos", exact: true })).toBeVisible();
         await expect(page.getByRole("heading", { name: "Acertos entre integrantes" })).toBeVisible();
-        await expect(tableOf(page, "Saldos entre integrantes", phone).getByText("Bruno").first()).toBeVisible();
+        await expect(tableOf(page, "Saldos entre integrantes").getByText("Bruno").first()).toBeVisible();
         await expectNoHorizontalOverflow(page);
         await audit(page, "reembolsos e saldo");
         expect(errors).toEqual([]);

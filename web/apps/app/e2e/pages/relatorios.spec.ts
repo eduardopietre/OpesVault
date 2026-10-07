@@ -3,10 +3,8 @@
  * button and menu item, the image and values exports, the year-end print view, no console errors, no sideways
  * scroll at the five sizes, axe clean, light and dark.
  */
-import AxeBuilder from "@axe-core/playwright";
-import { animationsDone } from "../helpers.ts";
-import { expect, test, type Page } from "@playwright/test";
 import {
+  auditWith,
   TEST_SCHEMES,
   TEST_SIZES,
   expectNoHorizontalOverflow,
@@ -14,7 +12,10 @@ import {
   recordAddresses,
   settle,
   watchErrors,
+  prints,
+  stubPrint,
 } from "../helpers.ts";
+import { expect, test, type Page } from "@playwright/test";
 
 const REPORTS = [
   "Entradas e saídas mensais",
@@ -32,23 +33,7 @@ const REPORTS = [
   "Fechamento do ano",
 ] as const;
 
-async function audit(page: Page, label: string) {
-  await page.mouse.move(1, 1); // a hovered button is another color: audit the resting state
-  await settle(page, 250);
-  await animationsDone(page);
-  const result = await new AxeBuilder({ page })
-    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
-    .analyze();
-  expect(
-    result.violations.map(
-      (violation) =>
-        `${label}: ${violation.id} (${violation.impact}) ${violation.nodes
-          .map((node) => `${node.target.join(" ")} ${node.failureSummary ?? ""}`)
-          .slice(0, 3)
-          .join(", ")}`,
-    ),
-  ).toEqual([]);
-}
+const audit = auditWith({ skipNotices: false });
 
 /** Opens a report from the list (wide) or from the picker (narrow). */
 async function openReport(page: Page, label: string) {
@@ -81,17 +66,6 @@ async function expectDrawn(page: Page, label: string) {
     .toBeGreaterThan(1500);
   await expect(page.getByText("Não foi possível desenhar o gráfico")).toHaveCount(0);
 }
-
-async function stubPrint(page: Page) {
-  await page.addInitScript(() => {
-    (window as unknown as { __prints: number }).__prints = 0;
-    window.print = () => {
-      (window as unknown as { __prints: number }).__prints++;
-    };
-  });
-}
-
-const prints = (page: Page) => page.evaluate(() => (window as unknown as { __prints: number }).__prints);
 
 for (const size of TEST_SIZES) {
   for (const scheme of TEST_SCHEMES) {

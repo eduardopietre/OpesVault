@@ -2,31 +2,20 @@
  * Metas end to end (docs/18 §5, SCREENS.md): the demonstration project, every button and menu item, every
  * dialog submitted, no console errors, no sideways scroll at the five sizes, axe clean, light and dark.
  */
-import AxeBuilder from "@axe-core/playwright";
-import { animationsDone } from "../helpers.ts";
-import { expect, test, type Page } from "@playwright/test";
-import { TEST_SCHEMES, TEST_SIZES, expectNoHorizontalOverflow, openDemo, settle, watchErrors } from "../helpers.ts";
+import {
+  auditWith,
+  TEST_SCHEMES,
+  TEST_SIZES,
+  expectNoHorizontalOverflow,
+  openDemo,
+  settle,
+  watchErrors,
+  tableOf,
+} from "../helpers.ts";
+import { expect, test } from "@playwright/test";
+import { giveReason, dialogOf } from "../ui.ts";
 
-async function audit(page: Page, label: string) {
-  await page.mouse.move(1, 1); // a hovered button is another color: audit the resting state
-  await settle(page, 250);
-  await animationsDone(page);
-  const result = await new AxeBuilder({ page })
-    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
-    .analyze();
-  expect(
-    result.violations.map(
-      (violation) =>
-        `${label}: ${violation.id} (${violation.impact}) ${violation.nodes
-          .map((node) => `${node.target.join(" ")} ${node.failureSummary ?? ""}`)
-          .slice(0, 3)
-          .join(", ")}`,
-    ),
-  ).toEqual([]);
-}
-
-const dialogOf = (page: Page, name: string | RegExp) => page.getByRole("dialog", { name });
-const tableOf = (page: Page) => page.locator('[role="grid"][aria-label="Metas"], [role="listbox"][aria-label="Metas"]');
+const audit = auditWith({ skipNotices: false });
 
 for (const size of TEST_SIZES) {
   for (const scheme of TEST_SCHEMES) {
@@ -36,7 +25,7 @@ for (const size of TEST_SIZES) {
       test("every button and dialog works, cleanly", async ({ page }) => {
         const errors = watchErrors(page);
         await openDemo(page, "/metas");
-        const table = tableOf(page);
+        const table = tableOf(page, "Metas");
         await expect(table).toBeVisible();
         await expect(table.getByText("Reserva de emergência").first()).toBeVisible();
         await expect(table.getByText("54%").first()).toBeVisible();
@@ -98,16 +87,12 @@ for (const size of TEST_SIZES) {
         await dialog.getByRole("button", { name: "Arquivar", exact: true }).click();
         await expect(dialog.getByText("O motivo é obrigatório.")).toBeVisible();
         await audit(page, "arquivar meta com erro");
-        await dialog.getByLabel(/Motivo/).fill("Concluída");
-        await dialog.getByRole("button", { name: "Arquivar", exact: true }).click();
-        await expect(dialog).toBeHidden();
+        await giveReason(dialog, "Concluída", "Arquivar");
         await expect(table.getByText("arquivada").first()).toBeVisible();
         await expect(page.getByText("1 meta(s) ativa(s)")).toBeVisible();
         await page.getByRole("button", { name: "Reativar…" }).click();
         dialog = dialogOf(page, "Reativar meta");
-        await dialog.getByLabel(/Motivo/).fill("Voltou");
-        await dialog.getByRole("button", { name: "Reativar", exact: true }).click();
-        await expect(dialog).toBeHidden();
+        await giveReason(dialog, "Voltou", "Reativar");
         await expect(page.getByText("2 meta(s) ativa(s)")).toBeVisible();
 
         // every collapsible part of the chart opens and closes
@@ -126,7 +111,7 @@ for (const size of TEST_SIZES) {
       test("opens the goal a link names, with its form when asked, once", async ({ page }) => {
         const errors = watchErrors(page);
         await openDemo(page, "/metas");
-        const table = tableOf(page);
+        const table = tableOf(page, "Metas");
         await expect(table).toBeVisible();
         const id = await table.locator("[data-row-id]").first().getAttribute("data-row-id");
         await page.evaluate((target) => {

@@ -14,7 +14,8 @@ import {
   settle,
   watchErrors,
 } from "../helpers.ts";
-import { audit, choose, field, menu, notice, openDialog, submit, tableOf } from "./investimentos_helpers.ts";
+import { audit, field, notice, openDialog } from "./investimentos_helpers.ts";
+import { choose, giveReason, menu, submit, tableAt } from "../ui.ts";
 
 for (const size of TEST_SIZES) {
   for (const scheme of TEST_SCHEMES) {
@@ -26,7 +27,7 @@ for (const size of TEST_SIZES) {
         const errors = watchErrors(page);
         await openDemo(page, "/investimentos");
         await expect(page.getByRole("heading", { level: 1, name: "Investimentos" })).toBeVisible();
-        const portfolio = tableOf(page, "Investimentos", phone);
+        const portfolio = tableAt(page, "Investimentos", phone);
         await expect(portfolio).toBeVisible();
         await expect(portfolio.getByText("CDB Banco X 2028")).toBeVisible();
         await expect(page.getByRole("heading", { level: 2, name: "CDB Banco X 2028" })).toBeVisible();
@@ -36,10 +37,10 @@ for (const size of TEST_SIZES) {
         await expect(page.getByText(/110% do CDI/)).toBeVisible();
         await expect(page.getByRole("heading", { name: "Evolução do investimento" })).toBeVisible();
         await expect(page.getByRole("heading", { name: "Resultado acumulado do investimento" })).toBeVisible();
-        await expect(tableOf(page, "Avaliações", phone)).toBeVisible();
-        await expect(tableOf(page, "Movimentos", phone)).toBeVisible();
+        await expect(tableAt(page, "Avaliações", phone)).toBeVisible();
+        await expect(tableAt(page, "Movimentos", phone)).toBeVisible();
         // the returns: the quick methods at once, the rate of return after its worker answers
-        const returns = tableOf(page, "Rentabilidade por método", phone);
+        const returns = tableAt(page, "Rentabilidade por método", phone);
         await expect(returns).toBeVisible();
         await expect(returns.getByText("calculando…")).toHaveCount(0, { timeout: 20_000 });
         await expect(returns.getByText(/XIRR/)).toBeVisible();
@@ -56,7 +57,7 @@ for (const size of TEST_SIZES) {
       test("avaliações: registrar, usar outra observação e corrigir", async ({ page }) => {
         const errors = watchErrors(page);
         await openDemo(page, "/investimentos");
-        await expect(tableOf(page, "Avaliações", phone)).toBeVisible();
+        await expect(tableAt(page, "Avaliações", phone)).toBeVisible();
         // Registrar › Avaliação…: the refusal, then a value
         await menu(page, "Registrar", "Avaliação…");
         let dialog = await openDialog(page, /Nova avaliação — CDB Banco X 2028/, "nova avaliação");
@@ -73,7 +74,7 @@ for (const size of TEST_SIZES) {
         await field(dialog, "Valor").fill("5.140,00");
         await submit(dialog, "Registrar");
         await expect(dialog).toBeHidden();
-        const valuations = tableOf(page, "Avaliações", phone);
+        const valuations = tableAt(page, "Avaliações", phone);
         await expect(valuations.getByText("extrato do banco")).toBeVisible();
 
         // Usar esta observação: asks to select first, then switches to the new one
@@ -90,9 +91,7 @@ for (const size of TEST_SIZES) {
         await field(dialog, "Valor corrigido").fill("5.150,00");
         await submit(dialog, "Corrigir");
         await expect(dialog.getByText("Correções exigem motivo.")).toBeVisible();
-        await field(dialog, "Motivo").fill("extrato conferido");
-        await submit(dialog, "Corrigir");
-        await expect(dialog).toBeHidden();
+        await giveReason(dialog, "extrato conferido", "Corrigir", /^Motivo\s*\*?$/);
         await expect(valuations.getByText("R$ 5.150,00")).toBeVisible();
         await expectNoHorizontalOverflow(page);
         expect(errors).toEqual([]);
@@ -101,7 +100,7 @@ for (const size of TEST_SIZES) {
       test("registrar: aporte, provento, resgates, completar e imposto", async ({ page }) => {
         const errors = watchErrors(page);
         await openDemo(page, "/investimentos");
-        const movements = tableOf(page, "Movimentos", phone);
+        const movements = tableAt(page, "Movimentos", phone);
         await expect(movements).toBeVisible();
 
         await menu(page, "Registrar", "Aporte…");
@@ -163,7 +162,7 @@ for (const size of TEST_SIZES) {
       test("simulador, regra de imposto, características e índice de referência", async ({ page }) => {
         const errors = watchErrors(page);
         await openDemo(page, "/investimentos");
-        await expect(tableOf(page, "Avaliações", phone)).toBeVisible();
+        await expect(tableAt(page, "Avaliações", phone)).toBeVisible();
 
         // no rule yet: the application brings none
         await menu(page, "Registrar", /Simular resgate/);
@@ -223,7 +222,7 @@ for (const size of TEST_SIZES) {
         await expect(notice(page, "Índice cdi importado.")).toBeVisible();
         await choose(page, page, "Índice de referência", "cdi");
         await expect(
-          tableOf(page, "Rentabilidade por método", phone).getByText(/variação do índice cdi/),
+          tableAt(page, "Rentabilidade por método", phone).getByText(/variação do índice cdi/),
         ).toBeVisible();
         await expectNoHorizontalOverflow(page);
         expect(errors).toEqual([]);
@@ -232,7 +231,7 @@ for (const size of TEST_SIZES) {
       test("novo investimento e negociação por quantidade", async ({ page }) => {
         const errors = watchErrors(page);
         await openDemo(page, "/investimentos");
-        await expect(tableOf(page, "Avaliações", phone)).toBeVisible();
+        await expect(tableAt(page, "Avaliações", phone)).toBeVisible();
         // a position tracked by value: trades are explained, not opened
         await menu(page, "Negociação", "Compra…");
         await expect(notice(page, /Negociações são para ativos acompanhados por quantidade/)).toBeVisible();
@@ -256,7 +255,7 @@ for (const size of TEST_SIZES) {
         await field(dialog, "Custo total conhecido").fill("6.000,00");
         await submit(dialog, "Registrar");
         await expect(dialog).toBeHidden();
-        const lots = tableOf(page, "Lotes", phone);
+        const lots = tableAt(page, "Lotes", phone);
         await expect(lots).toBeVisible();
 
         await menu(page, "Negociação", "Compra…");
@@ -291,7 +290,7 @@ for (const size of TEST_SIZES) {
         await submit(dialog, "Registrar");
         await expect(dialog).toBeHidden();
         await expect(notice(page, "Negociação registrada.")).toBeVisible();
-        await expect(tableOf(page, "Movimentos", phone).getByText("Bonificação").first()).toBeVisible();
+        await expect(tableAt(page, "Movimentos", phone).getByText("Bonificação").first()).toBeVisible();
         await expectNoHorizontalOverflow(page);
         await audit(page, "carteira com posição por quantidade");
         expect(errors).toEqual([]);
@@ -301,7 +300,7 @@ for (const size of TEST_SIZES) {
         const errors = watchErrors(page);
         const addresses = await recordAddresses(page);
         await openDemo(page, "/investimentos");
-        await expect(tableOf(page, "Avaliações", phone)).toBeVisible();
+        await expect(tableAt(page, "Avaliações", phone)).toBeVisible();
         await page.getByRole("button", { name: "Ver lançamentos" }).click();
         await expect(page.getByRole("heading", { level: 1, name: "Livro financeiro" })).toBeVisible();
         expect((await addresses()).some((a) => a.startsWith("/livro") && a.includes("ref=conta"))).toBe(true);

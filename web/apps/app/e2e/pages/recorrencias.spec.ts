@@ -4,10 +4,8 @@
  * A second block seeds what the demonstration lacks (an operation to link, a charge that repeats) through the
  * app itself and walks the link, the suggestions and the creation from a candidate.
  */
-import AxeBuilder from "@axe-core/playwright";
-import { animationsDone } from "../helpers.ts";
-import { expect, test, type Page } from "@playwright/test";
 import {
+  auditWith,
   TEST_SCHEMES,
   TEST_SIZES,
   expectNoHorizontalOverflow,
@@ -15,26 +13,12 @@ import {
   recordAddresses,
   settle,
   watchErrors,
+  tableOf,
 } from "../helpers.ts";
-import { dialogOf, menuItem, pick, tableOf } from "./recorrencias_helpers.ts";
+import { expect, test } from "@playwright/test";
+import { dialogOf, menu, pickOption } from "../ui.ts";
 
-async function audit(page: Page, label: string) {
-  await page.mouse.move(1, 1); // a hovered button is another color: audit the resting state
-  await settle(page, 250);
-  await animationsDone(page);
-  const result = await new AxeBuilder({ page })
-    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
-    .analyze();
-  expect(
-    result.violations.map(
-      (violation) =>
-        `${label}: ${violation.id} (${violation.impact}) ${violation.nodes
-          .map((node) => `${node.target.join(" ")} ${node.failureSummary ?? ""}`)
-          .slice(0, 3)
-          .join(", ")}`,
-    ),
-  ).toEqual([]);
-}
+const audit = auditWith({ skipNotices: false });
 
 for (const size of TEST_SIZES) {
   for (const scheme of TEST_SCHEMES) {
@@ -94,17 +78,17 @@ for (const size of TEST_SIZES) {
         await expect(page.getByText("Nenhum lançamento compatível (conta, valor e data).").first()).toBeVisible();
 
         // Mais: Pular previsão (with Desfazer), the single-candidate suggestions, the projection
-        await menuItem(page, "Pular previsão");
+        await menu(page, "Mais", "Pular previsão");
         await expect(forecasts.getByText("Pulada")).toBeVisible();
         await page.getByRole("button", { name: "Desfazer", exact: true }).click();
         await expect(forecasts.getByText("Pulada")).toHaveCount(0);
         // the condominium fee due today has one compatible entry: it is offered, and refusing links nothing
-        await menuItem(page, "Vincular sugestões únicas");
+        await menu(page, "Mais", "Vincular sugestões únicas");
         const offer = page.getByRole("alertdialog");
         await expect(offer.getByText(/Condomínio ← Condomínio/)).toBeVisible();
         await offer.getByRole("button", { name: "Cancelar" }).click();
         await expect(offer).toHaveCount(0);
-        await menuItem(page, "Projeção de compromissos (Relatórios)");
+        await menu(page, "Mais", "Projeção de compromissos (Relatórios)");
         await expect
           .poll(async () => (await addresses()).some((url) => /\/relatorios\?.*ref=projected_balance/.test(url)))
           .toBe(true);
@@ -119,13 +103,13 @@ for (const size of TEST_SIZES) {
         await expect(dialog.getByText("Informe a descrição.")).toBeVisible();
         await audit(page, "nova recorrência com erro");
         await dialog.getByLabel("Descrição").fill("Academia");
-        await pick(page, dialog, "Conta", "Banco A");
-        await pick(page, dialog, "Categoria", "Despesa: Lazer");
+        await pickOption(page, dialog, "Conta", "Banco A");
+        await pickOption(page, dialog, "Categoria", "Despesa: Lazer");
         await dialog.getByLabel("Valor esperado").fill("99,90");
         await dialog.getByLabel("Dia do vencimento").fill("15");
-        await pick(page, dialog, "Frequência", "Semanal");
+        await pickOption(page, dialog, "Frequência", "Semanal");
         await expect(dialog.getByLabel("Dia do vencimento")).toBeDisabled();
-        await pick(page, dialog, "Frequência", "Mensal");
+        await pickOption(page, dialog, "Frequência", "Mensal");
         await expectNoHorizontalOverflow(page);
         await dialog.getByRole("button", { name: "Criar recorrência" }).click();
         await expect(dialog).toBeHidden();
@@ -207,12 +191,12 @@ test.describe("recorrências: linking and the charges that repeat, on the web de
     await expect(due.getByText("Realizada")).toHaveCount(0);
 
     // the same link as a suggestion: nothing changes until it is confirmed
-    await menuItem(page, "Vincular sugestões únicas");
+    await menu(page, "Mais", "Vincular sugestões únicas");
     const ask = page.getByRole("alertdialog");
     await expect(ask.getByText(/Condomínio ← Condomínio/)).toBeVisible();
     await audit(page, "vincular sugestões");
     await ask.getByRole("button", { name: "Cancelar" }).click();
-    await menuItem(page, "Vincular sugestões únicas");
+    await menu(page, "Mais", "Vincular sugestões únicas");
     await page.getByRole("alertdialog").getByRole("button", { name: "Vincular", exact: true }).click();
     await expect(page.getByText("1 previsão(ões) vinculada(s).").first()).toBeVisible();
     await expect(due.getByText("Realizada")).toBeVisible();

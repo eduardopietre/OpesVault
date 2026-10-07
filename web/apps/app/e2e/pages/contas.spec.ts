@@ -3,9 +3,6 @@
  * menu item, every dialog submitted (with its refusals), links in and out, no console errors, no sideways
  * scroll at the five sizes, axe clean, light and dark.
  */
-import AxeBuilder from "@axe-core/playwright";
-import { animationsDone } from "../helpers.ts";
-import { expect, test, type Locator, type Page } from "@playwright/test";
 import {
   TEST_SCHEMES,
   TEST_SIZES,
@@ -15,61 +12,19 @@ import {
   settle,
   watchErrors,
 } from "../helpers.ts";
+import { expect, test, type Locator, type Page } from "@playwright/test";
+import { audited, choose, giveReason, goTab, submit, tableAt } from "../ui.ts";
 
 /** A required field's label ends with "*". */
 const NAME = /^Nome\s*\*?$/;
 
-async function audit(page: Page, label: string) {
-  await page.mouse.move(1, 1); // a hovered button is another color: audit the resting state
-  await settle(page, 250);
-  await animationsDone(page);
-  const result = await new AxeBuilder({ page })
-    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
-    .analyze();
-  expect(
-    result.violations.map(
-      (violation) =>
-        `${label}: ${violation.id} (${violation.impact}) ${violation.nodes
-          .map((node) => `${node.target.join(" ")} ${node.failureSummary ?? ""}`)
-          .slice(0, 3)
-          .join(", ")}`,
-    ),
-  ).toEqual([]);
-}
-
-/** A tab of the page's own list (the shell has other tabs and navigation). */
-const goTab = async (page: Page, name: string) => {
-  await page.getByRole("tab", { name, exact: true }).click();
-  await expect(page.getByRole("tab", { name, exact: true })).toHaveAttribute("aria-selected", "true");
-  await settle(page, 200);
-};
-
-/** A table: a grid, or a list of cards on a phone. */
-const tableOf = (page: Page, name: string, phone: boolean): Locator =>
-  page.getByRole(phone ? "listbox" : "grid", { name, exact: true });
-
-/** The open dialog by its name; checks it fits and is accessible. */
-async function openDialog(page: Page, name: string | RegExp, label: string): Promise<Locator> {
-  const dialog = page.getByRole("dialog", { name });
-  await expect(dialog).toBeVisible();
-  await expectNoHorizontalOverflow(page);
-  await audit(page, label);
-  return dialog;
-}
-
-const submit = async (dialog: Locator, name: string) => dialog.getByRole("button", { name, exact: true }).click();
+const { audit, openDialog } = audited({ skipNotices: false });
 
 /** Types into a combobox that searches (a bank, an IRPF type) and picks the option. */
 async function searchAndPick(page: Page, dialog: Locator, label: string, typed: string, option: RegExp) {
   const field = dialog.getByRole("combobox", { name: label, exact: true });
   await field.click();
   await field.fill(typed);
-  await page.getByRole("listbox", { name: label, exact: true }).getByRole("option", { name: option }).first().click();
-}
-
-/** Chooses an option of a select. */
-async function choose(page: Page, dialog: Locator, label: string, option: string | RegExp) {
-  await dialog.getByRole("combobox", { name: label, exact: true }).click();
   await page.getByRole("listbox", { name: label, exact: true }).getByRole("option", { name: option }).first().click();
 }
 
@@ -83,7 +38,7 @@ for (const size of TEST_SIZES) {
         const errors = watchErrors(page);
         await openDemo(page, "/contas");
         await expect(page.getByRole("heading", { level: 1, name: "Contas e cartões" })).toBeVisible();
-        const banks = tableOf(page, "Contas bancárias", phone);
+        const banks = tableAt(page, "Contas bancárias", phone);
         await expect(banks).toBeVisible();
         await expect(banks.getByText("Itaú da Ana")).toBeVisible();
         await expect(page.getByRole("heading", { name: "Composição" })).toBeVisible();
@@ -143,7 +98,7 @@ for (const size of TEST_SIZES) {
         await expectNoHorizontalOverflow(page);
         await submit(dialog, "Salvar");
         await expect(dialog).toBeHidden();
-        const parts = tableOf(page, "Composição da conta bancária", phone);
+        const parts = tableAt(page, "Composição da conta bancária", phone);
         await expect(parts.getByText("CDB teste 2027")).toBeVisible();
 
         // Características…: a part that is not an investment explains; an investment opens
@@ -193,7 +148,7 @@ for (const size of TEST_SIZES) {
         const addresses = await recordAddresses(page);
         await openDemo(page, "/contas");
         await goTab(page, "Todas as contas");
-        const accounts = tableOf(page, "Contas", phone);
+        const accounts = tableAt(page, "Contas", phone);
         await expect(accounts).toBeVisible();
         await expect(page.getByRole("heading", { name: /^Saldo: / })).toBeVisible();
         // the chart draws (lazy chunk) and the table of its values sits with it
@@ -236,7 +191,7 @@ for (const size of TEST_SIZES) {
         await submit(dialog, "Conferir");
         await expect(dialog).toBeHidden();
         await expect(page.getByText("Saldo conferido: confere com o banco.").first()).toBeVisible();
-        await expect(tableOf(page, "Conferências com o banco", phone)).toBeVisible();
+        await expect(tableAt(page, "Conferências com o banco", phone)).toBeVisible();
         await audit(page, "conferências");
 
         // Ver lançamentos goes to the ledger with the account, and back
@@ -248,7 +203,7 @@ for (const size of TEST_SIZES) {
 
         // Cartões
         await goTab(page, "Cartões");
-        const cards = tableOf(page, "Cartões", phone);
+        const cards = tableAt(page, "Cartões", phone);
         await expect(cards.getByText("Cartão X")).toBeVisible();
         await expectNoHorizontalOverflow(page);
         await audit(page, "cartões");
@@ -279,7 +234,7 @@ for (const size of TEST_SIZES) {
 
         // Categorias
         await goTab(page, "Categorias");
-        const categories = tableOf(page, "Categorias", phone);
+        const categories = tableAt(page, "Categorias", phone);
         await expect(categories.getByText("Saúde").first()).toBeVisible();
         await expectNoHorizontalOverflow(page);
         await audit(page, "categorias");
@@ -310,7 +265,7 @@ for (const size of TEST_SIZES) {
         const addresses = await recordAddresses(page);
         await openDemo(page, "/contas");
         await goTab(page, "Faturas");
-        const bills = tableOf(page, "Faturas do cartão", phone);
+        const bills = tableAt(page, "Faturas do cartão", phone);
         await expect(bills).toBeVisible();
         await expect(page.getByText("Vencida").first()).toBeVisible();
         await expect(page.locator("canvas").first()).toBeVisible();
@@ -348,7 +303,7 @@ for (const size of TEST_SIZES) {
 
         // Financiamentos
         await goTab(page, "Financiamentos");
-        const loans = tableOf(page, "Financiamentos", phone);
+        const loans = tableAt(page, "Financiamentos", phone);
         await expect(loans.getByText("Financiamento do carro")).toBeVisible();
         await expect(page.locator("canvas").first()).toBeVisible();
         await expect(page.getByText("Não foi possível desenhar o gráfico")).toHaveCount(0);
@@ -427,7 +382,7 @@ for (const size of TEST_SIZES) {
         const errors = watchErrors(page);
         await openDemo(page, "/contas");
         await goTab(page, "Regras");
-        const rules = tableOf(page, "Regras de categoria", phone);
+        const rules = tableAt(page, "Regras de categoria", phone);
         await expect(rules.getByText("PADARIA")).toBeVisible();
         await expect(page.getByRole("heading", { name: "Sugeridas pelo uso" })).toBeVisible();
         await expectNoHorizontalOverflow(page);
@@ -456,24 +411,20 @@ for (const size of TEST_SIZES) {
         dialog = await openDialog(page, "Regra de categoria", "editar regra");
         await submit(dialog, "Salvar regra");
         await expect(dialog.getByText("Informe o motivo da alteração.")).toBeVisible();
-        await dialog.getByLabel("Motivo da alteração").fill("renomeada");
-        await submit(dialog, "Salvar regra");
-        await expect(dialog).toBeHidden();
+        await giveReason(dialog, "renomeada", "Salvar regra", "Motivo da alteração");
 
         // Ativar ou desativar…
         await page.getByRole("button", { name: "Ativar ou desativar…" }).click();
         dialog = await openDialog(page, "Desativar regra", "desativar regra");
         await submit(dialog, "Desativar");
         await expect(dialog.getByText("O motivo é obrigatório.")).toBeVisible();
-        await dialog.getByLabel(/^Motivo\s*\*?$/).fill("não vale mais");
-        await submit(dialog, "Desativar");
-        await expect(dialog).toBeHidden();
+        await giveReason(dialog, "não vale mais", "Desativar", /^Motivo\s*\*?$/);
         await expect(rules.getByText("Desativada")).toBeVisible();
 
         // Criar regra… from a proposal
         await page.getByRole("button", { name: "Criar regra…" }).click();
         await expect(page.getByText("Escolha uma das regras sugeridas.").first()).toBeVisible();
-        const proposals = tableOf(page, "Regras sugeridas pelo uso", phone);
+        const proposals = tableAt(page, "Regras sugeridas pelo uso", phone);
         await proposals.getByText("NETFLIX.COM").click();
         await page.getByRole("button", { name: "Criar regra…" }).click();
         dialog = await openDialog(page, "Regra de categoria", "regra sugerida");
@@ -484,7 +435,7 @@ for (const size of TEST_SIZES) {
 
         // Integrantes
         await goTab(page, "Integrantes");
-        const members = tableOf(page, "Integrantes", phone);
+        const members = tableAt(page, "Integrantes", phone);
         await expect(members.getByText("Ana")).toBeVisible();
         await expectNoHorizontalOverflow(page);
         await audit(page, "integrantes");
@@ -546,7 +497,7 @@ for (const size of TEST_SIZES) {
             "true",
           );
           await expect(page.getByRole("heading", { name: /^Saldo: / })).toBeVisible();
-          await expect(tableOf(page, "Conferências com o banco", phone)).toBeVisible();
+          await expect(tableAt(page, "Conferências com o banco", phone)).toBeVisible();
           await expectNoHorizontalOverflow(page);
         }
         expect(errors).toEqual([]);

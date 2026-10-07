@@ -2,10 +2,9 @@
  * Visão geral end to end (docs/18 §5, SCREENS.md): every button and menu item, the dialogs, the print view
  * of the report, no console errors, no sideways scrolling at the five sizes and axe clean, in light and dark.
  */
-import AxeBuilder from "@axe-core/playwright";
-import { animationsDone, monthName } from "../helpers.ts";
-import { expect, test, type Page } from "@playwright/test";
 import {
+  monthName,
+  auditWith,
   TEST_SCHEMES,
   TEST_SIZES,
   expectNoHorizontalOverflow,
@@ -13,35 +12,12 @@ import {
   recordAddresses,
   settle,
   watchErrors,
+  prints,
+  stubPrint,
 } from "../helpers.ts";
+import { expect, test } from "@playwright/test";
 
-async function audit(page: Page, label: string) {
-  await settle(page, 300);
-  await animationsDone(page);
-  const result = await new AxeBuilder({ page })
-    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
-    .analyze();
-  expect(
-    result.violations.map(
-      (v) =>
-        `${label}: ${v.id} (${v.impact}) ${v.nodes
-          .map((n) => n.target.join(" "))
-          .slice(0, 3)
-          .join(", ")}`,
-    ),
-  ).toEqual([]);
-}
-
-async function stubPrint(page: Page) {
-  await page.addInitScript(() => {
-    (window as unknown as { __prints: number }).__prints = 0;
-    window.print = () => {
-      (window as unknown as { __prints: number }).__prints++;
-    };
-  });
-}
-
-const prints = (page: Page) => page.evaluate(() => (window as unknown as { __prints: number }).__prints);
+const audit = auditWith({ restPointer: false, settleMs: 300, skipNotices: false });
 
 for (const size of TEST_SIZES) {
   for (const scheme of TEST_SCHEMES) {

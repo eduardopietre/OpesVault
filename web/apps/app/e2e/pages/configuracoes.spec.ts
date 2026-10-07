@@ -3,7 +3,6 @@
  * dialog, a backup downloaded, verified and restored (with the real Argon2id parameters), links in and out, no
  * console errors, no sideways scroll at the five sizes, axe clean, light and dark.
  */
-import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -12,46 +11,15 @@ import {
   DEMO,
   TEST_SCHEMES,
   TEST_SIZES,
-  animationsDone,
   expectNoHorizontalOverflow,
   openDemo,
   settle,
   watchErrors,
 } from "../helpers.ts";
+import { audited, goTab } from "../ui.ts";
 
-async function audit(page: Page, label: string) {
-  await page.mouse.move(1, 1); // a hovered button is another color: audit the resting state
-  // A notice fading in or out is half transparent: it is measured once it is gone (they dismiss themselves).
-  await expect(page.locator('section[aria-label="Avisos"] [data-tone]')).toHaveCount(0, { timeout: 15_000 });
-  await settle(page, 250);
-  await animationsDone(page);
-  const result = await new AxeBuilder({ page })
-    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
-    .analyze();
-  expect(
-    result.violations.map(
-      (violation) =>
-        `${label}: ${violation.id} (${violation.impact}) ${violation.nodes
-          .map((node) => `${node.target.join(" ")} ${node.failureSummary ?? ""}`)
-          .slice(0, 3)
-          .join(", ")}`,
-    ),
-  ).toEqual([]);
-}
-
-const goTab = async (page: Page, name: string) => {
-  await page.getByRole("tab", { name, exact: true }).click();
-  await expect(page.getByRole("tab", { name, exact: true })).toHaveAttribute("aria-selected", "true");
-  await settle(page, 200);
-};
-
-async function openDialog(page: Page, name: string | RegExp, label: string): Promise<Locator> {
-  const dialog = page.getByRole("dialog", { name });
-  await expect(dialog).toBeVisible();
-  await expectNoHorizontalOverflow(page);
-  await audit(page, label);
-  return dialog;
-}
+/** A notice fading in or out is half transparent: it is measured once it is gone (they dismiss themselves). */
+const { audit, openDialog } = audited({ awaitNotices: true, skipNotices: false });
 
 const press = (scope: Locator | Page, name: string | RegExp) =>
   scope.getByRole("button", { name, exact: typeof name === "string" }).click();

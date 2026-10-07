@@ -1,24 +1,8 @@
 /** Automatic accessibility audit (axe, WCAG 2.2 AA): no violations on any screen, open overlay or theme. */
-import AxeBuilder from "@axe-core/playwright";
-import { animationsDone } from "./helpers.ts";
-import { expect, test, type Page } from "@playwright/test";
-import { DEMO, SCHEMES, openDemo, settle } from "./helpers.ts";
+import { auditWith, DEMO, SCHEMES, openDemo } from "./helpers.ts";
+import { test } from "@playwright/test";
 
-async function audit(page: Page, label: string) {
-  await settle(page, 300);
-  await animationsDone(page);
-  const result = await new AxeBuilder({ page })
-    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
-    .analyze();
-  const summary = result.violations.map(
-    (violation) =>
-      `${label}: ${violation.id} (${violation.impact}) ${violation.nodes
-        .map((node) => `${node.target.join(" ")} ${node.failureSummary ?? ""}`)
-        .slice(0, 3)
-        .join(", ")}`,
-  );
-  expect(summary).toEqual([]);
-}
+const audit = auditWith({ restPointer: false, settleMs: 300, skipNotices: false });
 
 for (const scheme of SCHEMES) {
   for (const viewport of [

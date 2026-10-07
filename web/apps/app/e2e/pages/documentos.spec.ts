@@ -12,17 +12,15 @@ import {
   recordAddresses,
   settle,
   watchErrors,
+  audit,
+  goTo,
+  tableOf,
+  ONE_PIXEL_PNG,
 } from "../helpers.ts";
 import { protectedPdf } from "../protected_pdf.ts";
 import { attach } from "./sharing_helpers.ts";
-import { audit, goTo, tableOf } from "../helpers.ts";
 
 const PROTECTED = protectedPdf();
-
-const PNG = Buffer.from(
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
-  "base64",
-);
 
 /** A valid one-page PDF with a line of text and a correct cross-reference table. */
 function onePagePdf(line: string): Buffer {
@@ -82,7 +80,7 @@ for (const size of TEST_SIZES) {
         // receipts attached in the Livro: an image, a PDF and a protected PDF
         await goTo(page, "l", /\/livro$/);
         await expect(page.locator("[data-row-id]").first()).toBeVisible();
-        await attach(page, "Posto Shell", { name: "recibo-posto.png", mimeType: "image/png", buffer: PNG });
+        await attach(page, "Posto Shell", { name: "recibo-posto.png", mimeType: "image/png", buffer: ONE_PIXEL_PNG });
         await attach(page, "Aluguel", {
           name: "nota-aluguel.pdf",
           mimeType: "application/pdf",
@@ -167,7 +165,7 @@ for (const size of TEST_SIZES) {
         const errors = watchErrors(page);
         await openDemo(page, "/livro");
         await expect(page.locator("[data-row-id]").first()).toBeVisible();
-        await attach(page, "Posto Shell", { name: "recibo-posto.png", mimeType: "image/png", buffer: PNG });
+        await attach(page, "Posto Shell", { name: "recibo-posto.png", mimeType: "image/png", buffer: ONE_PIXEL_PNG });
         await goTo(page, "d", /\/documentos$/);
         // the document id is not in the page: ask for a missing one and see the notice, and the page stays usable
         await page.evaluate(() => {

@@ -10,8 +10,10 @@ import {
   recordAddresses,
   settle,
   watchErrors,
+  audit,
+  tableOf,
 } from "../helpers.ts";
-import { audit, tableOf } from "../helpers.ts";
+import { menu } from "../ui.ts";
 
 /** The demonstration project on the year its tax data is in. */
 async function open(page: Page) {
@@ -22,11 +24,6 @@ async function open(page: Page) {
 
 const section = (page: Page, heading: string | RegExp) =>
   page.getByRole("heading", { name: heading, level: 2 }).locator("xpath=ancestor::section[1]");
-
-async function menu(page: Page, button: string, item: string | RegExp) {
-  await page.getByRole("button", { name: button, exact: true }).click();
-  await page.getByRole("menuitem", { name: item }).click();
-}
 
 /** Closes the open dialog with its Cancel (or Close) button. */
 async function leave(page: Page, name: string | RegExp) {
@@ -42,16 +39,13 @@ for (const size of TEST_SIZES) {
   for (const scheme of TEST_SCHEMES) {
     test.describe(`imposto ${size.width}x${size.height} ${scheme}`, () => {
       test.use({ viewport: size, colorScheme: scheme, contextOptions: { reducedMotion: "reduce" } });
-      const phone = size.width < 640;
 
       test("every button, menu and dialog works, cleanly", async ({ page }) => {
         const errors = watchErrors(page);
         const addresses = await recordAddresses(page);
         await open(page);
-        await expect(tableOf(page, "Pagamentos efetuados", phone)).toBeVisible();
-        await expect(tableOf(page, "Rendimentos tributáveis de pessoa jurídica", phone)).toContainText(
-          "Empresa Exemplo Ltda",
-        );
+        await expect(tableOf(page, "Pagamentos efetuados")).toBeVisible();
+        await expect(tableOf(page, "Rendimentos tributáveis de pessoa jurídica")).toContainText("Empresa Exemplo Ltda");
         // nothing fiscal is embedded: the simulation says what is missing
         await expect(page.getByText(/Falta informar a tabela anual de 2026/)).toBeVisible();
         await settle(page);
@@ -120,7 +114,7 @@ for (const size of TEST_SIZES) {
         // ── Cadastros ──
         await menu(page, "Cadastros", "Declarantes e dependentes…");
         box = page.getByRole("dialog", { name: "Declarantes e dependentes" });
-        await tableOf(page, "Integrantes", phone).getByText("Bruno").click();
+        await tableOf(page, "Integrantes").getByText("Bruno").click();
         await box.getByRole("button", { name: "Editar…" }).click();
         const member = page.getByRole("dialog", { name: "Dados fiscais — Bruno" });
         await expect(member.getByLabel("CPF")).toHaveValue("111.444.777-35");
@@ -152,7 +146,7 @@ for (const size of TEST_SIZES) {
         await audit(page, "novo bem");
         await box.getByRole("button", { name: "Salvar", exact: true }).click();
         await expect(box).toBeHidden();
-        await expect(tableOf(page, "Bens e direitos", phone)).toContainText("Carro");
+        await expect(tableOf(page, "Bens e direitos")).toContainText("Carro");
 
         await menu(page, "Cadastros", "Tabela e limites do ano…");
         box = page.getByRole("dialog", { name: "Tabela e limites de 2026" });
@@ -198,12 +192,12 @@ for (const size of TEST_SIZES) {
 
         // ── documents of the year ──
         const docs = section(page, /^Documentos do ano/);
-        await tableOf(page, "Documentos do ano", phone).getByText("Saldo devedor em 31/12").click();
+        await tableOf(page, "Documentos do ano").getByText("Saldo devedor em 31/12").click();
         await docs.getByRole("button", { name: "Recebido / não recebido" }).click();
-        await expect(tableOf(page, "Documentos do ano", phone)).toContainText("Recebido (marcado)");
+        await expect(tableOf(page, "Documentos do ano")).toContainText("Recebido (marcado)");
         await docs.getByRole("button", { name: "Recebido / não recebido" }).click();
-        await expect(tableOf(page, "Documentos do ano", phone)).not.toContainText("Recebido (marcado)");
-        await tableOf(page, "Documentos do ano", phone).getByText("Recibos e notas — Farmácia").click();
+        await expect(tableOf(page, "Documentos do ano")).not.toContainText("Recebido (marcado)");
+        await tableOf(page, "Documentos do ano").getByText("Recibos e notas — Farmácia").click();
         await docs.getByRole("button", { name: "Abrir…" }).click();
         await expect(page.getByRole("dialog", { name: "Comprovantes" })).toBeVisible();
         await leave(page, "Comprovantes");
@@ -227,7 +221,7 @@ for (const size of TEST_SIZES) {
         await expect(page.getByText("Informe removido.")).toBeVisible();
         await expect(page.getByText(/Nenhum informe deste ano/)).toBeVisible();
         await page.keyboard.press("Control+z");
-        await expect(tableOf(page, "Informes de rendimentos", phone)).toBeVisible();
+        await expect(tableOf(page, "Informes de rendimentos")).toBeVisible();
 
         // ── the other sheet buttons guide when nothing is chosen ──
         await section(page, "Pagamentos efetuados").getByRole("button", { name: "CPF/CNPJ…" }).click();

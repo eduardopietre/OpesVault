@@ -19,7 +19,7 @@ import { loadSource, type PdfTextExtractor } from "../importing/source.ts";
 import { makeDate } from "../lib/dates.ts";
 import { Dec } from "../lib/dec.ts";
 import type { Id } from "../lib/ids.ts";
-import { head, orDec, strip, stripChars } from "../lib/py.ts";
+import { orDec, pyHead, pyStrip } from "../lib/py.ts";
 import * as ids from "./ids.ts";
 import {
   IncomeKind,
@@ -33,8 +33,7 @@ import {
 } from "./model.ts";
 import * as records from "./records.ts";
 
-export const VERSION = "informe-generico v1";
-export const LIMITATIONS = "Leitura genérica de informes; não validada com documentos reais. Confira cada linha.";
+// Reader version: "informe-generico v1" (limitations in the header above).
 export const MAX_LINES = 400;
 
 const AMOUNT = /(-?\s*R?\$?\s*-?\d{1,3}(?:\.\d{3})*,\d{2})\s*$/;
@@ -93,8 +92,8 @@ export function parse(input: readonly unknown[]): ParsedReport {
     if (payerTaxId === null && text.includes("CNPJ")) {
       payerTaxId = ids.findCnpj(raw);
       if (payerTaxId !== null) {
-        const before = stripChars(raw.split(/\s*[-–,]?\s*CNPJ/i)[0] ?? "", " :-–");
-        payerName = head(before, 150) || null;
+        const before = pyStrip(raw.split(/\s*[-–,]?\s*CNPJ/i)[0] ?? "", " :-–");
+        payerName = pyHead(before, 150) || null;
       }
     }
   }
@@ -109,7 +108,7 @@ export function parse(input: readonly unknown[]): ParsedReport {
   let section: ReportField | null = null; // informes list items under a heading ("Rendimentos isentos")
   for (const raw of lines) {
     const text = normalize(raw);
-    const match = AMOUNT.exec(strip(raw));
+    const match = AMOUNT.exec(pyStrip(raw));
     if (match === null) {
       if ([...text].length < 120) {
         const heading = field(text, out.year);
@@ -127,11 +126,11 @@ export function parse(input: readonly unknown[]): ParsedReport {
     }
     const kind = field(text, out.year) ?? section;
     if (kind === null) {
-      out.skipped.push(head(strip(raw), 200));
+      out.skipped.push(pyHead(pyStrip(raw), 200));
       continue;
     }
     const isTotal = text.includes("TOTAL");
-    const line = ReportLineSchema.parse({ field: kind, amount: amount.abs(), label: head(strip(raw), 200) });
+    const line = ReportLineSchema.parse({ field: kind, amount: amount.abs(), label: pyHead(pyStrip(raw), 200) });
     const list = found.get(kind);
     if (list === undefined) found.set(kind, [[isTotal, line]]);
     else list.push([isTotal, line]);

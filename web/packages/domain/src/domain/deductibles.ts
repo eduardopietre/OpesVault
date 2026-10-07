@@ -56,8 +56,12 @@ export function marks(ledger: Ledger) {
 
 /** The mark of the category or of its nearest marked parent. */
 export function kindOf(ledger: Ledger, categoryId: Id): DeductibleKind | null {
-  const byCategory = new Map<Id, DeductibleKind>();
-  for (const m of marks(ledger).values()) byCategory.set(m.category_id, m.kind);
+  // The last mark of a category wins.
+  const byCategory = ledger.cachedFor("deductibles.kindOf", ["deductible_category"], () => {
+    const out = new Map<Id, DeductibleKind>();
+    for (const m of marks(ledger).values()) out.set(m.category_id, m.kind);
+    return out;
+  });
   const seen = new Set<Id>();
   let cursor: Id | null = categoryId;
   while (cursor !== null && !seen.has(cursor)) {
@@ -112,7 +116,7 @@ export function annual(ledger: Ledger, year: number): DeductibleGroup[] {
   const groups = new Map<string, DeductibleGroup>();
   const kinds = new Map<Id, DeductibleKind | null>();
   for (const op of ledger.activeOperations()) {
-    const when = cashDate(op) ?? op.occurred_on;
+    const when = cashDate(op);
     if (when === null || yearOf(when) !== year) continue;
     for (const p of op.postings) {
       if (!kinds.has(p.account_id)) {

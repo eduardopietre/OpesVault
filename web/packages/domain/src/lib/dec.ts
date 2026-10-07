@@ -41,10 +41,6 @@ export function withContext<T>(changes: Partial<DecContext>, fn: () => T): T {
   }
 }
 
-export function getContext(): DecContext {
-  return current;
-}
-
 const TEN = 10n;
 const pow10Cache: bigint[] = [];
 function pow10(n: number): bigint {
@@ -527,7 +523,6 @@ export class Dec {
 }
 
 export const DEC_ZERO = Dec.from(0);
-export const ONE = Dec.from(1);
 
 /** Shorthand for `Dec.from`. */
 export function dec(value: Dec | string | number | bigint): Dec {

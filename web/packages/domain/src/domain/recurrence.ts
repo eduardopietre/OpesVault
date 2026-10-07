@@ -12,6 +12,7 @@ import type { Id } from "../lib/ids.ts";
 import { KeyError } from "../lib/py.ts";
 import { zDate, zDec, zId } from "../lib/schema.ts";
 import { sortedBy } from "../lib/text.ts";
+import { getOrThrow } from "./error.ts";
 import { DomainError, Ledger } from "./ledger.ts";
 import { AccountType, cashDate, type Operation, zEntityId } from "./model.ts";
 import { ZERO } from "./money.ts";
@@ -162,7 +163,7 @@ export function candidates(ledger: Ledger, forecast: Forecast): Operation[] {
   const out: Operation[] = [];
   for (const op of ledger.activeOperations()) {
     if (linkedOps.has(op.id)) continue;
-    const when = cashDate(op) ?? op.occurred_on;
+    const when = cashDate(op);
     if (when === null || Math.abs(daysBetween(when, forecast.dueOn)) > rule.window_days) continue;
     const accounts = new Set(op.postings.map((p) => p.account_id));
     if (!accounts.has(rule.account_id) || !accounts.has(rule.counterpart_id)) continue;
@@ -178,8 +179,7 @@ export function realize(ledger: Ledger, ruleId: Id, dueOn: IsoDate, operationId:
   for (const link of links(ledger).values()) {
     if (link.rule_id === ruleId && link.due_on === dueOn) throw new DomainError("Previsão já resolvida.");
   }
-  const op = ledger.operations.get(operationId);
-  if (op === undefined) throw new DomainError("Operação inexistente.");
+  const op = getOrThrow(ledger.operations, operationId, "Operação inexistente.");
   ledger.updateOperation({ ...op, forecast_id: ruleId }, "realiza previsão recorrente");
   return ledger.put(
     "forecast_link",

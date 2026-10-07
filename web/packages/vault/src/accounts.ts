@@ -41,11 +41,6 @@ export async function signIn(
   return backend.signIn(normalized, await loginSecret(backend, normalized, accountPassword, kdf));
 }
 
-/** Asks the browser not to evict this site's storage (IndexedDB) under pressure. */
-export async function requestPersistentStorage(): Promise<boolean> {
-  return (await persistentStorage()) === "persisted";
-}
-
 /**
  * Whether the browser keeps this site's storage under pressure, asking for it when it is not yet granted:
  * "denied" means it may erase IndexedDB, and with it changes not yet sent; "unavailable" when it cannot say.

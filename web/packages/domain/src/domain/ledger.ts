@@ -37,7 +37,7 @@ import {
   type Posting,
 } from "./model.ts";
 import { BRL, isCents, toDecimal, ZERO } from "./money.ts";
-import { DomainError } from "./error.ts";
+import { DomainError, getOrThrow } from "./error.ts";
 import { migrate } from "./migrations.ts";
 import { HistoryList, type JournalEntry, MISSING, TrackedMap } from "./tracking.ts";
 
@@ -117,6 +117,8 @@ export class Ledger {
   journal: JournalEntry[] | null = null;
   /** Per-ledger caches (query index…), invalidated by `changeCount`. */
   readonly caches = new Map<string, { readonly at: number; readonly value: unknown }>();
+  /** Per-ledger caches that read only some kinds (`cachedFor`), keyed on `changesOf`. */
+  private readonly kindCaches = new Map<string, { readonly stamp: string; readonly value: unknown }>();
 
   private metaValue: LedgerMeta;
   private readonly store = new Map<string, TrackedMap<unknown>>();
@@ -182,6 +184,19 @@ export class Ledger {
     if (hit && hit.at === this.changeCount) return hit.value as T;
     const value = compute();
     this.caches.set(key, { at: this.changeCount, value });
+    return value;
+  }
+
+  /**
+   * A cached value computed only from the collections of `kinds`: recomputed after one of them
+   * changes, kept while other kinds change. Values are shared: never hand out a mutable part.
+   */
+  cachedFor<T>(key: string, kinds: readonly string[], compute: () => T): T {
+    const stamp = this.changesOf(...kinds).join(",");
+    const hit = this.kindCaches.get(key);
+    if (hit && hit.stamp === stamp) return hit.value as T;
+    const value = compute();
+    this.kindCaches.set(key, { stamp, value });
     return value;
   }
 
@@ -305,8 +320,7 @@ export class Ledger {
   }
 
   account(accountId: Id): LedgerAccount {
-    const account = this.accounts.get(accountId);
-    if (account === undefined) throw new DomainError("Conta inexistente.");
+    const account = getOrThrow(this.accounts, accountId, "Conta inexistente.");
     return account;
   }
 
@@ -462,8 +476,7 @@ export class Ledger {
     if (op.postings.length < 2) throw new DomainError("Uma operação precisa de pelo menos duas partidas.");
     const totals = new Map<string, Dec>();
     for (const p of op.postings) {
-      const account = this.accounts.get(p.account_id);
-      if (account === undefined) throw new DomainError("Partida aponta para conta inexistente.");
+      const account = getOrThrow(this.accounts, p.account_id, "Partida aponta para conta inexistente.");
       if (p.amount.isZero()) throw new DomainError("Partidas de valor zero não são permitidas.");
       if (account.currency !== op.currency) throw new DomainError("Moeda da conta difere da moeda da operação.");
       if (account.currency === BRL && !isCents(p.amount))
@@ -495,8 +508,7 @@ export class Ledger {
   }
 
   updateOperation(op: Operation, reason: string): Operation {
-    const current = this.operations.get(op.id);
-    if (current === undefined) throw new DomainError("Operação inexistente.");
+    const current = getOrThrow(this.operations, op.id, "Operação inexistente.");
     if (!isActive(current)) throw new DomainError("Operação cancelada não pode ser editada.");
     if (!reason.trim()) throw new DomainError("Correções exigem um motivo.");
     const updated: Operation = { ...op, version: current.version + 1 };
@@ -682,8 +694,7 @@ export class Ledger {
     cardholderId: Id | null = null,
     extra: Partial<OperationInput> = {},
   ): Operation {
-    const card = this.cards.get(cardId);
-    if (card === undefined) throw new DomainError("Cartão inexistente.");
+    const card = getOrThrow(this.cards, cardId, "Cartão inexistente.");
     const parts = this.splitParts(splits, amount);
     const total = Dec.sum(
       parts.map(([, v]) => v),
@@ -712,8 +723,7 @@ export class Ledger {
     on: IsoDate,
     extra: Partial<OperationInput> = {},
   ): Operation {
-    const card = this.cards.get(cardId);
-    if (card === undefined) throw new DomainError("Cartão inexistente.");
+    const card = getOrThrow(this.cards, cardId, "Cartão inexistente.");
     this.require(fromAccountId, AccountType.ASSET);
     const value = toDecimal(amount);
     if (!value.isPositive()) throw new DomainError("Informe um valor positivo.");

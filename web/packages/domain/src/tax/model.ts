@@ -12,12 +12,7 @@ import { z } from "zod";
 import { GROUPS } from "../catalogs/irpf.ts";
 import { DomainError, Ledger } from "../domain/ledger.ts";
 import { zEntityId } from "../domain/model.ts";
-import type { Dec } from "../lib/dec.ts";
-import { zDate, zDec, zId, zYearMonth } from "../lib/schema.ts";
-
-function values<T extends Record<string, string>>(o: T): [T[keyof T], ...T[keyof T][]] {
-  return Object.values(o) as [T[keyof T], ...T[keyof T][]];
-}
+import { zDate, zDec, zId, zYearMonth, zEnumOf } from "../lib/schema.ts";
 
 const YEAR = () => z.number().int().min(1990).max(2999);
 const CODE = () => z.string().regex(/^\d{2}$/);
@@ -34,7 +29,7 @@ export type TaxSubject = (typeof TaxSubject)[keyof typeof TaxSubject];
 
 export const TaxIdentitySchema = z.strictObject({
   id: zEntityId,
-  subject: z.enum(values(TaxSubject)),
+  subject: zEnumOf(TaxSubject),
   ref: z.string().min(1).max(120),
   tax_id: TAX_ID(),
   name: z.string().max(150).nullable().default(null), // name as it goes in the return
@@ -89,9 +84,9 @@ export type NatureSubject = (typeof NatureSubject)[keyof typeof NatureSubject];
 
 export const IncomeClassificationSchema = z.strictObject({
   id: zEntityId,
-  subject: z.enum(values(NatureSubject)),
+  subject: zEnumOf(NatureSubject),
   ref: zId,
-  nature: z.enum(values(IncomeNature)),
+  nature: zEnumOf(IncomeNature),
 });
 export type IncomeClassification = Readonly<z.output<typeof IncomeClassificationSchema>>;
 
@@ -108,7 +103,7 @@ export const INCOME_KIND_LABELS: Readonly<Record<IncomeKind, string>> = {
 export const IncomeDetailSchema = z.strictObject({
   id: zEntityId,
   operation_id: zId,
-  kind: z.enum(values(IncomeKind)).default(IncomeKind.SALARY),
+  kind: zEnumOf(IncomeKind).default(IncomeKind.SALARY),
   gross: zDec.nullable().default(null),
   withheld: zDec.nullable().default(null),
   social_security: zDec.nullable().default(null),
@@ -126,7 +121,7 @@ export const ASSET_GROUPS = GROUPS;
 /** How an account or an investment is described in Bens e Direitos. */
 export const AssetFilingSchema = z.strictObject({
   id: zEntityId,
-  subject: z.enum(values(FilingSubject)),
+  subject: zEnumOf(FilingSubject),
   ref: zId,
   group: CODE(),
   code: CODE(),
@@ -175,7 +170,7 @@ export const FIELD_LABELS: Readonly<Record<ReportField, string>> = {
 };
 
 export const ReportLineSchema = z.strictObject({
-  field: z.enum(values(ReportField)),
+  field: zEnumOf(ReportField),
   amount: zDec,
   label: z.string().max(200).default(""), // the line as printed
 });
@@ -190,7 +185,7 @@ export type ReportSource = (typeof ReportSource)[keyof typeof ReportSource];
 export const IncomeReportSchema = z.strictObject({
   id: zEntityId,
   year: YEAR(),
-  source: z.enum(values(ReportSource)),
+  source: zEnumOf(ReportSource),
   source_id: zId,
   payer_tax_id: TAX_ID().nullable().default(null),
   payer_name: z.string().max(150).nullable().default(null),
@@ -237,7 +232,7 @@ export const BUCKET_LABELS: Readonly<Record<Bucket, string>> = {
 };
 
 export const BucketRuleSchema = z.strictObject({
-  bucket: z.enum(values(Bucket)),
+  bucket: zEnumOf(Bucket),
   rate: zDec.nullable().default(null),
   exempt_sales_limit: zDec.nullable().default(null), // monthly stock sales up to this are exempt (stocks only)
 });
@@ -268,7 +263,7 @@ export const PURPOSE_LABELS: Readonly<Record<PaymentPurpose, string>> = {
 
 export const TaxPaymentSchema = z.strictObject({
   id: zEntityId,
-  purpose: z.enum(values(PaymentPurpose)),
+  purpose: zEnumOf(PaymentPurpose),
   month: zYearMonth, // the month the tax refers to (apuração)
   amount: zDec,
   paid_on: zDate,
@@ -307,8 +302,4 @@ export function collection<T>(ledger: Ledger, kind: string) {
 
 export function requireYear(year: number): void {
   if (!(year >= 1990 && year <= 2999)) throw new DomainError("Ano inválido.");
-}
-
-export function positiveOrNone(value: Dec | null, label: string): void {
-  if (value !== null && value.isNegative()) throw new DomainError(`${label}: informe um valor positivo.`);
 }

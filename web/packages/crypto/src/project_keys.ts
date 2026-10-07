@@ -5,6 +5,7 @@
  */
 import { concatBytes, copyBytes, fromB64, fromUtf8, toB64, toHex, utf8, wipe, type B64, type Bytes } from "./bytes.ts";
 import { gunzip, gzip } from "./compress.ts";
+import { counterNonce, u32 } from "./counters.ts";
 import { CryptoError } from "./errors.ts";
 import {
   aesGcmDecrypt,
@@ -69,18 +70,8 @@ function padded(text: string): Bytes {
   return out;
 }
 
-function u32(value: number): Bytes {
-  const out = new Uint8Array(4);
-  new DataView(out.buffer).setUint32(0, value);
-  return out;
-}
-
 /** Chunk nonces are counters: every blob has its own random key, so a counter never repeats under a key. */
-function chunkNonce(index: number): Bytes {
-  const out = new Uint8Array(12);
-  new DataView(out.buffer).setUint32(8, index);
-  return out;
-}
+const chunkNonce = counterNonce;
 
 function chunkAad(projectId: string, blobId: string, index: number, final: boolean, chunkBytes: number): Bytes {
   return utf8(`opesvault/blob/v1|${projectId}|${blobId}|${index}|${final ? 1 : 0}|${chunkBytes}`);

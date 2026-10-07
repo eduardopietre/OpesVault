@@ -14,6 +14,7 @@ import { zDate, zDec, zId } from "../lib/schema.ts";
 import { casefold, sortedBy } from "../lib/text.ts";
 import { firstActivity } from "./comparisons.ts";
 import * as queries from "./queries.ts";
+import { getOrThrow } from "./error.ts";
 import { DomainError, Ledger } from "./ledger.ts";
 import { AccountType, zEntityId } from "./model.ts";
 import { isCents, roundMoney, ZERO } from "./money.ts";
@@ -75,8 +76,7 @@ export function addGoal(ledger: Ledger, goal: Goal): Goal {
 }
 
 export function updateGoal(ledger: Ledger, goal: Goal, reason: string): Goal {
-  const current = ledger.entities<Goal>("goal").get(goal.id);
-  if (current === undefined) throw new DomainError("Meta inexistente.");
+  const current = getOrThrow(ledger.entities<Goal>("goal"), goal.id, "Meta inexistente.");
   validate(ledger, goal);
   return ledger.put("goal", { ...goal, version: current.version + 1 }, { reason });
 }

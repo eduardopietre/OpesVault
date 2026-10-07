@@ -80,7 +80,7 @@ const SHOW_ARGS: ArgSpec = [
 
 const str = (v: unknown) => v as string | null;
 
-export function latestMonth(ledger: Ledger, today: IsoDate): YearMonth {
+function latestMonth(ledger: Ledger, today: IsoDate): YearMonth {
   let latest: IsoDate | null = null;
   for (const op of ledger.activeOperations()) {
     const d = op.occurred_on ?? cashDate(op);
@@ -102,9 +102,7 @@ export function amountOf(ledger: Ledger, op: Operation): Dec {
     })
     .map((p) => p.amount);
   if (categories.length) return Dec.sum(categories, ZERO);
-  const income = op.postings
-    .filter((p) => ledger.account(p.account_id).type === AccountType.INCOME)
-    .map((p) => p.amount.negate());
+  const income = queries.postingsOfType(ledger, op, AccountType.INCOME).map((p) => p.amount.negate());
   if (income.length) return Dec.sum(income, ZERO);
   let best: Dec = ZERO;
   let first = true;
@@ -116,7 +114,7 @@ export function amountOf(ledger: Ledger, op: Operation): Dec {
   return best;
 }
 
-export function operationRow(ledger: Ledger, op: Operation): Record<string, unknown> {
+function operationRow(ledger: Ledger, op: Operation): Record<string, unknown> {
   const sources = op.postings
     .filter((p) => p.amount.isNegative())
     .map((p) => accountLabel(ledger, ledger.account(p.account_id)));

@@ -7,7 +7,10 @@
  * - Responses are validated with zod at this boundary: a malformed answer is `server`.
  */
 import {
+  BACKEND_ERROR_CODES,
   BackendError,
+  envelopeContent,
+  PROJECT_ROLES,
   type AccountSession,
   type B64,
   type BackendErrorCode,
@@ -25,20 +28,6 @@ import { z } from "zod";
 
 export const CSRF_HEADER = "X-OpesVault";
 export const LEASE_HEADER = "X-OpesVault-Lease";
-
-const CODES: readonly BackendErrorCode[] = [
-  "unauthorized",
-  "forbidden",
-  "not_found",
-  "conflict",
-  "lease_held",
-  "no_lease",
-  "too_large",
-  "rate_limited",
-  "offline",
-  "invalid",
-  "server",
-];
 
 function codeForStatus(status: number): BackendErrorCode {
   switch (status) {
@@ -67,7 +56,7 @@ function codeForStatus(status: number): BackendErrorCode {
   }
 }
 
-const Role = z.enum(["owner", "member"]);
+const Role = z.enum(PROJECT_ROLES);
 const Session = z.object({ accountId: z.string(), email: z.string() });
 const Summary = z.object({
   projectId: z.string(),
@@ -169,7 +158,7 @@ export class HttpBackend implements SyncBackend {
     let code = codeForStatus(response.status);
     try {
       const payload = (await response.json()) as { error?: unknown };
-      if (typeof payload.error === "string" && (CODES as readonly string[]).includes(payload.error)) {
+      if (typeof payload.error === "string" && (BACKEND_ERROR_CODES as readonly string[]).includes(payload.error)) {
         code = payload.error as BackendErrorCode;
       }
     } catch {
@@ -233,13 +222,7 @@ export class HttpBackend implements SyncBackend {
       json: {
         projectId,
         sealedName,
-        envelope: {
-          version: envelope.version,
-          kdf: envelope.kdf,
-          wrappedByPassword: envelope.wrappedByPassword,
-          recoverySalt: envelope.recoverySalt,
-          wrappedByRecovery: envelope.wrappedByRecovery,
-        },
+        envelope: envelopeContent(envelope),
       },
     });
   }
@@ -272,13 +255,7 @@ export class HttpBackend implements SyncBackend {
   putEnvelope(projectId: string, envelope: EnvelopeContent, expectedRevision: number): Promise<Envelope> {
     return this.#json(EnvelopeSchema, "PUT", `${this.#project(projectId)}/envelope`, {
       json: {
-        envelope: {
-          version: envelope.version,
-          kdf: envelope.kdf,
-          wrappedByPassword: envelope.wrappedByPassword,
-          recoverySalt: envelope.recoverySalt,
-          wrappedByRecovery: envelope.wrappedByRecovery,
-        },
+        envelope: envelopeContent(envelope),
         expectedRevision,
       },
     });

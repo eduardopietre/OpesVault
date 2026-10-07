@@ -27,7 +27,7 @@ import { AccountType, cashDate, competence } from "./domain/model.ts";
 import { formatBrl } from "./domain/money.ts";
 import { pendingItems } from "./domain/periods.ts";
 import * as queries from "./domain/queries.ts";
-import { type IsoDate, type YearMonth, ymLastDay, ymStr } from "./lib/dates.ts";
+import { formatDateBr, type IsoDate, type YearMonth, ymBr, ymLastDay, ymStr } from "./lib/dates.ts";
 import { Dec } from "./lib/dec.ts";
 import type { Id } from "./lib/ids.ts";
 import { formatFixed } from "./lib/py.ts";
@@ -89,10 +89,7 @@ function csvRow(fields: readonly (string | number)[]): string {
 export function ledgerCsv(ledger: Ledger): Uint8Array {
   let out = csvRow(LEDGER_COLUMNS);
   const members = new Map([...ledger.members.values()].map((m) => [m.id, m.name]));
-  const ordered = sortedBy([...ledger.operations.values()], (o) => [
-    cashDate(o) ?? o.occurred_on ?? "0001-01-01",
-    o.id,
-  ]);
+  const ordered = sortedBy([...ledger.operations.values()], (o) => [cashDate(o) ?? "0001-01-01", o.id]);
   for (const op of ordered) {
     const comp = competence(op);
     for (const posting of op.postings) {
@@ -262,10 +259,6 @@ const MONTH_NAMES = [
   "dezembro",
 ] as const;
 
-function dateBr(d: IsoDate): string {
-  return `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}`;
-}
-
 const nums = (...n: number[]) => new Set(n);
 
 /**
@@ -328,7 +321,7 @@ export function monthlyReportHtml(
   parts.push(
     table(
       ["Data", "Descrição", "Valor", "Situação"],
-      events.map((e) => [dateBr(e.on), e.title, e.amount.abs(), EVENT_STATE_LABELS[e.state]]),
+      events.map((e) => [formatDateBr(e.on), e.title, e.amount.abs(), EVENT_STATE_LABELS[e.state]]),
       nums(2),
     ),
   );
@@ -399,8 +392,8 @@ export function annualReportHtml(ledger: Ledger, year: number): string {
       table(
         ["Data", "Descrição", "Valor"],
         group.lines.map((line) => {
-          const when = cashDate(line.operation) ?? line.operation.occurred_on;
-          return [when ? dateBr(when) : "—", line.operation.description, line.amount];
+          const when = cashDate(line.operation);
+          return [when ? formatDateBr(when) : "—", line.operation.description, line.amount];
         }),
         nums(2),
       ),
@@ -438,7 +431,7 @@ export function taxReportHtml(ledger: Ledger, year: number, today: IsoDate, decl
       parts.push(
         table(
           ["Nome", "CPF", "Nascimento", "Relação"],
-          deps.map((d) => [d.name, tid(d.cpf), d.birth_date ? dateBr(d.birth_date) : "—", d.relation || "—"]),
+          deps.map((d) => [d.name, tid(d.cpf), d.birth_date ? formatDateBr(d.birth_date) : "—", d.relation || "—"]),
         ),
       );
     }
@@ -532,7 +525,7 @@ export function taxReportHtml(ledger: Ledger, year: number, today: IsoDate, decl
       table(
         ["Mês", "Tipo", "Vendas", "Resultado", "Isento", "Base", "Imposto", "IR fonte", "DARF pago"],
         months.map((r) => [
-          `${String(r.month.month).padStart(2, "0")}/${r.month.year}`,
+          ymBr(r.month),
           BUCKET_LABELS[r.bucket],
           r.sales,
           r.result,

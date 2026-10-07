@@ -11,6 +11,7 @@
  */
 import { type IsoDate, makeDate } from "../../lib/dates.ts";
 import type { Dec } from "../../lib/dec.ts";
+import { PY_WS, pyStrip } from "../../lib/py.ts";
 import { casefold } from "../../lib/text.ts";
 import { MoneyError, parseBrl } from "../../domain/money.ts";
 import type { DocFormat, DocType, ItemKind, StatementHeader } from "../model.ts";
@@ -148,63 +149,8 @@ export function containsAll(text: string, ...needles: string[]): boolean {
   return needles.every((n) => folded.includes(casefold(n)));
 }
 
-// ── Python string semantics ─────────────────────────
-
-/** Characters Python's `str.isspace()`, `str.strip()`, `str.split()` and `re`'s `\s` treat as whitespace. */
-export const PY_WS = "\\t\\n\\v\\f\\r\\x1c-\\x1f \\x85\\xa0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000";
-const WS_CLASS = new RegExp(`[${PY_WS}]`, "u");
-const WS_RUNS = new RegExp(`[${PY_WS}]+`, "gu");
-
-export function isPySpace(ch: string): boolean {
-  return WS_CLASS.test(ch);
-}
-
-/** `str.strip()` with no argument (Python's whitespace), or `str.strip(chars)`. */
-export function pyStrip(text: string, chars: string | null = null): string {
-  const strip = chars === null ? (c: string) => isPySpace(c) : (c: string) => chars.includes(c);
-  const units = [...text];
-  let start = 0;
-  let end = units.length;
-  while (start < end && strip(units[start]!)) start++;
-  while (end > start && strip(units[end - 1]!)) end--;
-  return units.slice(start, end).join("");
-}
-
-/** `str.split()` with no argument. */
-export function pySplit(text: string): string[] {
-  return text.split(WS_RUNS).filter((w) => w !== "");
-}
-
-/** `" ".join(text.split())`: single spaces, no edges. */
-export function squash(text: string): string {
-  return pySplit(text).join(" ");
-}
-
-/** Python's length and slices count code points, not UTF-16 units. */
-export function pyLen(text: string): number {
-  let n = 0;
-  for (const _ of text) n++;
-  return n;
-}
-
-export function pySlice(text: string, start: number, end?: number): string {
-  if (end === undefined && start === 0) return text;
-  const units = [...text];
-  return units.slice(start, end).join("");
-}
-
-/** `text[:limit]` in code points, without splitting the whole text when it is already short. */
-export function pyHead(text: string, limit: number): string {
-  if (text.length <= limit) return text;
-  let out = "";
-  let n = 0;
-  for (const ch of text) {
-    if (n === limit) break;
-    out += ch;
-    n++;
-  }
-  return out;
-}
+// Python string semantics live in lib/py; the parsers import them from here.
+export { PY_WS, pyHead, pyLen, pySplit, pyStrip } from "../../lib/py.ts";
 
 const WORD = String.raw`[\p{L}\p{N}_]`;
 

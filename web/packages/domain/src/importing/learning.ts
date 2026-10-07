@@ -14,10 +14,11 @@
  * - `proposals`: descriptions categorized the same way several times, offered as a rule;
  * - `contradictions`: user rules the family keeps overriding, so they can be revised.
  *
- * The result is cached until an operation or an account changes (`Ledger.changesOf`).
+ * The result is cached until an operation or an account changes (`Ledger.cachedFor`).
  */
 import type { IsoDate } from "../lib/dates.ts";
 import type { Id } from "../lib/ids.ts";
+import { pyLen } from "../lib/py.ts";
 import { cmpKeys, sortedBy } from "../lib/text.ts";
 import type { Ledger } from "../domain/ledger.ts";
 import { AccountSubtype, AccountType, cashDate, type Operation } from "../domain/model.ts";
@@ -38,13 +39,6 @@ const DATE_MIN = "0001-01-01" as IsoDate;
 
 export function merchantKey(description: string): string {
   return suggestPattern(description);
-}
-
-/** Python's `len(str)`: code points. */
-function len(text: string): number {
-  let n = 0;
-  for (const _ of text) n++;
-  return n;
 }
 
 /** One categorized operation: when, where (the money account), which category and its text. */
@@ -142,24 +136,23 @@ function knowledgeKey(key: string, kind: AccountType): string {
   return `${kind}\u0000${key}`;
 }
 
-const CACHE = new WeakMap<Ledger, { stamp: string; found: Knowledge }>();
-
 /** Every merchant key with the categories the family chose for it. */
 export function knowledge(ledger: Ledger): Knowledge {
   // Only operations and accounts teach anything: review items changing during an import keep it.
-  const stamp = ledger.changesOf("operation", "account").join(",");
-  const cached = CACHE.get(ledger);
-  if (cached !== undefined && cached.stamp === stamp) return cached.found;
+  return ledger.cachedFor("learning.knowledge", ["operation", "account"], () => learn(ledger));
+}
+
+function learn(ledger: Ledger): Knowledge {
   const found: Knowledge = new Map();
   const seenPlans = new Set<Id>();
-  const when = (o: Operation) => cashDate(o) ?? o.occurred_on ?? DATE_MIN;
+  const when = (o: Operation) => cashDate(o) ?? DATE_MIN;
   for (const op of sortedBy(ledger.activeOperations(), when)) {
     if (op.installment !== null) {
       if (seenPlans.has(op.installment.plan_id)) continue; // one purchase in installments is one choice
       seenPlans.add(op.installment.plan_id);
     }
     const key = merchantKey(op.description);
-    if (len(key) < MIN_KEY_LENGTH) continue;
+    if (pyLen(key) < MIN_KEY_LENGTH) continue;
     const category = categoryOf(ledger, op);
     if (category === null) continue;
     const [categoryId, kind, accountId] = category;
@@ -175,7 +168,6 @@ export function knowledge(ledger: Ledger): Knowledge {
       text: normalize(op.description),
     });
   }
-  CACHE.set(ledger, { stamp, found });
   return found;
 }
 
@@ -191,7 +183,7 @@ export function suggest(
 ): Suggestion | null {
   const kinds: AccountType[] = typeof wanted === "string" ? [wanted] : [...wanted];
   const key = merchantKey(description);
-  if (len(key) < MIN_KEY_LENGTH) return null;
+  if (pyLen(key) < MIN_KEY_LENGTH) return null;
   const learned = knowledge(ledger);
   for (const kind of kinds) {
     const exact = learned.get(knowledgeKey(key, kind));
@@ -202,7 +194,7 @@ export function suggest(
     if (!kinds.includes(entry.kind) || !key.startsWith(entry.key)) continue;
     const next = key.slice(entry.key.length, entry.key.length + 1);
     if (next !== " " && next !== ".") continue;
-    if (best === null || len(entry.key) > len(best.key)) best = entry; // max() keeps the first
+    if (best === null || pyLen(entry.key) > pyLen(best.key)) best = entry; // max() keeps the first
   }
   return best === null ? null : best.decide(accountId);
 }

@@ -2,6 +2,7 @@
  * Read-only views over the ledger: balances, cash, competence and net worth (docs/04 §4-6).
  * Port of `domain/queries.py`. The same facts produce every view; nothing here mutates the ledger.
  */
+import { pushTo } from "../lib/collections.ts";
 import { type IsoDate, type YearMonth, ymAdd, ymIndex, ymLte, ymOf, ymStr } from "../lib/dates.ts";
 import { Dec } from "../lib/dec.ts";
 import type { Id } from "../lib/ids.ts";
@@ -10,11 +11,11 @@ import {
   AccountType,
   cashDate,
   competence,
-  isBalanceSheet,
   isLiquid,
   type LedgerAccount,
   type Operation,
   OperationKind,
+  type Posting,
 } from "./model.ts";
 import { ZERO } from "./money.ts";
 
@@ -48,7 +49,7 @@ export class QueryIndex {
   constructor(ledger: Ledger) {
     const dated = new Map<Id, [IsoDate, Dec][]>();
     for (const op of ledger.activeOperations()) {
-      const when = cashDate(op) ?? op.occurred_on;
+      const when = cashDate(op);
       for (const p of op.postings) {
         if (when === null) this.undated.set(p.account_id, (this.undated.get(p.account_id) ?? ZERO).add(p.amount));
         else {
@@ -58,9 +59,9 @@ export class QueryIndex {
         }
       }
       const comp = competence(op);
-      if (comp !== null) push(this.byCompetence, ymStr(comp), op);
+      if (comp !== null) pushTo(this.byCompetence, ymStr(comp), op);
       const cd = cashDate(op);
-      if (cd !== null) push(this.byCashMonth, ymStr(ymOf(cd)), op);
+      if (cd !== null) pushTo(this.byCashMonth, ymStr(ymOf(cd)), op);
     }
     for (const [accountId, entries] of dated) {
       entries.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
@@ -92,12 +93,6 @@ export class QueryIndex {
   accounts(): Id[] {
     return [...new Set([...this.prefix.keys(), ...this.undated.keys()])];
   }
-}
-
-function push<K, V>(map: Map<K, V[]>, key: K, value: V): void {
-  const list = map.get(key);
-  if (list === undefined) map.set(key, [value]);
-  else list.push(value);
 }
 
 export function index(ledger: Ledger): QueryIndex {
@@ -163,7 +158,7 @@ export interface MonthFlow {
   readonly net: Dec;
 }
 
-export function makeMonthFlow(): MonthFlow {
+function makeMonthFlow(): MonthFlow {
   return {
     inflow: ZERO,
     outflow: ZERO,
@@ -173,14 +168,17 @@ export function makeMonthFlow(): MonthFlow {
   };
 }
 
-/** Internal when money only moves between balance-sheet accounts inside the perimeter. */
-export function isInternal(ledger: Ledger, op: Operation, perimeter: ReadonlySet<Id> | null = null): boolean {
-  for (const p of op.postings) {
-    const account = ledger.account(p.account_id);
-    if (!isBalanceSheet(account) || account.type === AccountType.EQUITY) return false;
-    if (perimeter !== null && !perimeter.has(p.account_id)) return false;
-  }
-  return true;
+/** The postings of `op` into accounts of `type`, in order (an unknown account raises "Conta inexistente."). */
+export function postingsOfType(ledger: Ledger, op: Operation, type: AccountType): Posting[] {
+  return op.postings.filter((p) => ledger.account(p.account_id).type === type);
+}
+
+/** What `op` moved into accounts of `type`: the sum of those postings, as booked. */
+export function amountOfType(ledger: Ledger, op: Operation, type: AccountType): Dec {
+  return Dec.sum(
+    postingsOfType(ledger, op, type).map((p) => p.amount),
+    ZERO,
+  );
 }
 
 /**
@@ -223,7 +221,7 @@ export interface Statement {
   readonly result: Dec;
 }
 
-export function makeStatement(): Statement {
+function makeStatement(): Statement {
   return {
     income: new Map(),
     expense: new Map(),

@@ -40,10 +40,10 @@ export const zYearMonth = z.strictObject({
   month: z.number().int().min(1).max(12),
 }) as unknown as z.ZodType<YearMonth, YearMonth>;
 
-/** A string enum from its values (TypeScript `enum` is not used: erasable syntax only). */
-export function zEnum<const T extends readonly [string, ...string[]]>(values: T) {
-  return z.enum(values);
+/**
+ * A string enum from a const object's values (`AccountType`, `ItemKind`…): TypeScript `enum` is
+ * not used, the code is erasable syntax only.
+ */
+export function zEnumOf<const T extends Record<string, string>>(o: T) {
+  return z.enum(Object.values(o) as [T[keyof T], ...T[keyof T][]]);
 }
-
-/** Every entity has a stable id. */
-export const entityBase = { id: zId };

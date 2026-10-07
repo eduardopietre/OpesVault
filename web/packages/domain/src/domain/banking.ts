@@ -23,12 +23,14 @@ import { profiles } from "../investments/profile.ts";
 import { addValuation, assets, correctValuation, positions, valuationsOf } from "../investments/service.ts";
 import { formatDateBr, type IsoDate } from "../lib/dates.ts";
 import { record as recordBalanceCheck } from "./balance_checks.ts";
-import { collapseSpaces, getOrKeyError, head, pyEquals } from "../lib/py.ts";
+import { collapseSpaces, getOrKeyError, pyEquals, pyHead } from "../lib/py.ts";
+import { pushTo } from "../lib/collections.ts";
 import { Dec } from "../lib/dec.ts";
 import type { Id } from "../lib/ids.ts";
 import { zId } from "../lib/schema.ts";
 import * as records from "../tax/records.ts";
 import { TaxSubject } from "../tax/model.ts";
+import { getOrThrow } from "./error.ts";
 import { DomainError, Ledger } from "./ledger.ts";
 import {
   AccountSubtype,
@@ -109,16 +111,35 @@ export function bankAccounts(ledger: Ledger) {
 
 /** The bank account a ledger account belongs to. */
 export function ofAccount(ledger: Ledger, accountId: Id): BankAccount | null {
-  return (
-    [...bankAccounts(ledger).values()].find((b) => accountId === b.checking_id || accountId === b.savings_id) ?? null
-  );
+  // The first bank account holding the ledger account wins, as a scan in collection order finds it.
+  const byAccount = ledger.cachedFor("banking.ofAccount", ["bank_account"], () => {
+    const out = new Map<Id | null, BankAccount>();
+    for (const b of bankAccounts(ledger).values()) {
+      if (!out.has(b.checking_id)) out.set(b.checking_id, b);
+      if (!out.has(b.savings_id)) out.set(b.savings_id, b);
+    }
+    return out;
+  });
+  return byAccount.get(accountId) ?? null;
 }
 
 export function positionsOf(ledger: Ledger, bankId: Id): Id[] {
-  const held = new Set(
-    [...profiles(ledger).values()].filter((p) => p.bank_account_id === bankId).map((p) => p.position_id),
-  );
-  return [...positions(ledger).values()].filter((p) => held.has(p.id) && !p.closed).map((p) => p.id);
+  // Open positions per bank account, in position order (a position counts once per bank).
+  const byBank = ledger.cachedFor("banking.positionsOf", ["investment_profile", "position"], () => {
+    const banksOf = new Map<Id, Set<Id | null>>();
+    for (const p of profiles(ledger).values()) {
+      let banks = banksOf.get(p.position_id);
+      if (banks === undefined) banksOf.set(p.position_id, (banks = new Set()));
+      banks.add(p.bank_account_id);
+    }
+    const out = new Map<Id | null, Id[]>();
+    for (const p of positions(ledger).values()) {
+      if (p.closed) continue;
+      for (const bank of banksOf.get(p.id) ?? []) pushTo(out, bank, p.id);
+    }
+    return out;
+  });
+  return [...(byBank.get(bankId) ?? [])];
 }
 
 function clean(value: string | null, label: string): string | null {
@@ -166,9 +187,9 @@ export function build(fields: BuildFields): BankAccount {
   if (!label) throw new DomainError("Escolha o banco ou informe o nome da instituição.");
   const title = collapseSpaces(fields.name) || (found ? found.short_name : label);
   return BankAccountSchema.parse({
-    name: head(title, 120),
+    name: pyHead(title, 120),
     bank_code: found ? found.code : null,
-    bank_name: head(label, 150),
+    bank_name: pyHead(label, 150),
     branch: clean(fields.branch, "Agência"),
     number: clean(fields.number, "Conta"),
     holder_id: fields.holder_id,
@@ -179,10 +200,10 @@ export function build(fields: BuildFields): BankAccount {
 function newPartAccount(ledger: Ledger, item: BankAccount, part: Part): LedgerAccount {
   return ledger.addAccount(
     LedgerAccountSchema.parse({
-      name: head(`${item.name} — ${PART_LABELS[part].toLowerCase()}`, 120),
+      name: pyHead(`${item.name} — ${PART_LABELS[part].toLowerCase()}`, 120),
       type: AccountType.ASSET,
       subtype: PART_SUBTYPES[part],
-      institution: head(item.bank_name, 120),
+      institution: pyHead(item.bank_name, 120),
       masked_number: masked(item),
       holders: holders(item),
     }),
@@ -225,8 +246,7 @@ export function create(ledger: Ledger, item: BankAccount, options: CreateOptions
 
 /** Saves changes (bank, numbers, holders) and adds missing parts; ledger accounts follow. */
 export function update(ledger: Ledger, item: BankAccount, add: readonly Part[] = []): BankAccount {
-  const current = bankAccounts(ledger).get(item.id);
-  if (current === undefined) throw new DomainError("Conta bancária inexistente.");
+  const current = getOrThrow(bankAccounts(ledger), item.id, "Conta bancária inexistente.");
   check(ledger, item);
   let next = item;
   for (const part of add) {
@@ -252,7 +272,7 @@ export function archive(ledger: Ledger, bankId: Id): void {
 function masked(item: BankAccount): string | null {
   const parts = [item.branch ? `ag ${item.branch}` : "", item.number ? `c ${item.number}` : ""];
   const text = parts.filter(Boolean).join(" ");
-  return head(text, 32) || null;
+  return pyHead(text, 32) || null;
 }
 
 /** Holders, institution and number go to the ledger accounts and the investments held there. */
@@ -262,7 +282,7 @@ function sync(ledger: Ledger, item: BankAccount): void {
     const updated: LedgerAccount = {
       ...account,
       holders: holders(item),
-      institution: head(item.bank_name, 120),
+      institution: pyHead(item.bank_name, 120),
       masked_number: masked(item),
     };
     if (!pyEquals(updated, account)) ledger.updateAccount(updated, "dados da conta bancária");
@@ -355,8 +375,7 @@ export function recordValues(
   today: IsoDate,
   options: RecordValuesOptions = {},
 ): Recorded {
-  const item = bankAccounts(ledger).get(bankId);
-  if (item === undefined) throw new DomainError("Conta bancária inexistente.");
+  const item = getOrThrow(bankAccounts(ledger), bankId, "Conta bancária inexistente.");
   if (on > today) throw new DomainError("A data não pode estar no futuro.");
   const accounts = new Set(components(item).map(([, accountId]) => accountId));
   const held = new Set(positionsOf(ledger, bankId));
@@ -406,7 +425,7 @@ export function adjustBalance(ledger: Ledger, accountId: Id, on: IsoDate, inform
   return ledger.addOperation(
     operation({
       kind: OperationKind.OPENING_BALANCE,
-      description: head(
+      description: pyHead(
         first
           ? `Saldo de abertura — ${account.name}`
           : `Ajuste ao saldo informado em ${formatDateBr(on)} — ${account.name}`,

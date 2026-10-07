@@ -2,7 +2,9 @@
 import { DomainError, type Ledger } from "../domain/ledger.ts";
 import { AccountSubtype, AccountType, isActive, isLiquid } from "../domain/model.ts";
 import { isCents, toDecimal, ZERO } from "../domain/money.ts";
-import { type IsoDate, type YearMonth, ymEq } from "../lib/dates.ts";
+import { postingsOfType } from "../domain/queries.ts";
+import { type IsoDate, type YearMonth, ymBr } from "../lib/dates.ts";
+import { groupBy, indexBy } from "../lib/collections.ts";
 import { Dec } from "../lib/dec.ts";
 import { type Id, isId } from "../lib/ids.ts";
 import { casefold, sortedBy } from "../lib/text.ts";
@@ -10,7 +12,7 @@ import { isAssetCode } from "../catalogs/irpf.ts";
 import { AssetClass } from "../investments/model.ts";
 import { profileOf, TaxTreatment } from "../investments/profile.ts";
 import { category, positions, TAX_CATEGORY } from "../investments/service.ts";
-import { collapseSpaces, getOrKeyError, head, pyEquals } from "../lib/py.ts";
+import { capitalize, collapseSpaces, getOrKeyError, pyEquals, pyHead } from "../lib/py.ts";
 import * as ids from "./ids.ts";
 import {
   ASSET_GROUPS,
@@ -47,12 +49,6 @@ import {
   requireYear,
 } from "./model.ts";
 
-/** Python's `str.capitalize()`: the first character upper case, the rest lower case. */
-function capitalize(text: string): string {
-  const [first = "", ...rest] = [...text];
-  return first.toUpperCase() + rest.join("").toLowerCase();
-}
-
 function isBlank(value: unknown): boolean {
   return value === null || value === undefined || (typeof value === "string" && !value.trim());
 }
@@ -82,8 +78,16 @@ export function identities(ledger: Ledger) {
   return ledger.entities<TaxIdentity>("tax_identity");
 }
 
+/** A (subject, ref) pair as one map key: subjects never contain "\u0000", so it is unambiguous. */
+function pairKey(subject: string, ref: string): string {
+  return `${subject}\u0000${ref}`;
+}
+
 export function identity(ledger: Ledger, subject: TaxSubject, ref: string): TaxIdentity | null {
-  return [...identities(ledger).values()].find((i) => i.subject === subject && i.ref === ref) ?? null;
+  const index = ledger.cachedFor("tax.identities", ["tax_identity"], () =>
+    indexBy(identities(ledger).values(), (i) => pairKey(i.subject, i.ref)),
+  );
+  return index.get(pairKey(subject, ref)) ?? null;
 }
 
 /** Records the CPF or CNPJ of a payee (merchant), an institution (account) or a payer (category). */
@@ -100,7 +104,7 @@ export function setIdentity(
     throw new DomainError("Escolha o estabelecimento.");
   }
   const number = ids.normalize(taxId);
-  const label = head(collapseSpaces(name ?? ""), 150) || null;
+  const label = pyHead(collapseSpaces(name ?? ""), 150) || null;
   const current = identity(ledger, subject, ref);
   if (current === null) {
     return ledger.put("tax_identity", TaxIdentitySchema.parse({ subject, ref, tax_id: number, name: label }));
@@ -121,7 +125,10 @@ export function memberInfos(ledger: Ledger) {
 }
 
 export function memberInfo(ledger: Ledger, memberId: Id): MemberTaxInfo | null {
-  return [...memberInfos(ledger).values()].find((i) => i.member_id === memberId) ?? null;
+  const index = ledger.cachedFor("tax.memberInfos", ["member_tax_info"], () =>
+    indexBy(memberInfos(ledger).values(), (i) => i.member_id),
+  );
+  return index.get(memberId) ?? null;
 }
 
 export interface MemberInfoFields {
@@ -161,7 +168,7 @@ export function setMemberInfo(ledger: Ledger, memberId: Id, fields: MemberInfoFi
     cpf: number,
     birth_date: fields.birth_date,
     declared_by: declaredBy,
-    relation: head((fields.relation ?? "").trim(), 60) || null,
+    relation: pyHead((fields.relation ?? "").trim(), 60) || null,
   };
   const current = memberInfo(ledger, memberId);
   if (current === null)
@@ -197,8 +204,15 @@ export function classifications(ledger: Ledger) {
   return ledger.entities<IncomeClassification>("income_classification");
 }
 
+function classificationOf(ledger: Ledger, subject: NatureSubject, ref: Id): IncomeClassification | undefined {
+  const index = ledger.cachedFor("tax.classifications", ["income_classification"], () =>
+    indexBy(classifications(ledger).values(), (c) => pairKey(c.subject, c.ref)),
+  );
+  return index.get(pairKey(subject, ref));
+}
+
 export function natureOf(ledger: Ledger, subject: NatureSubject, ref: Id): IncomeNature | null {
-  const found = [...classifications(ledger).values()].find((c) => c.subject === subject && c.ref === ref);
+  const found = classificationOf(ledger, subject, ref);
   if (found !== undefined) return found.nature;
   if (subject === NatureSubject.CATEGORY) {
     const account = ledger.accounts.get(ref);
@@ -246,7 +260,7 @@ export function classify(ledger: Ledger, subject: NatureSubject, ref: Id, nature
   } else if (!positions(ledger).has(ref)) {
     throw new DomainError("Investimento inexistente.");
   }
-  const current = [...classifications(ledger).values()].find((c) => c.subject === subject && c.ref === ref);
+  const current = classificationOf(ledger, subject, ref);
   if (nature === null) {
     if (current !== undefined) classifications(ledger).delete(current.id);
     return;
@@ -265,13 +279,16 @@ export function incomeDetails(ledger: Ledger) {
 }
 
 export function detailOf(ledger: Ledger, operationId: Id): IncomeDetail | null {
-  return [...incomeDetails(ledger).values()].find((d) => d.operation_id === operationId) ?? null;
+  const index = ledger.cachedFor("tax.incomeDetails", ["income_detail"], () =>
+    indexBy(incomeDetails(ledger).values(), (d) => d.operation_id),
+  );
+  return index.get(operationId) ?? null;
 }
 
 export function receivedAmount(ledger: Ledger, operationId: Id): Dec {
   const op = getOrKeyError(ledger.operations, operationId);
   return Dec.sum(
-    op.postings.filter((p) => ledger.account(p.account_id).type === AccountType.INCOME).map((p) => p.amount.negate()),
+    postingsOfType(ledger, op, AccountType.INCOME).map((p) => p.amount.negate()),
     ZERO,
   );
 }
@@ -316,7 +333,10 @@ export function filings(ledger: Ledger) {
 }
 
 export function filingOf(ledger: Ledger, subject: FilingSubject, ref: Id): AssetFiling | null {
-  return [...filings(ledger).values()].find((f) => f.subject === subject && f.ref === ref) ?? null;
+  const index = ledger.cachedFor("tax.filings", ["asset_filing"], () =>
+    indexBy(filings(ledger).values(), (f) => pairKey(f.subject, f.ref)),
+  );
+  return index.get(pairKey(subject, ref)) ?? null;
 }
 
 function checkCode(group: string, code: string): void {
@@ -333,7 +353,7 @@ export function setFiling(
   description: string,
 ): AssetFiling {
   checkCode(group, code);
-  const text = head(collapseSpaces(description), 512);
+  const text = pyHead(collapseSpaces(description), 512);
   const current = filingOf(ledger, subject, ref);
   if (current === null) {
     return ledger.put("asset_filing", AssetFilingSchema.parse({ subject, ref, group, code, description: text }));
@@ -435,10 +455,10 @@ export function saveReport(
     source,
     source_id: sourceId,
     payer_tax_id: number,
-    payer_name: head((options.payer_name ?? "").trim(), 150) || null,
+    payer_name: pyHead((options.payer_name ?? "").trim(), 150) || null,
     document_id: options.document_id ?? null,
     lines: [...lines],
-    note: head((options.note ?? "").trim(), 500) || null,
+    note: pyHead((options.note ?? "").trim(), 500) || null,
   };
   const reportId = options.report_id ?? null;
   const current = reportId !== null ? (reports(ledger).get(reportId) ?? null) : null;
@@ -515,7 +535,7 @@ export function setVariableRules(
     money(rule.exempt_sales_limit, "o limite de vendas isentas");
   }
   const current = [...allVariableRules(ledger).values()].find((r) => r.valid_from === validFrom);
-  const text = head((source || "").trim(), 300) || "informado pelo usuário";
+  const text = pyHead((source || "").trim(), 300) || "informado pelo usuário";
   if (current === undefined) {
     return ledger.put(
       "variable_income_rules",
@@ -535,14 +555,13 @@ export function payments(ledger: Ledger) {
 }
 
 export function paid(ledger: Ledger, purpose: PaymentPurpose, month: YearMonth, memberId: Id | null = null): Dec {
+  // Payments by purpose and month, each group in collection order.
+  const byMonth = ledger.cachedFor("tax.payments", ["tax_payment"], () =>
+    groupBy(payments(ledger).values(), (p) => pairKey(p.purpose, `${p.month.year}\u0000${p.month.month}`)),
+  );
   return Dec.sum(
-    [...payments(ledger).values()]
-      .filter(
-        (p) =>
-          p.purpose === purpose &&
-          ymEq(p.month, month) &&
-          (memberId === null || p.member_id === null || p.member_id === memberId),
-      )
+    (byMonth.get(pairKey(purpose, `${month.year}\u0000${month.month}`)) ?? [])
+      .filter((p) => memberId === null || p.member_id === null || p.member_id === memberId)
       .map((p) => p.amount),
     ZERO,
   );
@@ -563,14 +582,9 @@ export function recordPayment(
   const account = ledger.accounts.get(fromAccount);
   if (account === undefined || !isLiquid(account)) throw new DomainError("Escolha a conta de onde saiu o pagamento.");
   const tax = category(ledger, AccountType.EXPENSE, TAX_CATEGORY);
-  const op = ledger.recordExpense(
-    fromAccount,
-    tax,
-    value,
-    paidOn,
-    `${PURPOSE_LABELS[purpose]} — ${String(month.month).padStart(2, "0")}/${month.year}`,
-    { member_id: memberId },
-  );
+  const op = ledger.recordExpense(fromAccount, tax, value, paidOn, `${PURPOSE_LABELS[purpose]} — ${ymBr(month)}`, {
+    member_id: memberId,
+  });
   return ledger.put(
     "tax_payment",
     TaxPaymentSchema.parse({
@@ -611,7 +625,7 @@ export function setMark(
     if (current !== null) marks(ledger).delete(current.id);
     return;
   }
-  const text = head((note ?? "").trim(), 300) || null;
+  const text = pyHead((note ?? "").trim(), 300) || null;
   if (current === null) {
     ledger.put("tax_checklist_mark", ChecklistMarkSchema.parse({ year, key, received, note: text }));
   } else if (current.received !== received || current.note !== text) {

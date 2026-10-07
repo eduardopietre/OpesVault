@@ -10,7 +10,8 @@
  * no DOM, no canvas, no network, no font fetching.
  */
 import { DocFormat } from "./model.ts";
-import { pyHead, pyLen, PyRe, pyStrip, PY_WS } from "./parsers/base.ts";
+import { PY_WS, pyHead, pyLen, pyStrip } from "../lib/py.ts";
+import { PyRe } from "./parsers/base.ts";
 
 export const MAX_DOCUMENT_BYTES = 50 * 1024 * 1024;
 export const MAX_PAGES = 300;
@@ -114,7 +115,7 @@ function includesAscii(data: Uint8Array, needle: string): boolean {
   return false;
 }
 
-export function detectFormat(data: Uint8Array): DocFormat {
+function detectFormat(data: Uint8Array): DocFormat {
   let start = 0;
   const end = Math.min(data.length, 2048);
   while (start < end && LSTRIP_BYTES.has(data[start]!)) start++; // bytes.lstrip strips any of these bytes
@@ -155,7 +156,7 @@ function decodeCp1252(data: Uint8Array): string | null {
 }
 
 /** utf-8-sig, then cp1252, like the desktop; null when neither decodes. */
-export function decodeText(data: Uint8Array): string | null {
+function decodeText(data: Uint8Array): string | null {
   try {
     return new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }).decode(data);
   } catch {
@@ -205,7 +206,7 @@ export async function loadSource(
 const SPACES = new PyRe(String.raw`\s+`);
 
 /** The desktop's line cleanup: whitespace runs become one space; empty lines are dropped. */
-export function pdfSource(name: string, text: PdfText): Source {
+function pdfSource(name: string, text: PdfText): Source {
   const src = source(name, DocFormat.PDF, { pages: text.pages, producer: text.producer });
   for (const raw of text.lines) {
     const clean = pyStrip(SPACES.sub(" ", raw.text));
@@ -407,7 +408,7 @@ const TRANSACTION = new PyRe(String.raw`<STMTTRN>(.*?)(?=</STMTTRN>|<STMTTRN>|</
 const FIRST = new Map<string, PyRe>();
 
 /** Tolerant reader for OFX 1.x (SGML, unclosed tags) and 2.x (XML). */
-export function parseOfx(text: string): OfxData {
+function parseOfx(text: string): OfxData {
   const upper = text.toUpperCase();
   const kind = upper.includes("<CCSTMTRS>") || upper.includes("CREDITCARDMSGSRSV1") ? "card" : "bank";
   const first = (tag: string, scope: string = text): string | null => {

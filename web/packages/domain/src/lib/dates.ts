@@ -21,7 +21,7 @@ export class DateError extends Error {
 const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
 const DAYS_BEFORE_MONTH = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
 
-export function isLeap(year: number): boolean {
+function isLeap(year: number): boolean {
   return year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
 }
 
@@ -50,7 +50,7 @@ export function parseDate(text: string): IsoDate {
   return text;
 }
 
-export function dateParts(d: IsoDate): { year: number; month: number; day: number } {
+function dateParts(d: IsoDate): { year: number; month: number; day: number } {
   return { year: Number(d.slice(0, 4)), month: Number(d.slice(5, 7)), day: Number(d.slice(8, 10)) };
 }
 
@@ -151,6 +151,11 @@ export function nowInstant(now: Date = new Date()): Instant {
 /** "05/10/2026" */
 export function formatDateBr(d: IsoDate): string {
   return `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}`;
+}
+
+/** "10/2026": Python's `f"{month.month:02d}/{month.year}"`. */
+export function ymBr(m: YearMonth): string {
+  return `${String(m.month).padStart(2, "0")}/${m.year}`;
 }
 
 // ── competence months ───────────────────────────────

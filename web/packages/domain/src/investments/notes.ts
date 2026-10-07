@@ -41,7 +41,7 @@ function afterFirstSpace(description: string): string {
   return description.slice(at + 1);
 }
 
-export function positionFor(
+function positionFor(
   ledger: Ledger,
   ticker: string | null,
   description: string,

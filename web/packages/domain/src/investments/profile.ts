@@ -14,17 +14,14 @@ import { DomainError, Ledger } from "../domain/ledger.ts";
 import { zEntityId } from "../domain/model.ts";
 import { formatDecimalBr } from "../domain/money.ts";
 import { formatDateBr } from "../lib/dates.ts";
+import { indexBy } from "../lib/collections.ts";
 import { Dec } from "../lib/dec.ts";
 import type { Id } from "../lib/ids.ts";
-import { zDate, zDec, zId } from "../lib/schema.ts";
+import { zDate, zDec, zId, zEnumOf } from "../lib/schema.ts";
 import { display, isCnpj } from "../tax/ids.ts";
 import { AssetClass } from "./model.ts";
-import { getOrKeyError, head, pyEquals } from "../lib/py.ts";
+import { getOrKeyError, pyEquals, pyHead } from "../lib/py.ts";
 import { assets, positions } from "./service.ts";
-
-function values<T extends Record<string, string>>(o: T): [T[keyof T], ...T[keyof T][]] {
-  return Object.values(o) as [T[keyof T], ...T[keyof T][]];
-}
 
 export const Indexer = {
   FIXED: "fixed", // prefixado
@@ -103,13 +100,13 @@ export const InvestmentProfileSchema = z.strictObject({
     .regex(/^\d{14}$/)
     .nullable()
     .default(null),
-  indexer: z.enum(values(Indexer)).nullable().default(null),
+  indexer: zEnumOf(Indexer).nullable().default(null),
   rate: zDec.nullable().default(null), // percent: 110 (% do CDI), 6.5 (IPCA + 6,5%), 12.4 (prefixado)
   applied_on: zDate.nullable().default(null),
   maturity: zDate.nullable().default(null),
-  liquidity: z.enum(values(Liquidity)).nullable().default(null),
+  liquidity: zEnumOf(Liquidity).nullable().default(null),
   liquidity_days: z.number().int().min(0).max(3650).nullable().default(null),
-  tax: z.enum(values(TaxTreatment)).nullable().default(null),
+  tax: zEnumOf(TaxTreatment).nullable().default(null),
   income_code: z
     .string()
     .regex(/^(isento|exclusivo):\d{2}$/)
@@ -127,7 +124,10 @@ export function profiles(ledger: Ledger) {
 }
 
 export function profileOf(ledger: Ledger, positionId: Id): InvestmentProfile | null {
-  return [...profiles(ledger).values()].find((p) => p.position_id === positionId) ?? null;
+  const byPosition = ledger.cachedFor("investments.profileOf", ["investment_profile"], () =>
+    indexBy(profiles(ledger).values(), (p) => p.position_id),
+  );
+  return byPosition.get(positionId) ?? null;
 }
 
 export function saveProfile(ledger: Ledger, profile: InvestmentProfile): InvestmentProfile {
@@ -233,5 +233,5 @@ export function description(ledger: Ledger, positionId: Id): string | null {
   if (profile.maturity) parts.push(`vencimento em ${formatDateBr(profile.maturity)}`);
   const bank = profile.bank_account_id ? bankAccounts(ledger).get(profile.bank_account_id) : undefined;
   if (bank !== undefined) parts.push(`custodiado em ${where(bank)}`);
-  return head(parts.join("; "), 512);
+  return pyHead(parts.join("; "), 512);
 }

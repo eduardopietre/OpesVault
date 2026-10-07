@@ -14,14 +14,13 @@ import * as merchants from "../domain/merchants.ts";
 import { AccountType, cashDate, isActive, type Operation } from "../domain/model.ts";
 import { formatBrl } from "../domain/money.ts";
 import * as tags from "../domain/tags.ts";
-import { formatDateBr } from "../lib/dates.ts";
+import { formatDateBr, ymBr } from "../lib/dates.ts";
 import type { Id } from "../lib/ids.ts";
 import { ItemStatus } from "../importing/model.ts";
 import * as learning from "../importing/learning.ts";
 import * as pipeline from "../importing/pipeline.ts";
 import * as rules from "../importing/rules.ts";
-import { pyLen } from "../importing/parsers/base.ts";
-import { collapseSpaces, strip } from "../lib/py.ts";
+import { collapseSpaces, pyLen, pyStrip } from "../lib/py.ts";
 import { casefold } from "../lib/text.ts";
 import { amountOf } from "./reads.ts";
 import {
@@ -158,7 +157,7 @@ function prepareReclassify(ledger: Ledger, args: Args, origin: string): Prepared
   return {
     tool: "reclassify_operations",
     summary: `Reclassificar ${moving.length} lançamento(s) para ${label}`,
-    details: [...listing(lines.map((line) => line + label)), `Motivo no histórico: ${strip(s(args["reason"]))}`],
+    details: [...listing(lines.map((line) => line + label)), `Motivo no histórico: ${pyStrip(s(args["reason"]))}`],
     apply,
   };
 }
@@ -267,7 +266,7 @@ function prepareBudget(ledger: Ledger, args: Args): PreparedEdit {
 
   return {
     tool: "set_budget",
-    summary: `Orçamento de ${label} em ${String(at.month).padStart(2, "0")}/${at.year}: ${formatBrl(value)}`,
+    summary: `Orçamento de ${label} em ${ymBr(at)}: ${formatBrl(value)}`,
     details: [`Antes: ${before}.`],
     apply,
   };
@@ -313,7 +312,7 @@ function prepareEntry(ledger: Ledger, args: Args, kind: AccountType, ctx: ToolCo
 // ── import review ───────────────────────────────────
 
 function prepareItem(ledger: Ledger, args: Args, origin: string): PreparedEdit {
-  const ref = strip(s(args["item"])).toLowerCase().replaceAll("-", "");
+  const ref = pyStrip(s(args["item"])).toLowerCase().replaceAll("-", "");
   const found = [...pipeline.items(ledger).values()].filter((i) => pyLen(ref) >= 8 && hex(i.id).startsWith(ref));
   if (found.length !== 1)
     throw new ToolError(`Não existe item com id '${s(args["item"])}'. Use list_pending_import_items.`);

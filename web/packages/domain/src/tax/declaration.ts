@@ -49,7 +49,7 @@ function when(op: Operation): IsoDate | null {
 }
 
 /** Whose item this is: the rateio share, the operation's member or the sole holder of its account. */
-export function ownerOf(ledger: Ledger, op: Operation, posting: Posting | null = null): Id | null {
+function ownerOf(ledger: Ledger, op: Operation, posting: Posting | null = null): Id | null {
   const member = (posting !== null ? posting.member_id : null) || op.member_id;
   if (member !== null) return member;
   const found = new Set<Id>();
@@ -70,7 +70,7 @@ function ownersIn(owners: readonly Id[], people: ReadonlySet<Id> | null): boolea
   return people === null || owners.some((o) => people.has(o));
 }
 
-export function investmentOperations(ledger: Ledger): Map<Id, InvestmentEvent> {
+function investmentOperations(ledger: Ledger): Map<Id, InvestmentEvent> {
   const out = new Map<Id, InvestmentEvent>();
   for (const event of events(ledger).values()) for (const opId of event.operation_ids) out.set(opId, event);
   return out;

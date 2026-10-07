@@ -19,9 +19,11 @@ import { Dec } from "../lib/dec.ts";
 import type { Id } from "../lib/ids.ts";
 import { zDate, zDec, zId } from "../lib/schema.ts";
 import { sortedBy } from "../lib/text.ts";
+import { getOrThrow } from "./error.ts";
 import { DomainError, Ledger } from "./ledger.ts";
 import { AccountType, cashDate, operation, type Operation, OperationKind, type Posting, zEntityId } from "./model.ts";
 import { allocate, isCents, toDecimal, ZERO } from "./money.ts";
+import { amountOfType, postingsOfType } from "./queries.ts";
 
 // ── reimbursements ───────────────────────────────────────
 
@@ -60,7 +62,7 @@ export function reimbursements(ledger: Ledger) {
 }
 
 function expenseParts(ledger: Ledger, op: Operation): Posting[] {
-  return op.postings.filter((p) => ledger.account(p.account_id).type === AccountType.EXPENSE && p.amount.isPositive());
+  return postingsOfType(ledger, op, AccountType.EXPENSE).filter((p) => p.amount.isPositive());
 }
 
 export function request(
@@ -135,8 +137,7 @@ function head(text: string, n: number): string {
 
 /** Records the money received as a refund of the original categories, in proportion. */
 export function receive(ledger: Ledger, reimbursementId: Id, accountId: Id, amount: unknown, on: IsoDate): Operation {
-  const item = reimbursements(ledger).get(reimbursementId);
-  if (item === undefined) throw new DomainError("Reembolso inexistente.");
+  const item = getOrThrow(reimbursements(ledger), reimbursementId, "Reembolso inexistente.");
   if (item.denied) throw new DomainError("Reembolso negado não recebe valores.");
   const original = ledger.operations.get(item.operation_id);
   if (original === undefined) throw new DomainError("O lançamento reembolsado não existe mais.");
@@ -175,8 +176,7 @@ export function receive(ledger: Ledger, reimbursementId: Id, accountId: Id, amou
 }
 
 export function deny(ledger: Ledger, reimbursementId: Id, reason: string): Reimbursement {
-  const item = reimbursements(ledger).get(reimbursementId);
-  if (item === undefined) throw new DomainError("Reembolso inexistente.");
+  const item = getOrThrow(reimbursements(ledger), reimbursementId, "Reembolso inexistente.");
   if (!reason.trim()) throw new DomainError("Informe o motivo.");
   return ledger.put("reimbursement", { ...item, denied: true, version: item.version + 1 }, { reason });
 }
@@ -214,10 +214,7 @@ export function payerOf(ledger: Ledger, op: Operation): Id | null {
     return card !== undefined ? card.holder_id : null;
   }
   // Who paid an expense is the holder of the account it left; a refund goes back to whoever receives it.
-  const expense = Dec.sum(
-    op.postings.filter((p) => ledger.account(p.account_id).type === AccountType.EXPENSE).map((p) => p.amount),
-    ZERO,
-  );
+  const expense = amountOfType(ledger, op, AccountType.EXPENSE);
   const sign = expense.isNegative() ? 1 : -1;
   const sources = op.postings.filter(
     (p) => p.amount.mul(sign).isPositive() && ledger.account(p.account_id).type === AccountType.ASSET,

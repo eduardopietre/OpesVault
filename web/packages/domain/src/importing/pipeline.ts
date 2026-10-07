@@ -288,13 +288,7 @@ export function storeReparseAnalysis(session: Session, batchId: Id, analysis: An
 }
 
 /** The synchronous half of `reparseWith`, for a result parsed in the worker. */
-export function storeReparsed(
-  session: Session,
-  batchId: Id,
-  src: Source,
-  parser: Parser,
-  result: ParseResult,
-): ImportBatch {
+function storeReparsed(session: Session, batchId: Id, src: Source, parser: Parser, result: ParseResult): ImportBatch {
   const batch = batches(session.ledger).get(batchId);
   if (batch === undefined) throw new BatchNotFound(batchId);
   const document = session.document(batch.document_id);

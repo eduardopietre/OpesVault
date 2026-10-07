@@ -219,6 +219,17 @@ export function createApp(options: AppOptions): Hono {
     return account;
   };
 
+  /**
+   * The signed-in caller and the route's project, once membership is checked: `unauthorized` and
+   * then `forbidden` come before anything about the body.
+   */
+  const member = async (c: Context): Promise<{ account: Me; projectId: string | undefined }> => {
+    const account = await me(c);
+    const projectId = c.req.param("projectId");
+    await service.requireMember(account, projectId);
+    return { account, projectId };
+  };
+
   const startSession = (c: Context, token: string): void => {
     setCookie(c, cookieName, token, {
       httpOnly: true,
@@ -272,10 +283,9 @@ export function createApp(options: AppOptions): Hono {
     return c.json(await service.createProject(account, body.projectId, body.sealedName, body.envelope));
   });
   api.patch("/projects/:projectId", async (c) => {
-    const account = await me(c);
-    await service.requireMember(account, c.req.param("projectId"));
+    const { account, projectId } = await member(c);
     const body = await parseBody(c, Schemas.rename);
-    await service.renameProject(account, c.req.param("projectId"), body.sealedName);
+    await service.renameProject(account, projectId, body.sealedName);
     return c.body(null, 204);
   });
   api.delete("/projects/:projectId", async (c) => {
@@ -288,12 +298,11 @@ export function createApp(options: AppOptions): Hono {
     c.json({ members: await service.listMembers(await me(c), c.req.param("projectId")) }),
   );
   api.post("/projects/:projectId/members", async (c) => {
-    const account = await me(c);
-    await service.requireMember(account, c.req.param("projectId"));
+    const { account, projectId } = await member(c);
     // "no such account" is an answer about other people's accounts: slow down a probe of many emails.
     limitAccountAction(account, "add-member");
     const body = await parseBody(c, Schemas.member);
-    return c.json(await service.addMember(account, c.req.param("projectId"), body.email));
+    return c.json(await service.addMember(account, projectId, body.email));
   });
   api.delete("/projects/:projectId/members/:accountId", async (c) => {
     await service.removeMember(await me(c), c.req.param("projectId"), c.req.param("accountId"));
@@ -305,34 +314,28 @@ export function createApp(options: AppOptions): Hono {
     c.json(await service.getEnvelope(await me(c), c.req.param("projectId"))),
   );
   api.put("/projects/:projectId/envelope", async (c) => {
-    const account = await me(c);
-    await service.requireMember(account, c.req.param("projectId"));
+    const { account, projectId } = await member(c);
     const body = await parseBody(c, Schemas.envelope);
-    return c.json(await service.putEnvelope(account, c.req.param("projectId"), body.envelope, body.expectedRevision));
+    return c.json(await service.putEnvelope(account, projectId, body.envelope, body.expectedRevision));
   });
 
   // records
   api.get("/projects/:projectId/records", async (c) => {
-    const account = await me(c);
-    await service.requireMember(account, c.req.param("projectId"));
+    const { account, projectId } = await member(c);
     const query = parseQuery(c, Schemas.pullQuery);
-    return c.json(
-      await service.pull(account, c.req.param("projectId"), query.since, query.limit ?? LIMITS.defaultPullLimit),
-    );
+    return c.json(await service.pull(account, projectId, query.since, query.limit ?? LIMITS.defaultPullLimit));
   });
   api.post("/projects/:projectId/records", async (c) => {
-    const account = await me(c);
-    await service.requireMember(account, c.req.param("projectId"));
+    const { account, projectId } = await member(c);
     const body = await parseBody(c, Schemas.push);
-    return c.json(await service.push(account, c.req.param("projectId"), body.leaseId, body.records));
+    return c.json(await service.push(account, projectId, body.leaseId, body.records));
   });
 
   // blobs
   api.put("/projects/:projectId/blobs/:blobId", async (c) => {
-    const account = await me(c);
-    await service.requireMember(account, c.req.param("projectId"));
+    const { account, projectId } = await member(c);
     const data = new Uint8Array(await c.req.arrayBuffer());
-    await service.putBlob(account, c.req.param("projectId"), c.req.header(LEASE_HEADER), c.req.param("blobId"), data);
+    await service.putBlob(account, projectId, c.req.header(LEASE_HEADER), c.req.param("blobId"), data);
     return c.body(null, 204);
   });
   api.get("/projects/:projectId/blobs/:blobId", async (c) => {
@@ -349,22 +352,19 @@ export function createApp(options: AppOptions): Hono {
     c.json({ lease: await service.currentLease(await me(c), c.req.param("projectId")) }),
   );
   api.post("/projects/:projectId/lease", async (c) => {
-    const account = await me(c);
-    await service.requireMember(account, c.req.param("projectId"));
+    const { account, projectId } = await member(c);
     const body = await parseBody(c, Schemas.acquire);
-    return c.json(await service.acquireLease(account, c.req.param("projectId"), body.holder, body.takeOver));
+    return c.json(await service.acquireLease(account, projectId, body.holder, body.takeOver));
   });
   api.post("/projects/:projectId/lease/renew", async (c) => {
-    const account = await me(c);
-    await service.requireMember(account, c.req.param("projectId"));
+    const { account, projectId } = await member(c);
     const body = await parseBody(c, Schemas.lease);
-    return c.json(await service.renewLease(account, c.req.param("projectId"), body.leaseId));
+    return c.json(await service.renewLease(account, projectId, body.leaseId));
   });
   api.post("/projects/:projectId/lease/release", async (c) => {
-    const account = await me(c);
-    await service.requireMember(account, c.req.param("projectId"));
+    const { account, projectId } = await member(c);
     const body = await parseBody(c, Schemas.lease);
-    await service.releaseLease(account, c.req.param("projectId"), body.leaseId);
+    await service.releaseLease(account, projectId, body.leaseId);
     return c.body(null, 204);
   });
 

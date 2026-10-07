@@ -10,7 +10,7 @@ import { LOOKBACK_DAYS, Severity } from "../domain/alerts.ts";
 import type { Ledger } from "../domain/ledger.ts";
 import { formatBrl } from "../domain/money.ts";
 import { assets, positions } from "../investments/service.ts";
-import { addDays, type IsoDate, monthOf, type YearMonth, yearOf, ymAdd, ymEq, ymOf, ymStr } from "../lib/dates.ts";
+import { addDays, formatDateBr, type IsoDate, monthOf, yearOf, ymAdd, ymBr, ymEq, ymOf, ymStr } from "../lib/dates.ts";
 import type { Id } from "../lib/ids.ts";
 import { getOrKeyError, orDec } from "../lib/py.ts";
 import { sortedBy } from "../lib/text.ts";
@@ -45,15 +45,6 @@ export function issues(ledger: Ledger, year: number, declarantId: Id | null, tod
 function person(ledger: Ledger, memberId: Id | null): string {
   const member = memberId ? ledger.members.get(memberId) : undefined;
   return member ? member.name : "sem integrante";
-}
-
-/** `f"{month.month:02d}/{month.year}"` */
-function monthLabel(month: YearMonth): string {
-  return `${String(month.month).padStart(2, "0")}/${month.year}`;
-}
-
-function dateBr(d: IsoDate): string {
-  return `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}`;
 }
 
 const ORDER: Readonly<Record<Severity, number>> = { urgent: 0, soon: 1, info: 2 };
@@ -255,8 +246,8 @@ function monthlyIssues(ledger: Ledger, year: number, people: ReadonlySet<Id> | n
       out.push(
         issue(
           late ? Severity.URGENT : Severity.SOON,
-          `DARF de renda variável ${monthLabel(month)}`,
-          `valor de ${formatBrl(due.sub(paid))}; ${late ? "venceu" : "vence"} em ${dateBr(when)}`,
+          `DARF de renda variável ${ymBr(month)}`,
+          `valor de ${formatBrl(due.sub(paid))}; ${late ? "venceu" : "vence"} em ${formatDateBr(when)}`,
           "payment",
           ["variable_income", month],
         ),
@@ -270,8 +261,8 @@ function monthlyIssues(ledger: Ledger, year: number, people: ReadonlySet<Id> | n
     out.push(
       issue(
         late ? Severity.URGENT : Severity.SOON,
-        `Carnê-Leão ${monthLabel(item.month)}: ${person(ledger, item.member_id)}`,
-        `recebido ${formatBrl(item.amount)}; o DARF ${late ? "venceu" : "vence"} em ${dateBr(when)}. ` +
+        `Carnê-Leão ${ymBr(item.month)}: ${person(ledger, item.member_id)}`,
+        `recebido ${formatBrl(item.amount)}; o DARF ${late ? "venceu" : "vence"} em ${formatDateBr(when)}. ` +
           "Calcule no Carnê-Leão Web e registre o pagamento",
         "payment",
         ["carne_leao", item.month, item.member_id],
@@ -310,7 +301,7 @@ function computeReminders(ledger: Ledger, today: IsoDate, horizon: number): Remi
       const severity = when < today ? Severity.URGENT : Severity.SOON;
       out.push([
         severity,
-        `DARF de renda variável ${monthLabel(month)}`,
+        `DARF de renda variável ${ymBr(month)}`,
         `${formatBrl(due.due.sub(due.paid))}`,
         when,
         ["variable_income", month],
@@ -321,7 +312,7 @@ function computeReminders(ledger: Ledger, today: IsoDate, horizon: number): Remi
         const severity = when < today ? Severity.URGENT : Severity.SOON;
         out.push([
           severity,
-          `Carnê-Leão ${monthLabel(month)}: ${person(ledger, item.member_id)}`,
+          `Carnê-Leão ${ymBr(month)}: ${person(ledger, item.member_id)}`,
           `${formatBrl(item.amount)} recebido(s) de pessoa física ou do exterior`,
           when,
           ["carne_leao", month, item.member_id],

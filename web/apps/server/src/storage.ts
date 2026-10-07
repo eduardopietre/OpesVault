@@ -5,9 +5,17 @@
  * receive validated input (the service checks it first) and never see plaintext: sealed names,
  * envelopes and records are opaque ciphertext.
  */
-import type { Envelope, EnvelopeContent, PullResult, PushRecord, PushResult, SealedRecord } from "@opesvault/vault";
+import type {
+  Envelope,
+  EnvelopeContent,
+  ProjectRole,
+  PullResult,
+  PushRecord,
+  PushResult,
+  SealedRecord,
+} from "@opesvault/vault";
 
-export type Role = "owner" | "member";
+export type Role = ProjectRole;
 
 export interface AccountRow {
   readonly id: string;

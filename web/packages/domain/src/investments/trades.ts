@@ -14,9 +14,9 @@ import { allocate, roundMoney, toDecimal, ZERO } from "../domain/money.ts";
 import type { IsoDate } from "../lib/dates.ts";
 import { Dec } from "../lib/dec.ts";
 import type { Id } from "../lib/ids.ts";
+import { sortedGroupsBy } from "../lib/collections.ts";
 import { getOrKeyError } from "../lib/py.ts";
 import { zDate, zDec, zId } from "../lib/schema.ts";
-import { sortedBy } from "../lib/text.ts";
 import { AssetClass, EventKind, type InvestmentEvent, investmentEvent, TrackingMode } from "./model.ts";
 import {
   assets,
@@ -41,7 +41,7 @@ export const AVERAGE_CLASSES: ReadonlySet<AssetClass> = new Set([
   AssetClass.CRYPTO,
 ]);
 
-export function defaultMethod(assetClass: AssetClass): CostMethod {
+function defaultMethod(assetClass: AssetClass): CostMethod {
   return AVERAGE_CLASSES.has(assetClass) ? CostMethod.AVERAGE : CostMethod.FIFO;
 }
 
@@ -68,11 +68,16 @@ export function lots(ledger: Ledger) {
   return ledger.entities<Lot>("lot");
 }
 
+/** A position's lots by acquisition date (ties in collection order); a fresh array. */
 export function lotsOf(ledger: Ledger, positionId: Id, openOnly = false): Lot[] {
-  const out = sortedBy(
-    [...lots(ledger).values()].filter((lot) => lot.position_id === positionId),
-    (lot) => lot.acquired_on,
+  const byPosition = ledger.cachedFor("investments.lotsOf", ["lot"], () =>
+    sortedGroupsBy(
+      lots(ledger).values(),
+      (lot) => lot.position_id,
+      (lot) => lot.acquired_on,
+    ),
   );
+  const out = [...(byPosition.get(positionId) ?? [])];
   return openOnly ? out.filter((lot) => lot.remaining_quantity.isPositive()) : out;
 }
 

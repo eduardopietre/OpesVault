@@ -9,3 +9,10 @@ export class DomainError extends Error {
     this.name = "DomainError";
   }
 }
+
+/** `map.get(key)`, or a DomainError with `message` ("Conta inexistente.") when the key is missing. */
+export function getOrThrow<K, V>(map: ReadonlyMap<K, V>, key: K, message: string): V {
+  const value = map.get(key);
+  if (value === undefined) throw new DomainError(message);
+  return value;
+}

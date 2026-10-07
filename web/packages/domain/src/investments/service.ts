@@ -5,6 +5,7 @@
  * Every money movement is a ledger operation (postings on the position's cost
  * account); valuations live apart and never create flows (docs/04 §3).
  */
+import { getOrThrow } from "../domain/error.ts";
 import { DomainError, type Ledger } from "../domain/ledger.ts";
 import {
   AccountSubtype,
@@ -20,8 +21,8 @@ import { balance } from "../domain/queries.ts";
 import type { IsoDate } from "../lib/dates.ts";
 import type { Dec } from "../lib/dec.ts";
 import type { Id } from "../lib/ids.ts";
+import { sortedGroupsBy } from "../lib/collections.ts";
 import { getOrKeyError } from "../lib/py.ts";
-import { sortedBy } from "../lib/text.ts";
 import {
   type Asset,
   AssetSchema,
@@ -62,23 +63,32 @@ export function events(ledger: Ledger) {
   return ledger.entities<InvestmentEvent>("investment_event");
 }
 
+/** A position's valuations by date (ties in collection order); a fresh array the caller may change. */
 export function valuationsOf(ledger: Ledger, positionId: Id): Valuation[] {
-  return sortedBy(
-    [...valuations(ledger).values()].filter((v) => v.position_id === positionId),
-    (v) => v.on,
+  const byPosition = ledger.cachedFor("investments.valuationsOf", ["valuation"], () =>
+    sortedGroupsBy(
+      valuations(ledger).values(),
+      (v) => v.position_id,
+      (v) => v.on,
+    ),
   );
+  return [...(byPosition.get(positionId) ?? [])];
 }
 
+/** A position's events by date (ties in collection order); a fresh array the caller may change. */
 export function eventsOf(ledger: Ledger, positionId: Id): InvestmentEvent[] {
-  return sortedBy(
-    [...events(ledger).values()].filter((e) => e.position_id === positionId),
-    (e) => e.on,
+  const byPosition = ledger.cachedFor("investments.eventsOf", ["investment_event"], () =>
+    sortedGroupsBy(
+      events(ledger).values(),
+      (e) => e.position_id,
+      (e) => e.on,
+    ),
   );
+  return [...(byPosition.get(positionId) ?? [])];
 }
 
 export function position(ledger: Ledger, positionId: Id): Position {
-  const found = positions(ledger).get(positionId);
-  if (found === undefined) throw new DomainError("Posição inexistente.");
+  const found = getOrThrow(positions(ledger), positionId, "Posição inexistente.");
   return found;
 }
 
@@ -92,7 +102,7 @@ export function category(ledger: Ledger, kind: AccountType, name: string): Id {
   return ledger.addAccount(LedgerAccountSchema.parse({ name, type: kind, subtype: AccountSubtype.CATEGORY })).id;
 }
 
-export function taxPayableAccount(ledger: Ledger): Id {
+function taxPayableAccount(ledger: Ledger): Id {
   for (const account of ledger.accounts.values()) {
     if (account.subtype === AccountSubtype.TAX_PAYABLE && !account.archived) return account.id;
   }
@@ -262,8 +272,7 @@ export function correctValuation(
   reason: string,
   nature: ValueNature | null = null,
 ): Valuation {
-  const current = valuations(ledger).get(valuationId);
-  if (current === undefined) throw new DomainError("Avaliação inexistente.");
+  const current = getOrThrow(valuations(ledger), valuationId, "Avaliação inexistente.");
   if (!reason.trim()) throw new DomainError("Correções exigem motivo.");
   const updated: Valuation = { ...current, value: toDecimal(value), ...(nature !== null ? { nature } : {}) };
   return ledger.put("valuation", updated, { reason });

@@ -13,7 +13,7 @@ import { dmy, type Parser, type ParseResult, parsedItem, pyHead, PyRe, pyStrip, 
 const DOT_DECIMAL = new PyRe(String.raw`[-+]?\d+(\.\d+)?`);
 
 /** OFX/CSV exports use '.' as decimal separator; reject anything else. */
-export function dotDecimal(text: string): Dec | null {
+function dotDecimal(text: string): Dec | null {
   const cleaned = pyStrip(text).replaceAll(" ", "");
   if (!DOT_DECIMAL.fullmatch(cleaned)) return null;
   return Dec.parse(cleaned);
@@ -21,7 +21,7 @@ export function dotDecimal(text: string): Dec | null {
 
 const OFX_DATE = new PyRe(String.raw`(\d{4})(\d{2})(\d{2})`);
 
-export function ofxDate(text: string | null | undefined): IsoDate | null {
+function ofxDate(text: string | null | undefined): IsoDate | null {
   if (!text) return null;
   const m = OFX_DATE.match(text);
   if (!m) return null;

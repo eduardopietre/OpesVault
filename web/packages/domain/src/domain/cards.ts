@@ -24,6 +24,7 @@ import { KeyError } from "../lib/py.ts";
 import { zDate, zDec, zId } from "../lib/schema.ts";
 import { cmpKeys } from "../lib/text.ts";
 import { normalize } from "../importing/rules.ts";
+import { getOrThrow } from "./error.ts";
 import { DomainError, Ledger } from "./ledger.ts";
 import {
   type Card,
@@ -113,8 +114,7 @@ export function recordInstallmentPurchase(
   policy: CompetencePolicy = CompetencePolicy.PURCHASE,
   extra: Partial<OperationInput> = {},
 ): InstallmentPlan {
-  const card = ledger.cards.get(cardId);
-  if (card === undefined) throw new DomainError("Cartão inexistente.");
+  const card = getOrThrow(ledger.cards, cardId, "Cartão inexistente.");
   if (count < 2) throw new DomainError("Parcelamento exige ao menos 2 parcelas.");
   const value = toDecimal(total);
   if (!value.isPositive()) throw new DomainError("Informe um valor positivo.");

@@ -6,6 +6,7 @@
 import { daysBetween } from "../lib/dates.ts";
 import type { Dec } from "../lib/dec.ts";
 import type { Id } from "../lib/ids.ts";
+import { KeyError } from "../lib/py.ts";
 import type { Ledger } from "../domain/ledger.ts";
 import { AccountType, cashDate } from "../domain/model.ts";
 import { ZERO } from "../domain/money.ts";
@@ -135,7 +136,7 @@ export function reconcile(ledger: Ledger, batch: ImportBatch): readonly Reconcil
 }
 
 /** Equal items have equal fingerprints; amounts compare by value, like Python's Decimal keys. */
-export function fingerprint(item: ExtractedItem): string {
+function fingerprint(item: ExtractedItem): string {
   const amount = item.amount === null ? null : item.amount.isZero() ? "0" : item.amount.normalize().toString();
   return JSON.stringify([CARD_KINDS.has(item.kind), item.kind, item.occurred_on, amount, normalize(item.description)]);
 }
@@ -151,7 +152,7 @@ function byIdInt(a: ExtractedItem, b: ExtractedItem): number {
  * Identical lines are counted: if an earlier import approved one 'X 10,00' on a day and this file
  * has two, the second is new (two equal purchases can be legitimate).
  */
-export function findDuplicates(ledger: Ledger, batch: ImportBatch): void {
+function findDuplicates(ledger: Ledger, batch: ImportBatch): void {
   if (batch.account_id === null) return;
   const previous = new Map<string, number>();
   const linked = new Map<string, Id[]>();
@@ -212,7 +213,7 @@ export function findDuplicates(ledger: Ledger, batch: ImportBatch): void {
  * payment seen in the bank) that already holds this fact. Value and date alone are a suggestion,
  * shown to the user, never a silent merge (docs/05 §6).
  */
-export function matchExistingOperation(
+function matchExistingOperation(
   ledger: Ledger,
   batch: ImportBatch,
   item: ExtractedItem,
@@ -228,7 +229,7 @@ export function matchExistingOperation(
     if (i.operation_id !== null && sameAccountBatches.has(i.batch_id)) alreadyLinked.add(i.operation_id);
   for (const op of ledger.activeOperations()) {
     if (claimed.has(op.id) || alreadyLinked.has(op.id)) continue;
-    const when = cashDate(op) ?? op.occurred_on;
+    const when = cashDate(op);
     if (when === null || Math.abs(daysBetween(when, item.occurred_on)) > MATCH_WINDOW_DAYS) continue;
     for (const posting of op.postings) {
       if (posting.account_id !== batch.account_id) continue;
@@ -271,9 +272,4 @@ export function refreshBatch(ledger: Ledger, batchId: Id): ImportBatch {
 }
 
 /** Python's `KeyError` for a batch or item id that is not in the ledger. */
-export class BatchNotFound extends Error {
-  constructor(id: Id) {
-    super(id);
-    this.name = "KeyError";
-  }
-}
+export class BatchNotFound extends KeyError {}

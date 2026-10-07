@@ -25,7 +25,7 @@ export type JournalEntry =
   | readonly ["external", (forward: boolean) => void];
 
 /** ISO instants compare as text once the fraction has a fixed width. */
-export function instantKey(at: string): string {
+function instantKey(at: string): string {
   const m = /^(.*T\d{2}:\d{2}:\d{2})(?:\.(\d+))?(.*)$/.exec(at);
   if (!m) return at;
   return `${m[1]}.${(m[2] ?? "").padEnd(9, "0")}${m[3]}`;

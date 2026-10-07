@@ -27,10 +27,11 @@
  */
 import { argon2id, checkKdfParams, DEFAULT_KDF, SALT_BYTES, type KdfParams } from "./argon2.ts";
 import { concatBytes, copyBytes, fromHex, fromUtf8, toHex, utf8, wipe, type Bytes } from "./bytes.ts";
+import { counterNonce, u32 } from "./counters.ts";
 import { CryptoError } from "./errors.ts";
 import { aesGcmDecrypt, aesGcmEncrypt, hkdfAesKey, importHkdfKey, TAG_BYTES } from "./primitives.ts";
 import type { PlainRecord } from "./project_keys.ts";
-import { systemRandom, type RandomSource } from "./random.ts";
+import { ID_PATTERN, systemRandom, type RandomSource } from "./random.ts";
 
 export const BACKUP_VERSION = 1;
 export const BACKUP_MAGIC = utf8("OVBK");
@@ -102,20 +103,6 @@ export type BackupItem =
   | { readonly type: "record"; readonly record: PlainRecord }
   | { readonly type: "blob"; readonly id: string; readonly data: Bytes }
   | { readonly type: "end"; readonly totals: BackupTotals };
-
-const BLOB_ID = /^[0-9a-f]{32}$/;
-
-function u32(value: number): Bytes {
-  const out = new Uint8Array(4);
-  new DataView(out.buffer).setUint32(0, value);
-  return out;
-}
-
-function counterNonce(index: number): Bytes {
-  const out = new Uint8Array(12);
-  new DataView(out.buffer).setUint32(8, index);
-  return out;
-}
 
 function checkAad(header: Bytes): Bytes {
   return concatBytes(utf8("opesvault/backup/v1|check|"), header);
@@ -291,7 +278,7 @@ export class BackupWriter {
 
   async writeBlob(id: string, data: Uint8Array): Promise<void> {
     this.#ready();
-    if (!BLOB_ID.test(id)) throw new TypeError("blob id must be 32 lowercase hex characters");
+    if (!ID_PATTERN.test(id)) throw new TypeError("blob id must be 32 lowercase hex characters");
     if (data.length > MAX_FRAME_BYTES) throw new RangeError("attachment too large");
     await this.#append(concatBytes(Uint8Array.of(TAG_BLOB), fromHex(id), u32(data.length)));
     await this.#append(data);
@@ -535,7 +522,7 @@ export class BackupReader {
           value["records"] !== this.#records ||
           value["blobs"] !== this.#blobs ||
           !Array.isArray(missing) ||
-          !missing.every((id) => typeof id === "string" && BLOB_ID.test(id))
+          !missing.every((id) => typeof id === "string" && ID_PATTERN.test(id))
         ) {
           throw new BackupError("invalid_content");
         }

@@ -17,10 +17,9 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { PARSERS } from "../src/importing/parsers/index.ts";
 import { runParser } from "../src/importing/pipeline.ts";
 import { linesFromItems, loadSource, SourceError, SourceProblem } from "../src/importing/source.ts";
-import { bytesOf, extractor, parsersGolden, resultJson } from "./importing_helpers.ts";
+import { bytesOf, extractor, GOLDEN_PARSERS as PARSERS, parsersGolden, resultJson } from "./importing_helpers.ts";
 
 /** Points: a box edge further than this from pdfplumber's fails the test. */
 export const BOX_TOLERANCE = 0.01;

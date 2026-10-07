@@ -16,6 +16,7 @@ import {
 } from "../helpers.ts";
 import {
   AMBIGUOUS,
+  BANK_CSV,
   CSV,
   ITAU,
   OFX,
@@ -143,6 +144,27 @@ for (const size of TEST_SIZES) {
         await settle(page);
         await expectNoHorizontalOverflow(page);
         await audit(page, "importar-arquivos");
+        expect(errors).toEqual([]);
+      });
+
+      test("a CSV statement from any bank is read by its columns, reconciled and approved", async ({ page }) => {
+        const errors = watchErrors(page);
+        await fakeOllama(page);
+        await openDemo(page, "/importar");
+        await chooseFiles(page, [BANK_CSV]);
+        await expect(readNotice(page, "extrato-banco.csv")).toBeVisible();
+        // the balance lines are not operations
+        await expect(row(items(page), "PIX RECEBIDO EMPRESA Y")).toBeVisible();
+        await expect(row(items(page), "FARMACIA SAO JOAO")).toBeVisible();
+        await expect(items(page).locator("[data-row-id]").filter({ hasText: "SALDO ANTERIOR" })).toHaveCount(0);
+        await page.getByRole("combobox", { name: /^Conta ou cartão/ }).click();
+        await page.getByRole("option", { name: "Banco A", exact: true }).click();
+        await page.getByRole("button", { name: "Aprovar prontos" }).click();
+        await expect(page.getByText("2 operação(ões) criada(s), 0 evidência(s) vinculada(s).")).toBeVisible();
+        await page.getByRole("button", { name: "Layouts suportados" }).click();
+        await expect(
+          page.getByRole("dialog", { name: "Layouts suportados" }).getByText("csv-extrato-generico"),
+        ).toBeVisible();
         expect(errors).toEqual([]);
       });
 

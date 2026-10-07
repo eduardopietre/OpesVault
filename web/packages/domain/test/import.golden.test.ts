@@ -3,7 +3,7 @@
  * the TS pipeline give the same outcome and the same state after every step. Ids are random on
  * both sides, so states name accounts, items and operations instead of using ids.
  */
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { DomainError, type Ledger } from "../src/domain/ledger.ts";
 import { AccountSubtype, AccountType, CardSchema, LedgerAccountSchema, type Operation } from "../src/domain/model.ts";
@@ -23,6 +23,13 @@ interface Scenario {
   steps: Step[];
   results: { outcome: { ok?: unknown; error?: string; message?: string }; snapshot: unknown }[];
 }
+
+// The flows were recorded with the desktop's layouts: the web-only ones (the generic CSV statement) stay out, so
+// that a file no desktop layout read is still unsupported here.
+vi.mock("../src/importing/parsers/index.ts", async (original) => {
+  const actual = await original<typeof import("../src/importing/parsers/index.ts")>();
+  return { ...actual, PARSERS: actual.PARSERS.filter((p) => p.id !== "csv-extrato-generico") };
+});
 
 const { scenarios } = golden<{ scenarios: Record<string, Scenario> }>("import");
 

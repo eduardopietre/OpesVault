@@ -6,11 +6,12 @@
 import { describe, expect, it } from "vitest";
 
 import { DocFormat } from "../src/importing/model.ts";
-import { PARSERS } from "../src/importing/parsers/index.ts";
 import { chooseParser, ParseFailed, runParser } from "../src/importing/pipeline.ts";
 import { loadStructured, type Source, SourceError } from "../src/importing/source.ts";
 import {
   bytesOf,
+  GOLDEN_PARSERS as PARSERS,
+  sameChoice,
   type DocumentCase,
   type Outcome,
   parsersGolden,
@@ -34,7 +35,7 @@ function runOutcome(parserId: string, src: Source): Outcome {
 function checkAnalysis(doc: DocumentCase, src: Source): void {
   for (const p of PARSERS) expect(p.detect(src), `${doc.name} detect ${p.id}`).toBe(doc.detect![p.id]);
   const [parser, candidates] = chooseParser(src);
-  expect({ parser: parser?.id ?? null, candidates }).toEqual(doc.choice);
+  expect(sameChoice({ parser: parser?.id ?? null, candidates }, doc.choice), `${doc.name} choice`).toBe(true);
   for (const p of PARSERS) expect(runOutcome(p.id, src), `${doc.name} ${p.id}`).toEqual(doc.results![p.id]);
 }
 

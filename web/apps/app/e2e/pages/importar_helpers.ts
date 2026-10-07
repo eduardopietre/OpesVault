@@ -13,6 +13,21 @@ export const OFX: TestFile = { name: "extrato.ofx", mimeType: "application/x-ofx
 export const CSV: TestFile = { name: "fatura.csv", mimeType: "text/csv", buffer: Buffer.from(NUBANK_CARD_CSV) };
 export const ITAU: TestFile = { name: "itau.pdf", mimeType: "application/pdf", buffer: Buffer.from(ITAU_CARD_PDF) };
 export const PROTECTED: TestFile = { name: "protegido.pdf", mimeType: "application/pdf", buffer: protectedPdf() };
+/** A statement from a bank without a layout of its own: read by its column names (Windows-1252, ";"). */
+export const BANK_CSV: TestFile = {
+  name: "extrato-banco.csv",
+  mimeType: "text/csv",
+  buffer: Buffer.from(
+    [
+      "Agência: 1234;Conta: 99999-9",
+      "data;lançamento;valor (R$);saldo (R$)",
+      "31/01/2026;SALDO ANTERIOR;;1.000,00",
+      "02/02/2026;PIX RECEBIDO EMPRESA Y;1.500,00;2.500,00",
+      "03/02/2026;FARMACIA SAO JOAO;-89,90;2.410,10",
+    ].join("\r\n"),
+    "latin1",
+  ),
+};
 /** Two layouts recognize it: the person has to choose. */
 export const AMBIGUOUS: TestFile = {
   name: "dois-layouts.csv",

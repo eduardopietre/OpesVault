@@ -3,6 +3,7 @@ import { DocFormat, StatementHeaderSchema, type StatementHeader } from "../src/i
 import type { ParsedItem, ParseResult } from "../src/importing/parsers/base.ts";
 import { type Line, type OfxData, PdfJsExtractor, type Source } from "../src/importing/source.ts";
 import { golden, j } from "./golden.ts";
+import { PARSERS } from "../src/importing/parsers/index.ts";
 
 export interface LineJson {
   page: number;
@@ -143,3 +144,21 @@ export function resultJson(result: ParseResult): unknown {
 
 /** One extractor for every test: pdf.js is loaded once. */
 export const extractor = new PdfJsExtractor();
+
+/**
+ * The layouts the golden files know: every parser but the ones written for the web after the desktop was retired
+ * (the generic CSV statement), which have their own tests.
+ */
+export const WEB_ONLY_PARSERS: ReadonlySet<string> = new Set(["csv-extrato-generico"]);
+export const GOLDEN_PARSERS = PARSERS.filter((p) => !WEB_ONLY_PARSERS.has(p.id));
+
+/**
+ * The layout chosen now against the golden choice: the same, except that a file no golden layout recognized
+ * may now be read by a web-only one.
+ */
+export function sameChoice(ours: { parser: string | null; candidates: string[] }, theirs: unknown): boolean {
+  const golden = theirs as { parser: string | null; candidates: string[] };
+  if (ours.parser !== null && WEB_ONLY_PARSERS.has(ours.parser))
+    return golden.parser === null && !golden.candidates.length;
+  return JSON.stringify(ours) === JSON.stringify(golden);
+}

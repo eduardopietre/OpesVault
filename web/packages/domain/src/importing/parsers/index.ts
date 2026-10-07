@@ -6,6 +6,7 @@ import { ItauBankPdf } from "./bank.ts";
 import type { Parser } from "./base.ts";
 import { SinacorNotePdf } from "./brokerage.ts";
 import { BradescoCardPdf, ItauCardPdf, NubankCardPdf } from "./cards.ts";
+import { GenericStatementCsv } from "./csv_statement.ts";
 import { NubankAccountCsv, NubankCardCsv, OfxParser } from "./structured.ts";
 
 export const PARSERS: readonly Parser[] = [
@@ -17,6 +18,7 @@ export const PARSERS: readonly Parser[] = [
   new OfxParser(),
   new NubankCardCsv(),
   new NubankAccountCsv(),
+  new GenericStatementCsv(),
 ];
 
 export const DETECTION_THRESHOLD = 0.6;

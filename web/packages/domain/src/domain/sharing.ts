@@ -22,6 +22,7 @@ import { sortedBy } from "../lib/text.ts";
 import { DomainError, Ledger } from "./ledger.ts";
 import { AccountType, cashDate, operation, type Operation, OperationKind, type Posting, zEntityId } from "./model.ts";
 import { allocate, isCents, toDecimal, ZERO } from "./money.ts";
+import { amountOfType, postingsOfType } from "./queries.ts";
 
 // ── reimbursements ───────────────────────────────────────
 
@@ -60,7 +61,7 @@ export function reimbursements(ledger: Ledger) {
 }
 
 function expenseParts(ledger: Ledger, op: Operation): Posting[] {
-  return op.postings.filter((p) => ledger.account(p.account_id).type === AccountType.EXPENSE && p.amount.isPositive());
+  return postingsOfType(ledger, op, AccountType.EXPENSE).filter((p) => p.amount.isPositive());
 }
 
 export function request(
@@ -214,10 +215,7 @@ export function payerOf(ledger: Ledger, op: Operation): Id | null {
     return card !== undefined ? card.holder_id : null;
   }
   // Who paid an expense is the holder of the account it left; a refund goes back to whoever receives it.
-  const expense = Dec.sum(
-    op.postings.filter((p) => ledger.account(p.account_id).type === AccountType.EXPENSE).map((p) => p.amount),
-    ZERO,
-  );
+  const expense = amountOfType(ledger, op, AccountType.EXPENSE);
   const sign = expense.isNegative() ? 1 : -1;
   const sources = op.postings.filter(
     (p) => p.amount.mul(sign).isPositive() && ledger.account(p.account_id).type === AccountType.ASSET,

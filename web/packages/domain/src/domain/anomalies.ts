@@ -16,6 +16,7 @@ import { normalize } from "../importing/rules.ts";
 import { Ledger } from "./ledger.ts";
 import { AccountType, cashDate, type Operation, OperationKind, zEntityId } from "./model.ts";
 import { formatBrl } from "./money.ts";
+import { postingsOfType } from "./queries.ts";
 
 export const LOOKBACK_DAYS = 60; // recent operations are checked; older ones are history
 export const DUPLICATE_WINDOW_DAYS = 3;
@@ -52,7 +53,7 @@ export function chargeOf(ledger: Ledger, op: Operation): Charge | null {
   if ((op.kind !== OperationKind.EXPENSE && op.kind !== OperationKind.CARD_PURCHASE) || op.installment !== null) {
     return null;
   }
-  const categories = op.postings.filter((p) => ledger.account(p.account_id).type === AccountType.EXPENSE);
+  const categories = postingsOfType(ledger, op, AccountType.EXPENSE);
   const sources = op.postings.filter((p) => p.amount.isNegative());
   if (categories.length !== 1 || sources.length !== 1) return null;
   return [sources[0]!.account_id, categories[0]!.account_id, categories[0]!.amount];

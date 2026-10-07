@@ -2,6 +2,7 @@
  * Read-only views over the ledger: balances, cash, competence and net worth (docs/04 §4-6).
  * Port of `domain/queries.py`. The same facts produce every view; nothing here mutates the ledger.
  */
+import { pushTo } from "../lib/collections.ts";
 import { type IsoDate, type YearMonth, ymAdd, ymIndex, ymLte, ymOf, ymStr } from "../lib/dates.ts";
 import { Dec } from "../lib/dec.ts";
 import type { Id } from "../lib/ids.ts";
@@ -58,9 +59,9 @@ export class QueryIndex {
         }
       }
       const comp = competence(op);
-      if (comp !== null) push(this.byCompetence, ymStr(comp), op);
+      if (comp !== null) pushTo(this.byCompetence, ymStr(comp), op);
       const cd = cashDate(op);
-      if (cd !== null) push(this.byCashMonth, ymStr(ymOf(cd)), op);
+      if (cd !== null) pushTo(this.byCashMonth, ymStr(ymOf(cd)), op);
     }
     for (const [accountId, entries] of dated) {
       entries.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
@@ -92,12 +93,6 @@ export class QueryIndex {
   accounts(): Id[] {
     return [...new Set([...this.prefix.keys(), ...this.undated.keys()])];
   }
-}
-
-function push<K, V>(map: Map<K, V[]>, key: K, value: V): void {
-  const list = map.get(key);
-  if (list === undefined) map.set(key, [value]);
-  else list.push(value);
 }
 
 export function index(ledger: Ledger): QueryIndex {

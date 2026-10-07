@@ -102,9 +102,7 @@ export function amountOf(ledger: Ledger, op: Operation): Dec {
     })
     .map((p) => p.amount);
   if (categories.length) return Dec.sum(categories, ZERO);
-  const income = op.postings
-    .filter((p) => ledger.account(p.account_id).type === AccountType.INCOME)
-    .map((p) => p.amount.negate());
+  const income = queries.postingsOfType(ledger, op, AccountType.INCOME).map((p) => p.amount.negate());
   if (income.length) return Dec.sum(income, ZERO);
   let best: Dec = ZERO;
   let first = true;

@@ -673,6 +673,14 @@ def special_ledger() -> tuple[Ledger, dict[str, Any]]:
         "x" * 120,
         "RTL ‮ fim",
         "separador   de linha",
+        # Spreadsheet formulas (CSV injection): the CSV prefixes "'" to these.
+        '=HYPERLINK("http://x";"y")',
+        "+cmd",
+        "-2+3",
+        "@SUM(A1)",
+        "\tinicio",
+        "\rinicio",
+        "-1485.00",
     ]
     for k, text in enumerate(descriptions):
         _safe(

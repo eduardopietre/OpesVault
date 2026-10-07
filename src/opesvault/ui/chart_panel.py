@@ -15,6 +15,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QFileDialog, QHeaderView, QTableWidgetItem, QVBoxLayout, QWidget
 
 from opesvault.charts.data import Chart, Point, TableRow, table_rows
+from opesvault.exports import spreadsheet_cell, spreadsheet_text
 from opesvault.ui.common import fit_columns, fit_to_rows, fmt, summary_table
 from opesvault.ui.components import Adaptive, Collapsible, button, confirm
 from opesvault.ui.theme import SPACE_L, SPACE_XL, tokens
@@ -173,10 +174,10 @@ class ChartPanel(QWidget):
         """The table as CSV (';', decimals with '.', months as AAAA-MM), like the ledger export."""
         out = io.StringIO()
         writer = csv.writer(out, delimiter=";", lineterminator="\n")
-        writer.writerow(["item", *self._headers])
+        writer.writerow(["item", *(spreadsheet_text(h) for h in self._headers)])
         for row in self._rows:
             x = row.label if row.x is None else (row.x.isoformat() if isinstance(row.x, date) else str(row.x))
-            writer.writerow([x, *("" if v is None else format(v, "f") for v in row.values)])
+            writer.writerow([spreadsheet_cell(x), *("" if v is None else format(v, "f") for v in row.values)])
         return ("﻿" + out.getvalue()).encode("utf-8")
 
     def export_csv(self) -> None:

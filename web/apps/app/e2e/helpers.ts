@@ -183,3 +183,12 @@ export async function goTo(page: Page, letter: string, path: RegExp): Promise<vo
   await page.keyboard.press(letter);
   await expect(page).toHaveURL(path);
 }
+
+/** "outubro de 2026": this month's name in the app, or another month counted from it (`-1` is the last one). */
+export function monthName(offset = 0): string {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth() + offset, 1).toLocaleDateString("pt-BR", {
+    month: "long",
+    year: "numeric",
+  });
+}

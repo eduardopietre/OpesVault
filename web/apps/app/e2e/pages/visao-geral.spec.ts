@@ -3,7 +3,7 @@
  * of the report, no console errors, no sideways scrolling at the five sizes and axe clean, in light and dark.
  */
 import AxeBuilder from "@axe-core/playwright";
-import { animationsDone } from "../helpers.ts";
+import { animationsDone, monthName } from "../helpers.ts";
 import { expect, test, type Page } from "@playwright/test";
 import {
   TEST_SCHEMES,
@@ -133,9 +133,7 @@ test.describe("visão geral: every action", () => {
     const errors = watchErrors(page);
     await openDemo(page, "/visao-geral", { month: "demo" });
     // this month is partial: the month before has the demonstration's entries (the demo is built around today)
-    const now = new Date();
-    const last = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const name = new RegExp(last.toLocaleDateString("pt-BR", { month: "long", year: "numeric" }), "i");
+    const name = new RegExp(monthName(-1), "i");
     const picker = page.getByRole("group", { name: "Mês" });
     await expect(picker.getByRole("button", { name })).toBeVisible();
     await page.keyboard.press("Alt+2");
@@ -158,9 +156,9 @@ test.describe("visão geral: every action", () => {
     // Month picker: previous, next, and the list of months.
     const picker = page.getByRole("group", { name: "Mês" });
     await picker.getByRole("button", { name: "Mês anterior" }).click();
-    await expect(picker.getByRole("button", { name: /setembro de 2026/i })).toBeVisible();
+    await expect(picker.getByRole("button", { name: new RegExp(monthName(-1), "i") })).toBeVisible();
     await picker.getByRole("button", { name: "Próximo mês" }).click();
-    await expect(picker.getByRole("button", { name: /outubro de 2026/i })).toBeVisible();
+    await expect(picker.getByRole("button", { name: new RegExp(monthName(), "i") })).toBeVisible();
     await picker.getByRole("button", { name: /Escolher outro mês/ }).click();
     await page.getByRole("button", { name: "março de 2026" }).click();
     await expect(picker.getByRole("button", { name: /março de 2026/i })).toBeVisible();
@@ -244,7 +242,7 @@ test.describe("visão geral: every action", () => {
     await page.getByRole("button", { name: "Mais" }).click();
     await page.getByRole("menuitem", { name: "Relatório do mês em PDF…" }).click();
     await expect(page).toHaveURL(/\/imprimir\/relatorio-mensal/);
-    await expect(page.getByRole("heading", { level: 1, name: /Projeto Teste — outubro de 2026/ })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: `Projeto Teste — ${monthName()}` })).toBeVisible();
     await expect.poll(() => prints(page)).toBe(1);
     for (const title of [
       "Resumo",

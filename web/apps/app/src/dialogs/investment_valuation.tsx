@@ -162,7 +162,7 @@ export function InvestmentFixDialog({ open, onClose, valuationId, onDone }: Inve
   const confirm = () => {
     const amount = readMoney(value);
     if (!reason.trim()) throw new DomainError("Correções exigem motivo.");
-    act((l) => service.correctValuation(l, valuationId, amount, reason.trim()));
+    act((l) => service.correctValuation(l, valuationId, amount, reason.trim()), "corrigir avaliação");
     onDone?.();
   };
 

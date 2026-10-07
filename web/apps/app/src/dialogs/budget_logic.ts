@@ -2,7 +2,7 @@
  * What the budget dialogs share, free of React: the expense categories as options, amounts as the field
  * reads and writes them, and the grid's differences (desktop `BudgetGridDialog.values/apply`).
  */
-import { AccountType, Dec, dom, formatBrl, type Ledger, type YearMonth } from "@opesvault/domain";
+import { AccountType, Dec, dom, formatBrl, queries, ymAdd, type Ledger, type YearMonth } from "@opesvault/domain";
 import { normalizeMoneyInput, type SelectOption } from "@opesvault/ui";
 
 /** "Casa › Aluguel": the expense categories with their parent, in alphabetical order (desktop `category_items`). */
@@ -37,20 +37,42 @@ export interface GridRow {
   readonly spent: Dec | null;
 }
 
-/** Every expense category with this month's plan, spending and last month's plan. */
+/** How many months before the budget's month a suggested plan averages. */
+export const SUGGESTION_MONTHS = 3;
+
+/**
+ * A suggested plan: each expense category's average spending (by competence) in the `months` months before
+ * `month`, in cents rounded half away from zero. Categories with no spending in those months are left out.
+ */
+export function averageSpending(ledger: Ledger, month: YearMonth, months = SUGGESTION_MONTHS): Map<string, Dec> {
+  const spent = queries.expensesByCategory(ledger, ymAdd(month, -months), ymAdd(month, -1));
+  const averages = new Map<string, Dec>();
+  for (const [categoryId, total] of spent) {
+    const average = total.div(months).quantize("0.01", "ROUND_HALF_UP");
+    if (average.isPositive()) averages.set(categoryId, average);
+  }
+  return averages;
+}
+
+/**
+ * Every expense category with this month's plan, spending and last month's plan. With `suggested`, a category
+ * without a plan starts with the suggested amount typed in (saved only if the person keeps it).
+ */
 export function gridRows(
   ledger: Ledger,
   month: YearMonth,
   previousMonth: YearMonth,
   spending: ReadonlyMap<string, Dec>,
+  suggested?: ReadonlyMap<string, Dec>,
 ): GridRow[] {
   return expenseCategoryOptions(ledger).map<GridRow>((option) => {
     const line = dom.budget.lineFor(ledger, option.id, month);
     const before = dom.budget.lineFor(ledger, option.id, previousMonth);
+    const suggestion = suggested?.get(option.id);
     return {
       categoryId: option.id,
       name: option.label,
-      text: line ? editableAmount(line.amount) : "",
+      text: line ? editableAmount(line.amount) : suggestion ? editableAmount(suggestion) : "",
       current: line ? line.amount : null,
       previous: before ? before.amount : null,
       spent: spending.get(option.id) ?? null,

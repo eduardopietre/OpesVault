@@ -28,7 +28,7 @@ export function DeductibleDialog({ open, onClose, categoryId, onDone }: Deductib
 
   const confirm = () => {
     const chosen = kind === NONE ? null : (kind as dom.deductibles.DeductibleKind);
-    act((l) => dom.deductibles.mark(l, categoryId, chosen));
+    act((l) => dom.deductibles.mark(l, categoryId, chosen), "marcar categoria dedutível");
     onDone?.(chosen);
   };
 

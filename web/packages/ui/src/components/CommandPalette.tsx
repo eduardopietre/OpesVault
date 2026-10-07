@@ -18,6 +18,8 @@ export interface Command {
   keywords?: string;
   icon?: ReactNode;
   disabled?: boolean;
+  /** Called when the entry becomes the selected one (a destination starts loading its code). */
+  preview?: () => void;
 }
 
 export interface CommandPaletteProps {
@@ -75,6 +77,11 @@ function PaletteBody({
   useEffect(() => {
     list.current?.querySelector(`[data-index="${current}"]`)?.scrollIntoView({ block: "nearest" });
   }, [current]);
+
+  const highlighted = results[current];
+  useEffect(() => {
+    highlighted?.preview?.();
+  }, [highlighted]);
 
   const run = (command: Command | undefined) => {
     if (!command) return;

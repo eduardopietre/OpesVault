@@ -58,7 +58,10 @@ export function PrepaymentDialog({ open, onClose, plan, onDone }: PrepaymentDial
     if (value === null || !value.isPositive()) throw new DomainError("Informe um valor positivo.");
     if (account === null) throw new DomainError("Cadastre a conta de onde sai o pagamento.");
     const on = readDate(when, "A data da amortização");
-    const saved = act((l) => dom.loans.prepay(l, plan.id, value, on, mode as dom.loans.PrepaymentMode, account));
+    const saved = act(
+      (l) => dom.loans.prepay(l, plan.id, value, on, mode as dom.loans.PrepaymentMode, account),
+      "amortizar financiamento",
+    );
     onDone?.(saved);
   };
 

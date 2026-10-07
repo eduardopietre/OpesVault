@@ -112,7 +112,7 @@ export function Page() {
     try {
       // Undo puts the file back with its bytes, so they must be in this tab before it goes.
       await workspace.loadDocument(row.id);
-      workspace.act((_ledger, session) => session.removeDocument(row.id));
+      workspace.act((_ledger, session) => session.removeDocument(row.id), "excluir documento");
     } catch (error) {
       notify(error instanceof Error ? error.message : "Não foi possível remover o documento.", { tone: "negative" });
       return;
@@ -136,7 +136,7 @@ export function Page() {
     try {
       // Undo puts the file back with its bytes, so they must be in this tab before it can go.
       await workspace.loadDocument(row.id);
-      workspace.act((_ledger, session) => dom.attachments.detach(session, use.attachmentId));
+      workspace.act((_ledger, session) => dom.attachments.detach(session, use.attachmentId), "desvincular comprovante");
     } catch (error) {
       notify(error instanceof Error ? error.message : "Não foi possível desvincular o comprovante.", {
         tone: "negative",

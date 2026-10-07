@@ -77,7 +77,13 @@ type Spec =
   | { kind: "values"; id: Id }
   | { kind: "investment"; bankId: Id | null; positionId: Id | null };
 
-export function BankTab({ reveal }: { reveal?: TabReveal<Id> | null }) {
+/** A link to this tab: a bank account to select, or the new investment form (Investimentos' empty page). */
+export interface BankReveal {
+  bankId: Id | null;
+  newInvestment: boolean;
+}
+
+export function BankTab({ reveal }: { reveal?: TabReveal<BankReveal> | null }) {
   const workspace = useWorkspace();
   const ledger = workspace.ledger;
   const today = workspace.today();
@@ -96,8 +102,6 @@ export function BankTab({ reveal }: { reveal?: TabReveal<Id> | null }) {
   );
   const chosenPart = parts.find((p) => p.id === part) ?? null;
 
-  useTabReveal(reveal, setPick);
-
   const add = () => {
     if (ledger.members.size === 0) {
       notify("Cadastre o titular na aba Integrantes antes.");
@@ -105,6 +109,23 @@ export function BankTab({ reveal }: { reveal?: TabReveal<Id> | null }) {
     }
     dialog.show({ kind: "bank", id: null });
   };
+
+  useTabReveal(reveal, ({ bankId, newInvestment }) => {
+    if (bankId) setPick(bankId);
+    if (!newInvestment || locked) return;
+    // The investment is held at a bank account: without one, that comes first.
+    const at = bankId ?? selected?.id ?? null;
+    if (at === null) {
+      if (ledger.members.size === 0) {
+        notify("Cadastre o titular na aba Integrantes; depois, a conta bancária e o investimento.");
+        return;
+      }
+      notify("Cadastre primeiro a conta bancária onde o investimento fica; depois, use Novo investimento….");
+      dialog.show({ kind: "bank", id: null });
+      return;
+    }
+    dialog.show({ kind: "investment", bankId: at, positionId: null });
+  });
   const edit = (id: Id | null = item?.id ?? null) => {
     if (id === null) {
       notify("Selecione uma conta bancária.");
@@ -143,7 +164,7 @@ export function BankTab({ reveal }: { reveal?: TabReveal<Id> | null }) {
       danger: true,
     });
     if (!ok) return;
-    act((l) => banking.archive(l, item.id));
+    act((l) => banking.archive(l, item.id), { label: "encerrar conta bancária" });
     setPick(null);
     notify("Conta bancária encerrada.", { action: { label: "Desfazer", run: undo } });
   };

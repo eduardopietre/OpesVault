@@ -147,9 +147,15 @@ export function Page() {
     go(link.page, { ...(link.ref ? { ref: link.ref } : {}), ...(link.act ? { act: link.act } : {}) });
 
   const closeMonth = (note: string | null) =>
-    act((ledger) => dom.periods.closeMonth(ledger, month, note), `${monthName} fechado.`);
+    act((ledger) => dom.periods.closeMonth(ledger, month, note), {
+      done: `${monthName} fechado.`,
+      label: `fechar ${monthName.toLowerCase()}`,
+    });
   const reopenMonth = (reason: string) =>
-    act((ledger) => dom.periods.reopenMonth(ledger, month, reason), `${monthName} reaberto.`);
+    act((ledger) => dom.periods.reopenMonth(ledger, month, reason), {
+      done: `${monthName} reaberto.`,
+      label: `reabrir ${monthName.toLowerCase()}`,
+    });
   const askClose = () => {
     if (pending.length) setDialog("close");
     else closeMonth(null);

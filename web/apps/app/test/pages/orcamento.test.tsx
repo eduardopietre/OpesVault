@@ -159,7 +159,7 @@ describe("Orçamento", () => {
     const { ledger, workspace, user } = await openPage("/orcamento", () => ym(2026, 4));
     const april = ym(2026, 4);
     expect(lines(ledger, april)).toEqual([]);
-    expect(await screen.findByRole("heading", { name: "Sem orçamento neste mês" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Sem orçamento em abril de 2026" })).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Definir o mês…" }));
     const dialog = await screen.findByRole("dialog", { name: /Orçamento de abril de 2026/ });
     const field = (name: string) => within(dialog).getByLabelText(`Planejado para ${name}`) as HTMLInputElement;
@@ -247,7 +247,7 @@ describe("Orçamento", () => {
     await user.click(screen.getByRole("button", { name: "Mês anterior" }));
     const previous = ymAdd(now, -1);
     expect(ymStr(previous)).not.toBe(ymStr(now));
-    await screen.findByRole("heading", { name: "Sem orçamento neste mês" });
+    await screen.findByRole("heading", { name: /^Sem orçamento em / });
     await user.click(screen.getByRole("button", { name: "Próximo mês" }));
     await screen.findByRole("grid", { name: "Orçamento por categoria" });
   });

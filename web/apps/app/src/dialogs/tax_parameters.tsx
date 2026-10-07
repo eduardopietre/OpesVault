@@ -86,7 +86,7 @@ export function ParametersDialog({ open, onClose, year, onDone }: ParametersDial
       pension_cap_rate: readPercent(pension, "Previdência privada"),
       source: source.trim() || "informado pelo usuário",
     });
-    act((l) => tax.records.setParameters(l, params));
+    act((l) => tax.records.setParameters(l, params), "alterar parâmetros do imposto");
     onDone?.();
   };
 

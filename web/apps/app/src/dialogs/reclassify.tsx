@@ -9,6 +9,7 @@ import { useMemo, useState } from "react";
 import { useWorkspace } from "../data/react.tsx";
 import { categoryItems } from "./account_choices.ts";
 import { Caption, FormDialog, useFormAct } from "./livro_form.tsx";
+import { actionName } from "../data/action_names.ts";
 
 export interface ReclassifyDialogProps {
   open: boolean;
@@ -34,7 +35,10 @@ export function ReclassifyDialog({ open, onClose, operationIds, onDone }: Reclas
   const confirm = () => {
     if (target === null) throw new DomainError("Escolha a categoria de destino.");
     if (!reason.trim()) throw new DomainError("O motivo é obrigatório.");
-    const result = act((l) => edits.reclassify(l, operationIds, target, reason.trim()));
+    const result = act(
+      (l) => edits.reclassify(l, operationIds, target, reason.trim()),
+      actionName("reclassificar", operationIds.length, "lançamento", "lançamentos"),
+    );
     onDone?.(result);
   };
 

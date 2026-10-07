@@ -66,7 +66,7 @@ export function InvestmentTradeDialog({ open, onClose, kind, positionId, name, o
         const unit = readMoney(price);
         const extra = readMoney(fees, { allowEmpty: true });
         const from = needAccount();
-        act((l) => trades.buy(l, positionId, on, qty, unit, from, { fees: extra ?? "0" }));
+        act((l) => trades.buy(l, positionId, on, qty, unit, from, { fees: extra ?? "0" }), "registrar compra");
         break;
       }
       case "sell": {
@@ -87,18 +87,18 @@ export function InvestmentTradeDialog({ open, onClose, kind, positionId, name, o
       case "opening": {
         const qty = readQuantity(quantity);
         const total = readMoney(cost);
-        act((l) => trades.openingLot(l, positionId, on, qty, total));
+        act((l) => trades.openingLot(l, positionId, on, qty, total), "registrar posição inicial");
         break;
       }
       case "split": {
         const ratio = readQuantity(factor, "Fator");
-        act((l) => trades.split(l, positionId, on, ratio));
+        act((l) => trades.split(l, positionId, on, ratio), "registrar desdobramento");
         break;
       }
       case "bonus": {
         const qty = readQuantity(quantity);
         const informed = readMoney(cost, { allowEmpty: true });
-        act((l) => trades.bonus(l, positionId, on, qty, informed ?? "0"));
+        act((l) => trades.bonus(l, positionId, on, qty, informed ?? "0"), "registrar bonificação");
         break;
       }
     }

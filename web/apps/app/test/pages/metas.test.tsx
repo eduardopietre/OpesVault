@@ -275,9 +275,8 @@ describe("Metas", () => {
     const { workspace, user } = await open({ empty: true });
     expect(await screen.findByRole("heading", { name: "Nenhuma meta" })).toBeTruthy();
     expect(screen.queryByRole("grid")).toBeNull();
-    const buttons = screen.getAllByRole("button", { name: "Nova meta…" });
-    expect(buttons).toHaveLength(2);
-    await user.click(buttons[1]!);
+    expect(screen.getAllByRole("button", { name: "Nova meta…" })).toHaveLength(1);
+    await user.click(screen.getByRole("button", { name: "Começar do zero…" }));
     const dialog = await screen.findByRole("dialog", { name: "Nova meta" });
     expect(within(dialog).getByText("Nenhuma conta de ativo cadastrada.")).toBeTruthy();
     await user.click(within(dialog).getByRole("button", { name: "Criar meta" }));

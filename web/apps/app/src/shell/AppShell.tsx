@@ -24,16 +24,31 @@ import {
 } from "@opesvault/ui";
 import { Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { motion } from "motion/react";
-import { CircleHelp, FileUp, Lock, LogOut, Monitor, Moon, PanelLeft, Redo2, Repeat2, Sun, Undo2 } from "lucide-react";
+import {
+  CircleHelp,
+  FileUp,
+  Keyboard,
+  Lock,
+  LogOut,
+  Monitor,
+  Moon,
+  PanelLeft,
+  Redo2,
+  Repeat2,
+  Sun,
+  Undo2,
+} from "lucide-react";
 import { useEffect, useRef, useState, type DragEvent } from "react";
 import { BOTTOM_NAV, PAGES, SECTIONS, pageById, pageByPath, shortcutOf, type PageDef } from "../pages.tsx";
 import { SIDEBAR_KEY } from "../preferences.ts";
 import { syncStateOf, useSession, useSessionActions } from "../session.tsx";
 import { useTheme } from "../theme.tsx";
 import { HelpDialog } from "./HelpDialog.tsx";
+import { ShortcutsDialog } from "./ShortcutsDialog.tsx";
+import { preloadPage } from "../page_code.ts";
 import { addDroppedFiles } from "../data/dropped_files.ts";
 import { takeEntryFocus } from "./entry_focus.ts";
-import { useShortcuts } from "./shortcuts.ts";
+import { tip, useShortcuts } from "./shortcuts.ts";
 import { TopBar } from "./TopBar.tsx";
 import { useUndo } from "./undo.tsx";
 import { Wordmark } from "./Logo.tsx";
@@ -69,6 +84,7 @@ export function AppShell() {
   const [more, setMore] = useState(false);
   const [palette, setPalette] = useState(false);
   const [help, setHelp] = useState(false);
+  const [keys, setKeys] = useState(false);
   const [dragging, setDragging] = useState(false);
 
   // Opening the project and unlocking it replace what had focus (a dialog, the lock screen): without this,
@@ -106,6 +122,8 @@ export function AppShell() {
       }
     });
   };
+  // Pointer or keyboard on a destination: its code starts loading, so the click shows it at once.
+  const preload = (id: string) => void preloadPage(id);
   const lock = () => void actions.lock();
   const switchProject = () => void actions.closeProject().then(() => navigate({ to: "/projetos" }));
   const signOut = () => void actions.signOut().then(() => navigate({ to: "/boas-vindas" }));
@@ -118,6 +136,7 @@ export function AppShell() {
     {
       palette: () => setPalette(true),
       help: () => setHelp(true),
+      shortcuts: () => setKeys(true),
       goIndex: (index) => {
         const page = PAGES[index];
         if (page) go(page.id);
@@ -145,15 +164,16 @@ export function AppShell() {
       keywords: `${page.section ?? ""} g ${page.letter}`,
       shortcut: shortcutOf(page) ?? `g ${page.letter}`,
       run: () => go(page.id),
+      preview: () => void preloadPage(page.id),
     })),
-    { id: "undo", label: undo.undoLabel, group: "Editar", icon: <Undo2 />, shortcut: "Ctrl+Z", run: undo.undo },
-    { id: "redo", label: undo.redoLabel, group: "Editar", icon: <Redo2 />, shortcut: "Ctrl+Shift+Z", run: undo.redo },
+    { id: "undo", label: undo.undoLabel, group: "Editar", icon: <Undo2 />, shortcut: tip("undo"), run: undo.undo },
+    { id: "redo", label: undo.redoLabel, group: "Editar", icon: <Redo2 />, shortcut: tip("redo"), run: undo.redo },
     {
       id: "sidebar",
       label: collapsed ? "Expandir a barra lateral" : "Recolher a barra lateral",
       group: "Exibir",
       icon: <PanelLeft />,
-      shortcut: "Ctrl+Shift+B",
+      shortcut: tip("toggleSidebar"),
       run: toggleSidebar,
     },
     {
@@ -184,7 +204,7 @@ export function AppShell() {
       label: "Bloquear o projeto",
       group: "Projeto",
       icon: <Lock />,
-      shortcut: "Ctrl+Shift+L",
+      shortcut: tip("lock"),
       run: lock,
     },
     { id: "switch", label: "Trocar de projeto", group: "Projeto", icon: <Repeat2 />, run: switchProject },
@@ -194,8 +214,17 @@ export function AppShell() {
       label: "Ajuda desta tela",
       group: "Ajuda",
       icon: <CircleHelp />,
-      shortcut: "F1",
+      shortcut: tip("help"),
       run: () => setHelp(true),
+    },
+    {
+      id: "shortcuts",
+      label: "Atalhos de teclado",
+      group: "Ajuda",
+      icon: <Keyboard />,
+      keywords: "teclas",
+      shortcut: tip("shortcuts"),
+      run: () => setKeys(true),
     },
     ...(SHOW_CATALOG
       ? [
@@ -274,6 +303,7 @@ export function AppShell() {
         onOpenDrawer={() => setDrawer(true)}
         onPalette={() => setPalette(true)}
         onHelp={() => setHelp(true)}
+        onShortcuts={() => setKeys(true)}
         onLock={lock}
         onSwitchProject={switchProject}
         onSignOut={signOut}
@@ -293,6 +323,7 @@ export function AppShell() {
               footer={footer}
               selectedId={current?.id ?? null}
               onNavigate={go}
+          onPreload={preload}
               collapsed={collapsed}
             />
           </div>
@@ -325,6 +356,7 @@ export function AppShell() {
           selectedId={current?.id ?? null}
           onNavigate={go}
           onMore={() => setMore(true)}
+          onPreload={preload}
           moreSelected={Boolean(current && !BOTTOM_NAV.includes(current.id))}
           moreCount={moreCount}
         />
@@ -336,6 +368,7 @@ export function AppShell() {
           footer={footer}
           selectedId={current?.id ?? null}
           onNavigate={go}
+          onPreload={preload}
           header={<Wordmark className="px-5 pt-1 pb-2" />}
         />
       </Sheet>
@@ -345,11 +378,13 @@ export function AppShell() {
           footer={footer}
           selectedId={current?.id ?? null}
           onNavigate={go}
+          onPreload={preload}
           label="Todas as seções"
         />
       </Sheet>
       <CommandPalette open={palette} onOpenChange={setPalette} commands={commands} />
       <HelpDialog open={help} onOpenChange={setHelp} page={current} />
+      <ShortcutsDialog open={keys} onOpenChange={setKeys} />
       {dragging ? (
         <div
           aria-hidden="true"

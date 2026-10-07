@@ -508,7 +508,7 @@ export function SetupScreen() {
     if (!workspace) return;
     try {
       const plan = setupPlanOf(existing, allMembers, allAccounts, allCards);
-      const result = workspace.act((ledger) => dom.onboarding.applySetup(ledger, plan));
+      const result = workspace.act((ledger) => dom.onboarding.applySetup(ledger, plan), "configurar o projeto");
       const parts = [
         result.members ? `${result.members} integrante(s)` : "",
         result.accounts ? `${result.accounts} conta(s)` : "",

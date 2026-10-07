@@ -47,7 +47,7 @@ export function RecurrenceLinkDialog({ open, onClose, forecast, candidates, onDo
   const confirm = () => {
     const op = candidates.find((o) => o.id === chosen);
     if (!op) return;
-    act((l) => dom.recurrence.realize(l, forecast.ruleId, forecast.dueOn, op.id));
+    act((l) => dom.recurrence.realize(l, forecast.ruleId, forecast.dueOn, op.id), "vincular previsão");
     onDone?.(op);
   };
 

@@ -4,6 +4,7 @@
  * clickable now and backs the tests. Screens never see a key: they hand over a password and get a session.
  */
 
+import type { YearMonth } from "@opesvault/domain";
 import type { Workspace } from "../data/workspace.ts";
 
 /** Sync state of the open project, reported by the services (the vault's status). */
@@ -38,6 +39,8 @@ export interface OpenProject {
   attention: Readonly<Record<string, number>>;
   /** True when another tab or device holds the edit lease. */
   readOnly: boolean;
+  /** The month the screens open on (the demonstration's last complete month); the current month when absent. */
+  startMonth?: YearMonth;
 }
 
 export interface CreatedProject {

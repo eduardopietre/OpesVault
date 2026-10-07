@@ -60,12 +60,12 @@ export class UndoStack {
     return ledger.journal;
   }
 
-  /** Closes the current user action as one undo step. */
-  seal(): Step | null {
+  /** Closes the current user action as one undo step, named `label` (what the user did) or by what it changed. */
+  seal(label?: string): Step | null {
     const entries = [...this.journal];
     this.journal.length = 0;
     if (!entries.length) return null;
-    const step: Step = { entries, label: describe(entries) };
+    const step: Step = { entries, label: label ?? describe(entries) };
     this.undoSteps.push(step);
     if (this.undoSteps.length > MAX_STEPS) this.undoSteps.splice(0, this.undoSteps.length - MAX_STEPS);
     this.redoSteps = []; // a new action forks history: redo no longer applies

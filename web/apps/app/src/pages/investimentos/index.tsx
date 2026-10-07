@@ -130,7 +130,10 @@ export function Page() {
       notify("Esta observação já é a usada nesta data.");
       return;
     }
-    act((l) => service.selectValuation(l, found.id), "Observação usada nos cálculos.");
+    act((l) => service.selectValuation(l, found.id), {
+      done: "Observação usada nos cálculos.",
+      label: "usar observação nos cálculos",
+    });
   };
 
   const fixValuation = (id: Id | undefined = valuationPick ?? undefined) => {
@@ -269,11 +272,17 @@ export function Page() {
         <div className="rounded-xl border border-dashed border-separator-strong bg-window/40">
           <EmptyState
             title="Nenhum investimento"
-            description="Cadastre um investimento para acompanhar avaliações, aportes, resgates e rentabilidade."
+            description="Cadastre uma conta de investimento no banco onde ela fica, com as características (tipo, rentabilidade, vencimento). Depois, acompanhe aqui avaliações, aportes, resgates e rentabilidade."
             actions={
-              <EditButton variant="primary" onClick={() => dialog.show({ kind: "position" })}>
-                Novo investimento…
-              </EditButton>
+              <>
+                <EditButton
+                  variant="primary"
+                  onClick={() => goTo("contas", { ref: "bancarias", act: "investimento" })}
+                >
+                  Cadastrar conta de investimento…
+                </EditButton>
+                <EditButton onClick={() => dialog.show({ kind: "position" })}>Novo investimento…</EditButton>
+              </>
             }
           />
         </div>

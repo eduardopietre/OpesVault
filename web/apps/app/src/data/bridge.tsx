@@ -42,8 +42,8 @@ function undoApi(workspace: Workspace): UndoApi {
   return {
     canUndo: !workspace.readOnly && stack.canUndo(),
     canRedo: !workspace.readOnly && stack.canRedo(),
-    undoLabel: undoLabel ? `Desfazer ${undoLabel}` : "Desfazer",
-    redoLabel: redoLabel ? `Refazer ${redoLabel}` : "Refazer",
+    undoLabel: undoLabel ? `Desfazer: ${undoLabel}` : "Desfazer",
+    redoLabel: redoLabel ? `Refazer: ${redoLabel}` : "Refazer",
     undo: () => run(() => workspace.undo(), "Nada a desfazer.", "Desfeito:"),
     redo: () => run(() => workspace.redo(), "Nada a refazer.", "Refeito:"),
   };

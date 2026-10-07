@@ -18,6 +18,7 @@ import {
   session as sessions,
   today as localToday,
 } from "@opesvault/domain";
+import { nameAction } from "./action_names.ts";
 
 type Session = sessions.Session;
 type Document = sessions.Document;
@@ -187,8 +188,11 @@ export class Workspace {
 
   // ── actions ─────────────────────────────────────────
 
-  /** Runs one user action on the project: one undo step, synced, observed. */
-  act<T>(action: (ledger: Ledger, session: Session) => T): T {
+  /**
+   * Runs one user action on the project: one undo step, synced, observed. `label` names the step in the user's
+   * words ("reclassificar 3 lançamentos"); without it the name comes from what the action changed.
+   */
+  act<T>(action: (ledger: Ledger, session: Session) => T, label?: string): T {
     if (this.#readOnly) throw new ReadOnlyError();
     const journal = this.undoStack.journal;
     const mark = journal.length;
@@ -201,7 +205,7 @@ export class Workspace {
       if (partial.length) this.#session.ledger.revert(partial);
       throw error;
     }
-    this.undoStack.seal();
+    this.undoStack.seal(label ?? nameAction(journal));
     this.#flush();
     this.#changed();
     return result;

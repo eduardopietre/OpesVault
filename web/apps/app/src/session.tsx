@@ -5,6 +5,7 @@
  */
 import { cancelAllDecisions, clearToasts, type SyncState } from "@opesvault/ui";
 import { createContext, useContext, useMemo, useSyncExternalStore, type ReactNode } from "react";
+import { chooseMonth, monthOfDate } from "./data/shared_month.ts";
 import type { Account, AppServices, OpenProject } from "./services/types.ts";
 
 export interface SessionState {
@@ -119,6 +120,7 @@ export function sessionActions(services: AppServices, store: SessionStore): Sess
       const open = await services.openProject(id, password);
       const operatorId = open.members[0]?.id ?? null;
       open.workspace.setOperator(operatorName(open, operatorId));
+      chooseMonth(open.startMonth ?? monthOfDate(open.workspace.today()));
       store.update({ open, locked: false, lockedName: null, sync: "synced", operatorId });
       watch();
     },
@@ -126,6 +128,7 @@ export function sessionActions(services: AppServices, store: SessionStore): Sess
       const open = await services.recoverProject(id, recoveryKey, newPassword);
       const operatorId = open.members[0]?.id ?? null;
       open.workspace.setOperator(operatorName(open, operatorId));
+      chooseMonth(open.startMonth ?? monthOfDate(open.workspace.today()));
       store.update({ open, locked: false, lockedName: null, sync: "synced", operatorId });
       watch();
     },

@@ -49,7 +49,7 @@ export function BillPaymentDialog({ open, onClose, card, bill, onDone }: BillPay
     const value = readMoney(amount);
     if (!value.isPositive()) throw new DomainError("Informe um valor positivo.");
     const on = readDate(when, "A data do pagamento");
-    const operation = act((l) => l.recordCardPayment(card.id, account, value, on));
+    const operation = act((l) => l.recordCardPayment(card.id, account, value, on), "pagar fatura");
     onDone?.(operation);
   };
 

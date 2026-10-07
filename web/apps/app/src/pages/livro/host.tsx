@@ -187,7 +187,7 @@ export function LedgerDialogs({ host, onCreated }: LedgerDialogsProps) {
           initial={dom.merchants.merchantOf(ledger, op.description)}
           emptyMessage="Informe o nome do estabelecimento."
           onSubmit={(name) => {
-            act((l) => dom.merchants.nameMerchant(l, op.description, name));
+            act((l) => dom.merchants.nameMerchant(l, op.description, name), "nomear estabelecimento");
             notify(`Estabelecimento “${name}” definido; a descrição original continua guardada.`);
           }}
         />
@@ -218,7 +218,7 @@ export function LedgerDialogs({ host, onCreated }: LedgerDialogsProps) {
           confirmLabel="Estornar"
           description={`${op.description}: o estorno é um novo lançamento oposto; o original é mantido.`}
           onSubmit={(reason) => {
-            act((l) => l.reverseOperation(op.id, workspace.today(), reason));
+            act((l) => l.reverseOperation(op.id, workspace.today(), reason), "estornar lançamento");
             notify("Estorno registrado como nova operação; o original foi mantido.");
           }}
         />
@@ -236,7 +236,7 @@ export function LedgerDialogs({ host, onCreated }: LedgerDialogsProps) {
           confirmLabel="Cancelar lançamento"
           description={`${op.description}: continua visível em “Só cancelados”, fora dos saldos e relatórios.`}
           onSubmit={(reason) => {
-            act((l) => l.cancelOperation(op.id, reason));
+            act((l) => l.cancelOperation(op.id, reason), "cancelar lançamento");
             notify("Lançamento cancelado. Ele continua visível em “Só cancelados”.");
           }}
         />
@@ -314,7 +314,7 @@ export function LedgerDialogs({ host, onCreated }: LedgerDialogsProps) {
           confirmLabel="Salvar filtro"
           emptyMessage="Dê um nome ao filtro."
           onSubmit={(name) => {
-            const saved = act((l) => dom.savedFilters.saveFilter(l, snapshotFilter(spec.filter, name)));
+            const saved = act((l) => dom.savedFilters.saveFilter(l, snapshotFilter(spec.filter, name)), "salvar filtro");
             notify(`Filtro “${saved.name}” salvo no projeto.`);
           }}
         />

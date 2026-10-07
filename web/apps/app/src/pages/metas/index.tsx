@@ -28,7 +28,15 @@ import { tableHeight } from "../../data/table_height.ts";
 import { GoalDialog } from "../../dialogs/goal_dialog.tsx";
 import { ReasonDialog } from "../../dialogs/livro_prompts.tsx";
 import { goalColumns } from "./columns.tsx";
-import { dateOrNone, goalRows, moneyOrNone, reachedLabel, summaryLine } from "./rows.ts";
+import {
+  dateOrNone,
+  goalExample,
+  goalRows,
+  moneyOrNone,
+  reachedLabel,
+  summaryLine,
+  type GoalExample,
+} from "./rows.ts";
 
 type Goal = dom.goals.Goal;
 
@@ -37,6 +45,8 @@ const LOCKED = "Outra aba ou outro aparelho está editando este projeto. Atualiz
 interface EditState {
   key: number;
   goal: Goal | null;
+  /** A new goal that starts from the example (the empty page's "Definir uma meta…"). */
+  example?: GoalExample;
 }
 
 export function Page() {
@@ -67,6 +77,10 @@ export function Page() {
 
   const openEdit = (goal: Goal | null) => {
     setEdit({ key: ++counter.current, goal });
+    setEditOpen(true);
+  };
+  const openExample = () => {
+    setEdit({ key: ++counter.current, goal: null, example: goalExample(workspace.ledger, today) });
     setEditOpen(true);
   };
 
@@ -143,8 +157,17 @@ export function Page() {
           <EmptyState
             icon={<GoalIcon />}
             title="Nenhuma meta"
-            description="Crie uma meta de patrimônio ou de saldo (reserva de emergência, entrada de um imóvel, viagem) para acompanhar quanto falta e em que ritmo o projeto chega lá."
-            actions={newButton(false)}
+            description="Defina uma meta de patrimônio ou de saldo para acompanhar quanto falta e em que ritmo o projeto chega lá. Comece pelo exemplo de uma reserva de emergência e ajuste os valores."
+            actions={
+              <>
+                <Button variant="primary" onClick={openExample} disabled={locked} title={lockTip}>
+                  Definir uma meta…
+                </Button>
+                <Button onClick={() => openEdit(null)} disabled={locked} title={lockTip}>
+                  Começar do zero…
+                </Button>
+              </>
+            }
           />
         </div>
       ) : (
@@ -217,6 +240,7 @@ export function Page() {
           open={editOpen}
           onClose={() => setEditOpen(false)}
           goal={edit.goal}
+          example={edit.example ?? null}
           onDone={(goal, created) => {
             setPick(goal.id);
             notify(created ? "Meta criada." : "Meta atualizada.");
@@ -237,7 +261,10 @@ export function Page() {
           }
           onSubmit={(reason) => {
             const goal = archive;
-            workspace.act((ledger) => dom.goals.updateGoal(ledger, { ...goal, archived: !goal.archived }, reason));
+            workspace.act(
+              (ledger) => dom.goals.updateGoal(ledger, { ...goal, archived: !goal.archived }, reason),
+              goal.archived ? "reativar meta" : "arquivar meta",
+            );
             notify(goal.archived ? "Meta reativada." : "Meta arquivada.");
           }}
         />

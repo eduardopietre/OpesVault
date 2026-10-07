@@ -16,7 +16,8 @@ import { DateField, MoneyField, Select, TextField, type SelectOption } from "@op
 import { useMemo, useState } from "react";
 import { useWorkspace } from "../data/react.tsx";
 import { ASSET_SUBTYPES, LIABILITY_SUBTYPES, SUBTYPE_LABELS, memberChoices } from "./accounts_labels.ts";
-import { FormDialog, FormGrid, FullRow, NONE, dateText, readDate, readMoney, useFormAct } from "./livro_form.tsx";
+import { FormDialog, FormGrid, FullRow, NONE, useFormAct } from "./livro_form.tsx";
+import { dateText, readDate, readMoney } from "./form_readers.ts";
 
 export interface AccountDialogProps {
   open: boolean;

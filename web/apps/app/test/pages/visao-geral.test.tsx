@@ -234,7 +234,7 @@ describe("Visão geral", () => {
       expect(workspace.readOnly).toBe(true);
       const close = screen.getByRole("button", { name: "Fechar mês…" }) as HTMLButtonElement;
       expect(close.disabled).toBe(true);
-      expect(close.parentElement?.getAttribute("title")).toMatch(/só para leitura/);
+      expect(close.parentElement?.getAttribute("title")).toMatch(/aqui só leitura/);
     });
   });
 

@@ -3,8 +3,8 @@ import { act as reactAct, screen, waitFor, within } from "@testing-library/react
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderPdf } from "../../src/data/pdf_render.ts";
 import type { Workspace } from "../../src/data/workspace.ts";
-import { downloadFile } from "../../src/pages/livro/export.ts";
-import { documentRows, fileSize, summaryLine, usedBy } from "../../src/pages/documentos/rows.ts";
+import { saveFile, formatBytes as fileSize } from "@opesvault/ui";
+import { documentRows, summaryLine, usedBy } from "../../src/pages/documentos/rows.ts";
 import { DocumentUnavailable } from "../../src/data/workspace.ts";
 import { openAt } from "./sharing_docs_harness.tsx";
 import { flat, type User, undoOnce } from "../dom.ts";
@@ -34,11 +34,9 @@ vi.mock("../../src/data/pdf_render.ts", async () => {
     }),
   };
 });
-vi.mock("../../src/pages/livro/export.ts", async () => {
-  const actual = await vi.importActual<typeof import("../../src/pages/livro/export.ts")>(
-    "../../src/pages/livro/export.ts",
-  );
-  return { ...actual, downloadFile: vi.fn() };
+vi.mock("@opesvault/ui", async () => {
+  const actual = await vi.importActual<typeof import("@opesvault/ui")>("@opesvault/ui");
+  return { ...actual, saveFile: vi.fn() };
 });
 
 const bytes = (text: string) => new TextEncoder().encode(text);
@@ -74,7 +72,7 @@ const documents = (workspace: Workspace) => workspace.session.documents.map((d) 
 
 beforeEach(() => {
   vi.mocked(renderPdf).mockClear();
-  vi.mocked(downloadFile).mockClear();
+  vi.mocked(saveFile).mockClear();
 });
 
 describe("Documentos", () => {
@@ -280,14 +278,14 @@ describe("Documentos", () => {
     let confirmation = await screen.findByRole("alertdialog", { name: "Salvar o original sem criptografia?" });
     expect(within(confirmation).getAllByText(/sem criptografia/).length).toBeGreaterThan(0);
     await user.click(within(confirmation).getByRole("button", { name: "Cancelar" }));
-    expect(downloadFile).not.toHaveBeenCalled();
+    expect(saveFile).not.toHaveBeenCalled();
     await user.click(save);
     confirmation = await screen.findByRole("alertdialog", { name: "Salvar o original sem criptografia?" });
     await user.click(within(confirmation).getByRole("button", { name: "Salvar o original" }));
-    await waitFor(() => expect(downloadFile).toHaveBeenCalledTimes(1));
-    const [name, data, type] = vi.mocked(downloadFile).mock.calls[0]!;
+    await waitFor(() => expect(saveFile).toHaveBeenCalledTimes(1));
+    const [name, data, type] = vi.mocked(saveFile).mock.calls[0]!;
     expect(name).toBe("livre.pdf");
-    expect(new TextDecoder().decode(data)).toContain("LIVRE");
+    expect(new TextDecoder().decode(data as Uint8Array)).toContain("LIVRE");
     expect(type).toBe("application/pdf");
     expect(await screen.findByText(/Arquivo salvo/)).toBeTruthy();
   });
@@ -405,10 +403,10 @@ describe("Documentos", () => {
   });
 
   it("formats sizes as people read them", () => {
-    expect(fileSize(840)).toBe("840 bytes");
-    expect(fileSize(1536)).toBe("1,5 KB");
-    expect(fileSize(12 * 1024)).toBe("12 KB");
-    expect(fileSize(3.4 * 1024 * 1024)).toBe("3,4 MB");
+    expect(fileSize(840)).toBe("840 B");
+    expect(fileSize(1536)).toBe("1,5 KiB");
+    expect(fileSize(12 * 1024)).toBe("12 KiB");
+    expect(fileSize(3.4 * 1024 * 1024)).toBe("3,4 MiB");
     expect(summaryLine([])).toBe("");
   });
 });

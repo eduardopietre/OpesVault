@@ -4,26 +4,16 @@
  * page by page with pdf.js, an image is shown as it is. A protected PDF asks for its password once and does not
  * keep it.
  */
-import { DomainError, dom, formatDateBr, type Id } from "@opesvault/domain";
-import { Button, ElidedText, Skeleton, useMotionPreset } from "@opesvault/ui";
+import { formatDateBr, type Id } from "@opesvault/domain";
+import { Button, ElidedText, Skeleton, useMotionPreset, formatBytes } from "@opesvault/ui";
 import { Download, FileQuestion, KeyRound, Trash2 } from "lucide-react";
 import { motion } from "motion/react";
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { PdfPasswordRequired, renderPdf, type RenderedPdf } from "../../data/pdf_render.ts";
-import { useWorkspace } from "../../data/react.tsx";
+import { useRef, type ReactNode } from "react";
+import { renderPdf } from "../../data/pdf_render.ts";
 import { DocumentsPasswordDialog } from "../../dialogs/documents_password.tsx";
-import { fileSize, usedBy, type DocumentRow, type ReceiptUse } from "./rows.ts";
-
-type Kind = "pdf" | "png" | "jpeg" | "other";
-
-type Loaded =
-  { state: "loading" } | { state: "error"; message: string } | { state: "ready"; bytes: Uint8Array; kind: Kind };
-
-type Drawing =
-  | { state: "idle" }
-  | { state: "password"; incorrect: boolean }
-  | { state: "ready"; pages: number }
-  | { state: "failed" };
+import { usedBy, type DocumentRow, type ReceiptUse } from "./rows.ts";
+import { READ_ONLY_TIP } from "../../data/read_only.ts";
+import { useDocument, useImageUrl, usePdfView, type DocumentKind } from "../../data/use_document.ts";
 
 const MAX_PAGES = 30;
 
@@ -34,7 +24,7 @@ export interface DocumentPanelProps {
   onSeeOperation: (operationId: Id) => void;
   onDetach: (row: DocumentRow, use: ReceiptUse) => void;
   onRemove: (row: DocumentRow) => void;
-  onSave: (row: DocumentRow, bytes: Uint8Array, kind: Kind) => void;
+  onSave: (row: DocumentRow, bytes: Uint8Array, kind: DocumentKind) => void;
 }
 
 export function DocumentPanel({
@@ -46,100 +36,30 @@ export function DocumentPanel({
   onRemove,
   onSave,
 }: DocumentPanelProps) {
-  const workspace = useWorkspace();
   const preset = useMotionPreset();
-  const [loaded, setLoaded] = useState<Loaded>({ state: "loading" });
-  const [attempt, setAttempt] = useState(0);
-  const [drawing, setDrawing] = useState<Drawing>({ state: "idle" });
-  const [asking, setAsking] = useState(false);
   const box = useRef<HTMLDivElement>(null);
   const pages = useRef<HTMLDivElement>(null);
-  const rendered = useRef<RenderedPdf | null>(null);
-  const token = useRef(0);
 
   // The original is fetched when this document is shown, and again if that failed and the user tries once more.
-  useEffect(() => {
-    let alive = true;
-    workspace.loadDocument(row.id).then(
-      (bytes) => {
-        if (!alive) return;
-        const kind = dom.attachments.kindOf(bytes);
-        setLoaded({ state: "ready", bytes, kind: (kind ?? "other") as Kind });
-      },
-      (error: unknown) => {
-        if (!alive) return;
-        setLoaded({
-          state: "error",
-          message: error instanceof DomainError ? error.message : "Não foi possível abrir este documento.",
-        });
-      },
-    );
-    return () => {
-      alive = false;
-    };
-  }, [workspace, row.id, attempt]);
-
-  const draw = useCallback(async (bytes: Uint8Array, password?: string): Promise<"ok" | "password" | "failed"> => {
+  const { loaded, retry } = useDocument(row.id, "Não foi possível abrir este documento.");
+  const pdfBytes = loaded.state === "ready" && loaded.kind === "pdf" ? loaded.bytes : null;
+  const {
+    opening: drawing,
+    asking,
+    ask,
+    stopAsking,
+    submitPassword,
+  } = usePdfView(pdfBytes, async (bytes, password) => {
     const host = pages.current;
-    if (!host) return "failed";
-    const mine = ++token.current;
-    try {
-      const result = await renderPdf(
-        bytes,
-        host,
-        Math.min(Math.max(box.current?.getBoundingClientRect().width || 720, 480), 1000),
-        MAX_PAGES,
-        password,
-      );
-      if (mine !== token.current) {
-        result.destroy();
-        return "ok";
-      }
-      rendered.current?.destroy();
-      rendered.current = result;
-      setDrawing({ state: "ready", pages: result.pages });
-      return "ok";
-    } catch (error) {
-      if (mine !== token.current) return "ok";
-      if (error instanceof PdfPasswordRequired) {
-        setDrawing({ state: "password", incorrect: error.incorrect });
-        return "password";
-      }
-      setDrawing({ state: "failed" });
-      return "failed";
-    }
-  }, []);
-
-  useEffect(() => {
-    if (loaded.state !== "ready" || loaded.kind !== "pdf") return;
-    void draw(loaded.bytes);
-    return () => {
-      token.current += 1;
-      rendered.current?.destroy();
-      rendered.current = null;
-    };
-  }, [loaded, draw]);
-
-  // An image is shown from a temporary address that goes away with the panel.
-  const imageUrl = useMemo(
-    () =>
-      loaded.state === "ready" && (loaded.kind === "png" || loaded.kind === "jpeg")
-        ? URL.createObjectURL(new Blob([loaded.bytes as BlobPart], { type: `image/${loaded.kind}` }))
-        : null,
-    [loaded],
-  );
-  useEffect(() => () => (imageUrl ? URL.revokeObjectURL(imageUrl) : undefined), [imageUrl]);
-
-  const submitPassword = async (password: string) => {
-    if (loaded.state !== "ready") return;
-    const outcome = await draw(loaded.bytes, password);
-    if (outcome === "password") throw new DomainError("Senha incorreta. Tente de novo.");
-    if (outcome === "failed") throw new DomainError("Não foi possível abrir este PDF.");
-  };
+    if (!host) return null;
+    const width = Math.min(Math.max(box.current?.getBoundingClientRect().width || 720, 480), 1000);
+    return renderPdf(bytes, host, width, MAX_PAGES, password);
+  });
+  const imageUrl = useImageUrl(loaded);
 
   const needsPassword = drawing.state === "password";
   const ready = loaded.state === "ready";
-  const tip = locked ? "Outra aba ou outro aparelho está editando este projeto; aqui só leitura." : undefined;
+  const tip = locked ? READ_ONLY_TIP : undefined;
   const removeNote = !row.free ? `Em uso por ${usedBy(row)}: desfaça o vínculo para poder remover.` : null;
 
   return (
@@ -153,7 +73,7 @@ export function DocumentPanel({
           <ElidedText>{row.name}</ElidedText>
         </h2>
         <p className="mt-0.5 text-caption text-secondary">
-          {fileSize(row.size)} · SHA-256 <span className="font-mono">{row.sha256.slice(0, 12)}…</span>
+          {formatBytes(row.size)} · SHA-256 <span className="font-mono">{row.sha256.slice(0, 12)}…</span>
         </p>
       </div>
 
@@ -201,7 +121,7 @@ export function DocumentPanel({
 
       <div className="flex flex-wrap items-center gap-2">
         {needsPassword ? (
-          <Button variant="primary" icon={<KeyRound />} onClick={() => setAsking(true)}>
+          <Button variant="primary" icon={<KeyRound />} onClick={ask}>
             Informar senha…
           </Button>
         ) : null}
@@ -239,14 +159,7 @@ export function DocumentPanel({
         {loaded.state === "error" ? (
           <div role="alert" className="flex flex-col items-start gap-3">
             <p className="text-body text-negative">{loaded.message}</p>
-            <Button
-              onClick={() => {
-                setLoaded({ state: "loading" });
-                setAttempt((n) => n + 1);
-              }}
-            >
-              Tentar de novo
-            </Button>
+            <Button onClick={retry}>Tentar de novo</Button>
           </div>
         ) : null}
         {loaded.state === "ready" && loaded.kind === "pdf" ? (
@@ -303,7 +216,7 @@ export function DocumentPanel({
       <DocumentsPasswordDialog
         key={`${row.id}:${asking}`}
         open={asking}
-        onClose={() => setAsking(false)}
+        onClose={stopAsking}
         name={row.name}
         onSubmit={submitPassword}
       />

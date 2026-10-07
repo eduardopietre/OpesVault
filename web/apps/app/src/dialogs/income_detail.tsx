@@ -3,11 +3,13 @@
  * and INSS of a deposit, as printed on the payslip, for the annual return. A field left empty stays unknown,
  * never zero; the deposit in the book does not change.
  */
-import { DomainError, cashDate, formatBrl, formatDateBr, tax, type Id } from "@opesvault/domain";
+import { DomainError, cashDate, formatBrl, tax, type Id } from "@opesvault/domain";
 import { MoneyField, Select } from "@opesvault/ui";
 import { useState } from "react";
 import { useWorkspace } from "../data/react.tsx";
-import { Caption, FormDialog, FormGrid, FullRow, editableMoney, readMoney, useFormAct } from "./livro_form.tsx";
+import { Caption, FormDialog, FormGrid, FullRow, useFormAct } from "./livro_form.tsx";
+import { dateOr } from "../data/money.ts";
+import { editableMoney, readMoney } from "./form_readers.ts";
 
 const KINDS = Object.entries(tax.model.INCOME_KIND_LABELS).map(([id, label]) => ({ id, label }));
 
@@ -51,8 +53,8 @@ export function IncomeDetailDialog({ open, onClose, operationId, onDone }: Incom
       <FormGrid>
         <FullRow>
           <Caption>
-            {op.description} · {when ? formatDateBr(when) : "—"} · recebido {formatBrl(received)}. Copie do
-            contracheque; o depósito no livro não muda.
+            {op.description} · {dateOr(when)} · recebido {formatBrl(received)}. Copie do contracheque; o depósito no
+            livro não muda.
           </Caption>
         </FullRow>
         <FullRow>

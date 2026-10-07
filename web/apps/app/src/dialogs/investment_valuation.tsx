@@ -9,18 +9,8 @@ import { DomainError, formatBrl, formatDateBr, investments, type Id, type IsoDat
 import { Button, DateField, MoneyField, Select, TextField, parseBrDate, type SelectOption } from "@opesvault/ui";
 import { useState } from "react";
 import { useWorkspace } from "../data/react.tsx";
-import { readQuantity } from "./investment_forms.ts";
-import {
-  Caption,
-  FormDialog,
-  FormGrid,
-  FullRow,
-  dateText,
-  editableMoney,
-  readDate,
-  readMoney,
-  useFormAct,
-} from "./livro_form.tsx";
+import { Caption, FormDialog, FormGrid, FullRow, useFormAct } from "./livro_form.tsx";
+import { dateText, editableMoney, readDate, readMoney, readQuantity } from "./form_readers.ts";
 
 const { model, service } = investments;
 

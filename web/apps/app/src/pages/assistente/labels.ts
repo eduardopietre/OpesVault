@@ -5,6 +5,7 @@
  */
 import { Dec, tax, type assistant } from "@opesvault/domain";
 import { formatBrDate } from "@opesvault/ui";
+import { accountRef } from "../livro/rows.ts";
 
 export const TOOL_LABELS: Readonly<Record<string, string>> = {
   get_overview: "Resumo do projeto",
@@ -120,7 +121,7 @@ export function parseActivity(line: string): { tool: string; found: number | nul
 export function livroRef(link: assistant.reads.LedgerLink): string {
   if (link[0] === "tag") return `marcador:${link[1]}`;
   const period = link[2];
-  return period ? `filter:${link[1]}:${period[0]}..${period[1]}` : `conta:${link[1]}`;
+  return period ? `filter:${link[1]}:${period[0]}..${period[1]}` : accountRef(link[1]);
 }
 
 // ── CPF and CNPJ ─────────────────────────────────────

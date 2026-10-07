@@ -36,23 +36,22 @@ import { useReasonPrompt } from "./prompts.tsx";
 import type { ImportQueue } from "./queue.tsx";
 import {
   DEFAULT_TARGET,
-  day,
   factsLine,
   isOpen,
   itemRows,
-  money,
   needsLayout,
   targetOptions,
   verdicts,
   type ItemRow,
 } from "./rows.ts";
+import { READ_ONLY_TIP } from "../../data/read_only.ts";
+import { moneyOr, dateOr } from "../../data/money.ts";
 
 const { BatchStatus, ItemKind, ItemStatus } = importing.importModel;
 
 /** Below this width the items are cards: the columns that always show need about 550 px. */
 const CARDS_BELOW = 560;
 const NO_SELECTION = "Selecione um item da lista.";
-const READ_ONLY = "Outra aba ou aparelho está editando este projeto; aqui só leitura.";
 
 const STATUS_TONE: Record<string, "neutral" | "accent" | "positive" | "negative" | "warning"> = {
   [ItemStatus.NEEDS_REVIEW]: "warning",
@@ -351,7 +350,7 @@ export function Review({ batchId, selected, onSelect, queue, ai }: ReviewProps) 
     {
       id: "date",
       header: "Data",
-      cell: (row) => day(row.date),
+      cell: (row) => dateOr(row.date),
       sortValue: (row) => row.date ?? "",
       width: 108,
       priority: 2,
@@ -360,7 +359,7 @@ export function Review({ batchId, selected, onSelect, queue, ai }: ReviewProps) 
     {
       id: "amount",
       header: "Valor",
-      cell: (row) => money(row.amount),
+      cell: (row) => moneyOr(row.amount),
       sortValue: (row) => row.amount?.toFixed() ?? null,
       align: "end",
       width: 104,
@@ -397,7 +396,7 @@ export function Review({ batchId, selected, onSelect, queue, ai }: ReviewProps) 
   ];
 
   const checks = verdicts(batch);
-  const readOnlyTip = readOnly ? READ_ONLY : undefined;
+  const readOnlyTip = readOnly ? READ_ONLY_TIP : undefined;
   const moreEntries: MenuEntry[] = [
     {
       id: "keep-separate",

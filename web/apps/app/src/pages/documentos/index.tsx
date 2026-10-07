@@ -2,7 +2,7 @@
  * Documentos (desktop `ui/pages/documents_page.py`): every file stored in the project, imports and receipts,
  * what uses each one and the original itself, drawn in the tab only when asked for (docs/03 §6).
  */
-import { dom, exporting, formatDateBr, type Id, type IsoDate } from "@opesvault/domain";
+import { dom, exporting, type Id } from "@opesvault/domain";
 import {
   Adaptive,
   Button,
@@ -13,17 +13,19 @@ import {
   confirm,
   notify,
   type DataColumn,
+  saveFile,
+  formatBytes,
 } from "@opesvault/ui";
 import { useRef, useState } from "react";
 import { useGoTo, useReveal } from "../../data/navigation.ts";
 import { useLedger, useWorkspace } from "../../data/react.tsx";
 import { TableBox } from "../../data/table_box.tsx";
 import { useUndo } from "../../shell/undo.tsx";
-import { downloadFile } from "../livro/export.ts";
 import { DocumentPanel } from "./panel.tsx";
-import { documentRows, fileSize, summaryLine, type DocumentRow, type ReceiptUse } from "./rows.ts";
-
-const day = (date: IsoDate | null) => (date ? formatDateBr(date) : "—");
+import { documentRows, summaryLine, type DocumentRow, type ReceiptUse } from "./rows.ts";
+import { exportUnencrypted, NOT_ENCRYPTED } from "../../data/export_file.ts";
+import { DOCUMENT_MIME, type DocumentKind } from "../../data/use_document.ts";
+import { dateOr } from "../../data/money.ts";
 
 const COLUMNS: DataColumn<DocumentRow>[] = [
   {
@@ -34,7 +36,7 @@ const COLUMNS: DataColumn<DocumentRow>[] = [
     grow: 2,
     width: 160,
   },
-  { id: "date", header: "Data", cell: (row) => day(row.date), sortValue: (row) => row.date ?? "", width: 112 },
+  { id: "date", header: "Data", cell: (row) => dateOr(row.date), sortValue: (row) => row.date ?? "", width: 112 },
   {
     id: "where",
     header: "Conta ou cartão",
@@ -54,20 +56,13 @@ const COLUMNS: DataColumn<DocumentRow>[] = [
   {
     id: "size",
     header: "Tamanho",
-    cell: (row) => fileSize(row.size),
+    cell: (row) => formatBytes(row.size),
     sortValue: (row) => row.size,
     align: "end",
     width: 90,
     priority: 3,
   },
 ];
-
-const MIME = {
-  pdf: "application/pdf",
-  png: "image/png",
-  jpeg: "image/jpeg",
-  other: "application/octet-stream",
-} as const;
 
 export function Page() {
   const workspace = useWorkspace();
@@ -149,15 +144,14 @@ export function Page() {
     });
   };
 
-  const save = async (row: DocumentRow, bytes: Uint8Array, kind: keyof typeof MIME) => {
-    const ok = await confirm({
+  const save = async (row: DocumentRow, bytes: Uint8Array, kind: DocumentKind) => {
+    await exportUnencrypted({
       title: "Salvar o original sem criptografia?",
-      text: `${exporting.WARNING} O arquivo “${row.name}” (${fileSize(row.size)}) vai para a pasta de downloads deste aparelho.`,
+      text: `${exporting.WARNING} O arquivo “${row.name}” (${formatBytes(row.size)}) vai para a pasta de downloads deste aparelho.`,
       confirmLabel: "Salvar o original",
+      save: () => saveFile(row.name, bytes, DOCUMENT_MIME[kind]),
+      done: `Arquivo salvo. ${NOT_ENCRYPTED}`,
     });
-    if (!ok) return;
-    downloadFile(row.name, bytes, MIME[kind]);
-    notify("Arquivo salvo. Guarde-o com cuidado: ele não é cifrado.");
   };
 
   const context = summaryLine(rows);
@@ -206,13 +200,12 @@ export function Page() {
           </div>
         </Adaptive>
       ) : (
-        <div className="rounded-xl border border-dashed border-separator-strong bg-window/40">
-          <EmptyState
-            title="Nenhum documento no projeto"
-            description="Os arquivos importados e os comprovantes anexados no Livro ficam guardados aqui, cifrados, como evidência dos lançamentos."
-            actions={<Button onClick={() => goTo("livro")}>Abrir o Livro financeiro</Button>}
-          />
-        </div>
+        <EmptyState
+          framed
+          title="Nenhum documento no projeto"
+          description="Os arquivos importados e os comprovantes anexados no Livro ficam guardados aqui, cifrados, como evidência dos lançamentos."
+          actions={<Button onClick={() => goTo("livro")}>Abrir o Livro financeiro</Button>}
+        />
       )}
     </div>
   );

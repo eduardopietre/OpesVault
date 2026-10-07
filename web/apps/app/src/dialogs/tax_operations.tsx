@@ -3,12 +3,14 @@
  * (gross, tax withheld, INSS) of each deposit, or "receipts" to attach the receipt of each payment. The list
  * stays open while each one is done.
  */
-import { Dec, DomainError, cashDate, dom, formatBrl, formatDateBr, type Id, type Ledger, tax } from "@opesvault/domain";
-import { Button, DataTable, ElidedText, type DataColumn } from "@opesvault/ui";
+import { Dec, DomainError, cashDate, dom, formatBrl, type Id, type Ledger, tax } from "@opesvault/domain";
+import { Button, DataTable, ElidedText, type DataColumn, fitHeight } from "@opesvault/ui";
 import { useRef, useState } from "react";
 import { useLedger, useWorkspace } from "../data/react.tsx";
 import { Caption, FormDialog, useFormAct } from "./livro_form.tsx";
 import { IncomeDetailDialog } from "./income_detail.tsx";
+import { READ_ONLY_TIP } from "../data/read_only.ts";
+import { dateOr, moneyOr } from "../data/money.ts";
 
 export type OperationsMode = "detail" | "receipts";
 
@@ -23,7 +25,7 @@ interface OperationLine {
 const text = (value: string) => <ElidedText>{value}</ElidedText>;
 
 /** The rows of the dialog: date, description, value and the payslip or the receipts of each operation. */
-export function operationLines(ledger: Ledger, ids: readonly Id[], mode: OperationsMode): OperationLine[] {
+function operationLines(ledger: Ledger, ids: readonly Id[], mode: OperationsMode): OperationLine[] {
   const out: OperationLine[] = [];
   for (const id of ids) {
     const op = ledger.operations.get(id);
@@ -36,16 +38,14 @@ export function operationLines(ledger: Ledger, ids: readonly Id[], mode: Operati
     if (mode === "detail") {
       const detail = tax.records.detailOf(ledger, id);
       status = detail
-        ? [detail.gross, detail.withheld, detail.social_security]
-            .map((v) => (v === null ? "—" : formatBrl(v)))
-            .join(" / ")
+        ? [detail.gross, detail.withheld, detail.social_security].map((v) => moneyOr(v)).join(" / ")
         : "não detalhado";
     } else {
       const found = dom.attachments.ofOperation(ledger, id);
       status = found.length ? `${found.length} anexo(s)` : "falta";
     }
     const day = cashDate(op);
-    out.push({ id, date: day ? formatDateBr(day) : "—", description: op.description, value: formatBrl(value), status });
+    out.push({ id, date: dateOr(day), description: op.description, value: formatBrl(value), status });
   }
   return out;
 }
@@ -143,7 +143,7 @@ export function OperationsDialog({ open, onClose, operationIds, mode }: Operatio
           onSelect={setPicked}
           onActivate={(id) => (workspace.readOnly ? undefined : start(id))}
           cardTitle={(r) => text(r.description)}
-          height={`${Math.min(Math.max(rows.length, 1), 10) * 36 + 38}px`}
+          height={fitHeight(rows.length, 10)}
           empty={<p className="px-3 py-6 text-center text-body text-secondary">Nenhum lançamento.</p>}
         />
         <div className="flex flex-wrap items-center gap-3">
@@ -151,9 +151,7 @@ export function OperationsDialog({ open, onClose, operationIds, mode }: Operatio
             variant="primary"
             onClick={() => start()}
             disabled={selected === null || workspace.readOnly}
-            title={
-              workspace.readOnly ? "Outra aba ou aparelho está editando este projeto; aqui só leitura." : undefined
-            }
+            title={workspace.readOnly ? READ_ONLY_TIP : undefined}
           >
             {mode === "detail" ? "Detalhar…" : "Anexar comprovante…"}
           </Button>

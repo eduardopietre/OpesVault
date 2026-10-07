@@ -27,7 +27,6 @@ import { useMemo, useRef, useState } from "react";
 import { useAct, useLedger, useWorkspace } from "../../data/react.tsx";
 import { useGoTo, useReveal } from "../../data/navigation.ts";
 import { useNavigate } from "@tanstack/react-router";
-import { useDialog, useLock } from "../../components/list_parts.tsx";
 import { FigureRow, Money } from "../../components/figures.tsx";
 import { declarantChoices, namesOf, yearData } from "./data.ts";
 import { DialogHost, type Spec } from "./host.tsx";
@@ -44,6 +43,8 @@ import {
   SimulationSection,
   VariableSection,
 } from "./sections.tsx";
+import { useDialog } from "../../data/dialog.ts";
+import { useLock } from "../../data/read_only.ts";
 
 const PROJECT = "__project";
 
@@ -603,17 +604,16 @@ export function Page() {
           </Adaptive>
         </>
       ) : (
-        <div className="rounded-xl border border-dashed border-separator-strong bg-window/40">
-          <EmptyState
-            title="Nada registrado neste ano"
-            description="A página organiza o ano nas fichas da declaração assim que houver lançamentos. Escolha outro ano acima ou registre receitas e despesas no Livro financeiro."
-            actions={
-              <Button variant="primary" onClick={() => goTo("livro")}>
-                Abrir o Livro financeiro
-              </Button>
-            }
-          />
-        </div>
+        <EmptyState
+          framed
+          title="Nada registrado neste ano"
+          description="A página organiza o ano nas fichas da declaração assim que houver lançamentos. Escolha outro ano acima ou registre receitas e despesas no Livro financeiro."
+          actions={
+            <Button variant="primary" onClick={() => goTo("livro")}>
+              Abrir o Livro financeiro
+            </Button>
+          }
+        />
       )}
 
       <DialogHost

@@ -19,11 +19,11 @@ import {
   ListTable,
   Toolbar,
   Warn,
-  useDialog,
   useTabReveal,
 } from "../../components/list_parts.tsx";
 import type { TierColumn } from "../../components/tier_columns.ts";
 import { proposalRows, ruleRows, type ProposalRow, type RuleRow } from "./rows.ts";
+import { useDialog } from "../../data/dialog.ts";
 
 const { rules, suggestions } = importing;
 

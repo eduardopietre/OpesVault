@@ -18,9 +18,10 @@ import { AnimatePresence, motion } from "motion/react";
 import { FilterX } from "lucide-react";
 import { useMemo } from "react";
 import { useLedger } from "../../data/react.tsx";
-import { NONE, monthLabel } from "../../dialogs/livro_form.tsx";
+import { NONE } from "../../dialogs/livro_form.tsx";
 import { ORIGIN_LABELS, PERIODS, STATUS_LABELS, filtersActive, type FilterState, type PeriodKey } from "./rows.ts";
 import type { search } from "@opesvault/domain";
+import { monthLabel } from "../../data/text.ts";
 
 export interface FilterChoices {
   accounts: SelectOption[];

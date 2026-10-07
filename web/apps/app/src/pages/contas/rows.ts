@@ -24,23 +24,11 @@ import {
   catalogs,
 } from "@opesvault/domain";
 import { ROLE_LABELS, subtypeLabel } from "../../dialogs/accounts_labels.ts";
+import { cents, moneyOr, DASH } from "../../data/money.ts";
+import { plural } from "../../data/text.ts";
 
 const { banking, balanceChecks, cards, loans } = dom;
 const { profile: prof } = investments;
-
-const DASH = "—";
-
-/** Exact cents for sorting a money column. */
-export function cents(value: Dec | null): bigint | null {
-  return value === null ? null : BigInt(value.quantize("0.01", "ROUND_HALF_UP").toFixed().replace(".", ""));
-}
-
-export const money = (value: Dec | null): string => (value === null ? DASH : formatBrl(value));
-
-/** How many, with the right plural ("1 conta", "2 contas"). */
-export function plural(count: number, one: string, many: string): string {
-  return `${count} ${count === 1 ? one : many}`;
-}
 
 // ── tabs ─────────────────────────────────────────
 
@@ -292,10 +280,10 @@ export function bankRows(ledger: Ledger, today: IsoDate): BankRow[] {
       branch: item.branch ?? DASH,
       number: item.number ?? DASH,
       holders: holderNames(ledger, item),
-      checking: byKind.has("checking") ? money(byKind.get("checking") ?? null) : DASH,
-      savings: byKind.has("savings") ? money(byKind.get("savings") ?? null) : DASH,
+      checking: byKind.has("checking") ? moneyOr(byKind.get("checking") ?? null) : DASH,
+      savings: byKind.has("savings") ? moneyOr(byKind.get("savings") ?? null) : DASH,
       investments: (known.length ? formatBrl(Dec.sum(known)) : DASH) + (known.length < invested.length ? " *" : ""),
-      total: money(total),
+      total: moneyOr(total),
       totalCents: cents(total),
     };
   });
@@ -328,7 +316,7 @@ export function partRows(ledger: Ledger, item: dom.banking.BankAccount, today: I
         yield: prof.yieldText(profile),
         maturity: profile?.maturity ? formatDateBr(profile.maturity) : DASH,
         tax: profile?.tax ? prof.TAX_LABELS[profile.tax] : DASH,
-        today: money(value.value),
+        today: moneyOr(value.value),
         lastBank: observed ? `${formatBrl(observed.valuation.value)} em ${formatDateBr(observed.valuation.on)}` : DASH,
       };
     }
@@ -342,7 +330,7 @@ export function partRows(ledger: Ledger, item: dom.banking.BankAccount, today: I
       yield: DASH,
       maturity: DASH,
       tax: DASH,
-      today: money(value.value),
+      today: moneyOr(value.value),
       lastBank: check ? `${formatBrl(check.check.informed)} em ${formatDateBr(check.check.on)}` : DASH,
     };
   });

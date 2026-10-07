@@ -31,14 +31,11 @@ import {
   NONE,
   competenceFromChoice,
   competenceOptions,
-  dateText,
-  editableMoney,
   memberFromChoice,
   memberOptions,
-  readDate,
-  readMoney,
   useFormAct,
 } from "./livro_form.tsx";
+import { dateText, editableMoney, readDate, readMoney } from "./form_readers.ts";
 
 export type OperationKindKey = "income" | "expense" | "transfer" | "card_purchase" | "card_payment";
 

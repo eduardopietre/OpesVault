@@ -2,12 +2,13 @@
  * Declarantes e dependentes (desktop `PeopleDialog`): who files a return and who is a dependent, one line per
  * member, edited one at a time in the member's tax data.
  */
-import { formatDateBr, sortedBy, tax, type Id, type Ledger } from "@opesvault/domain";
-import { Button, DataTable, ElidedText, type DataColumn } from "@opesvault/ui";
+import { sortedBy, tax, type Id, type Ledger } from "@opesvault/domain";
+import { Button, DataTable, ElidedText, type DataColumn, fitHeight } from "@opesvault/ui";
 import { useState } from "react";
 import { useLedger } from "../data/react.tsx";
 import { FormDialog, Caption } from "./livro_form.tsx";
 import { MemberTaxDialog } from "./tax_member.tsx";
+import { dateOr } from "../data/money.ts";
 
 interface PersonRow {
   id: Id;
@@ -41,7 +42,7 @@ export function peopleRows(ledger: Ledger): PersonRow[] {
       id: member.id,
       name: member.name,
       cpf: info?.cpf ? tax.ids.display(info.cpf) : "—",
-      birth: info?.birth_date ? formatDateBr(info.birth_date) : "—",
+      birth: dateOr(info?.birth_date),
       declaration: boss ? `Dependente de ${boss.name}` : "Própria",
     };
   });
@@ -80,7 +81,7 @@ export function PeopleDialog({ open, onClose }: PeopleDialogProps) {
           onSelect={setPicked}
           onActivate={edit}
           cardTitle={(r) => text(r.name)}
-          height={`${Math.min(Math.max(rows.length, 1), 8) * 36 + 38}px`}
+          height={fitHeight(rows.length, 8)}
         />
         <div className="flex flex-wrap items-center gap-3">
           <Button onClick={() => edit()} disabled={selected === null}>

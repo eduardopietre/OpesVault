@@ -7,7 +7,6 @@
 import { Dec, DomainError, ZERO, dom, formatBrl, formatDateBr, type Operation } from "@opesvault/domain";
 import {
   Adaptive,
-  Button,
   Collapsible,
   DataTable,
   EmptyState,
@@ -16,36 +15,35 @@ import {
   Section,
   confirm,
   notify,
-  useMediaQuery,
   useMotionPreset,
   useStoredFlag,
+  fitHeight,
+  usePhone,
 } from "@opesvault/ui";
 import { Repeat } from "lucide-react";
 import { motion } from "motion/react";
 import { useRef, useState } from "react";
 import { useAct, useLedger, useWorkspace } from "../../data/react.tsx";
 import { useGoTo, useReveal } from "../../data/navigation.ts";
-import { tableHeight } from "../../data/table_height.ts";
 import { RecurrenceLinkDialog } from "../../dialogs/recurrence_link.tsx";
 import { RecurrenceRuleDialog } from "../../dialogs/recurrence_rule.tsx";
 import { useUndo } from "../../shell/undo.tsx";
 import { FORECAST_LABELS, candidateKey, forecastId, forecastWindow, parseRecurrenceRef, summaryLine } from "./rows.ts";
 import { CANDIDATE_COLUMNS, COMMITMENT_COLUMNS, FORECAST_COLUMNS, RULE_COLUMNS } from "./tables.tsx";
+import { EditButton, usePick } from "../../components/list_parts.tsx";
+import { useLock } from "../../data/read_only.ts";
+import { useDialog } from "../../data/dialog.ts";
 
 type Rule = dom.recurrence.RecurrenceRule;
 type Forecast = dom.recurrence.Forecast;
 type Candidate = dom.subscriptions.Candidate;
 
-const LOCKED = "Outra aba ou outro aparelho está editando este projeto. Atualize para editar.";
-
 interface RuleDialogState {
-  key: number;
   rule: Rule | null;
   suggestion: Candidate | null;
 }
 
 interface LinkDialogState {
-  key: number;
   forecast: Forecast;
   candidates: Operation[];
 }
@@ -56,9 +54,8 @@ export function Page() {
   const goTo = useGoTo();
   const { undo } = useUndo();
   const preset = useMotionPreset();
-  const phone = useMediaQuery("(max-width: 639px)");
-  const locked = workspace.readOnly;
-  const lockTip = locked ? LOCKED : undefined;
+  const phone = usePhone();
+  const { locked } = useLock();
   const today = workspace.today();
   const [start, end] = forecastWindow(today);
 
@@ -67,14 +64,16 @@ export function Page() {
   const commitments = useLedger((ledger) => dom.subscriptions.commitments(ledger), "");
   const candidates = useLedger((ledger) => dom.subscriptions.candidates(ledger, today), today);
 
-  const [pickRule, setPickRule] = useState<string | null>(null);
-  const [pickForecast, setPickForecast] = useState<string | null>(null);
-  const [pickCandidate, setPickCandidate] = useState<string | null>(null);
-  const [ruleDialog, setRuleDialog] = useState<RuleDialogState | null>(null);
-  const [ruleOpen, setRuleOpen] = useState(false);
-  const [linkDialog, setLinkDialog] = useState<LinkDialogState | null>(null);
-  const [linkOpen, setLinkOpen] = useState(false);
-  const counter = useRef(0);
+  const rulePick = usePick(rules, (r) => r.id);
+  const forecastPick = usePick(forecasts, (f) => forecastId(f.ruleId, f.dueOn));
+  const candidatePick = usePick(candidates, candidateKey);
+  const { pick: pickRule, setPick: setPickRule, selected: selectedRule } = rulePick;
+  const { setPick: setPickForecast, selected: selectedForecast } = forecastPick;
+  const { pick: pickCandidate, setPick: setPickCandidate } = candidatePick;
+  const ruleSlot = useDialog<RuleDialogState>();
+  const linkSlot = useDialog<LinkDialogState>();
+  const ruleDialog = ruleSlot.spec;
+  const linkDialog = linkSlot.spec;
   const forecastBox = useRef<HTMLDivElement>(null);
   const commitmentBox = useRef<HTMLDivElement>(null);
 
@@ -83,15 +82,12 @@ export function Page() {
   const [forcedOpen, setForcedOpen] = useState(false);
 
   const late = forecasts.filter((f) => f.status === "late").length;
-  const selectedRule = rules.find((r) => r.id === pickRule) ?? null;
-  const selectedForecast = forecasts.find((f) => forecastId(f.ruleId, f.dueOn) === pickForecast) ?? null;
-  const selectedCandidate = candidates.find((c) => candidateKey(c) === pickCandidate) ?? null;
+  const selectedCandidate = candidatePick.selected;
 
   // ── rules ───────────────────────────────────────
 
   const openRuleDialog = (rule: Rule | null, suggestion: Candidate | null = null) => {
-    setRuleDialog({ key: ++counter.current, rule, suggestion });
-    setRuleOpen(true);
+    ruleSlot.show({ rule, suggestion });
   };
 
   const edit = (id: string | null = pickRule) => {
@@ -104,11 +100,8 @@ export function Page() {
   };
 
   const toggle = () => {
-    if (!selectedRule) {
-      notify("Selecione uma regra.");
-      return;
-    }
-    const rule = selectedRule;
+    const rule = rulePick.need("Selecione uma regra.");
+    if (!rule) return;
     act((ledger) => dom.recurrence.updateRule(ledger, { ...rule, paused: !rule.paused }, "pausar/retomar"), {
       done: rule.paused ? `Recorrência “${rule.description}” retomada.` : `Recorrência “${rule.description}” pausada.`,
       label: rule.paused ? "retomar recorrência" : "pausar recorrência",
@@ -136,24 +129,17 @@ export function Page() {
       notify("Nenhum lançamento compatível (conta, valor e data).");
       return;
     }
-    setLinkDialog({ key: ++counter.current, forecast, candidates: found });
-    setLinkOpen(true);
+    linkSlot.show({ forecast, candidates: found });
   };
 
   const linkSelected = () => {
-    if (!selectedForecast) {
-      notify("Selecione uma previsão.");
-      return;
-    }
-    startLink(selectedForecast);
+    const forecast = forecastPick.need("Selecione uma previsão.");
+    if (forecast) startLink(forecast);
   };
 
   const skipSelected = () => {
-    const forecast = selectedForecast;
-    if (!forecast) {
-      notify("Selecione uma previsão.");
-      return;
-    }
+    const forecast = forecastPick.need("Selecione uma previsão.");
+    if (!forecast) return;
     if (forecast.status === "realized" || forecast.status === "skipped") {
       notify("Esta previsão já foi resolvida.");
       return;
@@ -232,14 +218,9 @@ export function Page() {
 
   const nothing = rules.length === 0 && candidates.length === 0;
   const newButton = (primary: boolean) => (
-    <Button
-      variant={primary ? "primary" : "secondary"}
-      onClick={() => openRuleDialog(null)}
-      disabled={locked}
-      title={lockTip}
-    >
+    <EditButton variant={primary ? "primary" : "secondary"} onClick={() => openRuleDialog(null)}>
       Nova recorrência…
-    </Button>
+    </EditButton>
   );
   const commitmentsOpen = storedOpen || forcedOpen;
   const total = Dec.sum(
@@ -272,7 +253,7 @@ export function Page() {
             setPickRule(id);
             if (!locked) edit(id);
           }}
-          height={tableHeight(commitments.length, 10, phone)}
+          height={fitHeight(commitments.length, 10, phone)}
         />
       </Collapsible>
     </motion.div>
@@ -284,9 +265,9 @@ export function Page() {
         prefKey="recorrencias/candidatas"
         description="Cobranças com a mesma descrição e valor parecido em meses seguidos, sem recorrência. Nada é criado sozinho."
         actions={
-          <Button size="sm" onClick={() => createFromCandidate()} disabled={locked} title={lockTip}>
+          <EditButton size="sm" onClick={() => createFromCandidate()}>
             Criar recorrência…
-          </Button>
+          </EditButton>
         }
       >
         <DataTable
@@ -300,7 +281,7 @@ export function Page() {
             setPickCandidate(id);
             if (!locked) createFromCandidate(id);
           }}
-          height={tableHeight(candidates.length, 8, phone)}
+          height={fitHeight(candidates.length, 8, phone)}
         />
       </Collapsible>
     </motion.div>
@@ -311,14 +292,13 @@ export function Page() {
       <PageHeader title="Recorrências" context={summaryLine(rules, late)} primary={newButton(true)} />
 
       {nothing ? (
-        <div className="rounded-xl border border-dashed border-separator-strong bg-window/40">
-          <EmptyState
-            icon={<Repeat />}
-            title="Nenhuma recorrência"
-            description="Cadastre contas fixas e receitas esperadas (aluguel, salário, escola). O aplicativo prevê cada vencimento, avisa quando atrasa e liga a previsão ao lançamento quando ele acontece. Previsões nunca alteram saldos."
-            actions={newButton(false)}
-          />
-        </div>
+        <EmptyState
+          framed
+          icon={<Repeat />}
+          title="Nenhuma recorrência"
+          description="Cadastre contas fixas e receitas esperadas (aluguel, salário, escola). O aplicativo prevê cada vencimento, avisa quando atrasa e liga a previsão ao lançamento quando ele acontece. Previsões nunca alteram saldos."
+          actions={newButton(false)}
+        />
       ) : (
         <>
           <Adaptive at={1300} columns="1fr 1fr" gap={32}>
@@ -327,12 +307,12 @@ export function Page() {
               description="Contas fixas e receitas esperadas."
               actions={
                 <>
-                  <Button size="sm" onClick={() => edit()} disabled={locked} title={lockTip}>
+                  <EditButton size="sm" onClick={() => edit()}>
                     Editar…
-                  </Button>
-                  <Button size="sm" onClick={toggle} disabled={locked} title={lockTip}>
+                  </EditButton>
+                  <EditButton size="sm" onClick={toggle}>
                     {selectedRule ? (selectedRule.paused ? "Retomar" : "Pausar") : "Pausar ou retomar"}
-                  </Button>
+                  </EditButton>
                 </>
               }
             >
@@ -347,7 +327,7 @@ export function Page() {
                   setPickRule(id);
                   if (!locked) edit(id);
                 }}
-                height={tableHeight(rules.length, 8, phone)}
+                height={fitHeight(rules.length, 8, phone)}
                 empty={<p className="px-4 py-6 text-center text-body text-secondary">Nenhuma regra cadastrada.</p>}
               />
             </Section>
@@ -357,9 +337,9 @@ export function Page() {
                 description="De 3 meses atrás a 6 meses à frente. Previsões nunca alteram saldos."
                 actions={
                   <>
-                    <Button size="sm" onClick={linkSelected} disabled={locked} title={lockTip}>
+                    <EditButton size="sm" onClick={linkSelected}>
                       Vincular realizado…
-                    </Button>
+                    </EditButton>
                     <MenuButton
                       label="Mais"
                       items={[
@@ -393,7 +373,7 @@ export function Page() {
                     const forecast = forecasts.find((f) => forecastId(f.ruleId, f.dueOn) === id);
                     if (forecast && !locked) startLink(forecast);
                   }}
-                  height={tableHeight(forecasts.length, 12, phone)}
+                  height={fitHeight(forecasts.length, 12, phone)}
                   empty={
                     <p className="px-4 py-6 text-center text-body text-secondary">
                       Nenhuma previsão no período. {FORECAST_LABELS.pending} aparece aqui quando houver uma regra ativa.
@@ -420,9 +400,9 @@ export function Page() {
 
       {ruleDialog ? (
         <RecurrenceRuleDialog
-          key={ruleDialog.key}
-          open={ruleOpen}
-          onClose={() => setRuleOpen(false)}
+          key={ruleSlot.key}
+          open={ruleSlot.open}
+          onClose={ruleSlot.close}
           rule={ruleDialog.rule}
           suggestion={ruleDialog.suggestion}
           onDone={(rule, created) => {
@@ -439,9 +419,9 @@ export function Page() {
       ) : null}
       {linkDialog ? (
         <RecurrenceLinkDialog
-          key={linkDialog.key}
-          open={linkOpen}
-          onClose={() => setLinkOpen(false)}
+          key={linkSlot.key}
+          open={linkSlot.open}
+          onClose={linkSlot.close}
           forecast={linkDialog.forecast}
           candidates={linkDialog.candidates}
           onDone={() => notify("Previsão vinculada ao lançamento.")}

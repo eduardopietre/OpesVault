@@ -6,18 +6,9 @@ import { makeDate, tax } from "@opesvault/domain";
 import { DateField, MoneyField, TextField } from "@opesvault/ui";
 import { useState } from "react";
 import { useWorkspace } from "../data/react.tsx";
-import {
-  Caption,
-  FormDialog,
-  FormGrid,
-  FullRow,
-  dateText,
-  editableMoney,
-  readDate,
-  readMoney,
-  useFormAct,
-} from "./livro_form.tsx";
-import { percentText, readPercent } from "./tax_fields.tsx";
+import { Caption, FormDialog, FormGrid, FullRow, useFormAct } from "./livro_form.tsx";
+import { percentText } from "./tax_fields.tsx";
+import { dateText, editableMoney, readDate, readMoney, readPercent } from "./form_readers.ts";
 
 const BUCKETS = Object.keys(tax.model.BUCKET_LABELS) as tax.model.Bucket[];
 

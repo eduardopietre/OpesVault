@@ -38,10 +38,13 @@ import { InvestmentTradeDialog, type TradeKind } from "../../dialogs/investment_
 import { InvestmentFixDialog, InvestmentValuationDialog } from "../../dialogs/investment_valuation.tsx";
 import { useAct, useLedger, useWorkspace } from "../../data/react.tsx";
 import { useGoTo, useReveal } from "../../data/navigation.ts";
-import { Empty, EditButton, ListTable, Toolbar, useDialog, useLock } from "../../components/list_parts.tsx";
+import { Empty, EditButton, ListTable, Toolbar, usePick } from "../../components/list_parts.tsx";
 import { NOTE_COLUMNS, PORTFOLIO_COLUMNS } from "./columns.tsx";
 import { Detail } from "./detail.tsx";
 import { eventRows, noteRows, parseReveal, portfolioRows, summaryLine, valuationRows, type NoteRow } from "./rows.ts";
+import { useDialog } from "../../data/dialog.ts";
+import { useLock } from "../../data/read_only.ts";
+import { accountRef } from "../livro/rows.ts";
 
 const { service, model } = investments;
 
@@ -68,8 +71,7 @@ export function Page() {
   const notes = useLedger((l) => noteRows(l));
   const dialog = useDialog<Spec>();
 
-  const [pick, setPick] = useState<Id | null>(null);
-  const selected = rows.find((r) => r.id === pick) ?? rows[0] ?? null;
+  const { setPick, selected, need: needRow } = usePick(rows, (r) => r.id, { first: true });
   // the rows chosen in the tables of the detail belong to one investment
   const [chosen, setChosen] = useState<{ positionId: Id | null; valuation: Id | null; event: Id | null }>({
     positionId: null,
@@ -88,13 +90,7 @@ export function Page() {
 
   // ── commands ─────────────────────────────────────
 
-  const need = (): Id | null => {
-    if (!selected) {
-      notify("Selecione um investimento.");
-      return null;
-    }
-    return selected.id;
-  };
+  const need = (): Id | null => needRow("Selecione um investimento.")?.id ?? null;
 
   const withPosition = (make: (positionId: Id) => Spec) => () => {
     const id = need();
@@ -269,20 +265,19 @@ export function Page() {
       {header}
 
       {rows.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-separator-strong bg-window/40">
-          <EmptyState
-            title="Nenhum investimento"
-            description="Cadastre uma conta de investimento no banco onde ela fica, com as características (tipo, rentabilidade, vencimento). Depois, acompanhe aqui avaliações, aportes, resgates e rentabilidade."
-            actions={
-              <>
-                <EditButton variant="primary" onClick={() => goTo("contas", { ref: "bancarias", act: "investimento" })}>
-                  Cadastrar conta de investimento…
-                </EditButton>
-                <EditButton onClick={() => dialog.show({ kind: "position" })}>Novo investimento…</EditButton>
-              </>
-            }
-          />
-        </div>
+        <EmptyState
+          framed
+          title="Nenhum investimento"
+          description="Cadastre uma conta de investimento no banco onde ela fica, com as características (tipo, rentabilidade, vencimento). Depois, acompanhe aqui avaliações, aportes, resgates e rentabilidade."
+          actions={
+            <>
+              <EditButton variant="primary" onClick={() => goTo("contas", { ref: "bancarias", act: "investimento" })}>
+                Cadastrar conta de investimento…
+              </EditButton>
+              <EditButton onClick={() => dialog.show({ kind: "position" })}>Novo investimento…</EditButton>
+            </>
+          }
+        />
       ) : (
         <>
           <section aria-label="Carteira" className="flex min-w-0 flex-col gap-2">
@@ -319,7 +314,7 @@ export function Page() {
                   onValuate={() => dialog.show({ kind: "valuation", positionId: selected.id })}
                   onProfile={profile}
                   onSeeEntries={() =>
-                    goTo("livro", { ref: `conta:${service.position(ledger, selected.id).account_id}` })
+                    goTo("livro", { ref: accountRef(service.position(ledger, selected.id).account_id) })
                   }
                   onUse={useValuation}
                   onFix={fixValuation}

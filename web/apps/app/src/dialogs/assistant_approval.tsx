@@ -7,6 +7,7 @@
 import { Button, Dialog } from "@opesvault/ui";
 import { ShieldCheck } from "lucide-react";
 import { useWorkspace } from "../data/react.tsx";
+import { READ_ONLY_TIP } from "../data/read_only.ts";
 
 export interface AssistantApprovalProps {
   open: boolean;
@@ -17,8 +18,6 @@ export interface AssistantApprovalProps {
   onApprove: () => void;
   onRefuse: () => void;
 }
-
-export const READ_ONLY_TIP = "Outra aba ou aparelho está editando este projeto; aqui só leitura.";
 
 export function AssistantApproval({ open, summary, details, model, onApprove, onRefuse }: AssistantApprovalProps) {
   const readOnly = useWorkspace().readOnly;

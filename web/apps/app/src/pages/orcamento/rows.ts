@@ -3,6 +3,7 @@
  * (The desktop keeps this in the page; here it is testable on its own, like `pages/tax/rows.py`.)
  */
 import { Dec, ymParse, ymStr, type dom, type YearMonth } from "@opesvault/domain";
+import { plural } from "../../data/text.ts";
 
 export type BudgetState = dom.budget.BudgetRow["state"];
 type BudgetStatus = dom.budget.BudgetStatus;
@@ -18,16 +19,6 @@ export const STATE_TONES = { ok: "positive", near: "warning", over: "negative" }
 /** 0.8237 as "82%": the same rounding the desktop shows (half away from zero). */
 export function usedPercent(used: Dec): string {
   return `${used.mul(100).quantize("1", "ROUND_HALF_UP").toFixed()}%`;
-}
-
-/** Exact cents for sorting a money column. */
-export function cents(value: Dec): bigint {
-  return BigInt(value.quantize("0.01", "ROUND_HALF_UP").toFixed().replace(".", ""));
-}
-
-/** How many categories, with the right plural ("1 categoria estourada", "2 categorias estouradas"). */
-export function plural(count: number, one: string, many: string): string {
-  return `${count} ${count === 1 ? one : many}`;
 }
 
 /** The line under the title: how the month is going, in words. */

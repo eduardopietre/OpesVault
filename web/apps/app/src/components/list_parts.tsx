@@ -1,29 +1,22 @@
 /**
  * Small pieces every tab of Contas e cartões shares: the row of commands above a table, the table's height,
- * the read-only lock, the dialog slot (one at a time, mounted with a fresh key so it animates out with its
- * content) and the one-shot reveal a link asks of a tab.
+ * the command that respects the read-only lock and the one-shot reveal a link asks of a tab.
  */
 import {
   Button,
   DataTable,
   EmptyState,
   useElementWidth,
-  useMediaQuery,
   type ButtonProps,
   type DataTableProps,
+  fitHeight,
+  notify,
+  usePhone,
 } from "@opesvault/ui";
 import { TriangleAlert } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { useWorkspace } from "../data/react.tsx";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useLock } from "../data/read_only.ts";
 import { fitColumns, type TierColumn } from "./tier_columns.ts";
-
-export const LOCKED = "Outra aba ou outro aparelho está editando este projeto. Atualize para editar.";
-
-/** Read-only state and the tooltip that explains a disabled command. */
-export function useLock(): { locked: boolean; tip: string | undefined } {
-  const locked = useWorkspace().readOnly;
-  return { locked, tip: locked ? LOCKED : undefined };
-}
 
 /**
  * A value that needs attention (a difference from the bank, a rule the family contradicts): the warning shape
@@ -54,12 +47,6 @@ export function EditButton(props: ButtonProps) {
   return <Button {...props} disabled={props.disabled || locked} title={props.title ?? tip} />;
 }
 
-/** The height of a short table: its rows, up to `max`, plus the header; free on phones (cards). */
-export function useTableHeight(count: number, max: number): string {
-  const phone = useMediaQuery("(max-width: 639px)");
-  return phone ? "none" : `${Math.min(Math.max(count, 1), max) * 36 + 38}px`;
-}
-
 /** A work table that fits its rows and shows the columns its room allows (`columns.ts`). */
 export function ListTable<T extends object>({
   max = 10,
@@ -67,7 +54,7 @@ export function ListTable<T extends object>({
   ...props
 }: Omit<DataTableProps<T>, "height" | "columns"> & { max?: number; columns: readonly TierColumn<T>[] }) {
   const [measure, width] = useElementWidth<HTMLDivElement>();
-  const height = useTableHeight(props.rows.length, max);
+  const height = fitHeight(props.rows.length, max, usePhone());
   const fitted = useMemo(() => fitColumns(columns, width), [columns, width]);
   return (
     <div ref={measure} className="min-w-0">
@@ -78,23 +65,28 @@ export function ListTable<T extends object>({
 
 /** An empty table or chart: what it is, why it is empty and what to do. */
 export function Empty({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <div className="rounded-xl border border-dashed border-separator-strong bg-window/40">
-      <EmptyState title={title} description={children} />
-    </div>
-  );
+  return <EmptyState framed title={title} description={children} />;
 }
 
-/** One dialog at a time: closing only clears `open`, so it leaves with its content; the next gets a new key. */
-export function useDialog<T>() {
-  const [state, setState] = useState<{ spec: T | null; open: boolean; key: number }>({
-    spec: null,
-    open: false,
-    key: 0,
-  });
-  const show = useCallback((spec: T) => setState((s) => ({ spec, open: true, key: s.key + 1 })), []);
-  const close = useCallback(() => setState((s) => ({ ...s, open: false })), []);
-  return { ...state, show, close };
+export interface Pick<T> {
+  /** The id picked in the table (it may name a row that is gone). */
+  pick: string | null;
+  setPick: (id: string | null) => void;
+  /** The picked row, or the first with `first` (a table that always shows one in detail). */
+  selected: T | null;
+  /** For a command on the selected row: the row, or null after saying what to select. */
+  need: (message: string) => T | null;
+}
+
+/** The row a table has selected, by id, so a row read back from the project keeps its selection. */
+export function usePick<T>(rows: readonly T[], idOf: (row: T) => string, options: { first?: boolean } = {}): Pick<T> {
+  const [pick, setPick] = useState<string | null>(null);
+  const selected = rows.find((row) => idOf(row) === pick) ?? (options.first ? (rows[0] ?? null) : null);
+  const need = (message: string): T | null => {
+    if (!selected) notify(message);
+    return selected;
+  };
+  return { pick, setPick, selected, need };
 }
 
 /** What a link asks of a tab: made by the page, consumed once by the tab it names. */

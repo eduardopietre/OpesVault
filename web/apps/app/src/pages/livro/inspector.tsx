@@ -7,8 +7,9 @@ import { dom, formatBrl, isActive, type Id, type IsoDate, type Ledger, type Oper
 import { Badge, Button, Figure } from "@opesvault/ui";
 import { FileText, Paperclip, Pencil, TriangleAlert } from "lucide-react";
 import type { ReactNode } from "react";
-import { KIND_LABELS, ORIGIN_LABELS, dateLabel, operationAmount } from "./rows.ts";
-import { monthLabel } from "../../dialogs/livro_form.tsx";
+import { KIND_LABELS, ORIGIN_LABELS, operationAmount } from "./rows.ts";
+import { dateOr } from "../../data/money.ts";
+import { monthLabel } from "../../data/text.ts";
 
 export const HISTORY_ACTIONS: Readonly<Record<string, string>> = {
   create: "criado",
@@ -96,10 +97,10 @@ export function OperationDetails({
         {moreActions}
       </div>
       <dl className="flex flex-col gap-1 border-t border-separator pt-3">
-        <Pair label="Ocorrência">{dateLabel(op.occurred_on)}</Pair>
-        <Pair label="Lançamento">{dateLabel(op.booked_on)}</Pair>
-        <Pair label="Liquidação">{dateLabel(op.settled_on)}</Pair>
-        <Pair label="Vencimento">{dateLabel(op.due_on)}</Pair>
+        <Pair label="Ocorrência">{dateOr(op.occurred_on)}</Pair>
+        <Pair label="Lançamento">{dateOr(op.booked_on)}</Pair>
+        <Pair label="Liquidação">{dateOr(op.settled_on)}</Pair>
+        <Pair label="Vencimento">{dateOr(op.due_on)}</Pair>
         <Pair label="Competência">{op.accrual_month ? monthLabel(op.accrual_month) : "—"}</Pair>
         <Pair label="Responsável">{member ? member.name : "Projeto"}</Pair>
       </dl>

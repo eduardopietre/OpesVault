@@ -2,7 +2,18 @@
  * Orçamento (desktop `ui/pages/budget_page.py`): planned, actual by competence and remaining per expense
  * category and month, the plan over time, and the month against the recent average and a year ago.
  */
-import { Dec, charts, dom, formatBrl, queries, ymAdd, ymOf, ymStr, type YearMonth } from "@opesvault/domain";
+import {
+  Dec,
+  charts,
+  dom,
+  formatBrl,
+  queries,
+  ymAdd,
+  ymOf,
+  ymStr,
+  type YearMonth,
+  AccountType,
+} from "@opesvault/domain";
 import {
   Button,
   ChartPanel,
@@ -20,21 +31,20 @@ import {
   formatDecimalBR,
   formatMonth,
   notify,
-  useMediaQuery,
   useMotionPreset,
   type DataColumn,
+  fitHeight,
+  usePhone,
 } from "@opesvault/ui";
 import { CircleAlert, CircleCheck, TriangleAlert } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import { BudgetDialog } from "../../dialogs/budget_dialog.tsx";
 import { BudgetGridDialog } from "../../dialogs/budget_grid_dialog.tsx";
 import {
   SUGGESTION_MONTHS,
   applyGrid,
   averageSpending,
-  editableAmount,
-  expenseCategoryOptions,
   gridRows,
   type GridChange,
   type GridRow,
@@ -44,26 +54,30 @@ import { useSharedMonth } from "../../data/month.ts";
 import { useGoTo, useReveal } from "../../data/navigation.ts";
 import { useUndo } from "../../shell/undo.tsx";
 import { toChartData } from "../../data/chart_data.ts";
-import { STATE_LABELS, cents, categoryRef, parseCategoryRef, plural, summaryLine, usedPercent } from "./rows.ts";
+import { STATE_LABELS, categoryRef, parseCategoryRef, summaryLine, usedPercent } from "./rows.ts";
+import { EditButton, usePick } from "../../components/list_parts.tsx";
+import { useLock } from "../../data/read_only.ts";
+import { useDialog } from "../../data/dialog.ts";
+import { cents } from "../../data/money.ts";
+import { editableMoney } from "../../dialogs/form_readers.ts";
+import { categoryItems } from "../../dialogs/account_choices.ts";
+import { plural } from "../../data/text.ts";
 
 type Row = dom.budget.BudgetRow;
 
 const HISTORY_MONTHS = 6;
 const MONTHS_AHEAD = 12;
-const LOCKED = "Outra aba ou outro aparelho está editando este projeto. Atualize para editar.";
 
 const money = (value: Dec) => formatBrl(value);
 const lower = (month: YearMonth) => formatMonth(month);
 
 interface OneDialog {
-  key: number;
   categoryId: string | null;
   month: YearMonth;
   amount: string;
 }
 
 interface GridDialog {
-  key: number;
   month: YearMonth;
   rows: GridRow[];
   /** Where the typed values came from (a suggestion from earlier spending). */
@@ -162,17 +176,15 @@ export function Page() {
   const goTo = useGoTo();
   const { undo } = useUndo();
   const preset = useMotionPreset();
-  const phone = useMediaQuery("(max-width: 639px)");
+  const phone = usePhone();
   const [month, chooseMonth] = useSharedMonth();
   const monthKey = ymStr(month);
   const previous = ymAdd(month, -1);
-  const locked = workspace.readOnly;
-  const lockTip = locked ? LOCKED : undefined;
+  const { locked } = useLock();
   const tableBox = useRef<HTMLDivElement>(null);
 
   const status = useLedger((ledger) => dom.budget.status(ledger, month), monthKey);
-  const [pick, setPick] = useState<string | null>(null);
-  const selected = status.rows.find((row) => row.categoryId === pick) ?? null;
+  const { setPick, selected, need } = usePick(status.rows, (row) => row.categoryId);
 
   const history = useLedger(
     (ledger) =>
@@ -186,11 +198,8 @@ export function Page() {
     return chart.series[0]?.points.length ? toChartData(chart) : null;
   }, monthKey);
 
-  const [one, setOne] = useState<OneDialog | null>(null);
-  const [oneOpen, setOneOpen] = useState(false);
-  const [grid, setGrid] = useState<GridDialog | null>(null);
-  const [gridOpen, setGridOpen] = useState(false);
-  const counter = useRef(0);
+  const one = useDialog<OneDialog>();
+  const grid = useDialog<GridDialog>();
 
   const remaining = status.totalPlanned.sub(status.totalActual);
   const today = ymOf(workspace.today());
@@ -200,12 +209,11 @@ export function Page() {
   /** The one-value dialog: a given category is edited, without one the user chooses it. */
   const define = (categoryId: string | null, at: YearMonth = month) => {
     const line = categoryId ? dom.budget.lineFor(workspace.ledger, categoryId, at) : null;
-    setOne({ key: ++counter.current, categoryId, month: at, amount: line ? editableAmount(line.amount) : "" });
-    setOneOpen(true);
+    one.show({ categoryId, month: at, amount: line ? editableMoney(line.amount) : "" });
   };
 
   const saveOne = (categoryId: string, amount: Dec): boolean => {
-    const at = one?.month ?? month;
+    const at = one.spec?.month ?? month;
     const saved = act((ledger) => dom.budget.setBudget(ledger, categoryId, at, amount), {
       done: `Orçamento de ${lower(at)} atualizado.`,
       label: `orçamento de ${lower(at)}`,
@@ -216,8 +224,7 @@ export function Page() {
   /** Every category of the month in one grid: one dialog, one undo step. */
   const defineMonth = () => {
     const spending = queries.expensesByCategory(workspace.ledger, month, month);
-    setGrid({ key: ++counter.current, month, rows: gridRows(workspace.ledger, month, previous, spending) });
-    setGridOpen(true);
+    grid.show({ month, rows: gridRows(workspace.ledger, month, previous, spending) });
   };
 
   // The empty month's next step: a plan from the average spending of the months before it.
@@ -226,17 +233,15 @@ export function Page() {
   const suggestMonth = () => {
     const spending = queries.expensesByCategory(workspace.ledger, month, month);
     const first = ymAdd(month, -SUGGESTION_MONTHS);
-    setGrid({
-      key: ++counter.current,
+    grid.show({
       month,
       rows: gridRows(workspace.ledger, month, previous, spending, suggestion),
       note: `Sugestão: a média do gasto de cada categoria de ${lower(first)} a ${lower(previous)}. Confira, ajuste e salve; nada é gravado antes disso.`,
     });
-    setGridOpen(true);
   };
 
   const saveGrid = (changes: readonly GridChange[]): boolean => {
-    const at = grid?.month ?? month;
+    const at = grid.spec?.month ?? month;
     if (changes.length === 0) {
       notify("Nenhuma alteração no orçamento.");
       return true;
@@ -248,11 +253,7 @@ export function Page() {
     return changed !== undefined;
   };
 
-  const needsSelection = (): string | null => {
-    if (selected) return selected.categoryId;
-    notify("Selecione uma categoria na tabela.");
-    return null;
-  };
+  const needsSelection = (): string | null => need("Selecione uma categoria na tabela.")?.categoryId ?? null;
 
   const editSelected = () => {
     const id = needsSelection();
@@ -300,9 +301,9 @@ export function Page() {
       title="Orçamento"
       context={summaryLine(status)}
       primary={
-        <Button variant="primary" onClick={defineMonth} disabled={locked} title={lockTip}>
+        <EditButton variant="primary" onClick={defineMonth}>
           Orçamento do mês…
-        </Button>
+        </EditButton>
       }
       actions={
         <MenuButton
@@ -332,8 +333,6 @@ export function Page() {
     { label: "Restante", value: remaining, ...(remaining.isNegative() ? { tone: "negative" as const } : {}) },
     { label: "Gasto fora do plano", value: status.unbudgeted, note: "Despesas do mês em categorias sem orçamento" },
   ];
-
-  const tableHeight = phone ? "none" : `${Math.min(status.rows.length, 16) * 36 + 38}px`;
 
   return (
     <div className="flex flex-col gap-6">
@@ -374,7 +373,7 @@ export function Page() {
                 setPick(id);
                 if (!locked) define(id);
               }}
-              height={tableHeight}
+              height={fitHeight(status.rows.length, 16, phone)}
             />
             <AnimatePresence initial={false}>
               {selected ? (
@@ -389,12 +388,12 @@ export function Page() {
                       <ElidedText className="inline-block max-w-full align-bottom">{selected.name}</ElidedText>
                     </span>
                   </div>
-                  <Button size="sm" onClick={editSelected} disabled={locked} title={lockTip}>
+                  <EditButton size="sm" onClick={editSelected}>
                     Alterar valor…
-                  </Button>
-                  <Button size="sm" onClick={removeSelected} disabled={locked} title={lockTip} tone="negative">
+                  </EditButton>
+                  <EditButton size="sm" onClick={removeSelected} tone="negative">
                     Remover do orçamento
-                  </Button>
+                  </EditButton>
                   <Button size="sm" onClick={seeEntries}>
                     Ver lançamentos
                   </Button>
@@ -403,45 +402,37 @@ export function Page() {
             </AnimatePresence>
           </>
         ) : (
-          <div className="rounded-xl border border-dashed border-separator-strong bg-window/40">
-            <EmptyState
-              title={`Sem orçamento em ${lower(month)}`}
-              description={
-                suggestion.size
-                  ? `Crie o orçamento do mês a partir dos gastos dos últimos ${SUGGESTION_MONTHS} meses: cada categoria começa com a média, e você confere antes de salvar.`
-                  : previousPlanned
-                    ? `Copie o plano de ${lower(previous)} ou defina quanto pretende gastar por categoria.`
-                    : "Defina quanto pretende gastar por categoria. O realizado vem dos lançamentos por competência: compras no cartão contam no mês em que aconteceram."
-              }
-              actions={
-                <>
-                  {suggestion.size ? (
-                    <Button variant="primary" onClick={suggestMonth} disabled={locked} title={lockTip}>
-                      Criar a partir dos últimos {SUGGESTION_MONTHS} meses…
-                    </Button>
-                  ) : null}
-                  {previousPlanned ? (
-                    <Button
-                      variant={suggestion.size ? "secondary" : "primary"}
-                      onClick={copyPrevious}
-                      disabled={locked}
-                      title={lockTip}
-                    >
-                      Copiar do mês anterior
-                    </Button>
-                  ) : null}
-                  <Button
-                    variant={suggestion.size || previousPlanned ? "secondary" : "primary"}
-                    onClick={defineMonth}
-                    disabled={locked}
-                    title={lockTip}
-                  >
-                    Definir o mês…
-                  </Button>
-                </>
-              }
-            />
-          </div>
+          <EmptyState
+            framed
+            title={`Sem orçamento em ${lower(month)}`}
+            description={
+              suggestion.size
+                ? `Crie o orçamento do mês a partir dos gastos dos últimos ${SUGGESTION_MONTHS} meses: cada categoria começa com a média, e você confere antes de salvar.`
+                : previousPlanned
+                  ? `Copie o plano de ${lower(previous)} ou defina quanto pretende gastar por categoria.`
+                  : "Defina quanto pretende gastar por categoria. O realizado vem dos lançamentos por competência: compras no cartão contam no mês em que aconteceram."
+            }
+            actions={
+              <>
+                {suggestion.size ? (
+                  <EditButton variant="primary" onClick={suggestMonth}>
+                    Criar a partir dos últimos {SUGGESTION_MONTHS} meses…
+                  </EditButton>
+                ) : null}
+                {previousPlanned ? (
+                  <EditButton variant={suggestion.size ? "secondary" : "primary"} onClick={copyPrevious}>
+                    Copiar do mês anterior
+                  </EditButton>
+                ) : null}
+                <EditButton
+                  variant={suggestion.size || previousPlanned ? "secondary" : "primary"}
+                  onClick={defineMonth}
+                >
+                  Definir o mês…
+                </EditButton>
+              </>
+            }
+          />
         )}
       </section>
 
@@ -456,27 +447,27 @@ export function Page() {
         </Section>
       ) : null}
 
-      {one ? (
+      {one.spec ? (
         <BudgetDialog
           key={one.key}
-          open={oneOpen}
-          onOpenChange={setOneOpen}
-          monthLabel={lower(one.month)}
-          options={expenseCategoryOptions(workspace.ledger)}
-          categoryId={one.categoryId}
-          initialAmount={one.amount}
+          open={one.open}
+          onOpenChange={(open) => !open && one.close()}
+          monthLabel={lower(one.spec.month)}
+          options={categoryItems(workspace.ledger, AccountType.EXPENSE)}
+          categoryId={one.spec.categoryId}
+          initialAmount={one.spec.amount}
           onSave={saveOne}
         />
       ) : null}
-      {grid ? (
+      {grid.spec ? (
         <BudgetGridDialog
           key={grid.key}
-          open={gridOpen}
-          onOpenChange={setGridOpen}
-          monthLabel={lower(grid.month)}
-          previousLabel={lower(ymAdd(grid.month, -1))}
-          rows={grid.rows}
-          note={grid.note}
+          open={grid.open}
+          onOpenChange={(open) => !open && grid.close()}
+          monthLabel={lower(grid.spec.month)}
+          previousLabel={lower(ymAdd(grid.spec.month, -1))}
+          rows={grid.spec.rows}
+          note={grid.spec.note}
           onSave={saveGrid}
         />
       ) : null}

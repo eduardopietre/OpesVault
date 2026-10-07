@@ -23,8 +23,23 @@ import {
 } from "react";
 import { cn } from "../cn.ts";
 import { useElementWidth } from "../hooks.ts";
+import { BAND } from "../tokens.ts";
 
 export type SortValue = string | number | bigint | null | undefined;
+
+/** Below this width of its own container a table is a list of cards. */
+export const CARDS_BELOW = BAND.tablet;
+/** A row's height, and the header's, in px. */
+export const ROW_HEIGHT = 36;
+export const HEADER_HEIGHT = 38;
+
+/**
+ * The height of a short table (docs/16 §4): its rows up to `max` (it scrolls inside beyond that) plus the
+ * header; "none" as cards, which grow with the list, since a card list clipped to a row count would hide cards.
+ */
+export function fitHeight(count: number, max: number, cards = false): string {
+  return cards ? "none" : `${Math.max(1, Math.min(count, max)) * ROW_HEIGHT + HEADER_HEIGHT}px`;
+}
 
 export interface DataColumn<T> {
   id: string;
@@ -163,7 +178,7 @@ export function DataTable<T extends object>({
   onActivate,
   empty,
   height = "min(70dvh, 640px)",
-  rowHeight = 36,
+  rowHeight = ROW_HEIGHT,
   cardTitle,
   renderCard,
   cardHeight = 96,
@@ -171,7 +186,7 @@ export function DataTable<T extends object>({
   layout = "auto",
 }: DataTableProps<T>) {
   const [measure, width] = useElementWidth<HTMLDivElement>();
-  const cards = layout === "cards" || (layout === "auto" && width > 0 && width < 640);
+  const cards = layout === "cards" || (layout === "auto" && width > 0 && width < CARDS_BELOW);
   const [sorting, setSorting] = useState<Sorting | null>(null);
   const gridId = useId();
 

@@ -6,8 +6,8 @@
 import { DomainError, investments, type Id } from "@opesvault/domain";
 import { MoneyField, Select, TextField, type SelectOption } from "@opesvault/ui";
 import { useState } from "react";
-import { readPercent } from "./investment_forms.ts";
-import { Caption, FormDialog, FormGrid, FullRow, readMoney, useFormAct } from "./livro_form.tsx";
+import { Caption, FormDialog, FormGrid, FullRow, useFormAct } from "./livro_form.tsx";
+import { readMoney, readPercent } from "./form_readers.ts";
 
 const { model } = investments;
 
@@ -34,7 +34,7 @@ export function InvestmentRuleDialog({ open, onClose, onDone }: InvestmentRuleDi
 
   const confirm = () => {
     if (!name.trim()) throw new DomainError("Informe o nome.");
-    const percentage = isFixed ? null : readPercent(rate);
+    const percentage = isFixed ? null : readPercent(rate, "Alíquota");
     const amount = isFixed ? readMoney(fixed) : null;
     if (!isFixed && percentage === null) throw new DomainError("Informe a alíquota: o aplicativo não traz nenhuma.");
     const saved = act((l) => {

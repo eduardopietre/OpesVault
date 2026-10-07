@@ -2,7 +2,7 @@
  * Reembolsos e acertos (desktop `ui/pages/sharing_page.py`): money others will pay back, and who owes whom
  * inside the project, with the expenses that form each balance and the settlements already recorded.
  */
-import { dom, formatBrl, formatDateBr, type Dec, type Id, type IsoDate } from "@opesvault/domain";
+import { dom, formatBrl, type Dec, type Id } from "@opesvault/domain";
 import {
   Adaptive,
   Button,
@@ -20,15 +20,14 @@ import {
 } from "@opesvault/ui";
 import { Ban, CircleCheck, Clock, Hourglass } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useMemo, useRef, useState, type ReactNode } from "react";
-import { useAct, useLedger, useWorkspace } from "../../data/react.tsx";
+import { useMemo, useRef, type ReactNode } from "react";
+import { useAct, useLedger } from "../../data/react.tsx";
 import { useGoTo, useReveal } from "../../data/navigation.ts";
 import { TableBox } from "../../data/table_box.tsx";
 import { OverviewReasonDialog } from "../../dialogs/overview_reason.tsx";
 import { SharingReceiveDialog } from "../../dialogs/sharing_receive.tsx";
 import { SharingSettleDialog } from "../../dialogs/sharing_settle.tsx";
 import {
-  cents,
   findReimbursement,
   sharesOf,
   sharingView,
@@ -38,10 +37,12 @@ import {
   type SettlementRow,
   type ShareRow,
 } from "./rows.ts";
+import { EditButton, usePick } from "../../components/list_parts.tsx";
+import { useLock } from "../../data/read_only.ts";
+import { useDialog } from "../../data/dialog.ts";
+import { cents, dateOr } from "../../data/money.ts";
 
-const LOCKED = "Outra aba ou outro aparelho está editando este projeto. Atualize para editar.";
 const money = (value: Dec) => formatBrl(value);
-const day = (date: IsoDate | null) => (date ? formatDateBr(date) : "—");
 
 const STATE_VIEW = {
   pending: { icon: <Clock aria-hidden="true" className="size-4 shrink-0" />, tone: "text-warning" },
@@ -64,7 +65,7 @@ function StateLabel({ row }: { row: ReimbursementRow }) {
 const text = (value: string) => <ElidedText>{value}</ElidedText>;
 
 const REIMBURSEMENT_COLUMNS: DataColumn<ReimbursementRow>[] = [
-  { id: "date", header: "Data", cell: (r) => day(r.date), sortValue: (r) => r.date ?? "", width: 112, priority: 2 },
+  { id: "date", header: "Data", cell: (r) => dateOr(r.date), sortValue: (r) => r.date ?? "", width: 112, priority: 2 },
   {
     id: "description",
     header: "Lançamento",
@@ -128,7 +129,7 @@ const BALANCE_COLUMNS: DataColumn<BalanceRow>[] = [
 ];
 
 const SHARE_COLUMNS: DataColumn<ShareRow>[] = [
-  { id: "date", header: "Data", cell: (r) => day(r.date), sortValue: (r) => r.date ?? "", width: 112, priority: 2 },
+  { id: "date", header: "Data", cell: (r) => dateOr(r.date), sortValue: (r) => r.date ?? "", width: 112, priority: 2 },
   {
     id: "description",
     header: "Lançamento",
@@ -148,7 +149,7 @@ const SHARE_COLUMNS: DataColumn<ShareRow>[] = [
 ];
 
 const HISTORY_COLUMNS: DataColumn<SettlementRow>[] = [
-  { id: "date", header: "Data", cell: (r) => day(r.date), sortValue: (r) => r.date, width: 112 },
+  { id: "date", header: "Data", cell: (r) => dateOr(r.date), sortValue: (r) => r.date, width: 112 },
   { id: "debtor", header: "Quem pagou", cell: (r) => text(r.debtor), sortValue: (r) => r.debtor, grow: 1, width: 110 },
   {
     id: "creditor",
@@ -176,13 +177,10 @@ const HISTORY_COLUMNS: DataColumn<SettlementRow>[] = [
   },
 ];
 
-interface Opening {
-  key: number;
-}
-interface ReceiveOpening extends Opening {
+interface ReceiveOpening {
   id: Id;
 }
-interface SettleOpening extends Opening {
+interface SettleOpening {
   debtorId: Id | null;
   creditorId: Id | null;
   amount: Dec | null;
@@ -208,48 +206,37 @@ function SelectionBar({ label, children }: { label: string; children: ReactNode 
 }
 
 export function Page() {
-  const workspace = useWorkspace();
   const act = useAct();
   const goTo = useGoTo();
-  const locked = workspace.readOnly;
-  const lockTip = locked ? LOCKED : undefined;
-  const counter = useRef(0);
+  const { locked } = useLock();
   const tableBox = useRef<HTMLDivElement>(null);
 
   const view = useLedger((ledger) => sharingView(ledger));
-  const [pickedReimbursement, setPickedReimbursement] = useState<string | null>(null);
-  const [pickedBalance, setPickedBalance] = useState<string | null>(null);
-  const [pickedShare, setPickedShare] = useState<string | null>(null);
-  const reimbursement = view.reimbursements.find((r) => r.id === pickedReimbursement) ?? null;
+  const reimbursementPick = usePick(view.reimbursements, (r) => r.id);
+  const { selected: reimbursement, setPick: setPickedReimbursement } = reimbursementPick;
   // The first balance is selected, as on the desktop, so the expenses behind it are always in view.
-  const balance = view.balances.find((b) => b.id === pickedBalance) ?? view.balances[0] ?? null;
+  const { selected: balance, setPick: setPickedBalance } = usePick(view.balances, (b) => b.id, { first: true });
   const shares = useMemo(() => sharesOf(balance), [balance]);
-  const share = shares.find((s) => s.id === pickedShare) ?? null;
+  const { selected: share, setPick: setPickedShare } = usePick(shares, (s) => s.id);
 
-  const [receive, setReceive] = useState<ReceiveOpening | null>(null);
-  const [receiveOpen, setReceiveOpen] = useState(false);
-  const [settle, setSettle] = useState<SettleOpening | null>(null);
-  const [settleOpen, setSettleOpen] = useState(false);
-  const [deny, setDeny] = useState<ReceiveOpening | null>(null);
-  const [denyOpen, setDenyOpen] = useState(false);
+  const receiveSlot = useDialog<ReceiveOpening>();
+  const settleSlot = useDialog<SettleOpening>();
+  const denySlot = useDialog<ReceiveOpening>();
+  const receive = receiveSlot.spec;
+  const settle = settleSlot.spec;
+  const deny = denySlot.spec;
 
-  const needsReimbursement = (): ReimbursementRow | null => {
-    if (reimbursement) return reimbursement;
-    notify("Selecione um reembolso na tabela.");
-    return null;
-  };
+  const needsReimbursement = () => reimbursementPick.need("Selecione um reembolso na tabela.");
 
   const openReceive = (row: ReimbursementRow | null = needsReimbursement()) => {
     if (!row) return;
-    setReceive({ key: ++counter.current, id: row.id });
-    setReceiveOpen(true);
+    receiveSlot.show({ id: row.id });
   };
 
   const openDeny = () => {
     const row = needsReimbursement();
     if (!row) return;
-    setDeny({ key: ++counter.current, id: row.id });
-    setDenyOpen(true);
+    denySlot.show({ id: row.id });
   };
 
   const denyIt = (reason: string) => {
@@ -266,13 +253,11 @@ export function Page() {
   };
 
   const openSettle = (from: BalanceRow | null = balance) => {
-    setSettle({
-      key: ++counter.current,
+    settleSlot.show({
       debtorId: from?.debtorId ?? null,
       creditorId: from?.creditorId ?? null,
       amount: from?.amount ?? null,
     });
-    setSettleOpen(true);
   };
 
   // Another screen names a reimbursement (or the expense it refunds); "receber" starts the receipt.
@@ -325,12 +310,10 @@ export function Page() {
                 description="Despesas que outra pessoa ou empresa vai devolver (plano de saúde, empresa). Marque no Livro financeiro: Ações › Reembolso a receber. O valor recebido entra como estorno das mesmas categorias, no mês do recebimento."
                 actions={
                   <>
-                    <Button variant="primary" onClick={() => openReceive()} disabled={locked} title={lockTip}>
+                    <EditButton variant="primary" onClick={() => openReceive()}>
                       Registrar recebimento…
-                    </Button>
-                    <Button onClick={openDeny} disabled={locked} title={lockTip}>
-                      Negado…
-                    </Button>
+                    </EditButton>
+                    <EditButton onClick={openDeny}>Negado…</EditButton>
                     <Button onClick={() => seeOperation(needsReimbursement()?.operationId)}>Ver lançamento</Button>
                   </>
                 }
@@ -363,11 +346,7 @@ export function Page() {
                 title="Acertos entre integrantes"
                 prefKey="acertos/integrantes"
                 description="Numa despesa com rateio, quem pagou adiantou a parte dos outros. Paga quem é o único titular da conta de onde saiu o dinheiro, ou o titular do cartão; conta conjunta não gera dívida entre integrantes. Registrar o acerto não movimenta dinheiro."
-                actions={
-                  <Button onClick={() => openSettle()} disabled={locked} title={lockTip}>
-                    Registrar acerto…
-                  </Button>
-                }
+                actions={<EditButton onClick={() => openSettle()}>Registrar acerto…</EditButton>}
               >
                 <TableBox rows={view.balances.length} cap={8}>
                   {(height) => (
@@ -446,38 +425,35 @@ export function Page() {
           ) : null}
         </>
       ) : (
-        <div className="rounded-xl border border-dashed border-separator-strong bg-window/40">
-          <EmptyState
-            title="Nada a receber nem a acertar"
-            description="Marque uma despesa como reembolsável no Livro financeiro (Ações › Reembolso a receber) ou ratear despesas entre integrantes para ver aqui quem deve a quem."
-            actions={
-              <>
-                <Button onClick={() => openSettle(null)} disabled={locked} title={lockTip}>
-                  Registrar acerto…
-                </Button>
-                <Button variant="primary" onClick={() => goTo("livro")}>
-                  Abrir o Livro financeiro
-                </Button>
-              </>
-            }
-          />
-        </div>
+        <EmptyState
+          framed
+          title="Nada a receber nem a acertar"
+          description="Marque uma despesa como reembolsável no Livro financeiro (Ações › Reembolso a receber) ou ratear despesas entre integrantes para ver aqui quem deve a quem."
+          actions={
+            <>
+              <EditButton onClick={() => openSettle(null)}>Registrar acerto…</EditButton>
+              <Button variant="primary" onClick={() => goTo("livro")}>
+                Abrir o Livro financeiro
+              </Button>
+            </>
+          }
+        />
       )}
 
       {receive ? (
         <SharingReceiveDialog
-          key={receive.key}
-          open={receiveOpen}
-          onClose={() => setReceiveOpen(false)}
+          key={receiveSlot.key}
+          open={receiveSlot.open}
+          onClose={receiveSlot.close}
           reimbursementId={receive.id}
           onDone={() => notify("Reembolso recebido: a despesa líquida foi reduzida.")}
         />
       ) : null}
       {settle ? (
         <SharingSettleDialog
-          key={settle.key}
-          open={settleOpen}
-          onClose={() => setSettleOpen(false)}
+          key={settleSlot.key}
+          open={settleSlot.open}
+          onClose={settleSlot.close}
           debtorId={settle.debtorId}
           creditorId={settle.creditorId}
           amount={settle.amount}
@@ -486,9 +462,9 @@ export function Page() {
       ) : null}
       {deny ? (
         <OverviewReasonDialog
-          key={deny.key}
-          open={denyOpen}
-          onOpenChange={setDenyOpen}
+          key={denySlot.key}
+          open={denySlot.open}
+          onOpenChange={(open) => !open && denySlot.close()}
           title="Reembolso negado"
           description="O reembolso deixa de contar como a receber. O motivo fica no histórico."
           label="Motivo"

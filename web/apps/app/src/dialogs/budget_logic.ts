@@ -1,29 +1,10 @@
 /**
- * What the budget dialogs share, free of React: the expense categories as options, amounts as the field
- * reads and writes them, and the grid's differences (desktop `BudgetGridDialog.values/apply`).
+ * What the budget dialogs share, free of React: the suggested plan and the grid's rows and differences
+ * (desktop `BudgetGridDialog.values/apply`).
  */
-import { AccountType, Dec, dom, formatBrl, queries, ymAdd, type Ledger, type YearMonth } from "@opesvault/domain";
-import { normalizeMoneyInput, type SelectOption } from "@opesvault/ui";
-
-/** "Casa › Aluguel": the expense categories with their parent, in alphabetical order (desktop `category_items`). */
-export function expenseCategoryOptions(ledger: Ledger): SelectOption[] {
-  const options = ledger.categories(AccountType.EXPENSE).map((account) => {
-    const parent = account.parent_id ? ledger.accounts.get(account.parent_id) : undefined;
-    return { id: account.id, label: parent ? `${parent.name} › ${account.name}` : account.name };
-  });
-  return options.sort((a, b) => a.label.localeCompare(b.label, "pt-BR"));
-}
-
-/** A planned amount as typed in the field: "2.350,00". */
-export function editableAmount(value: Dec): string {
-  return formatBrl(value).replace("R$", "").trim();
-}
-
-/** The amount typed in a field as an exact decimal; null when empty or not an amount. */
-export function readAmount(text: string): Dec | null {
-  const canonical = normalizeMoneyInput(text);
-  return canonical === null ? null : Dec.from(canonical);
-}
+import { AccountType, Dec, dom, queries, ymAdd, type Ledger, type YearMonth } from "@opesvault/domain";
+import { editableMoney, readAmount } from "./form_readers.ts";
+import { categoryItems } from "./account_choices.ts";
 
 export interface GridRow {
   readonly categoryId: string;
@@ -65,14 +46,14 @@ export function gridRows(
   spending: ReadonlyMap<string, Dec>,
   suggested?: ReadonlyMap<string, Dec>,
 ): GridRow[] {
-  return expenseCategoryOptions(ledger).map<GridRow>((option) => {
+  return categoryItems(ledger, AccountType.EXPENSE).map<GridRow>((option) => {
     const line = dom.budget.lineFor(ledger, option.id, month);
     const before = dom.budget.lineFor(ledger, option.id, previousMonth);
     const suggestion = suggested?.get(option.id);
     return {
       categoryId: option.id,
       name: option.label,
-      text: line ? editableAmount(line.amount) : suggestion ? editableAmount(suggestion) : "",
+      text: line ? editableMoney(line.amount) : suggestion ? editableMoney(suggestion) : "",
       current: line ? line.amount : null,
       previous: before ? before.amount : null,
       spent: spending.get(option.id) ?? null,
@@ -88,7 +69,7 @@ export function fillFromPrevious(
   const next: Record<string, string> = { ...texts };
   for (const row of rows) {
     if (row.previous !== null && !(next[row.categoryId] ?? "").trim()) {
-      next[row.categoryId] = editableAmount(row.previous);
+      next[row.categoryId] = editableMoney(row.previous);
     }
   }
   return next;

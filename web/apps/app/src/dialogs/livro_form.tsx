@@ -2,15 +2,12 @@
  * The frame every form dialog shares (desktop `ui/dialogs.py` `FormDialog`): fields, an inline error line and
  * Cancel / <verb> buttons. A refused change (a `DomainError`) is shown next to the form, so the person fixes
  * it without losing context; the dialog closes only when the action went through. Plus the readers that turn
- * what was typed into domain values (`read_money`, optional dates, the competence month).
+ * what was typed into domain values that belong to these forms (optional dates, the competence month); the
+ * plain readers are in `form_readers.ts`.
  */
 import {
   DomainError,
-  MoneyError,
-  formatBrl,
-  parseBrl,
   today,
-  type Dec,
   type IsoDate,
   type Ledger,
   type YearMonth,
@@ -21,18 +18,13 @@ import {
   ymParse,
   ymStr,
 } from "@opesvault/domain";
-import {
-  Button,
-  Checkbox,
-  DateField,
-  Dialog,
-  formatBrDate,
-  formatMonth,
-  parseBrDate,
-  type SelectOption,
-} from "@opesvault/ui";
+import { Button, Checkbox, DateField, Dialog, type SelectOption } from "@opesvault/ui";
 import { useCallback, useState, type ReactNode } from "react";
 import { useWorkspace } from "../data/react.tsx";
+import { READ_ONLY_TIP } from "../data/read_only.ts";
+import { dateText, readDate } from "./form_readers.ts";
+import { memberItems } from "./account_choices.ts";
+import { monthLabel } from "../data/text.ts";
 
 type Session = sessions.Session;
 
@@ -105,9 +97,7 @@ export function FormDialog({
             type="submit"
             busy={busy}
             disabled={(!closeOnly && (readOnly || confirmDisabled)) || false}
-            title={
-              !closeOnly && readOnly ? "Outra aba ou aparelho está editando este projeto; aqui só leitura." : undefined
-            }
+            title={!closeOnly && readOnly ? READ_ONLY_TIP : undefined}
           >
             {closeOnly ? "Fechar" : confirmLabel}
           </Button>
@@ -159,57 +149,10 @@ export function Caption({ children }: { children: ReactNode }) {
 
 // ── readers ─────────────────────────────────────
 
-/** A typed amount (Brazilian format). Empty is unknown (`null`) only with `allowEmpty`. */
-export function readMoney(text: string, options: { allowEmpty: true }): Dec | null;
-export function readMoney(text: string, options?: { allowEmpty?: false }): Dec;
-export function readMoney(text: string, options: { allowEmpty?: boolean } = {}): Dec | null {
-  const typed = text.trim();
-  if (!typed) {
-    if (options.allowEmpty) return null;
-    throw new DomainError("Informe o valor.");
-  }
-  try {
-    return parseBrl(typed);
-  } catch (error) {
-    if (error instanceof MoneyError) throw new DomainError("Valor inválido. Use o formato 1.234,56.");
-    throw error;
-  }
-}
-
-/** A typed date (dd/mm/aaaa). */
-export function readDate(text: string, name = "A data"): IsoDate {
-  const iso = parseBrDate(text);
-  if (iso === null) throw new DomainError(`${name} é inválida. Use dd/mm/aaaa.`);
-  return iso as IsoDate;
-}
-
-/** The text of a field from a domain date ("" when unknown). */
-export function dateText(date: IsoDate | null | undefined): string {
-  return date ? formatBrDate(date) : "";
-}
-
-/** Money as typed in a field: "1.234,56" (no currency symbol). */
-export function editableMoney(value: Dec): string {
-  return formatBrl(value).replace("R$", "").trim();
-}
-
-/** Plain digits, no rounding: what is shown is exactly what is stored (the postings grid). */
-export function plainMoney(value: Dec): string {
-  return value.abs().toFixed().replace(".", ",");
-}
-
 // ── choices ─────────────────────────────────────
 
 /** Value of a Select that stands for "none" (the project, no member, the month of the date…). */
 export const NONE = "__none";
-
-export function capitalize(text: string): string {
-  return text.charAt(0).toUpperCase() + text.slice(1);
-}
-
-export function monthLabel(month: YearMonth): string {
-  return capitalize(formatMonth(month));
-}
 
 /** "Mês da data" and the months around `around` (two years each way), plus `value` when outside. */
 export function competenceOptions(value: YearMonth | null, around: IsoDate): SelectOption[] {
@@ -233,10 +176,7 @@ export function competenceChoice(value: YearMonth | null): string {
 
 /** Members people can pick: the active ones, and `keep` even if it was deactivated. */
 export function memberOptions(ledger: Ledger, keep: string | null = null, none = "(projeto)"): SelectOption[] {
-  return [
-    { id: NONE, label: none },
-    ...[...ledger.members.values()].filter((m) => m.active || m.id === keep).map((m) => ({ id: m.id, label: m.name })),
-  ];
+  return [{ id: NONE, label: none }, ...memberItems(ledger, keep)];
 }
 
 export function memberFromChoice(id: string): string | null {

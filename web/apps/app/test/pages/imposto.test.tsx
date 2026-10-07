@@ -87,13 +87,13 @@ describe("the page", () => {
       const button = screen.queryByRole("button", { name }) as HTMLButtonElement | null;
       if (button) {
         expect(button.disabled, name).toBe(true);
-        expect(button.title).toMatch(/Outra aba ou outro aparelho está editando/);
+        expect(button.title).toMatch(/Outra aba ou aparelho está editando/);
       }
     }
     await user.click(screen.getByRole("button", { name: "Cadastros" }));
     await user.click(await screen.findByRole("menuitem", { name: "Tabela e limites do ano…" }));
     expect(screen.queryByRole("dialog")).toBeNull();
-    expect(await screen.findByText(/Outra aba ou outro aparelho está editando/)).toBeTruthy();
+    expect(await screen.findByText(/Outra aba ou aparelho está editando/)).toBeTruthy();
     expect(taxSnapshot(ledger)).toBe(before);
   });
 });

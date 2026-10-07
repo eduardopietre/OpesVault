@@ -43,6 +43,9 @@ import {
   usePreferences,
   useMotionPreset,
   type MenuEntry,
+  saveFile,
+  CSV_TYPE,
+  CARDS_BELOW,
 } from "@opesvault/ui";
 import { AnimatePresence, motion } from "motion/react";
 import {
@@ -68,9 +71,10 @@ import { OPERATION_KINDS, type OperationKindKey } from "../../dialogs/operation.
 import { isSimple } from "../../dialogs/operation_edit.tsx";
 import { useLedgerAi } from "./ai.tsx";
 import { COLUMN_TITLES, LedgerCard, REQUIRED_COLUMNS, ledgerColumns } from "./columns.tsx";
-import { downloadFile, operationsCsv } from "./export.ts";
+import { operationsCsv } from "./export.ts";
 import { FilterBar, activeFilterCount, useFilterChoices } from "./filters.tsx";
-import { LedgerDialogs, useDialogHost, type DialogSpec } from "./host.tsx";
+import { LedgerDialogs, type DialogSpec } from "./host.tsx";
+import { useDialog } from "../../data/dialog.ts";
 import { OperationDetails, SelectionNote } from "./inspector.tsx";
 import {
   EMPTY_FILTERS,
@@ -81,8 +85,9 @@ import {
   toOperationFilter,
   type FilterState,
 } from "./rows.ts";
-import { monthLabel } from "../../dialogs/livro_form.tsx";
 import { actionName } from "../../data/action_names.ts";
+import { exportUnencrypted } from "../../data/export_file.ts";
+import { monthLabel } from "../../data/text.ts";
 
 const HIDDEN_COLUMNS_KEY = "livro/colunas-ocultas";
 const EMPTY_SET: ReadonlySet<string> = new Set();
@@ -111,9 +116,9 @@ export function Page() {
   const [pickedChecks, setPickedChecks] = useState<ReadonlySet<string>>(EMPTY_SET);
   const [hidden, setHidden] = useState<ReadonlySet<string>>(() => readHidden(preferences.get(HIDDEN_COLUMNS_KEY)));
   const [details, setDetails] = useState<{ band: string; open: boolean } | null>(null);
-  const host = useDialogHost();
+  const host = useDialog<DialogSpec>();
   const [measureTable, tableWidth] = useElementWidth<HTMLDivElement>();
-  const cards = tableWidth > 0 && tableWidth < 640;
+  const cards = tableWidth > 0 && tableWidth < CARDS_BELOW;
   const phone = band === "phone";
   const [filtersOpen, setFiltersOpen] = useState(false);
 
@@ -480,15 +485,15 @@ export function Page() {
       notify("Não há lançamentos para exportar com estes filtros.");
       return;
     }
-    const ok = await confirm({
+    await exportUnencrypted({
       title: "Exportar sem criptografia?",
       text: `${exporting.WARNING} O arquivo CSV (${rows.length} lançamento(s)) vai para a pasta de downloads deste aparelho.`,
       confirmLabel: "Exportar CSV",
+      save: () => {
+        const bytes = everything ? exporting.ledgerCsv(ledger) : operationsCsv(ledger, rows);
+        saveFile(everything ? "livro-completo.csv" : "livro-filtrado.csv", bytes, CSV_TYPE);
+      },
     });
-    if (!ok) return;
-    const bytes = everything ? exporting.ledgerCsv(ledger) : operationsCsv(ledger, rows);
-    downloadFile(everything ? "livro-completo.csv" : "livro-filtrado.csv", bytes, "text/csv;charset=utf-8");
-    notify("Arquivo CSV gerado. Guarde-o com cuidado: ele não é cifrado.");
   };
 
   // ── columns ────────────────────────────────────

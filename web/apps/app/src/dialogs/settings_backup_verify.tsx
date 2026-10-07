@@ -3,13 +3,13 @@
  * restoring anything: password, every block's integrity, the counts, the documents the records cite and their
  * hashes. The result says in words what the file holds and whether it can be trusted.
  */
-import { TextField } from "@opesvault/ui";
+import { TextField, formatBytes } from "@opesvault/ui";
 import { useState } from "react";
 import { formatDateTimeBr } from "../pages/configuracoes/rows.ts";
 import type { BackupCheck, BackupProgress } from "../services/types.ts";
 import { useServices } from "../session.tsx";
 import { Caption } from "./livro_form.tsx";
-import { progressText, sizeText } from "./settings_backup_export.tsx";
+import { progressText } from "./settings_backup_export.tsx";
 import { FilePicker } from "./settings_file.tsx";
 import { SettingsDialog } from "./settings_form.tsx";
 
@@ -62,12 +62,12 @@ export function BackupCheckSummary({ check }: { check: BackupCheck }) {
         <dd>{check.records}</dd>
         <dt className="text-secondary">Documentos</dt>
         <dd>
-          {check.documents} ({sizeText(check.documentBytes)})
+          {check.documents} ({formatBytes(check.documentBytes)})
         </dd>
         <dt className="text-secondary">Arquivo</dt>
         <dd>
-          {sizeText(check.fileBytes)}, formato {check.version}, Argon2id {Math.round(check.kdf.memoryKiB / 1024)} MiB ×{" "}
-          {check.kdf.iterations}
+          {formatBytes(check.fileBytes)}, formato {check.version}, Argon2id {Math.round(check.kdf.memoryKiB / 1024)} MiB
+          × {check.kdf.iterations}
         </dd>
       </dl>
       <ul className="flex flex-col gap-1.5 text-body" aria-label="Resultado da verificação">

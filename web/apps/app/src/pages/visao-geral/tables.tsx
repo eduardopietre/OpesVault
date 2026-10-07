@@ -7,6 +7,7 @@ import { cn, useMotionPreset } from "@opesvault/ui";
 import { motion } from "motion/react";
 import type { ReactNode } from "react";
 import { SHARE_BARS_FROM, type BalanceRow, type CategoryRow, type ComparisonRow } from "./rows.ts";
+import { moneyOr } from "../../data/money.ts";
 
 const OPEN_HINT = "Ver os lançamentos deste mês no Livro financeiro";
 
@@ -132,8 +133,6 @@ export function CategoriesTable({ rows, onOpen }: { rows: readonly CategoryRow[]
   );
 }
 
-const money = (value: Parameters<typeof formatBrl>[0] | null) => (value === null ? "—" : formatBrl(value));
-
 export function ComparisonTable({ rows, onOpen }: { rows: readonly ComparisonRow[]; onOpen: (id: string) => void }) {
   return (
     <Wrapper label="Comparação com a média">
@@ -174,9 +173,9 @@ export function ComparisonTable({ rows, onOpen }: { rows: readonly ComparisonRow
                 )}
               </td>
               <td className={cn(cell, num)}>{formatBrl(row.current)}</td>
-              <td className={cn(cell, num)}>{money(row.average)}</td>
+              <td className={cn(cell, num)}>{moneyOr(row.average)}</td>
               <td className={cn(cell, num)}>{row.variation}</td>
-              <td className={cn(cell, num, "hidden tablet:table-cell")}>{money(row.lastYear)}</td>
+              <td className={cn(cell, num, "hidden tablet:table-cell")}>{moneyOr(row.lastYear)}</td>
             </tr>
           ))}
         </tbody>

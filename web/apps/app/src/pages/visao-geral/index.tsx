@@ -15,7 +15,6 @@ import {
   PageHeader,
   Section,
   Select,
-  formatMonth,
   menuButton,
   useMotionPreset,
   usePreferences,
@@ -47,6 +46,8 @@ import {
   monthFigures,
 } from "./rows.ts";
 import { BalancesTable, CategoriesTable, ComparisonTable } from "./tables.tsx";
+import { READ_ONLY_TIP } from "../../data/read_only.ts";
+import { monthLabel } from "../../data/text.ts";
 
 const NO_ALERTS: ReturnType<typeof dom.alerts.alerts> = [];
 
@@ -67,8 +68,6 @@ function openingOf(workspace: Workspace): string {
 /** The months already placed on the latest activity (once per opening, so a month the user picks stays). */
 const placed = new WeakSet<Workspace>();
 
-const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
-
 /** What blocks closing the month: a notice of the domain, with the place where it is solved when there is one. */
 function pendingLink(item: string): Link | null {
   if (item.includes("importado")) return { page: "importar", label: "Revisar" };
@@ -88,7 +87,6 @@ export function Page() {
   const [dialog, setDialog] = useState<"close" | "reopen" | null>(null);
   const today = workspace.today();
   const monthKey = ymStr(month);
-  const readOnlyHint = "Este projeto está aberto só para leitura: outra aba ou aparelho está editando.";
 
   // Opens on the latest month with activity, not on an empty current month (once per opening). A project that
   // brings its own month (the demonstration's last complete month) already set it when it opened.
@@ -145,7 +143,7 @@ export function Page() {
     setHidden(false);
   };
 
-  const monthName = capitalize(formatMonth(month));
+  const monthName = monthLabel(month);
   const openOperations = (accountId: string) => go("livro", { ref: filterRef(accountId, month, memberValid) });
   const goLink = (link: Link) =>
     go(link.page, { ...(link.ref ? { ref: link.ref } : {}), ...(link.act ? { act: link.act } : {}) });
@@ -310,7 +308,7 @@ export function Page() {
 
   const readOnlyWrap = (button: ReactNode) =>
     readOnly ? (
-      <span title={readOnlyHint} className="inline-flex">
+      <span title={READ_ONLY_TIP} className="inline-flex">
         {button}
       </span>
     ) : (

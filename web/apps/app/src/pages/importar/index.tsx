@@ -31,6 +31,7 @@ import { ACCEPT, ReadingStrip, useImportQueue } from "./queue.tsx";
 import { Review } from "./review.tsx";
 import { batchRows, evidenceOf, queueContext, waitingItems, type BatchRow } from "./rows.ts";
 import { DocumentViewer } from "./viewer.tsx";
+import { READ_ONLY_TIP } from "../../data/read_only.ts";
 
 const QUEUE_COLUMNS: DataColumn<BatchRow>[] = [
   {
@@ -111,7 +112,7 @@ export function Page() {
 
   const choose = () => {
     if (readOnly) {
-      notify("Este projeto está aberto só para leitura: outra aba ou aparelho está editando.", { tone: "warning" });
+      notify(READ_ONLY_TIP, { tone: "warning" });
       return;
     }
     picker.current?.click();
@@ -168,11 +169,7 @@ export function Page() {
       icon={<FileUp />}
       onClick={choose}
       disabled={readOnly}
-      title={
-        readOnly
-          ? "Outra aba ou aparelho está editando este projeto; aqui só leitura."
-          : "PDF, CSV ou OFX (Ctrl+I); ou arraste para cá"
-      }
+      title={readOnly ? READ_ONLY_TIP : "PDF, CSV ou OFX (Ctrl+I); ou arraste para cá"}
     >
       Importar arquivos…
     </Button>
@@ -213,18 +210,17 @@ export function Page() {
       </AnimatePresence>
 
       {empty ? (
-        <div className="rounded-xl border border-dashed border-separator-strong bg-window/40">
-          <EmptyState
-            icon={<FolderInput />}
-            title="Nenhum documento importado"
-            description="Importe faturas de cartão, extratos e notas de corretagem em PDF, CSV ou OFX. Cada item é revisado aqui antes de virar lançamento; o arquivo original fica guardado no projeto, cifrado. Você também pode arrastar os arquivos para esta janela."
-            actions={
-              <Button onClick={choose} disabled={readOnly}>
-                Importar arquivos…
-              </Button>
-            }
-          />
-        </div>
+        <EmptyState
+          framed
+          icon={<FolderInput />}
+          title="Nenhum documento importado"
+          description="Importe faturas de cartão, extratos e notas de corretagem em PDF, CSV ou OFX. Cada item é revisado aqui antes de virar lançamento; o arquivo original fica guardado no projeto, cifrado. Você também pode arrastar os arquivos para esta janela."
+          actions={
+            <Button onClick={choose} disabled={readOnly}>
+              Importar arquivos…
+            </Button>
+          }
+        />
       ) : (
         <Adaptive at={1400} columns="1fr 5fr" gap={24}>
           <section aria-label="Documentos importados" className="min-w-0">
@@ -255,13 +251,12 @@ export function Page() {
               <DocumentViewer documentId={batch.document_id} name={documentName} evidence={evidence} />
             </Adaptive>
           ) : (
-            <div className="rounded-xl border border-dashed border-separator-strong bg-window/40">
-              <EmptyState
-                level={2}
-                title="Selecione um documento"
-                description="Os itens extraídos aparecem aqui para revisão."
-              />
-            </div>
+            <EmptyState
+              framed
+              level={2}
+              title="Selecione um documento"
+              description="Os itens extraídos aparecem aqui para revisão."
+            />
           )}
         </Adaptive>
       )}

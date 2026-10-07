@@ -90,11 +90,6 @@ export function shortcut(id: ShortcutId): Shortcut {
   return found;
 }
 
-/** The keys as one line ("Ctrl+Shift+Z ou Ctrl+Y"). */
-export function keysText(item: Shortcut): string {
-  return item.keys.join(" ou ");
-}
-
 /** The tooltip text of a shortcut ("Ctrl+Z"): its first keys. */
 export function tip(id: ShortcutId): string {
   return shortcut(id).keys[0] ?? "";

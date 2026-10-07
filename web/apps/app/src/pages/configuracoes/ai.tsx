@@ -14,8 +14,7 @@ import { AI_PORT_KEY, aiTransport, portFrom, rememberModel } from "../../data/ai
 import { useAct, useLedger, useWorkspace } from "../../data/react.tsx";
 import { Block, Note, TabColumn } from "./parts.tsx";
 import { checkedText, originGuide, parsePort } from "./rows.ts";
-
-const READ_ONLY_HINT = "Outra aba ou aparelho está editando este projeto; aqui só leitura.";
+import { READ_ONLY_TIP } from "../../data/read_only.ts";
 
 function copy(text: string, done: string) {
   void navigator.clipboard
@@ -176,7 +175,7 @@ export function AiTab() {
               spellCheck={false}
               autoComplete="off"
               disabled={readOnly}
-              title={readOnly ? READ_ONLY_HINT : undefined}
+              title={readOnly ? READ_ONLY_TIP : undefined}
               hint={`Indicado: ${ai.ollama.RECOMMENDED_MODELS.join(", ")}. Instale com “ollama pull <modelo>”.`}
               fieldClassName="tablet:max-w-[420px] tablet:flex-1"
             />

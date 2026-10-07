@@ -10,7 +10,6 @@ import {
   billRows,
   cardRows,
   categoryRows,
-  cents,
   checkLabel,
   defaultBill,
   installmentRows,
@@ -19,7 +18,6 @@ import {
   nextInstallment,
   parseReveal,
   partRows,
-  plural,
   proposalRows,
   rateLabel,
   ruleRows,
@@ -27,6 +25,8 @@ import {
   whereLine,
 } from "../../src/pages/contas/rows.ts";
 import { accountNamed } from "../lookup.ts";
+import { cents } from "../../src/data/money.ts";
+import { plural } from "../../src/data/text.ts";
 
 let ledger: Ledger;
 const today = makeDate(2026, 10, 6);

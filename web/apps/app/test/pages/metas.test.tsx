@@ -2,19 +2,12 @@ import { charts, dom, formatBrl, makeDate, ymOf, type Id } from "@opesvault/doma
 import { act as reactAct, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { pinToday } from "../clock.ts";
-import {
-  NONE,
-  dateOrNone,
-  moneyOrNone,
-  nameOf,
-  reachedLabel,
-  shareLabel,
-  summaryLine,
-} from "../../src/pages/metas/rows.ts";
+import { nameOf, reachedLabel, shareLabel, summaryLine } from "../../src/pages/metas/rows.ts";
 import { openPage } from "./recorrencias_harness.tsx";
 import { accountNamed } from "../lookup.ts";
 import { flat, rowById, undoOnce } from "../dom.ts";
 import { addressSettles } from "../navigations.ts";
+import { DASH as NONE, dateOr as dateOrNone, moneyOr as moneyOrNone } from "../../src/data/money.ts";
 
 const open = (options = {}) => openPage("/metas", "Metas", options);
 const goals = (ledger: Parameters<typeof dom.goals.goals>[0]) => dom.goals.goals(ledger);

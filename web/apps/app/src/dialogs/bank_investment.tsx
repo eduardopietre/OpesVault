@@ -3,18 +3,7 @@
  * of an existing one (IRPF type, issuer, indexer, rate, dates, liquidity, tax treatment and the code of the
  * income). Type and income follow the IRPF tables; no rate or limit is embedded (docs/00 §5).
  */
-import {
-  DomainError,
-  MoneyError,
-  catalogs,
-  dom,
-  formatDecimalBr,
-  investments,
-  parseBrl,
-  tax,
-  type Dec,
-  type Id,
-} from "@opesvault/domain";
+import { DomainError, catalogs, dom, formatDecimalBr, investments, tax, type Dec, type Id } from "@opesvault/domain";
 import { Checkbox, Combobox, MoneyField, Select, TextField, type SelectOption } from "@opesvault/ui";
 import { useMemo, useState } from "react";
 import { useWorkspace } from "../data/react.tsx";
@@ -26,11 +15,11 @@ import {
   NONE,
   OptionalDateField,
   optionalDateValue,
-  readMoney,
   readOptionalDate,
   useFormAct,
   type OptionalDateValue,
 } from "./livro_form.tsx";
+import { typedPercent, readMoney } from "./form_readers.ts";
 
 const { banking } = dom;
 const { profile: prof, model } = investments;
@@ -80,16 +69,7 @@ export function investmentKindOptions(): SelectOption[] {
 }
 
 /** A percentage typed as "110" or "6,5"; empty is unknown. */
-export function readRate(text: string): Dec | null {
-  const raw = text.trim().replace("%", "");
-  if (!raw) return null;
-  try {
-    return parseBrl(raw);
-  } catch (error) {
-    if (error instanceof MoneyError) throw new DomainError("Taxa: use um número como 110 ou 6,5.");
-    throw error;
-  }
-}
+const readRate = (text: string): Dec | null => typedPercent(text, "Taxa: use um número como 110 ou 6,5.");
 
 export function InvestmentDialog({ open, onClose, bankId = null, positionId = null, onDone }: InvestmentDialogProps) {
   const workspace = useWorkspace();

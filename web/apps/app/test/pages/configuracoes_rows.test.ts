@@ -5,7 +5,6 @@ import { backupFileName, documentBlobRefs, lastBackupKey } from "../../src/data/
 import { backupNotices, readLastBackup, writeLastBackup } from "../../src/pages/configuracoes/backup_state.ts";
 import {
   backupStatus,
-  bytesText,
   checkedText,
   originGuide,
   parsePort,
@@ -13,7 +12,7 @@ import {
   persistWords,
   placementText,
 } from "../../src/pages/configuracoes/rows.ts";
-import { memoryPreferences } from "@opesvault/ui";
+import { memoryPreferences, formatBytes as bytesText } from "@opesvault/ui";
 
 const GB = 1_000_000_000;
 

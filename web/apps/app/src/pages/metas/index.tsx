@@ -5,7 +5,6 @@
  */
 import { charts, dom, formatBrl, ymOf } from "@opesvault/domain";
 import {
-  Button,
   ChartPanel,
   DataTable,
   ElidedText,
@@ -15,27 +14,28 @@ import {
   PageHeader,
   notify,
   useElementWidth,
-  useMediaQuery,
   useMotionPreset,
+  fitHeight,
+  usePhone,
 } from "@opesvault/ui";
 import { Goal as GoalIcon } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef } from "react";
 import { toChartData } from "../../data/chart_data.ts";
 import { useLedger, useWorkspace } from "../../data/react.tsx";
 import { useReveal } from "../../data/navigation.ts";
-import { tableHeight } from "../../data/table_height.ts";
 import { GoalDialog } from "../../dialogs/goal_dialog.tsx";
 import { ReasonDialog } from "../../dialogs/livro_prompts.tsx";
 import { goalColumns } from "./columns.tsx";
-import { dateOrNone, goalExample, goalRows, moneyOrNone, reachedLabel, summaryLine, type GoalExample } from "./rows.ts";
+import { goalExample, goalRows, reachedLabel, summaryLine, type GoalExample } from "./rows.ts";
+import { EditButton, usePick } from "../../components/list_parts.tsx";
+import { useLock } from "../../data/read_only.ts";
+import { useDialog } from "../../data/dialog.ts";
+import { moneyOr, dateOr } from "../../data/money.ts";
 
 type Goal = dom.goals.Goal;
 
-const LOCKED = "Outra aba ou outro aparelho está editando este projeto. Atualize para editar.";
-
 interface EditState {
-  key: number;
   goal: Goal | null;
   /** A new goal that starts from the example (the empty page's "Definir uma meta…"). */
   example?: GoalExample;
@@ -44,53 +44,40 @@ interface EditState {
 export function Page() {
   const workspace = useWorkspace();
   const preset = useMotionPreset();
-  const phone = useMediaQuery("(max-width: 639px)");
+  const phone = usePhone();
   const [measure, tableWidth] = useElementWidth<HTMLElement>();
   const columns = useMemo(() => goalColumns(tableWidth), [tableWidth]);
-  const locked = workspace.readOnly;
-  const lockTip = locked ? LOCKED : undefined;
+  const { locked } = useLock();
   const today = workspace.today();
 
   const rows = useLedger((ledger) => goalRows(ledger, today), today);
   // Like the desktop, a goal is always selected when there is one: the first until the person picks another.
-  const [pick, setPick] = useState<string | null>(null);
-  const selected = rows.find((row) => row.id === pick) ?? rows[0] ?? null;
+  const { setPick, selected, need } = usePick(rows, (row) => row.id, { first: true });
   const chart = useLedger(
     (ledger) => (selected ? toChartData(charts.data.goalChart(ledger, selected.id, ymOf(today), today)) : null),
     `${selected?.id ?? ""}|${today}`,
   );
 
-  const [edit, setEdit] = useState<EditState | null>(null);
-  const [editOpen, setEditOpen] = useState(false);
-  const [archive, setArchive] = useState<Goal | null>(null);
-  const [archiveOpen, setArchiveOpen] = useState(false);
-  const counter = useRef(0);
+  const edit = useDialog<EditState>();
+  const archiveDialog = useDialog<Goal>();
   const detail = useRef<HTMLDivElement>(null);
+  const archive = archiveDialog.spec;
 
   const openEdit = (goal: Goal | null) => {
-    setEdit({ key: ++counter.current, goal });
-    setEditOpen(true);
+    edit.show({ goal });
   };
   const openExample = () => {
-    setEdit({ key: ++counter.current, goal: null, example: goalExample(workspace.ledger, today) });
-    setEditOpen(true);
+    edit.show({ goal: null, example: goalExample(workspace.ledger, today) });
   };
 
   const editSelected = () => {
-    if (!selected) {
-      notify("Selecione uma meta.");
-      return;
-    }
-    openEdit(selected.goal);
+    const row = need("Selecione uma meta.");
+    if (row) openEdit(row.goal);
   };
 
   const archiveSelected = () => {
-    if (!selected) {
-      notify("Selecione uma meta.");
-      return;
-    }
-    setArchive(selected.goal);
-    setArchiveOpen(true);
+    const row = need("Selecione uma meta.");
+    if (row) archiveDialog.show(row.goal);
   };
 
   // A link from another page: the goal opens, selected, with its chart; "editar" also opens the form.
@@ -103,14 +90,9 @@ export function Page() {
   });
 
   const newButton = (primary: boolean) => (
-    <Button
-      variant={primary ? "primary" : "secondary"}
-      onClick={() => openEdit(null)}
-      disabled={locked}
-      title={lockTip}
-    >
+    <EditButton variant={primary ? "primary" : "secondary"} onClick={() => openEdit(null)}>
       Nova meta…
-    </Button>
+    </EditButton>
   );
 
   const p = selected?.progress ?? null;
@@ -118,12 +100,12 @@ export function Page() {
     ? [
         {
           label: "Falta por mês",
-          value: moneyOrNone(p.neededPerMonth),
+          value: moneyOr(p.neededPerMonth),
           note: p.monthsLeft === null ? "Sem prazo" : `${p.monthsLeft} mês(es) até o prazo`,
         },
-        { label: "Ritmo recente", value: moneyOrNone(p.pace), note: "Média por mês nos últimos meses com registros" },
+        { label: "Ritmo recente", value: moneyOr(p.pace), note: "Média por mês nos últimos meses com registros" },
         { label: "Alcança em", value: reachedLabel(p.reachedOnPace), note: "Se o ritmo recente continuar" },
-        { label: "Prazo", value: dateOrNone(selected?.goal.target_date ?? null) },
+        { label: "Prazo", value: dateOr(selected?.goal.target_date ?? null) },
       ]
     : [];
 
@@ -145,23 +127,20 @@ export function Page() {
       />
 
       {rows.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-separator-strong bg-window/40">
-          <EmptyState
-            icon={<GoalIcon />}
-            title="Nenhuma meta"
-            description="Defina uma meta de patrimônio ou de saldo para acompanhar quanto falta e em que ritmo o projeto chega lá. Comece pelo exemplo de uma reserva de emergência e ajuste os valores."
-            actions={
-              <>
-                <Button variant="primary" onClick={openExample} disabled={locked} title={lockTip}>
-                  Definir uma meta…
-                </Button>
-                <Button onClick={() => openEdit(null)} disabled={locked} title={lockTip}>
-                  Começar do zero…
-                </Button>
-              </>
-            }
-          />
-        </div>
+        <EmptyState
+          framed
+          icon={<GoalIcon />}
+          title="Nenhuma meta"
+          description="Defina uma meta de patrimônio ou de saldo para acompanhar quanto falta e em que ritmo o projeto chega lá. Comece pelo exemplo de uma reserva de emergência e ajuste os valores."
+          actions={
+            <>
+              <EditButton variant="primary" onClick={openExample}>
+                Definir uma meta…
+              </EditButton>
+              <EditButton onClick={() => openEdit(null)}>Começar do zero…</EditButton>
+            </>
+          }
+        />
       ) : (
         <>
           <section ref={measure} aria-label="Metas do projeto" className="min-w-0">
@@ -177,7 +156,7 @@ export function Page() {
                 const row = rows.find((r) => r.id === id);
                 if (row && !locked) openEdit(row.goal);
               }}
-              height={tableHeight(rows.length, 8, phone)}
+              height={fitHeight(rows.length, 8, phone)}
             />
             <p className="mt-3 text-caption text-secondary">
               Por mês: quanto falta dividido pelos meses até o prazo. Ritmo recente: quanto o valor mudou por mês, em
@@ -198,12 +177,12 @@ export function Page() {
                       {formatBrl(selected.progress.current)} de {formatBrl(selected.goal.target)}
                     </div>
                   </div>
-                  <Button size="sm" onClick={editSelected} disabled={locked} title={lockTip}>
+                  <EditButton size="sm" onClick={editSelected}>
                     Editar meta…
-                  </Button>
-                  <Button size="sm" onClick={archiveSelected} disabled={locked} title={lockTip}>
+                  </EditButton>
+                  <EditButton size="sm" onClick={archiveSelected}>
                     {selected.goal.archived ? "Reativar…" : "Arquivar…"}
-                  </Button>
+                  </EditButton>
                 </div>
                 <div className="grid grid-cols-2 gap-3 medium:grid-cols-4">
                   {figures.map((figure) => (
@@ -226,13 +205,13 @@ export function Page() {
         </>
       )}
 
-      {edit ? (
+      {edit.spec ? (
         <GoalDialog
           key={edit.key}
-          open={editOpen}
-          onClose={() => setEditOpen(false)}
-          goal={edit.goal}
-          example={edit.example ?? null}
+          open={edit.open}
+          onClose={edit.close}
+          goal={edit.spec.goal}
+          example={edit.spec.example ?? null}
           onDone={(goal, created) => {
             setPick(goal.id);
             notify(created ? "Meta criada." : "Meta atualizada.");
@@ -241,9 +220,9 @@ export function Page() {
       ) : null}
       {archive ? (
         <ReasonDialog
-          key={archive.id}
-          open={archiveOpen}
-          onClose={() => setArchiveOpen(false)}
+          key={archiveDialog.key}
+          open={archiveDialog.open}
+          onClose={archiveDialog.close}
           title={archive.archived ? "Reativar meta" : "Arquivar meta"}
           confirmLabel={archive.archived ? "Reativar" : "Arquivar"}
           description={

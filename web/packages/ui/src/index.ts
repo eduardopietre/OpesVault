@@ -6,6 +6,7 @@ export { cn } from "./cn.ts";
 export * from "./tokens.ts";
 export * from "./format.ts";
 export * from "./hooks.ts";
+export * from "./download.ts";
 export * from "./motion.tsx";
 export * from "./preferences.tsx";
 export * from "./chart/model.ts";

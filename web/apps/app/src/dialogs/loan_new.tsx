@@ -8,16 +8,15 @@ import {
   Dec,
   DomainError,
   LedgerAccountSchema,
-  MoneyError,
   dom,
-  parseBrl,
   type LedgerAccount,
 } from "@opesvault/domain";
 import { DateField, MoneyField, Select, TextField, type SelectOption } from "@opesvault/ui";
 import { useState } from "react";
 import { useWorkspace } from "../data/react.tsx";
 import { assetAccounts, categoryItems } from "./account_choices.ts";
-import { Caption, FormDialog, FormGrid, FullRow, dateText, readDate, readMoney, useFormAct } from "./livro_form.tsx";
+import { Caption, FormDialog, FormGrid, FullRow, useFormAct } from "./livro_form.tsx";
+import { typedPercent, dateText, readDate, readMoney } from "./form_readers.ts";
 
 const { loans } = dom;
 
@@ -41,14 +40,8 @@ const OPENINGS: SelectOption[] = [
 const SYSTEMS: SelectOption[] = Object.entries(loans.SYSTEM_LABELS).map(([id, label]) => ({ id, label }));
 
 /** The monthly rate (a fraction) from what was typed as a percentage, per month or per year. */
-export function monthlyRate(text: string, basis: string): Dec {
-  let percent: Dec;
-  try {
-    percent = parseBrl(text.trim() || "0");
-  } catch (error) {
-    if (error instanceof MoneyError) throw new DomainError("Taxa inválida. Use o formato 0,99.");
-    throw error;
-  }
+function monthlyRate(text: string, basis: string): Dec {
+  const percent = typedPercent(text, "Taxa inválida. Use o formato 0,99.") ?? Dec.from(0);
   if (percent.isNegative() || percent.gte(100)) throw new DomainError("Informe a taxa em %, entre 0 e 100.");
   const fraction = percent.div(100);
   return basis === "year" ? loans.annualToMonthly(fraction) : fraction;

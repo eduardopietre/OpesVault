@@ -3,10 +3,9 @@
  * language) over a real file input, which stays reachable by keyboard and by its name. The file is read in
  * this browser and never uploaded.
  */
-import { cn } from "@opesvault/ui";
+import { cn, formatBytes } from "@opesvault/ui";
 import { FolderOpen } from "lucide-react";
 import { useId } from "react";
-import { sizeText } from "./settings_backup_export.tsx";
 
 export interface FilePickerProps {
   label: string;
@@ -40,7 +39,7 @@ export function FilePicker({ label, file, onFile, empty }: FilePickerProps) {
           {file ? "Trocar arquivo…" : "Escolher arquivo…"}
         </label>
         <p className="min-w-0 break-all text-caption text-secondary">
-          {file ? `${file.name} · ${sizeText(file.size)}` : empty}
+          {file ? `${file.name} · ${formatBytes(file.size)}` : empty}
         </p>
       </div>
     </div>

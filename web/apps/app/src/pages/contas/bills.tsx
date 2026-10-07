@@ -10,17 +10,12 @@ import { useLedger, useWorkspace } from "../../data/react.tsx";
 import { cardItems } from "../../dialogs/account_choices.ts";
 import { BillPaymentDialog, type BillSummary } from "../../dialogs/bill_payment.tsx";
 import { toChartData } from "../../data/chart_data.ts";
-import {
-  type TabReveal,
-  Empty,
-  ListTable,
-  Toolbar,
-  useDialog,
-  useLock,
-  useTabReveal,
-} from "../../components/list_parts.tsx";
+import { type TabReveal, Empty, ListTable, Toolbar, useTabReveal } from "../../components/list_parts.tsx";
 import type { TierColumn } from "../../components/tier_columns.ts";
-import { billRows, cents, defaultBill, money, type BillRow } from "./rows.ts";
+import { billRows, defaultBill, type BillRow } from "./rows.ts";
+import { useDialog } from "../../data/dialog.ts";
+import { useLock } from "../../data/read_only.ts";
+import { cents, moneyOr } from "../../data/money.ts";
 
 const { cards } = dom;
 
@@ -58,7 +53,7 @@ const COLUMNS: TierColumn<BillRow>[] = [
   {
     id: "charges",
     header: "Lançamentos",
-    cell: (r) => money(r.charges),
+    cell: (r) => moneyOr(r.charges),
     sortValue: (r) => cents(r.charges),
     align: "end",
     width: 100,
@@ -67,7 +62,7 @@ const COLUMNS: TierColumn<BillRow>[] = [
   {
     id: "installments",
     header: "Parcelas",
-    cell: (r) => money(r.installments),
+    cell: (r) => moneyOr(r.installments),
     sortValue: (r) => cents(r.installments),
     align: "end",
     width: 92,
@@ -76,7 +71,7 @@ const COLUMNS: TierColumn<BillRow>[] = [
   {
     id: "credits",
     header: "Créditos",
-    cell: (r) => money(r.credits),
+    cell: (r) => moneyOr(r.credits),
     sortValue: (r) => cents(r.credits),
     align: "end",
     width: 92,
@@ -85,7 +80,7 @@ const COLUMNS: TierColumn<BillRow>[] = [
   {
     id: "total",
     header: "Total",
-    cell: (r) => money(r.total),
+    cell: (r) => moneyOr(r.total),
     sortValue: (r) => cents(r.total),
     align: "end",
     width: 100,
@@ -94,7 +89,7 @@ const COLUMNS: TierColumn<BillRow>[] = [
   {
     id: "paid",
     header: "Pago",
-    cell: (r) => money(r.paid),
+    cell: (r) => moneyOr(r.paid),
     sortValue: (r) => cents(r.paid),
     align: "end",
     width: 100,
@@ -103,7 +98,7 @@ const COLUMNS: TierColumn<BillRow>[] = [
   {
     id: "remaining",
     header: "Saldo",
-    cell: (r) => money(r.remaining),
+    cell: (r) => moneyOr(r.remaining),
     sortValue: (r) => cents(r.remaining),
     align: "end",
     width: 100,

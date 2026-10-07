@@ -5,7 +5,7 @@
  */
 import { dom, formatBrl, type Id, type Operation, edits } from "@opesvault/domain";
 import { decide, notify } from "@opesvault/ui";
-import { useState } from "react";
+import type { DialogSlot } from "../../data/dialog.ts";
 import { useWorkspace } from "../../data/react.tsx";
 import { BalanceCheckDialog } from "../../dialogs/balance_check.tsx";
 import { DeductibleDialog } from "../../dialogs/deductible.tsx";
@@ -41,27 +41,7 @@ export type DialogSpec =
   | { kind: "save-filter"; filter: FilterState }
   | { kind: "receipt"; documentId: Id }
   | { kind: "ai"; review: ReviewProps };
-
-export interface DialogHost {
-  spec: DialogSpec | null;
-  open: boolean;
-  key: number;
-  show: (spec: DialogSpec) => void;
-  close: () => void;
-}
-
-export function useDialogHost(): DialogHost {
-  const [state, setState] = useState<{ spec: DialogSpec | null; open: boolean; key: number }>({
-    spec: null,
-    open: false,
-    key: 0,
-  });
-  return {
-    ...state,
-    show: (spec) => setState((s) => ({ spec, open: true, key: s.key + 1 })),
-    close: () => setState((s) => ({ ...s, open: false })),
-  };
-}
+export type DialogHost = DialogSlot<DialogSpec>;
 
 export interface LedgerDialogsProps {
   host: DialogHost;

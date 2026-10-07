@@ -8,7 +8,8 @@ import { Checkbox, Combobox, DateField, MoneyField, Select, TextField, type Sele
 import { useMemo, useState } from "react";
 import { useWorkspace } from "../data/react.tsx";
 import { memberChoices } from "./accounts_labels.ts";
-import { Caption, FormDialog, FormGrid, FullRow, NONE, readDate, readMoney, useFormAct } from "./livro_form.tsx";
+import { Caption, FormDialog, FormGrid, FullRow, NONE, useFormAct } from "./livro_form.tsx";
+import { readDate, readMoney } from "./form_readers.ts";
 
 const { banking } = dom;
 

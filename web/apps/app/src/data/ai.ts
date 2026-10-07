@@ -78,7 +78,3 @@ export function modelLabel(source: string | null | undefined): string {
   const parts = (source.split("@")[0] ?? "").split(":");
   return parts.slice(1, -1).join(":") || (parts.at(-1) ?? "");
 }
-
-export function plural(count: number, one: string, many: string): string {
-  return `${count} ${count === 1 ? one : many}`;
-}

@@ -3,7 +3,7 @@
  * whether the browser may erase it, and "Esquecer este aparelho", which erases the local copy and the device
  * preferences and ends the session. The password and the keys are never among the things kept.
  */
-import { Badge, Button, notify, usePreferences } from "@opesvault/ui";
+import { Badge, Button, notify, usePreferences, formatBytes } from "@opesvault/ui";
 import { useNavigate } from "@tanstack/react-router";
 import { ShieldCheck, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -12,7 +12,7 @@ import { useServices, useSessionActions } from "../../session.tsx";
 import { useTheme } from "../../theme.tsx";
 import { readStorage, requestPersist, type StorageInfo } from "./device.ts";
 import { Block, Note, TabColumn } from "./parts.tsx";
-import { bytesText, persistWords } from "./rows.ts";
+import { persistWords } from "./rows.ts";
 
 const KEPT: readonly { title: string; text: string }[] = [
   {
@@ -135,7 +135,7 @@ export function PrivacyTab() {
                 <p>{persistWords(storage.persist)}</p>
                 {storage.usage !== null && storage.quota !== null ? (
                   <p className="text-caption text-secondary">
-                    Este site usa {bytesText(storage.usage)} de {bytesText(storage.quota)} disponíveis.
+                    Este site usa {formatBytes(storage.usage)} de {formatBytes(storage.quota)} disponíveis.
                   </p>
                 ) : null}
               </div>

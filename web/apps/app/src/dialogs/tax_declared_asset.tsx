@@ -13,17 +13,14 @@ import {
   FullRow,
   NONE,
   OptionalDateField,
-  dateText,
-  editableMoney,
   memberFromChoice,
   memberOptions,
   optionalDateValue,
-  readDate,
-  readMoney,
   readOptionalDate,
   useFormAct,
 } from "./livro_form.tsx";
 import { AssetCodeField, splitCode } from "./tax_fields.tsx";
+import { dateText, editableMoney, readDate, readMoney } from "./form_readers.ts";
 
 /** House, car, other real estate and the like: the groups a good outside the accounts can be in. */
 const GROUPS = ["01", "02", "03", "05", "99"] as const;

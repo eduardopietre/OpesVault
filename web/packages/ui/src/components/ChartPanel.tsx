@@ -8,6 +8,7 @@
 import { ImageDown } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import { cn } from "../cn.ts";
+import { saveFile } from "../download.ts";
 import type { ChartOption } from "../chart/echarts.ts";
 import { formatValue, tableRows, type ChartData, type ChartUnit } from "../chart/model.ts";
 import { useReduceMotion } from "../motion.tsx";
@@ -300,9 +301,6 @@ export function ChartPanel({
     const url = current.getDataURL({ type: "png", pixelRatio: 2, backgroundColor: cssVar("--ov-content") || "#fff" });
     // a file of its own (not the data address): the browser keeps the name given here
     const bytes = Uint8Array.from(atob(url.slice(url.indexOf(",") + 1)), (char) => char.charCodeAt(0));
-    const href = URL.createObjectURL(new Blob([bytes], { type: "image/png" }));
-    const link = document.createElement("a");
-    link.href = href;
     // without accents or reserved characters: every browser and file system takes the name as it is
     const name = chart.title
       .normalize("NFD")
@@ -310,12 +308,7 @@ export function ChartPanel({
       .replace(/[^\w .()-]+/g, " ")
       .replace(/\s+/g, " ")
       .trim();
-    link.download = `${name || "grafico"}.png`;
-    link.hidden = true;
-    document.body.append(link);
-    link.click();
-    link.remove();
-    setTimeout(() => URL.revokeObjectURL(href), 10_000);
+    saveFile(`${name || "grafico"}.png`, bytes, "image/png");
     return true;
   };
   useEffect(() => {

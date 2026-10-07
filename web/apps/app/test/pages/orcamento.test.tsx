@@ -16,11 +16,12 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { chooseMonth } from "../../src/data/month.ts";
 import { toChartData } from "../../src/data/chart_data.ts";
-import { categoryRef, cents, parseCategoryRef, summaryLine, usedPercent } from "../../src/pages/orcamento/rows.ts";
+import { categoryRef, parseCategoryRef, summaryLine, usedPercent } from "../../src/pages/orcamento/rows.ts";
 import { addressSettles, navigations, wentTo } from "../navigations.ts";
 import { undoOnce, clickInTable, flat } from "../dom.ts";
 import { accountNamed } from "../lookup.ts";
 import { mountApp } from "../mount.tsx";
+import { cents } from "../../src/data/money.ts";
 
 async function openPage(path = "/orcamento", month?: (now: YearMonth) => YearMonth) {
   let now: YearMonth | null = null;

@@ -36,9 +36,10 @@ import {
   returnRows,
   valuationRows,
 } from "./rows.ts";
-import { EditButton, Empty, ListTable, useLock } from "../../components/list_parts.tsx";
+import { EditButton, Empty, ListTable } from "../../components/list_parts.tsx";
 import { finishXirr } from "./xirr.ts";
 import { solveXirr } from "./xirr_client.ts";
+import { useLock } from "../../data/read_only.ts";
 
 const { service, model, benchmarks } = investments;
 const { banking } = dom;

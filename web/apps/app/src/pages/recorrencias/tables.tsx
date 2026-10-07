@@ -6,8 +6,8 @@ import { formatBrl, formatDateBr, type dom } from "@opesvault/domain";
 import { Badge, ElidedText, type BadgeTone, type DataColumn } from "@opesvault/ui";
 import { CircleAlert, CircleCheck, CircleDashed, SkipForward, TriangleAlert } from "lucide-react";
 import type { ReactNode } from "react";
-import { cents } from "../orcamento/rows.ts";
 import { FORECAST_LABELS, FREQUENCY_LABELS, dayLabel, situationLabel } from "./rows.ts";
+import { cents } from "../../data/money.ts";
 
 type Rule = dom.recurrence.RecurrenceRule;
 type Forecast = dom.recurrence.Forecast;

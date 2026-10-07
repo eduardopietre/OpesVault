@@ -3,10 +3,10 @@
  * month's spending and last month's plan beside it. Empty means no plan for that category. One dialog,
  * one undo step.
  */
-import { formatBrl } from "@opesvault/domain";
 import { Button, MoneyField, Dialog, notify } from "@opesvault/ui";
 import { useRef, useState } from "react";
 import { fillFromPrevious, parseGrid, type GridChange, type GridRow } from "./budget_logic.ts";
+import { moneyOr } from "../data/money.ts";
 
 export interface BudgetGridDialogProps {
   open: boolean;
@@ -21,8 +21,6 @@ export interface BudgetGridDialogProps {
 }
 
 const COLUMNS = "grid-cols-[minmax(0,1fr)_9.5rem] tablet:grid-cols-[minmax(0,1fr)_9.5rem_7.5rem_7.5rem]";
-
-const money = (value: Parameters<typeof formatBrl>[0] | null) => (value === null ? "—" : formatBrl(value));
 
 /** Mounted with a fresh `key` for each opening. */
 export function BudgetGridDialog({
@@ -128,11 +126,11 @@ export function BudgetGridDialog({
                 />
                 <span className="col-span-2 text-caption text-secondary tablet:col-span-1 tablet:text-right tablet:text-body tablet:text-text tablet:tabular-nums">
                   <span className="tablet:sr-only">Gasto no mês: </span>
-                  {money(row.spent)}
+                  {moneyOr(row.spent)}
                 </span>
                 <span className="col-span-2 text-caption text-secondary tablet:col-span-1 tablet:text-right tablet:text-body tablet:text-text tablet:tabular-nums">
                   <span className="tablet:sr-only">Mês anterior: </span>
-                  {money(row.previous)}
+                  {moneyOr(row.previous)}
                 </span>
               </li>
             ))}

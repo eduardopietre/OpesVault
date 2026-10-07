@@ -3,10 +3,9 @@
  * documents, sealed in this browser with the project password (asked again, so a file is never protected by a
  * mistyped one). The result is offered as a download; nothing is uploaded.
  */
-import { Button, TextField } from "@opesvault/ui";
+import { Button, TextField, saveFile, formatBytes } from "@opesvault/ui";
 import { Download } from "lucide-react";
 import { useState } from "react";
-import { saveBlob } from "../data/download.ts";
 import type { BackupFile, BackupProgress } from "../services/types.ts";
 import { useServices } from "../session.tsx";
 import { Caption } from "./livro_form.tsx";
@@ -34,18 +33,6 @@ export function progressText(progress: BackupProgress | null): string {
   }
 }
 
-export function sizeText(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  const units = ["KiB", "MiB", "GiB"];
-  let value = bytes / 1024;
-  let unit = 0;
-  while (value >= 1024 && unit < units.length - 1) {
-    value /= 1024;
-    unit += 1;
-  }
-  return `${value.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} ${units[unit]}`;
-}
-
 export function ExportBackupDialog({ open, onClose, onDone }: ExportBackupDialogProps) {
   const services = useServices();
   const [password, setPassword] = useState("");
@@ -68,7 +55,7 @@ export function ExportBackupDialog({ open, onClose, onDone }: ExportBackupDialog
         closeOnly
         onConfirm={close}
         extraActions={
-          <Button icon={<Download className="size-4" />} onClick={() => saveBlob(file.fileName, file.blob)}>
+          <Button icon={<Download className="size-4" />} onClick={() => saveFile(file.fileName, file.blob)}>
             Baixar de novo
           </Button>
         }
@@ -77,7 +64,7 @@ export function ExportBackupDialog({ open, onClose, onDone }: ExportBackupDialog
           <dt className="text-secondary">Arquivo</dt>
           <dd className="min-w-0 break-all font-medium">{file.fileName}</dd>
           <dt className="text-secondary">Tamanho</dt>
-          <dd>{sizeText(file.blob.size)}</dd>
+          <dd>{formatBytes(file.blob.size)}</dd>
           <dt className="text-secondary">Registros</dt>
           <dd>{file.records}</dd>
           <dt className="text-secondary">Documentos</dt>
@@ -110,7 +97,7 @@ export function ExportBackupDialog({ open, onClose, onDone }: ExportBackupDialog
       onConfirm={async () => {
         const made = await services.exportBackup(password, setProgress);
         setPassword("");
-        saveBlob(made.fileName, made.blob);
+        saveFile(made.fileName, made.blob);
         onDone(made);
         setFile(made);
       }}

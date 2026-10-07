@@ -11,26 +11,12 @@ import { CategoryDialog } from "../../dialogs/accounts_category.tsx";
 import { MemberDialog } from "../../dialogs/accounts_member.tsx";
 import { DeductibleDialog } from "../../dialogs/deductible.tsx";
 import { useGoTo } from "../../data/navigation.ts";
-import {
-  cardRows,
-  categoryRows,
-  cents,
-  memberRows,
-  money,
-  type CardRow,
-  type CategoryRow,
-  type MemberRow,
-} from "./rows.ts";
-import {
-  type TabReveal,
-  EditButton,
-  Empty,
-  ListTable,
-  Toolbar,
-  useDialog,
-  useTabReveal,
-} from "../../components/list_parts.tsx";
+import { cardRows, categoryRows, memberRows, type CardRow, type CategoryRow, type MemberRow } from "./rows.ts";
+import { type TabReveal, EditButton, Empty, ListTable, Toolbar, useTabReveal } from "../../components/list_parts.tsx";
 import type { TierColumn } from "../../components/tier_columns.ts";
+import { useDialog } from "../../data/dialog.ts";
+import { cents, moneyOr } from "../../data/money.ts";
+import { accountRef } from "../livro/rows.ts";
 
 // ── cards ────────────────────────────────────────
 
@@ -59,7 +45,7 @@ const CARD_COLUMNS: TierColumn<CardRow>[] = [
   {
     id: "open",
     header: "Fatura em aberto",
-    cell: (r) => money(r.open),
+    cell: (r) => moneyOr(r.open),
     sortValue: (r) => cents(r.open),
     align: "end",
     width: 140,
@@ -94,7 +80,7 @@ export function CardsTab({ reveal }: { reveal?: TabReveal<Id> | null }) {
         <Button
           onClick={() => {
             if (!selected) notify("Selecione um cartão.");
-            else go("livro", { ref: `conta:${ledger.cards.get(selected.id)?.liability_account_id ?? ""}` });
+            else go("livro", { ref: accountRef(ledger.cards.get(selected.id)?.liability_account_id ?? "") });
           }}
         >
           Ver lançamentos

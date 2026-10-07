@@ -3,6 +3,7 @@
  * which account or card it belongs to, its situation and what uses it.
  */
 import { cashDate, dom, importing, type Id, type IsoDate, type Ledger, type session } from "@opesvault/domain";
+import { formatBytes } from "@opesvault/ui";
 
 type Document = session.Document;
 
@@ -39,22 +40,6 @@ export interface DocumentRow {
   receipts: ReceiptUse[];
   /** Nothing uses it: it can be removed. */
   free: boolean;
-}
-
-/** Bytes as people read them: "840 bytes", "12 KB", "3,4 MB" (decimal comma). */
-export function fileSize(size: number): string {
-  if (size < 1024) return `${size} bytes`;
-  for (const [unit, scale] of [
-    ["KB", 1024],
-    ["MB", 1024 ** 2],
-    ["GB", 1024 ** 3],
-  ] as const) {
-    const value = size / scale;
-    if (value < 1024 || unit === "GB") {
-      return `${value >= 10 ? value.toFixed(0) : value.toFixed(1).replace(".", ",")} ${unit}`;
-    }
-  }
-  return `${size} bytes`;
 }
 
 export function documentRows(ledger: Ledger, documents: readonly Document[]): DocumentRow[] {
@@ -108,7 +93,7 @@ export function documentRows(ledger: Ledger, documents: readonly Document[]): Do
 /** The line under the title: how many files and how much room they take. */
 export function summaryLine(rows: readonly DocumentRow[]): string {
   if (!rows.length) return "";
-  return `${rows.length} arquivo(s) · ${fileSize(rows.reduce((total, row) => total + row.size, 0))}`;
+  return `${rows.length} arquivo(s) · ${formatBytes(rows.reduce((total, row) => total + row.size, 0))}`;
 }
 
 /** What uses a file, in words, for the tooltip of a disabled "Remover". */

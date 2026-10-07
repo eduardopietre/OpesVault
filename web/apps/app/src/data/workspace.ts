@@ -19,6 +19,7 @@ import {
   today as localToday,
 } from "@opesvault/domain";
 import { nameAction } from "./action_names.ts";
+import { READ_ONLY_TIP } from "./read_only.ts";
 
 type Session = sessions.Session;
 type Document = sessions.Document;
@@ -47,7 +48,7 @@ interface DocumentRecord extends DocumentMeta {
 
 export class ReadOnlyError extends DomainError {
   constructor() {
-    super("Este projeto está aberto só para leitura: outra aba ou aparelho está editando.");
+    super(READ_ONLY_TIP);
     this.name = "ReadOnlyError";
   }
 }

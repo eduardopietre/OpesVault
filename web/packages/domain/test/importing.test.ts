@@ -2,14 +2,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { DomainError } from "../src/domain/ledger.ts";
-import {
-  AccountSubtype,
-  AccountType,
-  CardSchema,
-  LedgerAccountSchema,
-  OperationKind,
-  type LedgerAccount,
-} from "../src/domain/model.ts";
+import { AccountType, OperationKind } from "../src/domain/model.ts";
 import * as queries from "../src/domain/queries.ts";
 import { Dec } from "../src/lib/dec.ts";
 import { makeDate, ym } from "../src/lib/dates.ts";
@@ -21,10 +14,10 @@ import * as pipeline from "../src/importing/pipeline.ts";
 import { ImportRefused, importDocument, type ImportRequest } from "../src/importing/pipeline.ts";
 import { loadSource, SourceError, SourceProblem } from "../src/importing/source.ts";
 import { Session } from "../src/session.ts";
-import { doc, extractor } from "./importing_helpers.ts";
+import { doc, extractor, importSession, utf8 } from "./importing_helpers.ts";
+import { category } from "./fixtures.ts";
 
 const D = (s: string) => Dec.parse(s);
-const enc = (s: string) => new TextEncoder().encode(s);
 const req = (name: string, data: Uint8Array, extra: Partial<ImportRequest> = {}): ImportRequest => ({
   name,
   data,
@@ -144,34 +137,8 @@ describe("parsers", () => {
 
 let session: Session;
 
-function account(fields: Partial<LedgerAccount> & Pick<LedgerAccount, "name" | "type" | "subtype">): LedgerAccount {
-  return session.ledger.addAccount(LedgerAccountSchema.parse(fields));
-}
-
 beforeEach(() => {
-  session = Session.new("Teste");
-  const ledger = session.ledger;
-  const ana = ledger.addMember("Ana").id;
-  const bank = account({
-    name: "Itaú CC",
-    type: AccountType.ASSET,
-    subtype: AccountSubtype.CHECKING,
-    masked_number: "56789-0",
-    holders: [ana],
-  });
-  account({ name: "Poupança", type: AccountType.ASSET, subtype: AccountSubtype.SAVINGS });
-  const liability = account({ name: "Nubank", type: AccountType.LIABILITY, subtype: AccountSubtype.CREDIT_CARD });
-  ledger.addCard(
-    CardSchema.parse({
-      name: "Nubank",
-      liability_account_id: liability.id,
-      holder_id: ana,
-      last4: "0001",
-      closing_day: 3,
-      due_day: 10,
-      settlement_account_id: bank.id,
-    }),
-  );
+  session = importSession();
 });
 
 const bankOf = () => [...session.ledger.accounts.values()].find((a) => a.name === "Itaú CC")!;
@@ -231,7 +198,7 @@ describe("pipeline", () => {
 
   it("test_overlapping_statements_link_evidence_ta13", async () => {
     const bank = bankOf();
-    const ofxA = enc(new TextDecoder("latin1").decode(doc("bank.ofx")).replaceAll("<FITID>F", "<FITID>A"));
+    const ofxA = utf8(new TextDecoder("latin1").decode(doc("bank.ofx")).replaceAll("<FITID>F", "<FITID>A"));
     const first = await imp(session, "jan.ofx", ofxA, { account_id: bank.id });
     pipeline.approve(session.ledger, first.id);
     const opsBefore = session.ledger.operations.size;
@@ -249,9 +216,9 @@ describe("pipeline", () => {
   it("test_same_fitid_is_duplicate", async () => {
     const bank = bankOf();
     const ofx = new TextDecoder("latin1").decode(doc("bank.ofx")).replaceAll("<FITID>F", "<FITID>Z");
-    const first = await imp(session, "a.ofx", enc(ofx), { account_id: bank.id });
+    const first = await imp(session, "a.ofx", utf8(ofx), { account_id: bank.id });
     pipeline.approve(session.ledger, first.id);
-    const data = enc(ofx.replace("PIX ALUGUEL", "PIX ALUGUEL REF"));
+    const data = utf8(ofx.replace("PIX ALUGUEL", "PIX ALUGUEL REF"));
     const second = await imp(session, "b.ofx", data, { account_id: bank.id });
     expect(pipeline.itemsOf(session.ledger, second.id).every((i) => i.status === ItemStatus.DUPLICATE)).toBe(true);
   });
@@ -285,7 +252,7 @@ describe("pipeline", () => {
     expect(item.status).toBe(ItemStatus.DUPLICATE);
     pipeline.approve(session.ledger, other.id);
     expect(queries.balance(session.ledger, savings.id).toFixed()).toBe("500.00");
-    const salary = session.ledger.categories(AccountType.INCOME).find((a) => a.name === "Salário")!.id;
+    const salary = category(session.ledger, "Salário", AccountType.INCOME);
     const income = queries.incomeStatement(session.ledger, ym(2026, 1)).income;
     expect([...income.entries()].map(([k, v]) => [k, v.toFixed()])).toEqual([[salary, "5000.00"]]);
   });
@@ -302,19 +269,19 @@ describe("pipeline", () => {
 
   it("test_suggestion_learns_from_history", async () => {
     const bank = bankOf();
-    const housing = session.ledger.categories(AccountType.EXPENSE).find((a) => a.name === "Moradia")!;
+    const housing = category(session.ledger, "Moradia");
     const ofx = new TextDecoder("latin1").decode(doc("bank.ofx"));
-    const batch = await imp(session, "a.ofx", enc(ofx.replaceAll("<FITID>F", "<FITID>H")), { account_id: bank.id });
+    const batch = await imp(session, "a.ofx", utf8(ofx.replaceAll("<FITID>F", "<FITID>H")), { account_id: bank.id });
     const rent = pipeline.itemsOf(session.ledger, batch.id).find((i) => i.description.includes("ALUGUEL"))!;
-    pipeline.correctItem(session.ledger, rent.id, "target_account_id", housing.id);
+    pipeline.correctItem(session.ledger, rent.id, "target_account_id", housing);
     pipeline.approve(session.ledger, batch.id);
     const data = ofx
       .replaceAll("<FITID>F", "<FITID>J")
       .replaceAll("20260110", "20260210")
       .replaceAll("20260105", "20260205");
-    const again = await imp(session, "b.ofx", enc(data), { account_id: bank.id });
+    const again = await imp(session, "b.ofx", utf8(data), { account_id: bank.id });
     const rent2 = pipeline.itemsOf(session.ledger, again.id).find((i) => i.description.includes("ALUGUEL"))!;
-    expect(rent2.target_account_id).toBe(housing.id);
+    expect(rent2.target_account_id).toBe(housing);
     expect(rent2.suggestion_source).toBe("learned:1/1");
   });
 
@@ -357,15 +324,15 @@ describe("installment plans (tests/test_finance.py, hook for domain/cards)", () 
   it("an imported installment of a registered plan is linked, not a new expense", async () => {
     // domain/cards.find_plan_for_installment (W4) registers here; a stand-in answers for one plan.
     const card = [...session.ledger.cards.values()][0]!;
-    const groceries = session.ledger.categories(AccountType.EXPENSE).find((a) => a.name === "Alimentação")!;
-    const op = session.ledger.recordCardPurchase(card.id, groceries.id, "30.00", makeDate(2026, 1, 20), "Loja Z");
+    const groceries = category(session.ledger, "Alimentação");
+    const op = session.ledger.recordCardPurchase(card.id, groceries, "30.00", makeDate(2026, 1, 20), "Loja Z");
     const asked: unknown[] = [];
     registerInstallmentPlanFinder((_l, cardId, description, number, count, amount) => {
       asked.push([cardId, description, number, count, amount.toFixed()]);
       return description === "Loja Z" ? { plan_id: op.id, operation_id: op.id } : null;
     });
     try {
-      const csv = enc("date,title,amount\n2026-01-20,Loja Z - Parcela 2/5,30.00\n2026-02-25,Uber,10.00\n");
+      const csv = utf8("date,title,amount\n2026-01-20,Loja Z - Parcela 2/5,30.00\n2026-02-25,Uber,10.00\n");
       const batch = await imp(session, "c.csv", csv, { card_id: card.id });
       const statuses = new Map(pipeline.itemsOf(session.ledger, batch.id).map((i) => [i.description, i.status]));
       expect(statuses.get("Loja Z")).toBe(ItemStatus.DUPLICATE);

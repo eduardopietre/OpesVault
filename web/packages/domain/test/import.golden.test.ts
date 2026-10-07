@@ -6,7 +6,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { DomainError, type Ledger } from "../src/domain/ledger.ts";
-import { AccountSubtype, AccountType, CardSchema, LedgerAccountSchema, type Operation } from "../src/domain/model.ts";
+import { type Operation } from "../src/domain/model.ts";
 import * as queries from "../src/domain/queries.ts";
 import type { IsoDate } from "../src/lib/dates.ts";
 import { Dec } from "../src/lib/dec.ts";
@@ -16,7 +16,7 @@ import * as pipeline from "../src/importing/pipeline.ts";
 import { addRule, rules } from "../src/importing/rules.ts";
 import { Session } from "../src/session.ts";
 import { golden, j } from "./golden.ts";
-import { bytesOf, extractor } from "./importing_helpers.ts";
+import { bytesOf, extractor, importSession } from "./importing_helpers.ts";
 
 type Step = Record<string, unknown> & { op: string };
 interface Scenario {
@@ -32,34 +32,6 @@ vi.mock("../src/importing/parsers/index.ts", async (original) => {
 });
 
 const { scenarios } = golden<{ scenarios: Record<string, Scenario> }>("import");
-
-function newSession(): Session {
-  const session = Session.new("Teste");
-  const ledger = session.ledger;
-  const ana = ledger.addMember("Ana").id;
-  const add = (fields: Record<string, unknown>) => ledger.addAccount(LedgerAccountSchema.parse(fields));
-  const bank = add({
-    name: "Itaú CC",
-    type: AccountType.ASSET,
-    subtype: AccountSubtype.CHECKING,
-    masked_number: "56789-0",
-    holders: [ana],
-  });
-  add({ name: "Poupança", type: AccountType.ASSET, subtype: AccountSubtype.SAVINGS });
-  const liability = add({ name: "Nubank", type: AccountType.LIABILITY, subtype: AccountSubtype.CREDIT_CARD });
-  ledger.addCard(
-    CardSchema.parse({
-      name: "Nubank",
-      liability_account_id: liability.id,
-      holder_id: ana,
-      last4: "0001",
-      closing_day: 3,
-      due_day: 10,
-      settlement_account_id: bank.id,
-    }),
-  );
-  return session;
-}
 
 // ── naming, as in cases_import.py ───────────────────
 
@@ -296,7 +268,7 @@ async function runStep(session: Session, step: Step): Promise<unknown> {
 describe("review flows replayed from the desktop", () => {
   for (const [name, scenario] of Object.entries(scenarios)) {
     it(name, async () => {
-      const session = newSession();
+      const session = importSession();
       for (const [n, step] of scenario.steps.entries()) {
         const expected = scenario.results[n]!;
         const label = `${name} step ${n} (${step.op})`;

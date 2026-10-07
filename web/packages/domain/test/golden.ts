@@ -22,17 +22,6 @@ export function j(value: unknown): unknown {
   return value;
 }
 
-/** Turns {"$dec": "1.50"} back into Dec, recursively. */
-export function revive(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(revive);
-  if (value && typeof value === "object") {
-    const record = value as Record<string, unknown>;
-    if (typeof record["$dec"] === "string" && Object.keys(record).length === 1) return Dec.parse(record["$dec"]);
-    return Object.fromEntries(Object.entries(record).map(([k, v]) => [k, revive(v)]));
-  }
-  return value;
-}
-
 export type Outcome = { ok: unknown } | { error: string };
 
 export function outcome(fn: () => unknown): Outcome {

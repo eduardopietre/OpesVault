@@ -10,7 +10,7 @@ import type { Id } from "../src/lib/ids.ts";
 
 const UUID_TEXT = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const UUID_IN_TEXT = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g;
-export const MISSING_REF = "00000000-0000-4000-8000-0000000000ff";
+const MISSING_REF = "00000000-0000-4000-8000-0000000000ff";
 
 export interface Command {
   readonly cmd: string;
@@ -119,7 +119,7 @@ export class Raw {
 }
 
 /** Python's `j()` of an entity: its persisted JSON (decimals as text). */
-export function entityJson(value: unknown): unknown {
+function entityJson(value: unknown): unknown {
   if (value instanceof Raw) return value.json;
   return value === null || value === undefined ? null : dump(value);
 }

@@ -439,9 +439,9 @@ describe("suggestions for import items (tests/test_ai.py)", () => {
   it("test_approved_classifications_are_sent_as_examples", async () => {
     const { session, bank, batch: first } = await sessionWith(statement(["PADOCA DO ZE", "QWERTY SERVICOS"]));
     const ledger = session.ledger;
-    const leisure = ledger.categories(AccountType.EXPENSE).find((a) => a.name === "Lazer")!;
+    const leisure = category(ledger, "Lazer");
     for (const item of pipeline.itemsOf(ledger, first.id))
-      pipeline.correctItem(ledger, item.id, "target_account_id", leisure.id);
+      pipeline.correctItem(ledger, item.id, "target_account_id", leisure);
     pipeline.approve(ledger, first.id);
     const data = statement(["PADOCA DA MARIA", "QWERTY SERVICOS"], 3);
     const second = await pipeline.importDocument(session, { name: "y.csv", data, account_id: bank.id }, extractor);

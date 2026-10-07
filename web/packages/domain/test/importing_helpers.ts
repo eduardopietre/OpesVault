@@ -4,6 +4,8 @@ import type { ParsedItem, ParseResult } from "../src/importing/parsers/base.ts";
 import { type Line, type OfxData, PdfJsExtractor, type Source } from "../src/importing/source.ts";
 import { golden, j } from "./golden.ts";
 import { PARSERS } from "../src/importing/parsers/index.ts";
+import { AccountSubtype, AccountType, CardSchema, LedgerAccountSchema } from "../src/domain/model.ts";
+import { Session } from "../src/session.ts";
 
 export interface LineJson {
   page: number;
@@ -64,7 +66,7 @@ export function doc(name: string): Uint8Array {
   return bytesOf(found.bytes);
 }
 
-export function lineFrom(json: LineJson): Line {
+function lineFrom(json: LineJson): Line {
   return { page: json.page, text: json.text, bbox: json.bbox, number: json.number };
 }
 
@@ -86,7 +88,7 @@ export function sourceFrom(json: SourceJson): Source {
   };
 }
 
-export function lineJson(line: Line): LineJson {
+function lineJson(line: Line): LineJson {
   return { page: line.page, text: line.text, bbox: line.bbox ? [...line.bbox] : null, number: line.number };
 }
 
@@ -113,7 +115,7 @@ export function headerJson(header: StatementHeader): unknown {
   return Object.fromEntries(keys.map((k) => [k, j(header[k])]));
 }
 
-export function itemJson(item: ParsedItem): unknown {
+function itemJson(item: ParsedItem): unknown {
   return {
     kind: item.kind,
     occurred_on: item.occurred_on,
@@ -149,7 +151,7 @@ export const extractor = new PdfJsExtractor();
  * The layouts the golden files know: every parser but the ones written for the web after the desktop was retired
  * (the generic CSV statement), which have their own tests.
  */
-export const WEB_ONLY_PARSERS: ReadonlySet<string> = new Set(["csv-extrato-generico"]);
+const WEB_ONLY_PARSERS: ReadonlySet<string> = new Set(["csv-extrato-generico"]);
 export const GOLDEN_PARSERS = PARSERS.filter((p) => !WEB_ONLY_PARSERS.has(p.id));
 
 /**
@@ -161,4 +163,42 @@ export function sameChoice(ours: { parser: string | null; candidates: string[] }
   if (ours.parser !== null && WEB_ONLY_PARSERS.has(ours.parser))
     return golden.parser === null && !golden.candidates.length;
   return JSON.stringify(ours) === JSON.stringify(golden);
+}
+
+/** The UTF-8 bytes of a text (a document a test makes up). */
+export const utf8 = (text: string): Uint8Array => new TextEncoder().encode(text);
+
+/**
+ * The project the import tests read documents into: Ana, her checking account "Itaú CC" (number 56789-0) and,
+ * unless left out, a savings account "Poupança" and the card "Nubank" (final 0001, closing on the 3rd, due on the
+ * 10th, paid from Itaú CC).
+ */
+export function importSession(options: { savings?: boolean; card?: boolean } = {}): Session {
+  const session = Session.new("Teste");
+  const ledger = session.ledger;
+  const ana = ledger.addMember("Ana").id;
+  const add = (fields: Record<string, unknown>) => ledger.addAccount(LedgerAccountSchema.parse(fields));
+  const bank = add({
+    name: "Itaú CC",
+    type: AccountType.ASSET,
+    subtype: AccountSubtype.CHECKING,
+    masked_number: "56789-0",
+    holders: [ana],
+  });
+  if (options.savings !== false) add({ name: "Poupança", type: AccountType.ASSET, subtype: AccountSubtype.SAVINGS });
+  if (options.card !== false) {
+    const liability = add({ name: "Nubank", type: AccountType.LIABILITY, subtype: AccountSubtype.CREDIT_CARD });
+    ledger.addCard(
+      CardSchema.parse({
+        name: "Nubank",
+        liability_account_id: liability.id,
+        holder_id: ana,
+        last4: "0001",
+        closing_day: 3,
+        due_day: 10,
+        settlement_account_id: bank.id,
+      }),
+    );
+  }
+  return session;
 }

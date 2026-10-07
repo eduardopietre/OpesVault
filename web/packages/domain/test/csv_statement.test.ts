@@ -1,16 +1,14 @@
 /** The generic CSV bank statement (`csv-extrato-generico`): columns found by name, any bank. */
 import { beforeEach, describe, expect, it } from "vitest";
-import { AccountSubtype, AccountType, LedgerAccountSchema } from "../src/domain/model.ts";
 import * as queries from "../src/domain/queries.ts";
 import { BatchStatus, DocType, ItemKind } from "../src/importing/model.ts";
 import { GenericStatementCsv, headerKey, readAmount, readDate } from "../src/importing/parsers/csv_statement.ts";
 import * as pipeline from "../src/importing/pipeline.ts";
 import { loadStructured } from "../src/importing/source.ts";
 import { Session } from "../src/session.ts";
-import { doc, extractor } from "./importing_helpers.ts";
+import { doc, extractor, importSession, utf8 } from "./importing_helpers.ts";
 
 const parser = new GenericStatementCsv();
-const utf8 = (text: string) => new TextEncoder().encode(text);
 /** Windows-1252 for the Latin-1 letters these files use (accents and ç). */
 const cp1252 = (text: string) => Uint8Array.from([...text].map((c) => c.codePointAt(0)!));
 const parse = (text: string, bytes = utf8) => parser.parse(loadStructured("extrato.csv", bytes(text)));
@@ -180,17 +178,7 @@ describe("generic CSV statement", () => {
 describe("importing a generic CSV statement", () => {
   let session: Session;
   beforeEach(() => {
-    session = Session.new("Teste");
-    const ana = session.ledger.addMember("Ana").id;
-    session.ledger.addAccount(
-      LedgerAccountSchema.parse({
-        name: "Itaú CC",
-        type: AccountType.ASSET,
-        subtype: AccountSubtype.CHECKING,
-        masked_number: "56789-0",
-        holders: [ana],
-      }),
-    );
+    session = importSession({ savings: false, card: false });
   });
   const bank = () => [...session.ledger.accounts.values()].find((a) => a.name === "Itaú CC")!;
 

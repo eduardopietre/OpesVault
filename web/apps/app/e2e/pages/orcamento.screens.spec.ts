@@ -32,7 +32,7 @@ for (const size of SIZES) {
         await page.getByRole("button", { name: "Mês anterior", exact: true }).click();
         await page.getByRole("button", { name: "Mês anterior", exact: true }).click();
         await page.getByRole("button", { name: "Mês anterior", exact: true }).click();
-        await page.getByRole("heading", { name: "Sem orçamento neste mês" }).waitFor();
+        await page.getByRole("heading", { name: /^Sem orçamento em / }).waitFor();
         await settle(page);
         await page.screenshot({ path: `${OUT}orcamento-vazio-${suffix}.png`, fullPage: true });
       });

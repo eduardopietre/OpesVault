@@ -10,7 +10,7 @@ import { useRef, useState, type ReactNode } from "react";
 import { useReveal } from "../../data/navigation.ts";
 import { useLedger, useWorkspace } from "../../data/react.tsx";
 import { AccountsTab, type AccountReveal } from "./accounts.tsx";
-import { BankTab } from "./bank.tsx";
+import { BankTab, type BankReveal } from "./bank.tsx";
 import { BillsTab, type BillReveal } from "./bills.tsx";
 import { CardsTab, CategoriesTab, MembersTab } from "./lists.tsx";
 import { LoansTab, type LoanReveal } from "./loans.tsx";
@@ -18,7 +18,7 @@ import { RulesTab } from "./rules.tsx";
 import { TAB_IDS, TAB_LABELS, parseReveal, summaryLine, type TabId } from "./rows.ts";
 
 type Pending =
-  | { tab: "bancarias"; seq: number; value: string }
+  | { tab: "bancarias"; seq: number; value: BankReveal }
   | { tab: "contas"; seq: number; value: AccountReveal }
   | { tab: "cartoes"; seq: number; value: string }
   | { tab: "faturas"; seq: number; value: BillReveal }
@@ -71,7 +71,11 @@ export function Page() {
         setTab("cartoes");
         break;
       case "bank":
-        setPending({ tab: "bancarias", seq, value: target.bankId });
+        setPending({ tab: "bancarias", seq, value: { bankId: target.bankId, newInvestment: false } });
+        setTab("bancarias");
+        break;
+      case "banks":
+        setPending({ tab: "bancarias", seq, value: { bankId: null, newInvestment: act === "investimento" } });
         setTab("bancarias");
         break;
       case "members":

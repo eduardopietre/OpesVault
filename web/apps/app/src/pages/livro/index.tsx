@@ -82,6 +82,7 @@ import {
   type FilterState,
 } from "./rows.ts";
 import { monthLabel } from "../../dialogs/livro_form.tsx";
+import { actionName } from "../../data/action_names.ts";
 
 const HIDDEN_COLUMNS_KEY = "livro/colunas-ocultas";
 const EMPTY_SET: ReadonlySet<string> = new Set();
@@ -218,10 +219,10 @@ export function Page() {
     const op = single;
     if (!file || op === null) return;
     const bytes = new Uint8Array(await file.arrayBuffer());
-    act(
-      (_ledger, session) => dom.attachments.attach(session, op.id, file.name, bytes),
-      "Comprovante anexado e guardado cifrado no projeto.",
-    );
+    act((_ledger, session) => dom.attachments.attach(session, op.id, file.name, bytes), {
+      done: "Comprovante anexado e guardado cifrado no projeto.",
+      label: "anexar comprovante",
+    });
   };
   /** Takes a receipt off the selected entry (one act); a file nothing else uses leaves the project with it. */
   const detachReceipt = async () => {
@@ -266,7 +267,10 @@ export function Page() {
       });
       return;
     }
-    act((_ledger, session) => dom.attachments.detach(session, target.id), "Comprovante desvinculado. Ctrl+Z desfaz.");
+    act((_ledger, session) => dom.attachments.detach(session, target.id), {
+      done: "Comprovante desvinculado. Ctrl+Z desfaz.",
+      label: "desvincular comprovante",
+    });
   };
   const detailIncome = () => {
     const op = needOne();
@@ -283,10 +287,10 @@ export function Page() {
   };
   const markReviewed = () => {
     if (!targets.length) return;
-    act(
-      (l) => targets.reduce((n, id) => n + dom.anomalies.markReviewed(l, id), 0),
-      `${targets.length} lançamento(s) conferido(s); avisos de duplicidade ou valor silenciados.`,
-    );
+    act((l) => targets.reduce((n, id) => n + dom.anomalies.markReviewed(l, id), 0), {
+      done: `${targets.length} lançamento(s) conferido(s); avisos de duplicidade ou valor silenciados.`,
+      label: actionName("conferir", targets.length, "lançamento", "lançamentos"),
+    });
   };
   const reimbursement = () => {
     const op = needOne();
@@ -460,7 +464,7 @@ export function Page() {
             danger: true,
             disabled: readOnly,
             onSelect: () => {
-              workspace.act((l) => dom.savedFilters.deleteFilter(l, f.id));
+              workspace.act((l) => dom.savedFilters.deleteFilter(l, f.id), "excluir filtro salvo");
               notify("Filtro excluído. Ctrl+Z desfaz.");
             },
           })),

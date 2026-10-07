@@ -21,6 +21,7 @@ import {
   table,
   taxSnapshot,
 } from "./imposto_harness.tsx";
+import { searchNow } from "../navigations.ts";
 
 vi.mock("../../../../packages/ui/src/chart/echarts.ts", async () => await import("./fake_echarts.ts"));
 
@@ -408,7 +409,7 @@ describe("the report for the return", () => {
     expect(screen.getByRole("heading", { name: "Dependentes" })).toBeTruthy();
     expect(screen.getByText(/Declarante:/).textContent).toContain("Ana");
     await waitFor(() => expect(print).toHaveBeenCalledTimes(1));
-    expect(router.state.location.search).not.toHaveProperty("imprimir");
+    expect(searchNow(router)).not.toHaveProperty("imprimir");
     await user.click(screen.getByRole("button", { name: "Imprimir ou salvar em PDF" }));
     expect(print).toHaveBeenCalledTimes(2);
     await user.click(screen.getByRole("button", { name: "Baixar como arquivo HTML" }));

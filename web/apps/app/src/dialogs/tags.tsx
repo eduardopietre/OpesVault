@@ -85,7 +85,7 @@ export function RenameTagDialog({ open, onClose, tag, onDone }: RenameTagDialogP
   const confirm = () => {
     const clean = dom.tags.normalize(name);
     if (clean === tag) throw new DomainError("Escreva um nome diferente do atual.");
-    const changed = act((l) => dom.tags.renameTag(l, tag, name));
+    const changed = act((l) => dom.tags.renameTag(l, tag, name), "renomear marcador");
     onDone?.(changed, clean);
   };
 

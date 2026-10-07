@@ -6,8 +6,8 @@
  */
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import {
-  SCHEMES,
-  SIZES,
+  TEST_SCHEMES,
+  TEST_SIZES,
   expectNoHorizontalOverflow,
   openDemo,
   recordAddresses,
@@ -52,8 +52,8 @@ async function more(page: Page, item: string | RegExp) {
   await page.getByRole("menuitem", { name: item }).click();
 }
 
-for (const size of SIZES) {
-  for (const scheme of SCHEMES) {
+for (const size of TEST_SIZES) {
+  for (const scheme of TEST_SCHEMES) {
     test.describe(`importar ${size.width}x${size.height} ${scheme}`, () => {
       test.use({ viewport: size, colorScheme: scheme, contextOptions: { reducedMotion: "reduce" } });
 
@@ -134,7 +134,7 @@ for (const size of SIZES) {
         await expect(page.getByText(/a linha de origem de cada item aparece aqui/)).toBeVisible();
 
         // a drop anywhere in the app (here on another page) brings the files to the page and reads them
-        await page.goto("/livro?demo");
+        await page.goto("/livro?demo&mes=atual");
         await expect(page.locator("h1").first()).toBeVisible();
         await dropOnApp(page, [{ ...CSV, name: "solto.csv", buffer: Buffer.from(CSV.buffer.toString() + "\n") }]);
         await expect(page).toHaveURL(/\/importar/);

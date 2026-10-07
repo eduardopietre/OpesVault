@@ -22,12 +22,12 @@ import {
 import { useNavigate } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "motion/react";
 import { ChevronRight, Copy, FolderPlus, History, Plus, Trash2, Users } from "lucide-react";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { ASSET_SUBTYPES, LIABILITY_SUBTYPES, SUBTYPE_LABELS } from "../dialogs/accounts_labels.ts";
 import { readDate, readMoney } from "../dialogs/livro_form.tsx";
 import { RecoverProjectDialog } from "../dialogs/settings_recover.tsx";
 import { RestoreBackupDialog } from "../dialogs/settings_backup_restore.tsx";
-import type { ProjectSummary } from "../services/types.ts";
+import type { OpenProgress, ProjectSummary } from "../services/types.ts";
 import { useServices, useSession, useSessionActions } from "../session.tsx";
 import { markScreenShown } from "../shell/entry_focus.ts";
 import { AuthLayout } from "./AuthLayout.tsx";
@@ -38,6 +38,51 @@ function updated(iso: string): string {
   return Number.isNaN(date.getTime())
     ? ""
     : `Atualizado em ${date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" })}`;
+}
+
+/** Opening shows its progress only after this long: a project already on this device opens before. */
+export const SLOW_OPEN_MS = 800;
+
+const count = (n: number) => n.toLocaleString("pt-BR");
+
+/** What the opening dialog says while a project is downloaded or decrypted. */
+export function openProgressText(progress: OpenProgress): string {
+  if (progress.phase === "open") {
+    return progress.total !== null
+      ? `Abrindo o projeto: ${count(progress.done)} de ${count(progress.total)} registros`
+      : `Abrindo o projeto: ${count(progress.done)} registros`;
+  }
+  const share = progress.fraction !== null ? ` (${Math.floor(progress.fraction * 100)}%)` : "";
+  return `Baixando o projeto: ${count(progress.done)} ${progress.done === 1 ? "registro" : "registros"}${share}`;
+}
+
+/** Progress of opening (docs/19 §8): text, bar and how to stop it. */
+export function OpenProgressPanel({ progress }: { progress: OpenProgress }) {
+  const percent = progress.fraction === null ? null : Math.round(progress.fraction * 100);
+  return (
+    <div className="mt-4 flex flex-col gap-2" role="status" aria-live="polite">
+      <p className="text-body">{openProgressText(progress)}</p>
+      <div
+        role="progressbar"
+        aria-label="Progresso da abertura"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        {...(percent === null ? {} : { "aria-valuenow": percent })}
+        className="h-1.5 overflow-hidden rounded-full bg-separator"
+      >
+        <div
+          className={`h-full rounded-full bg-accent-fill transition-[width] ${percent === null ? "w-1/3 animate-pulse" : ""}`}
+          style={percent === null ? undefined : { width: `${percent}%` }}
+        />
+      </div>
+      {progress.phase === "download" ? (
+        <p className="text-caption text-secondary">
+          Só na primeira vez neste aparelho: depois o projeto abre a partir daqui. Se cancelar, o que já veio fica
+          guardado, cifrado, e a próxima abertura continua de onde parou.
+        </p>
+      ) : null}
+    </div>
+  );
 }
 
 export function ProjectsScreen() {
@@ -54,6 +99,9 @@ export function ProjectsScreen() {
   const [busy, setBusy] = useState(false);
   const [recovering, setRecovering] = useState<ProjectSummary | null>(null);
   const [restoring, setRestoring] = useState(false);
+  const [progress, setProgress] = useState<OpenProgress | null>(null);
+  const [slow, setSlow] = useState(false);
+  const cancelOpening = useRef<AbortController | null>(null);
 
   useEffect(() => {
     markScreenShown();
@@ -87,15 +135,40 @@ export function ProjectsScreen() {
     }
     setBusy(true);
     setError(null);
+    setProgress(null);
+    setSlow(false);
+    const controller = new AbortController();
+    cancelOpening.current = controller;
+    const timer = setTimeout(() => setSlow(true), SLOW_OPEN_MS);
+    // Each page and each batch reports: the screen follows only what shows (a whole percent, a new phase).
+    let shown: string | null = null;
+    const onProgress = (next: OpenProgress) => {
+      const key = `${next.phase}:${next.fraction === null ? Math.floor(next.done / 1000) : Math.floor(next.fraction * 100)}`;
+      if (key === shown) return;
+      shown = key;
+      setProgress(next);
+    };
     try {
-      await actions.openProject(opening.id, password);
+      await actions.openProject(opening.id, password, { onProgress, signal: controller.signal });
       setOpening(null);
       await navigate({ to: "/visao-geral" });
     } catch (failure) {
-      setError(messageOf(failure));
+      if (controller.signal.aborted) {
+        setOpening(null);
+        notify("Abertura cancelada. O que já foi baixado fica neste aparelho, cifrado.");
+      } else setError(messageOf(failure));
     } finally {
+      clearTimeout(timer);
+      cancelOpening.current = null;
       setBusy(false);
+      setProgress(null);
+      setSlow(false);
     }
+  };
+
+  const closeOpening = () => {
+    if (cancelOpening.current) cancelOpening.current.abort();
+    else setOpening(null);
   };
 
   return (
@@ -188,7 +261,7 @@ export function ProjectsScreen() {
       </div>
       <Dialog
         open={opening !== null}
-        onOpenChange={(value) => !value && setOpening(null)}
+        onOpenChange={(value) => !value && closeOpening()}
         title={opening ? `Abrir ${opening.name}` : "Abrir projeto"}
         description="A senha do projeto abre a chave neste navegador. Ela não é enviada ao servidor."
         size="sm"
@@ -198,6 +271,7 @@ export function ProjectsScreen() {
             <Button
               variant="ghost"
               className="tablet:mr-auto"
+              disabled={busy}
               onClick={() => {
                 setRecovering(opening);
                 setOpening(null);
@@ -205,7 +279,7 @@ export function ProjectsScreen() {
             >
               Esqueci a senha
             </Button>
-            <Button onClick={() => setOpening(null)}>Cancelar</Button>
+            <Button onClick={closeOpening}>Cancelar</Button>
             <Button type="submit" variant="primary" busy={busy}>
               Abrir projeto
             </Button>
@@ -221,6 +295,7 @@ export function ProjectsScreen() {
           error={error}
           autoFocus
         />
+        {busy && slow && progress ? <OpenProgressPanel progress={progress} /> : null}
       </Dialog>
       <RecoverProjectDialog
         open={recovering !== null}
@@ -508,7 +583,7 @@ export function SetupScreen() {
     if (!workspace) return;
     try {
       const plan = setupPlanOf(existing, allMembers, allAccounts, allCards);
-      const result = workspace.act((ledger) => dom.onboarding.applySetup(ledger, plan));
+      const result = workspace.act((ledger) => dom.onboarding.applySetup(ledger, plan), "configurar o projeto");
       const parts = [
         result.members ? `${result.members} integrante(s)` : "",
         result.accounts ? `${result.accounts} conta(s)` : "",

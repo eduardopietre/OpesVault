@@ -4,6 +4,7 @@
  * clickable now and backs the tests. Screens never see a key: they hand over a password and get a session.
  */
 
+import type { YearMonth } from "@opesvault/domain";
 import type { Workspace } from "../data/workspace.ts";
 
 /** Sync state of the open project, reported by the services (the vault's status). */
@@ -38,6 +39,8 @@ export interface OpenProject {
   attention: Readonly<Record<string, number>>;
   /** True when another tab or device holds the edit lease. */
   readOnly: boolean;
+  /** The month the screens open on (the demonstration's last complete month); the current month when absent. */
+  startMonth?: YearMonth;
 }
 
 export interface CreatedProject {
@@ -54,6 +57,32 @@ export class ServiceError extends Error {
     this.name = "ServiceError";
     this.code = code;
   }
+}
+
+/**
+ * Opening a project that this device never opened downloads it first (docs/19 §8): `download` counts the records
+ * received (their total is not known in advance; `fraction` is the share done, null when not known), `open` the
+ * records decrypted out of `total`.
+ */
+export interface OpenProgress {
+  phase: "download" | "open";
+  done: number;
+  total: number | null;
+  fraction: number | null;
+}
+
+export interface OpenOptions {
+  onProgress?: (progress: OpenProgress) => void;
+  /** Cancels opening: the promise rejects with code "cancelled" and the project stays closed. */
+  signal?: AbortSignal;
+}
+
+/** What the sync indicator says besides the state. */
+export interface SyncDetail {
+  /** Changes made here and not yet accepted by the server. */
+  pending: number;
+  /** The browser said it may erase this site's storage (persistence denied): pending changes could be lost. */
+  storageAtRisk: boolean;
 }
 
 /** Progress of a backup operation (records, documents, restoring); `total` is 0 when not known. */
@@ -119,7 +148,7 @@ export interface AppServices {
   restoreAccount?(): Promise<Account | null>;
   listProjects(): Promise<ProjectSummary[]>;
   createProject(input: { name: string; password: string }): Promise<CreatedProject>;
-  openProject(id: string, password: string): Promise<OpenProject>;
+  openProject(id: string, password: string, options?: OpenOptions): Promise<OpenProject>;
   /** Wipes the key and the open data from the tab. */
   lock(): Promise<void>;
   /** Opens the locked project again with its password. */
@@ -130,7 +159,7 @@ export interface AppServices {
    * Follows the open project's sync state (also an idle lock decided by the vault). Returns the
    * unsubscribe function. The fake services report "synced" once.
    */
-  watchSync(listener: (status: ProjectSyncStatus) => void): () => void;
+  watchSync(listener: (status: ProjectSyncStatus, detail?: SyncDetail) => void): () => void;
 
   // ── Configurações (docs/18 W11) ──────────────────────────────────────────────────────────────
   /** Renames the open project (the name is sealed in the browser; the server never reads it). */

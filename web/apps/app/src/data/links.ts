@@ -29,6 +29,8 @@
  *                 "projeto" | "ia" | "seguranca" | "backup" | "privacidade"   opens that section ("backup" is where
  *                                                 the reminder of an old backup leads)
  *   contas        "integrantes"                   the members tab (from Configurações › Projeto)
+ *                 "bancarias"                     the bank accounts tab                   act "investimento" (the
+ *                                                 new investment form; a new bank account first when there is none)
  */
 import { ymStr, type YearMonth, dom } from "@opesvault/domain";
 

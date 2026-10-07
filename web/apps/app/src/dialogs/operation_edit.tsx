@@ -240,7 +240,7 @@ export function SimpleEditDialog({
     const updated = build();
     if (sameOperation(updated, op)) throw new DomainError("Nada foi alterado.");
     ledger.validateOperation(updated);
-    act((l) => l.updateOperation(updated, reason.trim()));
+    act((l) => l.updateOperation(updated, reason.trim()), "corrigir lançamento");
     onDone?.();
   };
 
@@ -377,7 +377,7 @@ export function OperationEditDialog({ open, onClose, operation: op, onDone }: Ed
     const updated = build();
     if (sameOperation(updated, op)) throw new DomainError("Nada foi alterado.");
     ledger.validateOperation(updated);
-    act((l) => l.updateOperation(updated, reason.trim()));
+    act((l) => l.updateOperation(updated, reason.trim()), "corrigir lançamento");
     onDone?.();
   };
 

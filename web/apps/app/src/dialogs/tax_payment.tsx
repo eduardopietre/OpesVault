@@ -35,7 +35,10 @@ export function PaymentDialog({ open, onClose, purpose, month, memberId, suggest
     if (value === null) throw new DomainError("Informe o valor pago.");
     const on = readDate(paidOn, "A data do pagamento");
     if (account === null) throw new DomainError("Escolha a conta.");
-    act((l) => tax.records.recordPayment(l, purpose, month, value, on, account, memberId));
+    act(
+      (l) => tax.records.recordPayment(l, purpose, month, value, on, account, memberId),
+      "registrar pagamento de imposto",
+    );
     onDone?.();
   };
 

@@ -86,10 +86,37 @@ test("F1 opens the help of the screen and Escape returns focus", async ({ page }
   await page.keyboard.press("F1");
   const dialog = page.getByRole("dialog", { name: "Ajuda: Livro financeiro" });
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByText("Ctrl+K ou ⌘K")).toBeVisible();
+  await expect(dialog.getByText("⌘K")).toBeVisible();
+  await expect(dialog.getByText("Buscar nos lançamentos")).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
   await expect(help).toBeFocused();
+});
+
+test("? opens the keyboard shortcuts, but not while typing", async ({ page }) => {
+  const errors = watchErrors(page);
+  await openDemo(page, "/livro");
+  // typing "?" in a field is text, not a shortcut
+  const search = page.getByRole("searchbox", { name: "Buscar lançamentos" });
+  await search.focus();
+  await page.keyboard.type("?");
+  await expect(page.getByRole("dialog", { name: "Atalhos de teclado" })).toHaveCount(0);
+  await expect(search).toHaveValue("?");
+  await search.fill("");
+  await page.locator("#conteudo").focus();
+  await page.keyboard.press("Shift+?");
+  const sheet = page.getByRole("dialog", { name: "Atalhos de teclado" });
+  await expect(sheet).toBeVisible();
+  await expect(sheet.getByText("Ctrl+Shift+L")).toBeVisible();
+  await expect(sheet.getByText("Ctrl+Y")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(sheet).toHaveCount(0);
+  // the shortcuts are also in the buttons' tooltips
+  await expect(page.getByRole("button", { name: "Bloquear o projeto" })).toHaveAttribute(
+    "title",
+    "Bloquear o projeto (Ctrl+Shift+L)",
+  );
+  expect(errors).toEqual([]);
 });
 
 test("Ctrl+Z and Ctrl+Shift+Z reach the undo context", async ({ page }) => {

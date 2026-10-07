@@ -16,6 +16,8 @@ export interface BudgetGridDialogProps {
   rows: readonly GridRow[];
   /** Writes the differences and says whether it worked. */
   onSave: (changes: readonly GridChange[]) => boolean;
+  /** Where the typed values came from, when the grid opens with a suggestion. */
+  note?: string | undefined;
 }
 
 const COLUMNS = "grid-cols-[minmax(0,1fr)_9.5rem] tablet:grid-cols-[minmax(0,1fr)_9.5rem_7.5rem_7.5rem]";
@@ -30,6 +32,7 @@ export function BudgetGridDialog({
   previousLabel,
   rows,
   onSave,
+  note,
 }: BudgetGridDialogProps) {
   const [texts, setTexts] = useState<Record<string, string>>(() =>
     Object.fromEntries(rows.map((row) => [row.categoryId, row.text])),
@@ -76,6 +79,7 @@ export function BudgetGridDialog({
         </>
       }
     >
+      {note ? <p className="mb-3 rounded-md bg-accent-soft px-3 py-2 text-body text-text">{note}</p> : null}
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <Button size="sm" onClick={copyPrevious} title="Preenche os campos vazios com o plano anterior">
           Copiar do mês anterior

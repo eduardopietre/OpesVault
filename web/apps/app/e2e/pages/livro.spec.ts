@@ -7,7 +7,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { animationsDone } from "../helpers.ts";
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { SCHEMES, SIZES, expectNoHorizontalOverflow, openDemo, settle, watchErrors } from "../helpers.ts";
+import { TEST_SCHEMES, TEST_SIZES, expectNoHorizontalOverflow, openDemo, settle, watchErrors } from "../helpers.ts";
 import { fakeOllama, pickRow } from "./livro_helpers.ts";
 
 const PNG = Buffer.from(
@@ -65,8 +65,8 @@ const total = async (page: Page) => {
   return Number(/(?:de )?(\d+) lançamentos?$/.exec(text)?.[1] ?? "0");
 };
 
-for (const size of SIZES) {
-  for (const scheme of SCHEMES) {
+for (const size of TEST_SIZES) {
+  for (const scheme of TEST_SCHEMES) {
     test.describe(`livro ${size.width}x${size.height} ${scheme}`, () => {
       test.use({ viewport: size, colorScheme: scheme, contextOptions: { reducedMotion: "reduce" } });
 
@@ -92,7 +92,7 @@ for (const size of SIZES) {
         }
 
         // a dialog with a select list open
-        await page.getByRole("button", { name: "Novo lançamento" }).click();
+        await page.getByRole("button", { name: "Novo lançamento", exact: true }).click();
         await page.getByRole("menuitem", { name: "Despesa" }).click();
         const dialog = dialogOf(page, "Despesa");
         await dialog.getByRole("combobox", { name: "Categoria", exact: true }).click();
@@ -126,7 +126,7 @@ test.describe("livro: every command", () => {
       ["Compra no cartão", { Descrição: "Cadeira", Valor: "450,00" }],
       ["Pagamento de fatura", { Valor: "200" }],
     ] as const) {
-      await page.getByRole("button", { name: "Novo lançamento" }).click();
+      await page.getByRole("button", { name: "Novo lançamento", exact: true }).click();
       await page.getByRole("menuitem", { name: kind, exact: true }).click();
       const dialog = dialogOf(page, kind);
       for (const [label, value] of Object.entries(fields)) await fill(dialog, label, value);
@@ -138,7 +138,7 @@ test.describe("livro: every command", () => {
     }
 
     // installments: one purchase paid in six parts (the whole expense in the month of the purchase)
-    await page.getByRole("button", { name: "Novo lançamento" }).click();
+    await page.getByRole("button", { name: "Novo lançamento", exact: true }).click();
     await page.getByRole("menuitem", { name: "Compra no cartão", exact: true }).click();
     let dialog = dialogOf(page, "Compra no cartão");
     await fill(dialog, "Descrição", "Notebook");
@@ -149,7 +149,7 @@ test.describe("livro: every command", () => {
     count += 1;
 
     // a split between categories
-    await page.getByRole("button", { name: "Novo lançamento" }).click();
+    await page.getByRole("button", { name: "Novo lançamento", exact: true }).click();
     await page.getByRole("menuitem", { name: "Despesa", exact: true }).click();
     dialog = dialogOf(page, "Despesa");
     await fill(dialog, "Descrição", "Mercado e farmácia");
@@ -165,7 +165,7 @@ test.describe("livro: every command", () => {
 
     // the usual category, learned, and the local AI asked about an unknown description
     await fakeOllama(page);
-    await page.getByRole("button", { name: "Novo lançamento" }).click();
+    await page.getByRole("button", { name: "Novo lançamento", exact: true }).click();
     await page.getByRole("menuitem", { name: "Despesa", exact: true }).click();
     dialog = dialogOf(page, "Despesa");
     await fill(dialog, "Descrição", "Padaria Real");

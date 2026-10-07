@@ -9,7 +9,8 @@ pnpm install
 pnpm check                 # format, lint, typecheck and tests
 pnpm dev                   # the app (Vite)
 pnpm server                # the self-hosted server (development)
-pnpm --filter @opesvault/app e2e        # end-to-end tests of the production build (fake services)
+pnpm --filter @opesvault/app e2e        # end-to-end tests of the production build (fake services), at 1280x800 in light
+pnpm --filter @opesvault/app e2e:full   # the same at every size (1920, 1280, 900, 768, 390), light and dark; before closing a phase
 pnpm --filter @opesvault/app e2e:real   # the same build against the real server and SQLite (sign up, project, sync, plaintext scan)
 pnpm --filter @opesvault/app perf       # a generated 50 000-entry project: opening, memory, Livro (build/perf/results.json, ~6 min)
 pnpm --filter @opesvault/server build   # the server as one bundle (dist/server.mjs)

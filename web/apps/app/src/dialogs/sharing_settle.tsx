@@ -58,7 +58,7 @@ export function SharingSettleDialog({
     const money = readMoney(value);
     if (!money.isPositive()) throw new DomainError("Informe um valor positivo.");
     const on = readDate(when, "A data do acerto");
-    act((l) => dom.sharing.settle(l, debtor, creditor, money, on, note.trim() || null));
+    act((l) => dom.sharing.settle(l, debtor, creditor, money, on, note.trim() || null), "registrar acerto");
     onDone?.();
   };
 

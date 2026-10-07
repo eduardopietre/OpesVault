@@ -17,6 +17,7 @@ import {
   monthFigures,
 } from "../../src/pages/visao-geral/rows.ts";
 import { mountPage } from "./overview_calendar_helpers.tsx";
+import { addressSettles, navigations, wentTo } from "../navigations.ts";
 
 vi.mock("../../../../packages/ui/src/chart/echarts.ts", () => import("./fake_echarts.ts"));
 
@@ -82,16 +83,12 @@ describe("Visão geral", () => {
           await user.click(screen.getByRole("button", { name: /Mostrar todos/ }));
         }
         // The destination may consume ref/act at once (useReveal): read them from the navigation itself.
-        let sent: unknown = null;
-        const off = router.subscribe("onBeforeNavigate", (event) => {
-          sent ??= event.toLocation.search;
-        });
+        const seenNow = navigations(router);
         await user.click(screen.getByRole("button", { name: `${link.label}: ${alert.title}` }));
         await waitFor(() => expect(router.state.location.pathname).toBe(page!.path));
-        off();
-        expect(sent).toEqual({
-          ...(link.ref ? { ref: link.ref } : {}),
-          ...(link.act ? { act: link.act } : {}),
+        expect(seenNow[0]).toEqual({
+          pathname: page!.path,
+          search: { ...(link.ref ? { ref: link.ref } : {}), ...(link.act ? { act: link.act } : {}) },
         });
         seen.add(`${link.page}|${link.act ?? ""}`);
         await router.navigate({ to: "/visao-geral" });
@@ -247,13 +244,13 @@ describe("Visão geral", () => {
       const user = userEvent.setup();
       const { router, workspace } = await mountPage("/visao-geral");
       await heading();
+      const seen = navigations(router);
       const ledger = workspace.ledger;
       const month = monthOf(ledger, workspace.today());
       const top = categoryRows(ledger, month, null)[0]!;
       const table = screen.getByRole("table", { name: /Despesas por categoria/ });
       await user.click(within(table).getByRole("button", { name: new RegExp(top.name) }));
-      await waitFor(() => expect(router.state.location.pathname).toBe("/livro"));
-      expect([{ ref: filterRef(top.id, month, null) }, {}]).toContainEqual(router.state.location.search);
+      await wentTo(seen, "/livro", { ref: filterRef(top.id, month, null) }, { exact: true });
       expect(filterRef(top.id, month, null)).toBe(
         `filter:${top.id}:${month.year}-${String(month.month).padStart(2, "0")}`,
       );
@@ -391,7 +388,7 @@ describe("the report of the month", () => {
     await screen.findByRole("heading", { level: 1, name: /Projeto Teste — / });
     expect(router.state.location.pathname).toBe("/imprimir/relatorio-mensal");
     await waitFor(() => expect(print).toHaveBeenCalledTimes(1), { timeout: 3000 });
-    await waitFor(() => expect(router.state.location.search).toEqual({ m: key }));
+    await addressSettles(router, { m: key });
     // The sheet has the sections of the report, drawn from the data.
     for (const title of [
       "Resumo",

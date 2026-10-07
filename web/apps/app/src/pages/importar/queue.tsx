@@ -175,8 +175,9 @@ export function useImportQueue({ ai, onImported }: { ai: ImportAi; onImported: (
         latest.current.ai.warmUp();
         const request: Omit<ImportRequest, "password"> = { name: file.name, data };
         const analysis = await read(request, job.id);
-        const batch = workspace.act((_ledger, session) =>
-          importing.pipeline.importAnalyzed(session, request, analysis),
+        const batch = workspace.act(
+          (_ledger, session) => importing.pipeline.importAnalyzed(session, request, analysis),
+          "importar arquivo",
         );
         drop(job.id);
         waitingForAi.current.push(batch.id);
@@ -280,8 +281,9 @@ export function useImportQueue({ ai, onImported }: { ai: ImportAi; onImported: (
           notify(PROBLEM_MESSAGES[analysis.problem], { tone: "negative" });
           return;
         }
-        const stored = workspace.act((_ledger, session) =>
-          importing.pipeline.storeReparseAnalysis(session, batchId, analysis),
+        const stored = workspace.act(
+          (_ledger, session) => importing.pipeline.storeReparseAnalysis(session, batchId, analysis),
+          "ler o arquivo de novo",
         );
         waitingForAi.current.push(stored.id);
         latest.current.onImported(stored.id);

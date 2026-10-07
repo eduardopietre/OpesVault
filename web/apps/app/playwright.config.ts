@@ -1,7 +1,8 @@
 /**
  * End-to-end tests against the production build (`vite preview`, with the CSP meta and the service worker),
  * on the preinstalled Chromium (/opt/pw-browsers; never `playwright install`).
- *   pnpm --filter @opesvault/app e2e       behaviour, accessibility, overflow, keyboard
+ *   pnpm --filter @opesvault/app e2e       behaviour, accessibility, overflow, keyboard, at 1280x800 in light (fast)
+ *   pnpm --filter @opesvault/app e2e:full  the same at every size of docs/18 §5.1, light and dark (E2E_FULL=1)
  *   pnpm --filter @opesvault/app screens   screenshots in web/build/telas
  *   pnpm --filter @opesvault/app perf      big-project measurements (perf.html), build/perf/results.json
  */

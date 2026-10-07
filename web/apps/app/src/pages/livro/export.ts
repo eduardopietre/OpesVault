@@ -26,15 +26,15 @@ export function operationsCsv(ledger: Ledger, operations: readonly Operation[]):
         op.version,
         op.status,
         op.kind,
-        op.description,
+        exporting.spreadsheetText(op.description),
         op.occurred_on ?? "",
         cashDate(op) ?? "",
         comp ? ymStr(comp) : "",
-        account.name,
+        exporting.spreadsheetText(account.name),
         account.type,
         posting.amount.toFixed(),
         op.currency,
-        posting.member_id ? (members.get(posting.member_id) ?? "") : "",
+        posting.member_id ? exporting.spreadsheetText(members.get(posting.member_id) ?? "") : "",
         op.origin.kind,
       ]);
     }

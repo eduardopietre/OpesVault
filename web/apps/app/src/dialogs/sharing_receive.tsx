@@ -42,7 +42,7 @@ export function SharingReceiveDialog({ open, onClose, reimbursementId, onDone }:
     const value = readMoney(amount);
     if (!value.isPositive()) throw new DomainError("Informe um valor positivo.");
     const on = readDate(when, "A data do recebimento");
-    act((l) => dom.sharing.receive(l, reimbursementId, account, value, on));
+    act((l) => dom.sharing.receive(l, reimbursementId, account, value, on), "receber reembolso");
     onDone?.();
   };
 

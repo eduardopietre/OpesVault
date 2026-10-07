@@ -18,6 +18,7 @@ import {
 import type { ComponentType, ReactNode } from "react";
 import { revealSearch } from "./data/navigation.ts";
 import { SHOW_CATALOG } from "./flags.ts";
+import { preloadPage, screenLoader } from "./page_code.ts";
 import { PAGES } from "./pages.tsx";
 import { annualSearch } from "./pages/relatorios/annual_search.ts";
 import { taxReportSearch } from "./pages/imposto/report_search.ts";
@@ -33,8 +34,6 @@ const ProjectsScreen = lazyRouteComponent(() => import("./screens/projects.tsx")
 const CreateProjectScreen = lazyRouteComponent(() => import("./screens/projects.tsx"), "CreateProjectScreen");
 const SetupScreen = lazyRouteComponent(() => import("./screens/projects.tsx"), "SetupScreen");
 
-const SCREENS = import.meta.glob<{ Page: ComponentType }>("./pages/*/index.tsx");
-
 /**
  * Starts loading the code a project needs (the shell, the projects screen, the overview and its charts, with
  * the domain and the vault they share) once someone has signed in: it arrives while the project is chosen and
@@ -44,7 +43,7 @@ export function preloadProjectScreens(): Promise<unknown> {
   return Promise.all([
     import("./shell/AppShell.tsx"),
     import("./screens/projects.tsx"),
-    SCREENS["./pages/visao-geral/index.tsx"]?.(),
+    preloadPage("visao-geral"),
     loadECharts(),
   ]);
 }
@@ -157,7 +156,7 @@ export function createAppRouter({
   // Each screen lives in pages/<page id>/index.tsx and exports `Page`; it is loaded when first visited.
   // A destination without its folder yet shows the placeholder.
   const pages: AnyRoute[] = PAGES.map((page) => {
-    const load = SCREENS[`./pages/${page.id}/index.tsx`];
+    const load = screenLoader(page.id);
     return createRoute({
       getParentRoute: () => shell,
       path: page.path,

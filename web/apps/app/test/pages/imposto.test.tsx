@@ -20,6 +20,7 @@ import {
   table,
   taxSnapshot,
 } from "./imposto_harness.tsx";
+import { addressSettles } from "../navigations.ts";
 
 vi.mock("../../../../packages/ui/src/chart/echarts.ts", async () => await import("./fake_echarts.ts"));
 
@@ -526,7 +527,7 @@ describe("variable income and DARF", () => {
     const sheet = await table("Carnê-Leão mês a mês");
     expect(flat(rowOf(sheet, "03/2026").textContent)).toContain("R$ 120,00");
     // the address is clean again: following the same link later is a new request
-    expect(router.state.location.search).toEqual({});
+    await addressSettles(router, {});
   });
 
   it("a link with only the year opens that year and starts nothing; a link for another screen is ignored", async () => {

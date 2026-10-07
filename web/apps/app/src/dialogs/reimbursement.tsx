@@ -55,7 +55,7 @@ export function ReimbursementDialog({ open, onClose, operation: op, onDone }: Re
     const value = readMoney(expected);
     if (!value.isPositive()) throw new DomainError("Informe um valor positivo.");
     const on = readDate(requested, "A data do pedido");
-    act((l) => dom.sharing.request(l, op.id, payer, value, on));
+    act((l) => dom.sharing.request(l, op.id, payer, value, on), "pedir reembolso");
     onDone?.();
   };
 

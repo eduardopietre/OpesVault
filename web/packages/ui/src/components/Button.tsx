@@ -99,9 +99,33 @@ export interface IconButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonEle
   icon: ReactNode;
   variant?: ButtonVariant;
   size?: ButtonSize;
-  /** Extra text for the tooltip only, such as a shortcut ("Ctrl+K"). */
+  /** The shortcut ("Ctrl+K"): shown in the tooltip and announced as `aria-keyshortcuts` (a prop overrides it). */
   shortcut?: string;
   tone?: Tone;
+}
+
+const ARIA_KEYS: Record<string, string> = {
+  ctrl: "Control",
+  "⌘": "Meta",
+  cmd: "Meta",
+  "←": "ArrowLeft",
+  "→": "ArrowRight",
+  "↑": "ArrowUp",
+  "↓": "ArrowDown",
+  esc: "Escape",
+  espaço: "Space",
+};
+
+/**
+ * The `aria-keyshortcuts` value of a shortcut as the tooltip shows it: "Ctrl+Shift+Z" → "Control+Shift+Z",
+ * "Alt+←" → "Alt+ArrowLeft". Ctrl shortcuts also name ⌘ (Meta), which the app accepts the same way.
+ */
+export function ariaKeyShortcuts(shortcut: string): string {
+  const one = shortcut
+    .split("+")
+    .map((part) => ARIA_KEYS[part.trim().toLowerCase()] ?? part.trim())
+    .join("+");
+  return one.startsWith("Control+") ? `${one} ${one.replace("Control+", "Meta+")}` : one;
 }
 
 const iconSizes: Record<ButtonSize, string> = { sm: "size-7", md: "size-8", lg: "size-10" };
@@ -115,6 +139,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
       ref={ref}
       type={type ?? "button"}
       aria-label={label}
+      aria-keyshortcuts={shortcut ? ariaKeyShortcuts(shortcut) : undefined}
       title={title ?? (shortcut ? `${label} (${shortcut})` : label)}
       className={cn(
         base,

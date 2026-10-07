@@ -7,6 +7,7 @@ import { motion } from "motion/react";
 import { MoreHorizontal } from "lucide-react";
 import { useId, type MouseEvent, type ReactNode } from "react";
 import { cn } from "../cn.ts";
+import { ariaKeyShortcuts } from "./Button.tsx";
 import { useMotionPreset } from "../motion.tsx";
 import { badgeText } from "./layout.tsx";
 
@@ -39,12 +40,14 @@ function SidebarLink({
   selected,
   collapsed,
   onNavigate,
+  onPreload,
   indicator,
 }: {
   item: NavItem;
   selected: boolean;
   collapsed: boolean;
   onNavigate: (id: string) => void;
+  onPreload: ((id: string) => void) | undefined;
   indicator: string;
 }) {
   const preset = useMotionPreset();
@@ -54,6 +57,7 @@ function SidebarLink({
         href={item.href}
         aria-current={selected ? "page" : undefined}
         aria-label={collapsed || item.count ? accessibleName(item) : undefined}
+        aria-keyshortcuts={item.shortcut ? ariaKeyShortcuts(item.shortcut) : undefined}
         title={
           collapsed
             ? item.shortcut
@@ -68,6 +72,8 @@ function SidebarLink({
           event.preventDefault();
           onNavigate(item.id);
         }}
+        onPointerEnter={onPreload ? () => onPreload(item.id) : undefined}
+        onFocus={onPreload ? () => onPreload(item.id) : undefined}
         className={cn(
           "relative flex h-8 items-center gap-2.5 rounded-md text-body text-text transition-colors hover:bg-hover",
           collapsed ? "w-10 justify-center" : "px-2.5",
@@ -112,6 +118,8 @@ export interface SidebarProps {
   footer?: readonly NavItem[];
   selectedId: string | null;
   onNavigate: (id: string) => void;
+  /** Called when the pointer rests on a destination or focus reaches it: start loading its code. */
+  onPreload?: (id: string) => void;
   /** Icon rail (medium screens, when the user collapses it). */
   collapsed?: boolean;
   /** Something above the groups (the drawer shows the project there). */
@@ -125,6 +133,7 @@ export function Sidebar({
   footer = [],
   selectedId,
   onNavigate,
+  onPreload,
   collapsed = false,
   header,
   className,
@@ -153,6 +162,7 @@ export function Sidebar({
                   selected={item.id === selectedId}
                   collapsed={collapsed}
                   onNavigate={onNavigate}
+                  onPreload={onPreload}
                   indicator={indicator}
                 />
               ))}
@@ -174,6 +184,7 @@ export function Sidebar({
               selected={item.id === selectedId}
               collapsed={collapsed}
               onNavigate={onNavigate}
+              onPreload={onPreload}
               indicator={indicator}
             />
           ))}
@@ -189,6 +200,8 @@ export interface BottomNavProps {
   selectedId: string | null;
   onNavigate: (id: string) => void;
   onMore: () => void;
+  /** As in the sidebar: start loading a destination's code before the tap. */
+  onPreload?: (id: string) => void;
   /** True when the current page is one of those under "Mais". */
   moreSelected?: boolean;
   /** Attention count of the pages under "Mais". */
@@ -201,6 +214,7 @@ export function BottomNav({
   selectedId,
   onNavigate,
   onMore,
+  onPreload,
   moreSelected,
   moreCount,
   className,
@@ -240,6 +254,9 @@ export function BottomNav({
                   event.preventDefault();
                   onNavigate(item.id);
                 }}
+                onPointerEnter={onPreload ? () => onPreload(item.id) : undefined}
+                onTouchStart={onPreload ? () => onPreload(item.id) : undefined}
+                onFocus={onPreload ? () => onPreload(item.id) : undefined}
                 className={cell(selected)}
               >
                 {pill(selected)}

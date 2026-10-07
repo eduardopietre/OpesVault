@@ -45,16 +45,27 @@ export function useLedger<T>(select: (ledger: Ledger) => T, key: string | number
   return useMemo(() => select(workspace.ledger), [workspace, version, key]);
 }
 
+/** How a user action is reported: `done` is the notice after it; `label` names it in the undo history. */
+export interface ActOptions {
+  done?: string | undefined;
+  label?: string | undefined;
+}
+
 /**
  * Runs a user action. A DomainError (a refused change, with a Portuguese message for the user) is shown
- * as a notice and returns `undefined`; anything else is a bug and is rethrown.
+ * as a notice and returns `undefined`; anything else is a bug and is rethrown. The second argument is the
+ * notice after it, or `{ done, label }` with the name of the action for "Desfazer: …".
  */
-export function useAct(): <T>(action: (ledger: Ledger, session: Session) => T, done?: string) => T | undefined {
+export function useAct(): <T>(
+  action: (ledger: Ledger, session: Session) => T,
+  options?: string | ActOptions,
+) => T | undefined {
   const workspace = useWorkspace();
   return useCallback(
-    <T,>(action: (ledger: Ledger, session: Session) => T, done?: string) => {
+    <T,>(action: (ledger: Ledger, session: Session) => T, options?: string | ActOptions) => {
+      const { done, label } = typeof options === "string" ? { done: options, label: undefined } : (options ?? {});
       try {
-        const result = workspace.act(action);
+        const result = workspace.act(action, label);
         if (done) notify(done);
         return result;
       } catch (error) {

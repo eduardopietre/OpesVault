@@ -4,6 +4,7 @@
  * held for the moment it takes to derive them (docs/19 §3).
  */
 import { concatBytes, copyBytes, fromB64, fromUtf8, toB64, toHex, utf8, wipe, type B64, type Bytes } from "./bytes.ts";
+import { gunzip, gzip } from "./compress.ts";
 import { CryptoError } from "./errors.ts";
 import {
   aesGcmDecrypt,
@@ -38,7 +39,8 @@ export const INFO = {
 const RECORD_VERSION = 1;
 const NAME_VERSION = 1;
 const BLOB_KEY_VERSION = 1;
-const SNAPSHOT_VERSION = 1;
+/** 2: the plaintext is gzip-compressed before sealing (1, uncompressed, is no longer opened: it is rewritten). */
+const SNAPSHOT_VERSION = 2;
 /** Plaintext is padded with JSON whitespace to a multiple of this, to blur exact sizes. */
 export const RECORD_PADDING = 64;
 export const OPAQUE_ID_CHARS = 32;
@@ -173,14 +175,33 @@ export class ProjectKeys {
    * Seals this device's snapshot of the project (docs/19 §8): every opened record at one generation of the
    * local cache, in a single block, so that opening a big project decrypts one block instead of each record.
    * It never leaves the device. The generation is bound into the AAD: a snapshot cannot pass for another one.
+   * The plaintext is compressed before sealing: a smaller block to store, read and decrypt. Compressing before
+   * encrypting leaks nothing here: the snapshot stays on the device and no one can mix chosen text into it and
+   * watch its size (the CRIME kind of attack needs both).
    */
   async sealSnapshot(plaintext: Bytes, generation: number, random: RandomSource = systemRandom): Promise<Bytes> {
-    return seal(this.#key(this.#snapshot), plaintext, this.#snapshotAad(generation), SNAPSHOT_VERSION, random);
+    const aad = this.#snapshotAad(generation);
+    const compressed = await gzip(plaintext);
+    try {
+      return await seal(this.#key(this.#snapshot), compressed, aad, SNAPSHOT_VERSION, random);
+    } finally {
+      wipe(compressed);
+    }
   }
 
-  /** Opens a snapshot sealed by `sealSnapshot` for this project and generation; anything else fails. */
+  /**
+   * Opens a snapshot sealed by `sealSnapshot` for this project and generation; anything else fails (also a snapshot
+   * of an earlier format, `invalid_format`).
+   */
   async openSnapshot(sealed: Uint8Array, generation: number): Promise<Bytes> {
-    return open(this.#key(this.#snapshot), sealed, this.#snapshotAad(generation), SNAPSHOT_VERSION);
+    const compressed = await open(this.#key(this.#snapshot), sealed, this.#snapshotAad(generation), SNAPSHOT_VERSION);
+    try {
+      return await gunzip(compressed);
+    } catch {
+      throw new CryptoError("invalid_format");
+    } finally {
+      wipe(compressed);
+    }
   }
 
   #snapshotAad(generation: number): Bytes {

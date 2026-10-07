@@ -1,5 +1,5 @@
 /** Relatórios: the image and the values leave the project only after asking; the year-end report; states. */
-import { exporting, formatBrl } from "@opesvault/domain";
+import { Dec, charts, exporting, formatBrl } from "@opesvault/domain";
 import { act, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { annualReportData } from "../../src/pages/relatorios/annual.ts";
@@ -7,6 +7,7 @@ import { REPORTS, buildChart, valuesCsv } from "../../src/pages/relatorios/repor
 import { choose, setViewport } from "./livro_harness.tsx";
 import { openPrint, openReport, openReports, paramsOf } from "./relatorios_harness.tsx";
 import { cellText } from "../../src/pages/visao-geral/report.ts";
+import { addressSettles } from "../navigations.ts";
 
 vi.mock("../../../../packages/ui/src/chart/echarts.ts", () => import("./fake_echarts.ts"));
 
@@ -82,6 +83,17 @@ describe("Relatórios: exporting", () => {
     expect(lines.at(-2)).toMatch(/^Total;/);
     expect(lines.at(-1)).toMatch(/^Média;/);
   });
+
+  it("neutralizes formulas in the names and items of the CSV, not in the values", () => {
+    const { chart, point, series } = charts.data;
+    const made = chart("t", "BRL", [
+      series("+Série", [point("=cmd()", Dec.parse("-10.50")), point("2026-01", Dec.parse("3"))]),
+    ]);
+    const lines = valuesCsv(made).replace("\uFEFF", "").split("\n");
+    expect(lines[0]).toBe("item;'+Série");
+    expect(lines).toContain("'=cmd();-10.50");
+    expect(lines).toContain("2026-01;3");
+  });
 });
 
 describe("Relatórios: the year-end closing", () => {
@@ -131,7 +143,7 @@ describe("Relatórios: the year-end closing", () => {
     await screen.findByRole("heading", { level: 1, name: `${data.project} — fechamento de 2025` });
     expect(router.state.location.pathname).toBe("/imprimir/relatorio-anual");
     await waitFor(() => expect(print).toHaveBeenCalledTimes(1), { timeout: 3000 });
-    await waitFor(() => expect(router.state.location.search).toEqual({ ano: "2025" }));
+    await addressSettles(router, { ano: "2025" });
     for (const title of [
       `Bens e dívidas em 31/12/2025`,
       "Receitas do ano por categoria",

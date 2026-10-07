@@ -66,7 +66,7 @@ describe("focus in dialogs", () => {
   it("a dialog opened from a menu entry gives focus back to the menu's button", async () => {
     const user = userEvent.setup();
     render(<FromMenu />);
-    const trigger = screen.getByRole("button", { name: "Novo lançamento" });
+    const trigger = screen.getByRole("button", { name: "Novo lançamento", exact: true });
     trigger.focus();
     await user.keyboard("{Enter}");
     await user.click(await screen.findByRole("menuitem", { name: "Despesa" }));

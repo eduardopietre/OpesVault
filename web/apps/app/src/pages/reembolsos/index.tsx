@@ -253,7 +253,12 @@ export function Page() {
   };
 
   const denyIt = (reason: string) => {
-    if (deny) act((ledger) => dom.sharing.deny(ledger, deny.id, reason), "Reembolso marcado como negado.");
+    if (deny) {
+      act((ledger) => dom.sharing.deny(ledger, deny.id, reason), {
+        done: "Reembolso marcado como negado.",
+        label: "negar reembolso",
+      });
+    }
   };
 
   const seeOperation = (id: Id | null | undefined) => {

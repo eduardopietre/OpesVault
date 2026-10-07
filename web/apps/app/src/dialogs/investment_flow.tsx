@@ -46,7 +46,7 @@ export function InvestmentContributionDialog({
     const on = readDate(when);
     const amount = readMoney(value);
     const from = need();
-    act((l) => service.contribute(l, positionId, amount, on, from));
+    act((l) => service.contribute(l, positionId, amount, on, from), "registrar aporte");
     onDone?.();
   };
 
@@ -94,7 +94,7 @@ export function InvestmentDistributionDialog({
     const gross = readMoney(value);
     const withheld = readMoney(tax, { allowEmpty: true });
     const to = need();
-    act((l) => service.distribute(l, positionId, gross, on, to, withheld ?? "0"));
+    act((l) => service.distribute(l, positionId, gross, on, to, withheld ?? "0"), "registrar rendimento");
     onDone?.();
   };
 
@@ -135,7 +135,7 @@ export function InvestmentTaxPaymentDialog({ open, onClose, onDone }: FlowProps)
     const on = readDate(when, "A data do pagamento");
     const amount = readMoney(value);
     const from = need();
-    act((l) => service.payTax(l, amount, on, from));
+    act((l) => service.payTax(l, amount, on, from), "pagar imposto");
     onDone?.();
   };
 

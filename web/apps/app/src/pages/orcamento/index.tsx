@@ -30,7 +30,9 @@ import { useRef, useState } from "react";
 import { BudgetDialog } from "../../dialogs/budget_dialog.tsx";
 import { BudgetGridDialog } from "../../dialogs/budget_grid_dialog.tsx";
 import {
+  SUGGESTION_MONTHS,
   applyGrid,
+  averageSpending,
   editableAmount,
   expenseCategoryOptions,
   gridRows,
@@ -64,6 +66,8 @@ interface GridDialog {
   key: number;
   month: YearMonth;
   rows: GridRow[];
+  /** Where the typed values came from (a suggestion from earlier spending). */
+  note?: string;
 }
 
 /** The bar of use: its width is how much of the plan was spent (full when over), with the state's color. */
@@ -202,10 +206,10 @@ export function Page() {
 
   const saveOne = (categoryId: string, amount: Dec): boolean => {
     const at = one?.month ?? month;
-    const saved = act(
-      (ledger) => dom.budget.setBudget(ledger, categoryId, at, amount),
-      `Orçamento de ${lower(at)} atualizado.`,
-    );
+    const saved = act((ledger) => dom.budget.setBudget(ledger, categoryId, at, amount), {
+      done: `Orçamento de ${lower(at)} atualizado.`,
+      label: `orçamento de ${lower(at)}`,
+    });
     return saved !== undefined;
   };
 
@@ -216,16 +220,31 @@ export function Page() {
     setGridOpen(true);
   };
 
+  // The empty month's next step: a plan from the average spending of the months before it.
+  const suggestion = useLedger((ledger) => averageSpending(ledger, month), monthKey);
+  const previousPlanned = useLedger((ledger) => dom.budget.linesOf(ledger, previous).length, monthKey);
+  const suggestMonth = () => {
+    const spending = queries.expensesByCategory(workspace.ledger, month, month);
+    const first = ymAdd(month, -SUGGESTION_MONTHS);
+    setGrid({
+      key: ++counter.current,
+      month,
+      rows: gridRows(workspace.ledger, month, previous, spending, suggestion),
+      note: `Sugestão: a média do gasto de cada categoria de ${lower(first)} a ${lower(previous)}. Confira, ajuste e salve; nada é gravado antes disso.`,
+    });
+    setGridOpen(true);
+  };
+
   const saveGrid = (changes: readonly GridChange[]): boolean => {
     const at = grid?.month ?? month;
     if (changes.length === 0) {
       notify("Nenhuma alteração no orçamento.");
       return true;
     }
-    const changed = act(
-      (ledger) => applyGrid(ledger, at, changes),
-      `Orçamento de ${lower(at)}: ${plural(changes.length, "categoria alterada", "categorias alteradas")}.`,
-    );
+    const changed = act((ledger) => applyGrid(ledger, at, changes), {
+      done: `Orçamento de ${lower(at)}: ${plural(changes.length, "categoria alterada", "categorias alteradas")}.`,
+      label: `orçamento de ${lower(at)}`,
+    });
     return changed !== undefined;
   };
 
@@ -243,7 +262,7 @@ export function Page() {
   const removeSelected = () => {
     const id = needsSelection();
     if (!id) return;
-    act((ledger) => dom.budget.removeBudget(ledger, id, month));
+    act((ledger) => dom.budget.removeBudget(ledger, id, month), { label: "remover categoria do orçamento" });
     notify("Categoria removida do orçamento.", { action: { label: "Desfazer", run: undo } });
     setPick(null);
   };
@@ -254,7 +273,9 @@ export function Page() {
   };
 
   const copyPrevious = () => {
-    const copied = act((ledger) => dom.budget.copyMonth(ledger, previous, month));
+    const copied = act((ledger) => dom.budget.copyMonth(ledger, previous, month), {
+      label: `copiar o orçamento de ${lower(previous)}`,
+    });
     if (copied === undefined) return;
     if (copied > 0) {
       notify(`${plural(copied, "categoria copiada", "categorias copiadas")} de ${lower(previous)}.`);
@@ -384,14 +405,37 @@ export function Page() {
         ) : (
           <div className="rounded-xl border border-dashed border-separator-strong bg-window/40">
             <EmptyState
-              title="Sem orçamento neste mês"
-              description="Defina quanto pretende gastar por categoria. O realizado vem dos lançamentos por competência: compras no cartão contam no mês em que aconteceram."
+              title={`Sem orçamento em ${lower(month)}`}
+              description={
+                suggestion.size
+                  ? `Crie o orçamento do mês a partir dos gastos dos últimos ${SUGGESTION_MONTHS} meses: cada categoria começa com a média, e você confere antes de salvar.`
+                  : previousPlanned
+                    ? `Copie o plano de ${lower(previous)} ou defina quanto pretende gastar por categoria.`
+                    : "Defina quanto pretende gastar por categoria. O realizado vem dos lançamentos por competência: compras no cartão contam no mês em que aconteceram."
+              }
               actions={
                 <>
-                  <Button onClick={copyPrevious} disabled={locked} title={lockTip}>
-                    Copiar do mês anterior
-                  </Button>
-                  <Button variant="primary" onClick={defineMonth} disabled={locked} title={lockTip}>
+                  {suggestion.size ? (
+                    <Button variant="primary" onClick={suggestMonth} disabled={locked} title={lockTip}>
+                      Criar a partir dos últimos {SUGGESTION_MONTHS} meses…
+                    </Button>
+                  ) : null}
+                  {previousPlanned ? (
+                    <Button
+                      variant={suggestion.size ? "secondary" : "primary"}
+                      onClick={copyPrevious}
+                      disabled={locked}
+                      title={lockTip}
+                    >
+                      Copiar do mês anterior
+                    </Button>
+                  ) : null}
+                  <Button
+                    variant={suggestion.size || previousPlanned ? "secondary" : "primary"}
+                    onClick={defineMonth}
+                    disabled={locked}
+                    title={lockTip}
+                  >
                     Definir o mês…
                   </Button>
                 </>
@@ -432,6 +476,7 @@ export function Page() {
           monthLabel={lower(grid.month)}
           previousLabel={lower(ymAdd(grid.month, -1))}
           rows={grid.rows}
+          note={grid.note}
           onSave={saveGrid}
         />
       ) : null}

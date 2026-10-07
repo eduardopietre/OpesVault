@@ -292,7 +292,7 @@ export function Page() {
       confirmLabel: "Remover",
       danger: true,
     });
-    if (yes) act((l) => tax.records.removeReport(l, found.id), "Informe removido.");
+    if (yes) act((l) => tax.records.removeReport(l, found.id), { done: "Informe removido.", label: "excluir informe" });
   };
   const reportSaved = (saved: tax.model.IncomeReport) => {
     setReport(saved.id);
@@ -336,7 +336,9 @@ export function Page() {
       notify("Escolha um documento na tabela.");
       return;
     }
-    act((l) => tax.records.setMark(l, year, item.key, item.by_hand ? null : !item.received));
+    act((l) => tax.records.setMark(l, year, item.key, item.by_hand ? null : !item.received), {
+      label: "marcar pendência do imposto",
+    });
   };
 
   // ── a pending item leads to what resolves it ────

@@ -131,9 +131,12 @@ export function FormDialog({
  * Runs the dialog's change as one user action (one undo step, one sync). A refused change is rethrown for
  * `FormDialog` to show inline, instead of a notice that would hide behind the dialog.
  */
-export function useFormAct(): <T>(action: (ledger: Ledger, session: Session) => T) => T {
+export function useFormAct(): <T>(action: (ledger: Ledger, session: Session) => T, label?: string) => T {
   const workspace = useWorkspace();
-  return useCallback(<T,>(action: (ledger: Ledger, session: Session) => T) => workspace.act(action), [workspace]);
+  return useCallback(
+    <T,>(action: (ledger: Ledger, session: Session) => T, label?: string) => workspace.act(action, label),
+    [workspace],
+  );
 }
 
 /** A responsive grid of fields: one column on phones, two from the dialog's own width. */

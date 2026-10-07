@@ -4,7 +4,8 @@
  * - the built page: Subresource Integrity on every script and style, the one CSP as a <meta>, no inline code;
  * - hostile strings (markup, script URLs, formulas, bidirectional and zero-width characters, very long text) typed
  *   into every free-text field reachable through the dialogs of every page: nothing executes, nothing is requested
- *   from an unexpected address, nothing is logged as an error; the CSV export keeps its structure;
+ *   from an unexpected address, nothing is logged as an error; the CSV export keeps its structure
+ *   and neutralizes formulas;
  * - a hostile PDF (JavaScript and launch actions, an embedded file, a long page tree with a loop) goes through
  *   Importar without executing or hanging.
  */
@@ -328,7 +329,7 @@ test.describe("hostile strings in the other free-text places", () => {
     const descriptions = ['=1+1;"a"', "+SUM(1)", "-2+3", '@cmd "q"; next'];
     await page.getByRole("searchbox", { name: "Buscar lançamentos" }).fill("");
     for (const description of descriptions) {
-      await page.getByRole("button", { name: "Novo lançamento" }).click();
+      await page.getByRole("button", { name: "Novo lançamento", exact: true }).click();
       await page.getByRole("menuitem", { name: "Despesa", exact: true }).click();
       const dialog = page.getByRole("dialog", { name: "Despesa" });
       await dialog.getByLabel("Descrição", { exact: true }).fill(description);
@@ -345,8 +346,12 @@ test.describe("hostile strings in the other free-text places", () => {
     expect(records.length).toBeGreaterThan(10);
     // every record has the 14 columns: no cell broke out of its field into another row or column
     expect(records.filter((record) => record.length !== 14)).toEqual([]);
-    // the descriptions survive intact (the desktop writes them the same way: docs/19 §12, accepted limitation)
-    for (const description of descriptions) expect(records.some((record) => record[4] === description)).toBe(true);
+    // a spreadsheet does not run them: each description gets a leading "'", as on the desktop (docs/19 §12.1, finding 12)
+    for (const description of descriptions) {
+      expect(records.some((record) => record[4] === "'" + description)).toBe(true);
+    }
+    // money stays a number: credits are negative and not prefixed
+    expect(records.some((record) => record[10] === "-1.00")).toBe(true);
     await watch.check();
   });
 

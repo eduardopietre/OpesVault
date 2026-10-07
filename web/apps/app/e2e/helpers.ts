@@ -2,6 +2,9 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page } from "@playwright/test";
 
+export const SCHEMES = ["light", "dark"] as const;
+
+/** The sizes of docs/16 §4 and docs/18 §5.1; screenshots always use all of them. */
 export const SIZES = [
   { width: 1920, height: 1080 },
   { width: 1280, height: 800 },
@@ -10,7 +13,18 @@ export const SIZES = [
   { width: 390, height: 844 },
 ] as const;
 
-export const SCHEMES = ["light", "dark"] as const;
+/**
+ * The full suite (`pnpm e2e:full`, `E2E_FULL=1`) repeats the tests that loop over sizes and schemes at every size,
+ * light and dark; the fast one (`pnpm e2e`) runs them at 1280x800 in light only. Tests of phone-only behaviour set
+ * their own size, and `a11y.spec.ts` audits both schemes at 1280 and 390: those run in both suites.
+ */
+export const FULL = process.env["E2E_FULL"] === "1";
+
+/** The sizes that the tests looping over sizes run at: all of them in the full suite, 1280x800 otherwise. */
+export const TEST_SIZES: readonly { readonly width: number; readonly height: number }[] = FULL ? SIZES : [SIZES[1]];
+
+/** The schemes that the tests looping over schemes run in: both in the full suite, light otherwise. */
+export const TEST_SCHEMES: readonly ("light" | "dark")[] = FULL ? SCHEMES : ["light"];
 
 export const DEMO = {
   email: "demo@opesvault.app",
@@ -33,9 +47,13 @@ export function watchErrors(page: Page): string[] {
   return errors;
 }
 
-/** Opens a path with the demonstration project already open. */
-export async function openDemo(page: Page, path: string): Promise<void> {
-  await page.goto(`${path}?demo`);
+/**
+ * Opens a path with the demonstration project already open. The tests were written around this month's data
+ * (the budget's states, the bill due on the 10th, today's recurrence), so they start on the current month;
+ * `{ month: "demo" }` keeps the demonstration's own month (its last complete one), as a visitor sees it.
+ */
+export async function openDemo(page: Page, path: string, { month = "current" }: { month?: "current" | "demo" } = {}) {
+  await page.goto(`${path}?demo${month === "current" ? "&mes=atual" : ""}`);
   await expect(page.locator("h1").first()).toBeVisible();
 }
 

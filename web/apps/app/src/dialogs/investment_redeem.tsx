@@ -138,7 +138,7 @@ export function InvestmentNetOnlyDialog({
     const on = readDate(when);
     const value = readMoney(net);
     const to = need();
-    act((l) => service.redeemNetOnly(l, positionId, on, value, to));
+    act((l) => service.redeemNetOnly(l, positionId, on, value, to), "registrar resgate");
     onDone?.();
   };
 

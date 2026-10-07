@@ -39,7 +39,7 @@ export function BalanceCheckDialog({ open, onClose, accountId, choices, onDone }
   const confirm = () => {
     const value = readMoney(informed);
     const on = readDate(when, "A data do saldo");
-    const result = act((l) => dom.balanceChecks.record(l, account, on, value, note));
+    const result = act((l) => dom.balanceChecks.record(l, account, on, value, note), "conferir saldo");
     onDone?.(result, chosen.name);
   };
 

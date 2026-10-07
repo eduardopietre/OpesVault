@@ -109,10 +109,10 @@ export function Page() {
       return;
     }
     const rule = selectedRule;
-    act(
-      (ledger) => dom.recurrence.updateRule(ledger, { ...rule, paused: !rule.paused }, "pausar/retomar"),
-      rule.paused ? `Recorrência “${rule.description}” retomada.` : `Recorrência “${rule.description}” pausada.`,
-    );
+    act((ledger) => dom.recurrence.updateRule(ledger, { ...rule, paused: !rule.paused }, "pausar/retomar"), {
+      done: rule.paused ? `Recorrência “${rule.description}” retomada.` : `Recorrência “${rule.description}” pausada.`,
+      label: rule.paused ? "retomar recorrência" : "pausar recorrência",
+    });
   };
 
   const createFromCandidate = (key: string | null = pickCandidate) => {
@@ -158,7 +158,9 @@ export function Page() {
       notify("Esta previsão já foi resolvida.");
       return;
     }
-    const skipped = act((ledger) => dom.recurrence.skip(ledger, forecast.ruleId, forecast.dueOn));
+    const skipped = act((ledger) => dom.recurrence.skip(ledger, forecast.ruleId, forecast.dueOn), {
+      label: "pular previsão",
+    });
     if (skipped === undefined) return;
     notify(`Previsão de ${formatDateBr(forecast.dueOn)} pulada.`, { action: { label: "Desfazer", run: undo } });
   };

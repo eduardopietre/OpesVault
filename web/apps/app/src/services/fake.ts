@@ -4,6 +4,7 @@
  */
 import { dom, demoSession, Ledger, newId, session as sessions, today } from "@opesvault/domain";
 import { applyDemoExtras } from "../data/demo_extra.ts";
+import { lastCompleteMonth } from "../data/month.ts";
 import {
   CryptoError,
   blobSource,
@@ -42,6 +43,8 @@ interface StoredProject extends ProjectSummary {
   /** Built on first open (the demo imports a PDF, which takes a moment). */
   workspace: Workspace | null;
   build: () => Promise<Workspace>;
+  /** The demonstration project. */
+  demo?: boolean;
 }
 
 export const DEMO = {
@@ -124,6 +127,8 @@ export function createFakeServices(options: FakeOptions = {}): AppServices & { r
     members: membersOf(project),
     attention: { ...project.attention },
     readOnly: false,
+    // The web demonstration opens on its last complete month: whole months to look at, not a few days.
+    ...(project.demo && options.extras ? { startMonth: lastCompleteMonth(workspace.ledger, workspace.today()) } : {}),
   });
   const requireAccount = () => {
     if (!current) throw new ServiceError("signed-out", "Entre na sua conta para continuar.");
@@ -175,6 +180,7 @@ export function createFakeServices(options: FakeOptions = {}): AppServices & { r
       members: 2,
       attention: { "visao-geral": 3, importar: 2 },
       workspace: null,
+      demo: true,
       build: async () => {
         const session = await demoSession({ extractor: browserExtractor() });
         // More paths than the desktop's demonstration has (docs/18 W12); the domain's demo stays as it is.

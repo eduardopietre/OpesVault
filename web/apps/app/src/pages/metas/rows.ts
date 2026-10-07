@@ -3,7 +3,18 @@
  * values, the words of the progress column and the line under the title. A value the ledger cannot give
  * (no deadline, no history) stays unknown: "—", never zero.
  */
-import { dom, formatBrl, formatDateBr, type Dec, type IsoDate, type YearMonth } from "@opesvault/domain";
+import {
+  Dec,
+  addMonthsClamped,
+  dom,
+  formatBrl,
+  formatDateBr,
+  queries,
+  ymAdd,
+  ymOf,
+  type IsoDate,
+  type YearMonth,
+} from "@opesvault/domain";
 import { formatMonth, formatMonthShort } from "@opesvault/ui";
 import { cents, usedPercent } from "../orcamento/rows.ts";
 
@@ -62,4 +73,28 @@ export function summaryLine(goals: readonly Goal[]): string {
   if (!goals.length) return "";
   const active = goals.filter((g) => !g.archived).length;
   return `${active} meta(s) ativa(s)`;
+}
+
+/** What the "Defina uma meta" form starts with: an example the person can keep or change. */
+export interface GoalExample {
+  name: string;
+  kind: Goal["kind"];
+  /** Six months of the average spending; null when the project has no spending yet. */
+  target: Dec | null;
+  targetDate: IsoDate;
+}
+
+/** Months of spending an emergency reserve covers, in the example. */
+export const RESERVE_MONTHS = 6;
+
+/**
+ * The example goal: an emergency reserve of six months of the average spending of the last three complete
+ * months, within a year. Without spending the value stays empty for the person to type (unknown is not zero).
+ */
+export function goalExample(ledger: Parameters<typeof dom.goals.goals>[0], today: IsoDate): GoalExample {
+  const month = ymOf(today);
+  const spent = queries.expensesByCategory(ledger, ymAdd(month, -3), ymAdd(month, -1));
+  const total = Dec.sum(spent.values());
+  const target = total.isPositive() ? total.div(3).mul(RESERVE_MONTHS).quantize("0.01", "ROUND_HALF_UP") : null;
+  return { name: "Reserva de emergência", kind: "net_worth", target, targetDate: addMonthsClamped(today, 12) };
 }

@@ -31,6 +31,7 @@ import { ImportItemDialog } from "../../dialogs/import_item.tsx";
 import { RuleDialog } from "../../dialogs/rule_dialog.tsx";
 import { useUndo } from "../../shell/undo.tsx";
 import type { ImportAi } from "./ai.tsx";
+import { actionName } from "../../data/action_names.ts";
 import { useReasonPrompt } from "./prompts.tsx";
 import type { ImportQueue } from "./queue.tsx";
 import {
@@ -209,8 +210,10 @@ export function Review({ batchId, selected, onSelect, queue, ai }: ReviewProps) 
       if (partial === null) return false;
     }
     const result = attempt(() =>
-      workspace.act((ledger) =>
-        importing.pipeline.approve(ledger, batch.id, ids, { acceptDivergence: divergence, partialReason: partial }),
+      workspace.act(
+        (ledger) =>
+          importing.pipeline.approve(ledger, batch.id, ids, { acceptDivergence: divergence, partialReason: partial }),
+        ids === null ? "aprovar a importação" : actionName("aprovar", ids.length, "item importado", "itens importados"),
       ),
     );
     if (result === undefined) return false;
@@ -247,7 +250,13 @@ export function Review({ batchId, selected, onSelect, queue, ai }: ReviewProps) 
       description: "O item deixa de ser tratado como repetição e vira um lançamento novo ao ser aprovado.",
     });
     if (reason === null) return;
-    if (attempt(() => workspace.act((ledger) => importing.pipeline.keepSeparate(ledger, id, reason)) ?? true)) {
+    if (
+      attempt(
+        () =>
+          workspace.act((ledger) => importing.pipeline.keepSeparate(ledger, id, reason), "manter item separado") ??
+          true,
+      )
+    ) {
       advance(id);
     }
   };
@@ -262,7 +271,13 @@ export function Review({ batchId, selected, onSelect, queue, ai }: ReviewProps) 
       description: "O item não vira lançamento. O motivo fica registrado.",
     });
     if (reason === null) return;
-    if (attempt(() => workspace.act((ledger) => importing.pipeline.rejectItems(ledger, [id], reason)) ?? true)) {
+    if (
+      attempt(
+        () =>
+          workspace.act((ledger) => importing.pipeline.rejectItems(ledger, [id], reason), "rejeitar item importado") ??
+          true,
+      )
+    ) {
       advance(id);
     }
   };

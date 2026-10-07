@@ -2,7 +2,7 @@
  * Meta (desktop `GoalDialog` of `ui/pages/goals_page.py`): a savings or net-worth target, optionally by a
  * date. A goal only follows a value the ledger already has; it never moves money (docs/09 §1.3 C).
  */
-import { DomainError, dom, type Id } from "@opesvault/domain";
+import { DomainError, dom, type Dec, type Id, type IsoDate } from "@opesvault/domain";
 import { Checkbox, MoneyField, Select, TextField, type SelectOption } from "@opesvault/ui";
 import { useMemo, useState } from "react";
 import { useWorkspace } from "../data/react.tsx";
@@ -29,11 +29,20 @@ export interface GoalDialogProps {
   onClose: () => void;
   /** The goal being edited; without one a new goal is created. */
   goal?: Goal | null;
+  /** For a new goal: an example the fields start with (the person keeps or changes it). */
+  example?: GoalDraft | null;
   onDone?: (goal: Goal, created: boolean) => void;
 }
 
+export interface GoalDraft {
+  name: string;
+  kind: Goal["kind"];
+  target: Dec | null;
+  targetDate: IsoDate | null;
+}
+
 /** Mounted with a fresh `key` for each opening, so the fields start from the given values. */
-export function GoalDialog({ open, onClose, goal = null, onDone }: GoalDialogProps) {
+export function GoalDialog({ open, onClose, goal = null, example = null, onDone }: GoalDialogProps) {
   const workspace = useWorkspace();
   const ledger = workspace.ledger;
   const act = useFormAct();
@@ -46,11 +55,14 @@ export function GoalDialog({ open, onClose, goal = null, onDone }: GoalDialogPro
       .map((id) => ({ id, label: `${ledger.account(id as Id).name} (arquivada)` }));
     return [...listed, ...extra];
   }, [ledger, goal]);
-  const [name, setName] = useState(goal?.name ?? "");
-  const [kind, setKind] = useState<string>(goal?.kind ?? "net_worth");
+  const start = goal ? null : example;
+  const [name, setName] = useState(goal?.name ?? start?.name ?? "");
+  const [kind, setKind] = useState<string>(goal?.kind ?? start?.kind ?? "net_worth");
   const [chosen, setChosen] = useState<ReadonlySet<string>>(new Set(goal?.account_ids ?? []));
-  const [target, setTarget] = useState(goal ? editableMoney(goal.target) : "");
-  const [deadline, setDeadline] = useState(optionalDateValue(goal?.target_date ?? null));
+  const [target, setTarget] = useState(
+    goal ? editableMoney(goal.target) : start?.target ? editableMoney(start.target) : "",
+  );
+  const [deadline, setDeadline] = useState(optionalDateValue(goal?.target_date ?? start?.targetDate ?? null));
   const byAccounts = kind === "accounts";
 
   const confirm = () => {
@@ -86,7 +98,13 @@ export function GoalDialog({ open, onClose, goal = null, onDone }: GoalDialogPro
       open={open}
       onClose={onClose}
       title={goal ? "Editar meta" : "Nova meta"}
-      description="Acompanha quanto falta e em que ritmo o projeto chega lá. Não movimenta dinheiro."
+      description={
+        start
+          ? start.target
+            ? "Um exemplo para começar: uma reserva de emergência de seis meses de gastos (pela média dos últimos três meses), em um ano. Mude o que quiser; a meta não movimenta dinheiro."
+            : "Um exemplo para começar: uma reserva de emergência em um ano. Informe o valor e mude o que quiser; a meta não movimenta dinheiro."
+          : "Acompanha quanto falta e em que ritmo o projeto chega lá. Não movimenta dinheiro."
+      }
       confirmLabel={goal ? "Salvar" : "Criar meta"}
       onConfirm={confirm}
     >

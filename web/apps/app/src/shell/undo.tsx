@@ -8,7 +8,7 @@ import { createContext, useContext, useMemo, type ReactNode } from "react";
 export interface UndoApi {
   canUndo: boolean;
   canRedo: boolean;
-  /** "Desfazer lançamento". */
+  /** "Desfazer: excluir lançamento" (the name of the last action); the notice says "Desfeito: …". */
   undoLabel: string;
   redoLabel: string;
   undo(): void;

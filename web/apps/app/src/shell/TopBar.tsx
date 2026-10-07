@@ -16,6 +16,7 @@ import { CircleHelp, Lock, PanelLeft, PanelLeftClose, Redo2, Search, Undo2 } fro
 import type { Account, OpenProject } from "../services/types.ts";
 import { THEME_LABELS } from "../theme.tsx";
 import { LogoMark } from "./Logo.tsx";
+import { shortcut, tip } from "./shortcuts.ts";
 import type { UndoApi } from "./undo.tsx";
 
 export interface TopBarProps {
@@ -31,6 +32,7 @@ export interface TopBarProps {
   onOpenDrawer(): void;
   onPalette(): void;
   onHelp(): void;
+  onShortcuts(): void;
   onLock(): void;
   onSwitchProject(): void;
   onSignOut(): void;
@@ -71,7 +73,8 @@ export function TopBar(props: TopBarProps) {
       onChange: (value) => props.onTheme(value as ThemeChoice),
     },
     { kind: "separator", id: "s1" },
-    { id: "help", label: "Atalhos e ajuda", shortcut: "F1", onSelect: props.onHelp },
+    { id: "help", label: "Ajuda desta tela", shortcut: tip("help"), onSelect: props.onHelp },
+    { id: "shortcuts", label: "Atalhos de teclado", shortcut: tip("shortcuts"), onSelect: props.onShortcuts },
     { id: "switch", label: "Trocar de projeto", onSelect: props.onSwitchProject },
     { id: "signout", label: "Sair da conta", onSelect: props.onSignOut },
   ];
@@ -84,7 +87,7 @@ export function TopBar(props: TopBarProps) {
       ) : (
         <IconButton
           label={sidebarCollapsed ? "Expandir barra lateral" : "Recolher barra lateral"}
-          shortcut="Ctrl+Shift+B"
+          shortcut={tip("toggleSidebar")}
           icon={sidebarCollapsed ? <PanelLeft /> : <PanelLeftClose />}
           aria-expanded={!sidebarCollapsed}
           onClick={props.onToggleSidebar}
@@ -104,7 +107,8 @@ export function TopBar(props: TopBarProps) {
           <button
             type="button"
             onClick={props.onPalette}
-            aria-keyshortcuts="Control+K Meta+K"
+            aria-keyshortcuts={shortcut("palette").aria}
+            title={`Buscar seção ou comando (${tip("palette")})`}
             className="flex h-8 w-full max-w-[420px] items-center gap-2 rounded-md border border-separator bg-raised px-3 text-body text-secondary shadow-sm transition-colors hover:border-separator-strong hover:text-text"
           >
             <Search aria-hidden="true" className="size-4" />
@@ -116,24 +120,35 @@ export function TopBar(props: TopBarProps) {
       <div className="flex shrink-0 items-center gap-1">
         <StatusPill state={sync} compact={phone} className={phone ? "max-w-[124px]" : undefined} />
         {phone ? (
-          <IconButton label="Buscar seção ou comando" shortcut="Ctrl+K" icon={<Search />} onClick={props.onPalette} />
+          <IconButton
+            label="Buscar seção ou comando"
+            shortcut={tip("palette")}
+            icon={<Search />}
+            onClick={props.onPalette}
+          />
         ) : (
           <>
             <span aria-hidden="true" className="mx-1 h-5 w-px bg-separator" />
             {band === "tablet" ? (
               <IconButton
                 label="Buscar seção ou comando"
-                shortcut="Ctrl+K"
+                shortcut={tip("palette")}
                 icon={<Search />}
                 onClick={props.onPalette}
               />
             ) : null}
-            <IconButton label={undo.undoLabel} shortcut="Ctrl+Z" icon={<Undo2 />} onClick={undo.undo} />
-            <IconButton label={undo.redoLabel} shortcut="Ctrl+Shift+Z" icon={<Redo2 />} onClick={undo.redo} />
-            <IconButton label="Ajuda desta tela" shortcut="F1" icon={<CircleHelp />} onClick={props.onHelp} />
+            <IconButton label={undo.undoLabel} shortcut={tip("undo")} icon={<Undo2 />} onClick={undo.undo} />
+            <IconButton
+              label={undo.redoLabel}
+              shortcut={tip("redo")}
+              aria-keyshortcuts={shortcut("redo").aria}
+              icon={<Redo2 />}
+              onClick={undo.redo}
+            />
+            <IconButton label="Ajuda desta tela" shortcut={tip("help")} icon={<CircleHelp />} onClick={props.onHelp} />
           </>
         )}
-        <IconButton label="Bloquear o projeto" shortcut="Ctrl+Shift+L" icon={<Lock />} onClick={props.onLock} />
+        <IconButton label="Bloquear o projeto" shortcut={tip("lock")} icon={<Lock />} onClick={props.onLock} />
         <MenuButton
           label="Conta"
           items={items}

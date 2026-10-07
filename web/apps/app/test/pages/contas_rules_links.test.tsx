@@ -28,6 +28,7 @@ import {
   table,
   undoOnce,
 } from "./contas_harness.tsx";
+import { addressSettles } from "../navigations.ts";
 
 vi.mock("../../../../packages/ui/src/chart/echarts.ts", async () => await import("./fake_echarts.ts"));
 
@@ -286,7 +287,7 @@ describe("Links into Contas e cartões", () => {
     expect(await dialog("Pagar fatura — Cartão X")).toBeTruthy();
     await tabSelected("Faturas");
     expect(flat(screen.getByRole("dialog").textContent)).toContain(`Vencimento ${formatDateBr(bill.cycle.due)}`);
-    await waitFor(() => expect(router.state.location.search).toEqual({}));
+    await addressSettles(router, {});
     // the bill is selected behind the dialog
     expect(selectedRow(await table("Faturas do cartão"))!.getAttribute("data-row-id")).toBe(monthKey(bill.cycle.month));
   });
@@ -303,7 +304,7 @@ describe("Links into Contas e cartões", () => {
     const grid = await table("Faturas do cartão");
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(selectedRow(grid)!.getAttribute("data-row-id")).toBe(monthKey(bill.cycle.month));
-    await waitFor(() => expect(router.state.location.search).toEqual({}));
+    await addressSettles(router, {});
   });
 
   it("a bill that is already paid says so instead of opening the payment", async () => {
@@ -379,7 +380,7 @@ describe("Links into Contas e cartões", () => {
     await tabSelected("Faturas");
     expect(await table("Faturas do cartão")).toBeTruthy();
     await follow(router, "nao-existe:2026-13", "pagar");
-    await waitFor(() => expect(router.state.location.search).toEqual({}));
+    await addressSettles(router, {});
     expect(screen.getByRole("tab", { name: "Faturas" }).getAttribute("aria-selected")).toBe("true");
     expect(screen.queryByRole("dialog")).toBeNull();
   });

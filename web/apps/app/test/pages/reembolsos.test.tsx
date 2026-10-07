@@ -3,7 +3,7 @@ import { act as reactAct, screen, waitFor, within } from "@testing-library/react
 import { describe, expect, it } from "vitest";
 import { findReimbursement, sharingView, summaryLine } from "../../src/pages/reembolsos/rows.ts";
 import { flat, openAt, shareExpenses, type OpenOptions, type User } from "./sharing_docs_harness.tsx";
-import { navigations, wentTo } from "../navigations.ts";
+import { addressSettles, navigations, wentTo } from "../navigations.ts";
 
 const open = (path = "/reembolsos", options: OpenOptions = { prepare: shareExpenses }) =>
   openAt(path, "Reembolsos e acertos", options);
@@ -239,7 +239,7 @@ describe("Reembolsos e acertos", () => {
     expect(findReimbursement(sharingView(ledger).reimbursements, "nao-existe")).toBeNull();
     await reactAct(() => router.navigate({ to: "/reembolsos", search: { ref: item.operation_id, act: "receber" } }));
     expect(await screen.findByRole("dialog", { name: "Reembolso recebido" })).toBeTruthy();
-    await waitFor(() => expect(router.state.location.search).toEqual({}));
+    await addressSettles(router, {});
   });
 
   it("shows a message for a link to a reimbursement that no longer exists", async () => {

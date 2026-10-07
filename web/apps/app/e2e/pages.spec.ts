@@ -3,7 +3,7 @@
  * never scroll sideways, at each size of docs/16 §4 and docs/18 §5.1, in light and dark.
  */
 import { expect, test } from "@playwright/test";
-import { SCHEMES, SIZES, expectNoHorizontalOverflow, openDemo, settle, watchErrors } from "./helpers.ts";
+import { TEST_SCHEMES, TEST_SIZES, expectNoHorizontalOverflow, openDemo, settle, watchErrors } from "./helpers.ts";
 
 const PATHS = [
   ["/visao-geral", "Visão geral"],
@@ -23,8 +23,8 @@ const PATHS = [
   ["/configuracoes", "Configurações"],
 ] as const;
 
-for (const size of SIZES) {
-  for (const scheme of SCHEMES) {
+for (const size of TEST_SIZES) {
+  for (const scheme of TEST_SCHEMES) {
     test.describe(`${size.width}x${size.height} ${scheme}`, () => {
       test.use({ viewport: size, colorScheme: scheme });
 

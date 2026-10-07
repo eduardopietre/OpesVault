@@ -19,6 +19,7 @@ Versão 1.2 • 05/10/2026. Registra as decisões do usuário que levam o OpesVa
 | Recuperação | **Chave de recuperação** gerada na criação do projeto: também abre o envelope da chave do projeto; mostrada uma vez para o usuário guardar, nunca enviada ao servidor em claro | — |
 | Senha do projeto | **Senha compartilhada** por todos os integrantes, como no desktop. Senha compartilhada não isola integrantes (`03` §1) | — |
 | Paridade | Todas as telas e diálogos atuais funcionam na web **da mesma forma**, agora responsivos e com animações (§5) | — |
+| Fórmulas na exportação CSV (06/10/2026) | **Prefixar `'`** em toda célula de texto livre que começa com `=`, `+`, `-`, `@`, tabulação ou retorno de carro (lista do OWASP), no desktop e na web; colunas de valor não mudam (`19` §12.1, achado 12) | — |
 
 ## 2. O que muda e o que continua
 
@@ -300,7 +301,7 @@ Cada fase tem critério de saída verificável. Nenhuma tela entra antes de o do
 - **Saída:** as linhas da §6 concluídas; importar, revisar e aprovar um extrato sintético funciona de ponta a ponta; um backup exportado é restaurado idêntico.
 
 ### W12 — Qualidade e paridade final
-- Teste de todas as telas da web (Playwright, sucessor do `test_every_screen.py`): aciona cada botão e item de menu com o projeto de demonstração e confere erros, passos de desfazer, estado sem projeto (TA-31) e transbordamento nas quatro faixas.
+- Teste de todas as telas da web (Playwright, sucessor do `test_every_screen.py`): aciona cada botão e item de menu com o projeto de demonstração e confere erros, passos de desfazer, estado sem projeto (TA-31) e transbordamento nas quatro faixas. O `pnpm --filter @opesvault/app e2e` roda só em 1280×800 e no tema claro (rápido, para o dia a dia); o `e2e:full` (`E2E_FULL=1`) repete os testes em todos os tamanhos, claro e escuro, e roda antes de fechar uma fase. Os testes do que só existe no celular fixam 390×844, e a auditoria de acessibilidade (`a11y.spec.ts`) cobre os dois temas em 1280 e 390: esses rodam nos dois.
 - Matriz TA-01…TA-36 completa na coluna web.
 - Desempenho: abrir um projeto com 50 mil lançamentos em menos de 3 s num notebook comum; memória da aba abaixo de 500 MiB sem anexos abertos.
 - Acessibilidade: axe sem violações; navegação completa só pelo teclado; teste com NVDA (manual, com o usuário).
@@ -327,7 +328,6 @@ Cada fase tem critério de saída verificável. Nenhuma tela entra antes de o do
 | Histórico no servidor | Adotado provisoriamente, revisável: só a versão atual, com lápides (`19` §7). Alternativa: guardar versões antigas cifradas por N dias | W2 |
 | IA fora do navegador | Adotado provisoriamente, revisável: só o Ollama local da máquina. Alternativa: um Ollama no servidor, sabendo que o texto passa em claro por ele | W6 |
 | Domínio e hospedagem | Onde o servidor próprio roda (casa, VPS) e com qual domínio | W13 |
-| Fórmulas na exportação CSV | Hoje o texto vai como está, como no desktop (`19` §12.1, achado 12): uma descrição de extrato como `=HYPERLINK(…)` vira fórmula ao abrir o CSV numa planilha. Opções: prefixar `'` nas células de texto que começam com `=`, `+`, `-` ou `@` (muda o desktop e o arquivo de referência de paridade), ou uma opção "para planilha" na exportação | W13 |
 | Backup antes de migrar o esquema | Hoje a migração só vira dado no servidor numa entrega atômica, e o backup é um ato explícito (`15`, TA-33). Alternativa: exportar um backup automático antes de enviar um projeto migrado | W13 |
 
 ## 9. Riscos
@@ -377,3 +377,4 @@ Notas desta etapa:
 - W12, testes: os testes de um link entre telas passaram a conferir a navegação feita (`test/navigations.ts`), não o endereço depois de a página de destino consumir o `ref`; os testes de TA-31 leem o primeiro lançamento do Livro em vez de um nome fixo.
 
 - Interface (07/10/2026): valores em dinheiro não quebram linha (utilitário `money`: sem quebra e com algarismos tabulares, nos números-chave, no `NumberTicker` e nos cartões do Livro). Os números-chave (`FigureRow`) passaram de grade para uma linha que quebra por item: um valor que não cabe vai para a linha seguinte inteiro, e num contêiner muito estreito a fonte diminui. No celular, o Livro mostra antes dos lançamentos só uma barra: busca, "Filtros" (com o número de filtros ativos, abre uma folha com os filtros e os filtros salvos) e "Mais comandos" (ações, IA local e exportar). Cada lançamento no celular é um cartão compacto: descrição e valor na primeira linha, contas ("Conta → Categoria") e data na segunda, sem repetir os nomes das colunas. Menus longos rolam dentro da tela.
+- W12, ajustes de shell e telas (07/10/2026): passar o ponteiro ou o foco num item da barra lateral (ou selecioná-lo na paleta) já carrega o código da tela (`page_code.ts`); cada ação tem nome no desfazer ("Desfazer: reclassificar 3 lançamentos", e "Desfeito: …"/"Refeito: …" no aviso), dado pela tela ou deduzido do que mudou (`data/action_names.ts`); `?` abre "Atalhos de teclado", e os atalhos vêm de uma só lista (`shell/shortcuts.ts`) que também alimenta a ajuda (F1), as dicas dos botões e o `aria-keyshortcuts`; a demonstração abre no último mês completo com lançamentos, igual em Visão geral, Orçamento, Livro e Relatórios (os testes de ponta a ponta escritos sobre os dados do mês corrente abrem com `?demo&mes=atual`); Orçamento vazio cria o plano pela média dos gastos dos últimos 3 meses (conferido na grade antes de salvar), Metas vazia abre a nova meta com o exemplo de uma reserva de emergência, e Investimentos vazio leva a Contas › Contas bancárias com o formulário de novo investimento.

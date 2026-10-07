@@ -87,6 +87,18 @@ def test_reports_show_the_chart_and_its_values_together(setup: tuple[MainWindow,
         assert page.panel.data is not None, key
 
 
+def test_chart_values_csv_neutralizes_formulas(app: QApplication) -> None:
+    from opesvault.charts.data.model import Chart, Point, Series
+    from opesvault.ui.chart_panel import ChartPanel
+
+    panel = ChartPanel("teste/formulas")
+    points = [Point("=cmd()", Decimal("-10.50")), Point("2026-01", Decimal("3"))]
+    panel.show_chart(Chart("t", "BRL", [Series("+Série", points)]))
+    lines = panel.csv_bytes().decode("utf-8-sig").splitlines()
+    assert lines[0] == "item;'+Série"
+    assert "'=cmd();-10.50" in lines and "2026-01;3" in lines
+
+
 def test_investments_have_no_tabs_and_show_sections(setup: tuple[MainWindow, Family]) -> None:
     from opesvault.investments import service as inv
     from opesvault.investments.model import AssetClass, ValueNature

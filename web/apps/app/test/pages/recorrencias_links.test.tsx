@@ -1,10 +1,11 @@
 import { dom, makeDate, type IsoDate } from "@opesvault/domain";
 import { act as reactAct, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { pinToday } from "../clock.ts";
 import { alertLink, eventLink } from "../../src/data/links.ts";
 import { forecastId, forecastWindow, ruleRef } from "../../src/pages/recorrencias/rows.ts";
 import { flat, linkCount, openPage, rowOf, rules, seedRule } from "./recorrencias_harness.tsx";
-import { navigations, wentTo } from "../navigations.ts";
+import { addressSettles, navigations, wentTo } from "../navigations.ts";
 
 vi.mock("../../../../packages/ui/src/chart/echarts.ts", () => import("./fake_echarts.ts"));
 
@@ -22,6 +23,7 @@ async function goTo(o: Opened, search: { ref?: string; act?: string }) {
 const selected = (table: HTMLElement, id: string) => rowOf(table, id)?.getAttribute("aria-selected");
 
 describe("Recorrências: vindo de outras páginas (useReveal)", () => {
+  pinToday(2026, 10, 6);
   it("selects the forecast named by '<ruleId>:<date>' and does not act without an act", async () => {
     const o = await openPage("/recorrencias", "Recorrências");
     const rule = rules(o.ledger)[0]!;
@@ -30,7 +32,7 @@ describe("Recorrências: vindo de outras páginas (useReveal)", () => {
     await waitFor(() => expect(selected(table, forecastId(rule.id, "2026-09-10" as IsoDate))).toBe("true"));
     expect(screen.queryByRole("dialog")).toBeNull();
     // the link is consumed: a reload or a back does not repeat it
-    expect(o.router.state.location.search).toEqual({});
+    await addressSettles(o.router, {});
   });
 
   it("'vincular' opens the link dialog on that forecast, with its candidates", async () => {
@@ -72,7 +74,7 @@ describe("Recorrências: vindo de outras páginas (useReveal)", () => {
     const commitments = await screen.findByRole("grid", { name: "Assinaturas e contas fixas" });
     await waitFor(() => expect(selected(commitments, rule.id)).toBe("true"));
     expect(selected(screen.getByRole("grid", { name: "Regras de recorrência" }), rule.id)).toBe("true");
-    expect(o.router.state.location.search).toEqual({});
+    await addressSettles(o.router, {});
   });
 
   it("ignores a reference it does not understand and tells when the forecast left the period", async () => {

@@ -1,7 +1,7 @@
 /**
  * The accounts, cards and categories a form offers (desktop `ui/dialogs.py` helpers `liquid_accounts`,
- * `asset_accounts`, `balance_accounts`, `category_items` and `operation_edit.account_choices`), as options
- * whose value is the id.
+ * `asset_accounts`, `balance_accounts`, `category_items` and `operation_edit.account_choices`) and the members
+ * a form offers, as options whose value is the id.
  */
 import {
   AccountSubtype,
@@ -45,6 +45,13 @@ export function categoryItems(ledger: Ledger, kind: AccountType): SelectOption[]
     .categories(kind)
     .map((a) => ({ id: a.id, label: label(a) }))
     .sort((a, b) => cmpStr(a.label, b.label));
+}
+
+/** The active members (and `keep`, even if it was deactivated), in the project's order. */
+export function memberItems(ledger: Ledger, keep: Id | null = null): SelectOption[] {
+  return [...ledger.members.values()]
+    .filter((m) => m.active || m.id === keep)
+    .map((m) => ({ id: m.id, label: m.name }));
 }
 
 export function cardItems(ledger: Ledger): SelectOption[] {

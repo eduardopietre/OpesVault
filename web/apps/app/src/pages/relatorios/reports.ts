@@ -25,7 +25,7 @@ import {
 } from "@opesvault/domain";
 import { formatBrDate, formatMonth, formatValue, type ChartUnit, type SelectOption } from "@opesvault/ui";
 import { encodeRef } from "../../data/links.ts";
-import { balanceAccounts, categoryItems } from "../../dialogs/account_choices.ts";
+import { balanceAccounts, categoryItems, memberItems } from "../../dialogs/account_choices.ts";
 import { csvRow } from "../../data/csv.ts";
 
 type Chart = charts.data.Chart;
@@ -143,7 +143,7 @@ export function scopeChoices(ledger: Ledger, key: ReportKey, end: YearMonth): Sc
     items = balanceAccounts(ledger);
   } else if (kind === "member") {
     all = "Projeto inteiro";
-    items = [...ledger.members.values()].filter((m) => m.active).map((m) => ({ id: m.id, label: m.name }));
+    items = memberItems(ledger);
   } else if (kind === "category") {
     all = "Todas as categorias";
     items = categoryItems(ledger, AccountType.EXPENSE);

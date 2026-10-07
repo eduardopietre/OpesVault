@@ -18,6 +18,7 @@ import {
   useFormAct,
 } from "./livro_form.tsx";
 import { TaxIdField, readTaxId } from "./tax_fields.tsx";
+import { memberItems } from "./account_choices.ts";
 
 export interface MemberTaxDialogProps {
   open: boolean;
@@ -40,9 +41,9 @@ export function MemberTaxDialog({ open, onClose, memberId, onDone }: MemberTaxDi
   const options = useMemo<SelectOption[]>(
     () => [
       { id: NONE, label: "Faz a própria declaração" },
-      ...[...ledger.members.values()]
-        .filter((m) => m.id !== memberId && m.active)
-        .map((m) => ({ id: m.id, label: `Dependente de ${m.name}` })),
+      ...memberItems(ledger)
+        .filter((m) => m.id !== memberId)
+        .map((m) => ({ id: m.id, label: `Dependente de ${m.label}` })),
     ],
     [ledger, memberId],
   );

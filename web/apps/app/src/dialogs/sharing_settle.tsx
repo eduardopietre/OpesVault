@@ -8,6 +8,7 @@ import { useMemo, useState } from "react";
 import { useWorkspace } from "../data/react.tsx";
 import { FormDialog, FormGrid, FullRow, useFormAct } from "./livro_form.tsx";
 import { dateText, editableMoney, readDate, readMoney } from "./form_readers.ts";
+import { memberItems } from "./account_choices.ts";
 
 export interface SharingSettleDialogProps {
   open: boolean;
@@ -29,10 +30,7 @@ export function SharingSettleDialog({
   const workspace = useWorkspace();
   const ledger = workspace.ledger;
   const act = useFormAct();
-  const members = useMemo(
-    () => [...ledger.members.values()].filter((m) => m.active).map((m) => ({ id: m.id, label: m.name })),
-    [ledger],
-  );
+  const members = useMemo(() => memberItems(ledger), [ledger]);
   const has = (id: Id | null) => id !== null && members.some((m) => m.id === id);
   const firstDebtor = has(debtorId) ? (debtorId as Id) : (members[0]?.id ?? "");
   // someone else, by default (desktop)

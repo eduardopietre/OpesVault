@@ -23,6 +23,7 @@ import { useCallback, useState, type ReactNode } from "react";
 import { useWorkspace } from "../data/react.tsx";
 import { READ_ONLY_TIP } from "../data/read_only.ts";
 import { dateText, readDate } from "./form_readers.ts";
+import { memberItems } from "./account_choices.ts";
 
 type Session = sessions.Session;
 
@@ -182,10 +183,7 @@ export function competenceChoice(value: YearMonth | null): string {
 
 /** Members people can pick: the active ones, and `keep` even if it was deactivated. */
 export function memberOptions(ledger: Ledger, keep: string | null = null, none = "(projeto)"): SelectOption[] {
-  return [
-    { id: NONE, label: none },
-    ...[...ledger.members.values()].filter((m) => m.active || m.id === keep).map((m) => ({ id: m.id, label: m.name })),
-  ];
+  return [{ id: NONE, label: none }, ...memberItems(ledger, keep)];
 }
 
 export function memberFromChoice(id: string): string | null {

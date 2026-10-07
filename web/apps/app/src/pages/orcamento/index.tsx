@@ -2,7 +2,18 @@
  * Orçamento (desktop `ui/pages/budget_page.py`): planned, actual by competence and remaining per expense
  * category and month, the plan over time, and the month against the recent average and a year ago.
  */
-import { Dec, charts, dom, formatBrl, queries, ymAdd, ymOf, ymStr, type YearMonth } from "@opesvault/domain";
+import {
+  Dec,
+  charts,
+  dom,
+  formatBrl,
+  queries,
+  ymAdd,
+  ymOf,
+  ymStr,
+  type YearMonth,
+  AccountType,
+} from "@opesvault/domain";
 import {
   Button,
   ChartPanel,
@@ -34,7 +45,6 @@ import {
   SUGGESTION_MONTHS,
   applyGrid,
   averageSpending,
-  expenseCategoryOptions,
   gridRows,
   type GridChange,
   type GridRow,
@@ -50,6 +60,7 @@ import { useLock } from "../../data/read_only.ts";
 import { useDialog } from "../../data/dialog.ts";
 import { cents } from "../../data/money.ts";
 import { editableMoney } from "../../dialogs/form_readers.ts";
+import { categoryItems } from "../../dialogs/account_choices.ts";
 
 type Row = dom.budget.BudgetRow;
 
@@ -441,7 +452,7 @@ export function Page() {
           open={one.open}
           onOpenChange={(open) => !open && one.close()}
           monthLabel={lower(one.spec.month)}
-          options={expenseCategoryOptions(workspace.ledger)}
+          options={categoryItems(workspace.ledger, AccountType.EXPENSE)}
           categoryId={one.spec.categoryId}
           initialAmount={one.spec.amount}
           onSave={saveOne}

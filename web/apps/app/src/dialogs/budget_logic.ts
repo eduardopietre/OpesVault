@@ -1,19 +1,10 @@
 /**
- * What the budget dialogs share, free of React: the expense categories as options, amounts as the field
- * reads and writes them, and the grid's differences (desktop `BudgetGridDialog.values/apply`).
+ * What the budget dialogs share, free of React: the suggested plan and the grid's rows and differences
+ * (desktop `BudgetGridDialog.values/apply`).
  */
 import { AccountType, Dec, dom, queries, ymAdd, type Ledger, type YearMonth } from "@opesvault/domain";
-import { type SelectOption } from "@opesvault/ui";
 import { editableMoney, readAmount } from "./form_readers.ts";
-
-/** "Casa › Aluguel": the expense categories with their parent, in alphabetical order (desktop `category_items`). */
-export function expenseCategoryOptions(ledger: Ledger): SelectOption[] {
-  const options = ledger.categories(AccountType.EXPENSE).map((account) => {
-    const parent = account.parent_id ? ledger.accounts.get(account.parent_id) : undefined;
-    return { id: account.id, label: parent ? `${parent.name} › ${account.name}` : account.name };
-  });
-  return options.sort((a, b) => a.label.localeCompare(b.label, "pt-BR"));
-}
+import { categoryItems } from "./account_choices.ts";
 
 export interface GridRow {
   readonly categoryId: string;
@@ -55,7 +46,7 @@ export function gridRows(
   spending: ReadonlyMap<string, Dec>,
   suggested?: ReadonlyMap<string, Dec>,
 ): GridRow[] {
-  return expenseCategoryOptions(ledger).map<GridRow>((option) => {
+  return categoryItems(ledger, AccountType.EXPENSE).map<GridRow>((option) => {
     const line = dom.budget.lineFor(ledger, option.id, month);
     const before = dom.budget.lineFor(ledger, option.id, previousMonth);
     const suggestion = suggested?.get(option.id);

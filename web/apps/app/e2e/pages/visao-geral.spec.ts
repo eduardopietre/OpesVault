@@ -6,8 +6,8 @@ import AxeBuilder from "@axe-core/playwright";
 import { animationsDone } from "../helpers.ts";
 import { expect, test, type Page } from "@playwright/test";
 import {
-  SCHEMES,
-  SIZES,
+  TEST_SCHEMES,
+  TEST_SIZES,
   expectNoHorizontalOverflow,
   openDemo,
   recordAddresses,
@@ -43,8 +43,8 @@ async function stubPrint(page: Page) {
 
 const prints = (page: Page) => page.evaluate(() => (window as unknown as { __prints: number }).__prints);
 
-for (const size of SIZES) {
-  for (const scheme of SCHEMES) {
+for (const size of TEST_SIZES) {
+  for (const scheme of TEST_SCHEMES) {
     test.describe(`visão geral ${size.width}x${size.height} ${scheme}`, () => {
       test.use({ viewport: size, colorScheme: scheme });
 

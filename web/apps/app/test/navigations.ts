@@ -31,3 +31,17 @@ export async function wentTo(
     expect(seen).toContainEqual({ pathname, search: exact ? search : expect.objectContaining(search) }),
   );
 }
+
+/**
+ * Waits until the address settles on exactly `search`: what a page keeps in it (the month, a year) or `{}` once
+ * the destination consumed `ref`/`act`. It checks an effect on the address, never where a link went: that is
+ * `wentTo`, since the destination may clear the address before the test reads it.
+ */
+export async function addressSettles(router: AnyRouter, search: Record<string, unknown>): Promise<void> {
+  await waitFor(() => expect(router.state.location.search).toEqual(search));
+}
+
+/** The search the address holds now, for checks `addressSettles` does not cover (a key that must be gone). */
+export function searchNow(router: AnyRouter): Record<string, unknown> {
+  return router.state.location.search as Record<string, unknown>;
+}

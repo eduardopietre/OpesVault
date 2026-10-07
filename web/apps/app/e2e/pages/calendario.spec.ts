@@ -5,7 +5,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { animationsDone } from "../helpers.ts";
 import { expect, test, type Page } from "@playwright/test";
-import { SCHEMES, SIZES, expectNoHorizontalOverflow, openDemo, settle, watchErrors } from "../helpers.ts";
+import { TEST_SCHEMES, TEST_SIZES, expectNoHorizontalOverflow, openDemo, settle, watchErrors } from "../helpers.ts";
 
 async function audit(page: Page, label: string) {
   await settle(page, 300);
@@ -24,8 +24,8 @@ async function audit(page: Page, label: string) {
   ).toEqual([]);
 }
 
-for (const size of SIZES) {
-  for (const scheme of SCHEMES) {
+for (const size of TEST_SIZES) {
+  for (const scheme of TEST_SCHEMES) {
     test.describe(`calendário ${size.width}x${size.height} ${scheme}`, () => {
       test.use({ viewport: size, colorScheme: scheme });
 

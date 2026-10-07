@@ -7,7 +7,7 @@ import { downloadFile } from "../../src/pages/livro/export.ts";
 import { documentRows, fileSize, summaryLine, usedBy } from "../../src/pages/documentos/rows.ts";
 import { DocumentUnavailable } from "../../src/data/workspace.ts";
 import { flat, openAt, type User } from "./sharing_docs_harness.tsx";
-import { navigations, wentTo } from "../navigations.ts";
+import { addressSettles, navigations, wentTo } from "../navigations.ts";
 
 // happy-dom has no canvas: pdf.js is replaced by a drawing that reports its pages and asks for a password.
 vi.mock("../../src/data/pdf_render.ts", async () => {
@@ -378,7 +378,7 @@ describe("Documentos", () => {
     const id = workspace.session.documents.find((d) => d.meta.original_name === "extrato.csv")!.meta.id;
     await reactAct(() => router.navigate({ to: "/documentos", search: { ref: id } }));
     expect(await screen.findByText("Arquivo estruturado (CSV/OFX): sem visualização de página.")).toBeTruthy();
-    await waitFor(() => expect(router.state.location.search).toEqual({}));
+    await addressSettles(router, {});
     await reactAct(() => router.navigate({ to: "/documentos", search: { ref: "documento:sumiu" } }));
     expect(await screen.findByText("Esse documento não existe mais.")).toBeTruthy();
   });

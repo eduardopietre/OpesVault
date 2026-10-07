@@ -29,7 +29,8 @@ Web (branch `web`, pasta `web/`; ver `web/README.md` e `web/PORTING.md`):
 ```
 cd web && pnpm install && pnpm check              # formatação, lint, tipos e testes da web
 pnpm dev                                          # app com serviços falsos e projeto de demonstração
-pnpm --filter @opesvault/app e2e                  # Playwright (Chromium já instalado; nunca "playwright install")
+pnpm --filter @opesvault/app e2e                  # Playwright rápido, só 1280×800 e tema claro (Chromium já instalado; nunca "playwright install")
+pnpm --filter @opesvault/app e2e:full             # o mesmo nos cinco tamanhos, claro e escuro (E2E_FULL=1), antes de fechar uma fase
 pnpm --filter @opesvault/app perf                 # desempenho com 50 mil lançamentos (build/perf/results.json, ~6 min)
 docker compose up --build                         # servidor + app atrás do Caddy (web/docker-compose.yml)
 uv run python -m scripts.golden.generate [NOME]   # arquivos de referência do domínio Python para a paridade

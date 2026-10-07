@@ -301,7 +301,7 @@ Cada fase tem critério de saída verificável. Nenhuma tela entra antes de o do
 - **Saída:** as linhas da §6 concluídas; importar, revisar e aprovar um extrato sintético funciona de ponta a ponta; um backup exportado é restaurado idêntico.
 
 ### W12 — Qualidade e paridade final
-- Teste de todas as telas da web (Playwright, sucessor do `test_every_screen.py`): aciona cada botão e item de menu com o projeto de demonstração e confere erros, passos de desfazer, estado sem projeto (TA-31) e transbordamento nas quatro faixas.
+- Teste de todas as telas da web (Playwright, sucessor do `test_every_screen.py`): aciona cada botão e item de menu com o projeto de demonstração e confere erros, passos de desfazer, estado sem projeto (TA-31) e transbordamento nas quatro faixas. O `pnpm --filter @opesvault/app e2e` roda só em 1280×800 e no tema claro (rápido, para o dia a dia); o `e2e:full` (`E2E_FULL=1`) repete os testes em todos os tamanhos, claro e escuro, e roda antes de fechar uma fase. Os testes do que só existe no celular fixam 390×844, e a auditoria de acessibilidade (`a11y.spec.ts`) cobre os dois temas em 1280 e 390: esses rodam nos dois.
 - Matriz TA-01…TA-36 completa na coluna web.
 - Desempenho: abrir um projeto com 50 mil lançamentos em menos de 3 s num notebook comum; memória da aba abaixo de 500 MiB sem anexos abertos.
 - Acessibilidade: axe sem violações; navegação completa só pelo teclado; teste com NVDA (manual, com o usuário).

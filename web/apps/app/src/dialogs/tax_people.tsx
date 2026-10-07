@@ -3,7 +3,7 @@
  * member, edited one at a time in the member's tax data.
  */
 import { sortedBy, tax, type Id, type Ledger } from "@opesvault/domain";
-import { Button, DataTable, ElidedText, type DataColumn } from "@opesvault/ui";
+import { Button, DataTable, ElidedText, type DataColumn, fitHeight } from "@opesvault/ui";
 import { useState } from "react";
 import { useLedger } from "../data/react.tsx";
 import { FormDialog, Caption } from "./livro_form.tsx";
@@ -81,7 +81,7 @@ export function PeopleDialog({ open, onClose }: PeopleDialogProps) {
           onSelect={setPicked}
           onActivate={edit}
           cardTitle={(r) => text(r.name)}
-          height={`${Math.min(Math.max(rows.length, 1), 8) * 36 + 38}px`}
+          height={fitHeight(rows.length, 8)}
         />
         <div className="flex flex-wrap items-center gap-3">
           <Button onClick={() => edit()} disabled={selected === null}>

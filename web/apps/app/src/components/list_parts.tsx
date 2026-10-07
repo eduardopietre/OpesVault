@@ -7,9 +7,10 @@ import {
   DataTable,
   EmptyState,
   useElementWidth,
-  useMediaQuery,
   type ButtonProps,
   type DataTableProps,
+  fitHeight,
+  usePhone,
 } from "@opesvault/ui";
 import { TriangleAlert } from "lucide-react";
 import { useEffect, useMemo, useRef, type ReactNode } from "react";
@@ -45,12 +46,6 @@ export function EditButton(props: ButtonProps) {
   return <Button {...props} disabled={props.disabled || locked} title={props.title ?? tip} />;
 }
 
-/** The height of a short table: its rows, up to `max`, plus the header; free on phones (cards). */
-export function useTableHeight(count: number, max: number): string {
-  const phone = useMediaQuery("(max-width: 639px)");
-  return phone ? "none" : `${Math.min(Math.max(count, 1), max) * 36 + 38}px`;
-}
-
 /** A work table that fits its rows and shows the columns its room allows (`columns.ts`). */
 export function ListTable<T extends object>({
   max = 10,
@@ -58,7 +53,7 @@ export function ListTable<T extends object>({
   ...props
 }: Omit<DataTableProps<T>, "height" | "columns"> & { max?: number; columns: readonly TierColumn<T>[] }) {
   const [measure, width] = useElementWidth<HTMLDivElement>();
-  const height = useTableHeight(props.rows.length, max);
+  const height = fitHeight(props.rows.length, max, usePhone());
   const fitted = useMemo(() => fitColumns(columns, width), [columns, width]);
   return (
     <div ref={measure} className="min-w-0">

@@ -5,15 +5,13 @@
  * add up to the container's width, so a table never scrolls sideways inside its box. On a phone the table is a
  * list of cards, which grow downward: more tiers are shown there.
  */
-import type { DataColumn } from "@opesvault/ui";
+import { CARDS_BELOW, type DataColumn } from "@opesvault/ui";
 
 export interface TierColumn<T> extends Omit<DataColumn<T>, "priority"> {
   /** 1: always; higher tiers are dropped first when the table is narrow. */
   tier?: number;
 }
 
-/** Below this width `DataTable` becomes a list of cards. */
-export const CARDS_BELOW = 640;
 /** The highest tier a card shows. */
 export const CARD_TIERS = 3;
 

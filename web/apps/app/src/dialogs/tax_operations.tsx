@@ -4,7 +4,7 @@
  * stays open while each one is done.
  */
 import { Dec, DomainError, cashDate, dom, formatBrl, type Id, type Ledger, tax } from "@opesvault/domain";
-import { Button, DataTable, ElidedText, type DataColumn } from "@opesvault/ui";
+import { Button, DataTable, ElidedText, type DataColumn, fitHeight } from "@opesvault/ui";
 import { useRef, useState } from "react";
 import { useLedger, useWorkspace } from "../data/react.tsx";
 import { Caption, FormDialog, useFormAct } from "./livro_form.tsx";
@@ -143,7 +143,7 @@ export function OperationsDialog({ open, onClose, operationIds, mode }: Operatio
           onSelect={setPicked}
           onActivate={(id) => (workspace.readOnly ? undefined : start(id))}
           cardTitle={(r) => text(r.description)}
-          height={`${Math.min(Math.max(rows.length, 1), 10) * 36 + 38}px`}
+          height={fitHeight(rows.length, 10)}
           empty={<p className="px-3 py-6 text-center text-body text-secondary">Nenhum lançamento.</p>}
         />
         <div className="flex flex-wrap items-center gap-3">

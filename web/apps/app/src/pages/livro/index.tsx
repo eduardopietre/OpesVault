@@ -45,6 +45,7 @@ import {
   type MenuEntry,
   saveFile,
   CSV_TYPE,
+  CARDS_BELOW,
 } from "@opesvault/ui";
 import { AnimatePresence, motion } from "motion/react";
 import {
@@ -117,7 +118,7 @@ export function Page() {
   const [details, setDetails] = useState<{ band: string; open: boolean } | null>(null);
   const host = useDialog<DialogSpec>();
   const [measureTable, tableWidth] = useElementWidth<HTMLDivElement>();
-  const cards = tableWidth > 0 && tableWidth < 640;
+  const cards = tableWidth > 0 && tableWidth < CARDS_BELOW;
   const phone = band === "phone";
   const [filtersOpen, setFiltersOpen] = useState(false);
 

@@ -19,6 +19,11 @@ export function useMediaQuery(query: string): boolean {
   );
 }
 
+/** A phone-wide window (below the tablet band). */
+export function usePhone(): boolean {
+  return useMediaQuery(`(max-width: ${BAND.tablet - 1}px)`);
+}
+
 /** The viewport band (phone < 640 ≤ tablet < 1024 ≤ medium < 1440 ≤ wide). */
 export function useBand(): Band {
   const wide = useMediaQuery(`(min-width: ${BAND.wide}px)`);

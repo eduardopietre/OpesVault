@@ -12,7 +12,7 @@ import {
   ruleRef,
   summaryLine,
 } from "../../src/pages/recorrencias/rows.ts";
-import { tableHeight } from "../../src/data/table_height.ts";
+import { fitHeight as tableHeight } from "@opesvault/ui";
 import {
   accountId,
   flat,

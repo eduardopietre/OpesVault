@@ -15,16 +15,16 @@ import {
   Section,
   confirm,
   notify,
-  useMediaQuery,
   useMotionPreset,
   useStoredFlag,
+  fitHeight,
+  usePhone,
 } from "@opesvault/ui";
 import { Repeat } from "lucide-react";
 import { motion } from "motion/react";
 import { useRef, useState } from "react";
 import { useAct, useLedger, useWorkspace } from "../../data/react.tsx";
 import { useGoTo, useReveal } from "../../data/navigation.ts";
-import { tableHeight } from "../../data/table_height.ts";
 import { RecurrenceLinkDialog } from "../../dialogs/recurrence_link.tsx";
 import { RecurrenceRuleDialog } from "../../dialogs/recurrence_rule.tsx";
 import { useUndo } from "../../shell/undo.tsx";
@@ -54,7 +54,7 @@ export function Page() {
   const goTo = useGoTo();
   const { undo } = useUndo();
   const preset = useMotionPreset();
-  const phone = useMediaQuery("(max-width: 639px)");
+  const phone = usePhone();
   const { locked } = useLock();
   const today = workspace.today();
   const [start, end] = forecastWindow(today);
@@ -261,7 +261,7 @@ export function Page() {
             setPickRule(id);
             if (!locked) edit(id);
           }}
-          height={tableHeight(commitments.length, 10, phone)}
+          height={fitHeight(commitments.length, 10, phone)}
         />
       </Collapsible>
     </motion.div>
@@ -289,7 +289,7 @@ export function Page() {
             setPickCandidate(id);
             if (!locked) createFromCandidate(id);
           }}
-          height={tableHeight(candidates.length, 8, phone)}
+          height={fitHeight(candidates.length, 8, phone)}
         />
       </Collapsible>
     </motion.div>
@@ -336,7 +336,7 @@ export function Page() {
                   setPickRule(id);
                   if (!locked) edit(id);
                 }}
-                height={tableHeight(rules.length, 8, phone)}
+                height={fitHeight(rules.length, 8, phone)}
                 empty={<p className="px-4 py-6 text-center text-body text-secondary">Nenhuma regra cadastrada.</p>}
               />
             </Section>
@@ -382,7 +382,7 @@ export function Page() {
                     const forecast = forecasts.find((f) => forecastId(f.ruleId, f.dueOn) === id);
                     if (forecast && !locked) startLink(forecast);
                   }}
-                  height={tableHeight(forecasts.length, 12, phone)}
+                  height={fitHeight(forecasts.length, 12, phone)}
                   empty={
                     <p className="px-4 py-6 text-center text-body text-secondary">
                       Nenhuma previsão no período. {FORECAST_LABELS.pending} aparece aqui quando houver uma regra ativa.

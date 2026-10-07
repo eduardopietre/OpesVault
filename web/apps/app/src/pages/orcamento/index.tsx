@@ -20,9 +20,10 @@ import {
   formatDecimalBR,
   formatMonth,
   notify,
-  useMediaQuery,
   useMotionPreset,
   type DataColumn,
+  fitHeight,
+  usePhone,
 } from "@opesvault/ui";
 import { CircleAlert, CircleCheck, TriangleAlert } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
@@ -163,7 +164,7 @@ export function Page() {
   const goTo = useGoTo();
   const { undo } = useUndo();
   const preset = useMotionPreset();
-  const phone = useMediaQuery("(max-width: 639px)");
+  const phone = usePhone();
   const [month, chooseMonth] = useSharedMonth();
   const monthKey = ymStr(month);
   const previous = ymAdd(month, -1);
@@ -326,8 +327,6 @@ export function Page() {
     { label: "Gasto fora do plano", value: status.unbudgeted, note: "Despesas do mês em categorias sem orçamento" },
   ];
 
-  const tableHeight = phone ? "none" : `${Math.min(status.rows.length, 16) * 36 + 38}px`;
-
   return (
     <div className="flex flex-col gap-6">
       {header}
@@ -367,7 +366,7 @@ export function Page() {
                 setPick(id);
                 if (!locked) define(id);
               }}
-              height={tableHeight}
+              height={fitHeight(status.rows.length, 16, phone)}
             />
             <AnimatePresence initial={false}>
               {selected ? (

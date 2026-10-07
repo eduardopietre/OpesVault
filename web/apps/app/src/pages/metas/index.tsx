@@ -14,8 +14,9 @@ import {
   PageHeader,
   notify,
   useElementWidth,
-  useMediaQuery,
   useMotionPreset,
+  fitHeight,
+  usePhone,
 } from "@opesvault/ui";
 import { Goal as GoalIcon } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
@@ -23,7 +24,6 @@ import { useMemo, useRef, useState } from "react";
 import { toChartData } from "../../data/chart_data.ts";
 import { useLedger, useWorkspace } from "../../data/react.tsx";
 import { useReveal } from "../../data/navigation.ts";
-import { tableHeight } from "../../data/table_height.ts";
 import { GoalDialog } from "../../dialogs/goal_dialog.tsx";
 import { ReasonDialog } from "../../dialogs/livro_prompts.tsx";
 import { goalColumns } from "./columns.tsx";
@@ -44,7 +44,7 @@ interface EditState {
 export function Page() {
   const workspace = useWorkspace();
   const preset = useMotionPreset();
-  const phone = useMediaQuery("(max-width: 639px)");
+  const phone = usePhone();
   const [measure, tableWidth] = useElementWidth<HTMLElement>();
   const columns = useMemo(() => goalColumns(tableWidth), [tableWidth]);
   const { locked } = useLock();
@@ -164,7 +164,7 @@ export function Page() {
                 const row = rows.find((r) => r.id === id);
                 if (row && !locked) openEdit(row.goal);
               }}
-              height={tableHeight(rows.length, 8, phone)}
+              height={fitHeight(rows.length, 8, phone)}
             />
             <p className="mt-3 text-caption text-secondary">
               Por mês: quanto falta dividido pelos meses até o prazo. Ritmo recente: quanto o valor mudou por mês, em

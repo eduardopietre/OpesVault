@@ -43,12 +43,20 @@ export async function signIn(
 
 /** Asks the browser not to evict this site's storage (IndexedDB) under pressure. */
 export async function requestPersistentStorage(): Promise<boolean> {
+  return (await persistentStorage()) === "persisted";
+}
+
+/**
+ * Whether the browser keeps this site's storage under pressure, asking for it when it is not yet granted:
+ * "denied" means it may erase IndexedDB, and with it changes not yet sent; "unavailable" when it cannot say.
+ */
+export async function persistentStorage(): Promise<"persisted" | "denied" | "unavailable"> {
   const storage = (globalThis as { navigator?: { storage?: StorageManager } }).navigator?.storage;
-  if (storage === undefined || typeof storage.persist !== "function") return false;
+  if (storage === undefined || typeof storage.persist !== "function") return "unavailable";
   try {
-    if (typeof storage.persisted === "function" && (await storage.persisted())) return true;
-    return await storage.persist();
+    if (typeof storage.persisted === "function" && (await storage.persisted())) return "persisted";
+    return (await storage.persist()) ? "persisted" : "denied";
   } catch {
-    return false;
+    return "unavailable";
   }
 }

@@ -34,6 +34,7 @@ import { HelpDialog } from "./HelpDialog.tsx";
 import { addDroppedFiles } from "../data/dropped_files.ts";
 import { takeEntryFocus } from "./entry_focus.ts";
 import { useShortcuts } from "./shortcuts.ts";
+import { StorageWarning } from "./StorageWarning.tsx";
 import { TopBar } from "./TopBar.tsx";
 import { useUndo } from "./undo.tsx";
 import { Wordmark } from "./Logo.tsx";
@@ -280,6 +281,7 @@ export function AppShell() {
         onOperator={actions.setOperator}
         onTheme={setTheme}
       />
+      <StorageWarning pending={session.pending} atRisk={session.storageAtRisk} />
       <div className="flex min-h-0 flex-1">
         {rail ? (
           <div

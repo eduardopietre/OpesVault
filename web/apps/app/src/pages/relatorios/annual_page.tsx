@@ -4,7 +4,7 @@
  * React from the same data as the domain's HTML (`annual.ts`); the sheet is always light, like paper.
  */
 import { formatBrl } from "@opesvault/domain";
-import { Button, applyTheme, notify } from "@opesvault/ui";
+import { Button, applyTheme, notify, saveFile, HTML_TYPE } from "@opesvault/ui";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { ArrowLeft, FileDown, Printer } from "lucide-react";
 import { useEffect, useRef } from "react";
@@ -12,7 +12,6 @@ import { chooseMonth, useSharedMonth } from "../../data/month.ts";
 import { useLedger, useOptionalWorkspace } from "../../data/react.tsx";
 import type { Workspace } from "../../data/workspace.ts";
 import { useTheme } from "../../theme.tsx";
-import { saveTextFile } from "../../data/save_file.ts";
 import { ReportTableView } from "../visao-geral/report_page.tsx";
 import { annualFileName, annualReportData, annualReportFile } from "./annual.ts";
 import type { AnnualSearch } from "./annual_search.ts";
@@ -61,7 +60,7 @@ function AnnualSheet({ workspace }: { workspace: Workspace }) {
     void navigate({ to: "/relatorios", search: { ref: "annual" } });
   };
   const download = () => {
-    saveTextFile(annualFileName(year, "html"), annualReportFile(workspace.ledger, year));
+    saveFile(annualFileName(year, "html"), annualReportFile(workspace.ledger, year), HTML_TYPE);
     notify(`Fechamento de ${year} salvo como arquivo HTML.`);
   };
 

@@ -13,15 +13,16 @@ import {
   confirm,
   notify,
   type DataColumn,
+  saveFile,
 } from "@opesvault/ui";
 import { useRef, useState } from "react";
 import { useGoTo, useReveal } from "../../data/navigation.ts";
 import { useLedger, useWorkspace } from "../../data/react.tsx";
 import { TableBox } from "../../data/table_box.tsx";
 import { useUndo } from "../../shell/undo.tsx";
-import { downloadFile } from "../livro/export.ts";
 import { DocumentPanel } from "./panel.tsx";
 import { documentRows, fileSize, summaryLine, type DocumentRow, type ReceiptUse } from "./rows.ts";
+import { exportUnencrypted, NOT_ENCRYPTED } from "../../data/export_file.ts";
 
 const day = (date: IsoDate | null) => (date ? formatDateBr(date) : "—");
 
@@ -150,14 +151,13 @@ export function Page() {
   };
 
   const save = async (row: DocumentRow, bytes: Uint8Array, kind: keyof typeof MIME) => {
-    const ok = await confirm({
+    await exportUnencrypted({
       title: "Salvar o original sem criptografia?",
       text: `${exporting.WARNING} O arquivo “${row.name}” (${fileSize(row.size)}) vai para a pasta de downloads deste aparelho.`,
       confirmLabel: "Salvar o original",
+      save: () => saveFile(row.name, bytes, MIME[kind]),
+      done: `Arquivo salvo. ${NOT_ENCRYPTED}`,
     });
-    if (!ok) return;
-    downloadFile(row.name, bytes, MIME[kind]);
-    notify("Arquivo salvo. Guarde-o com cuidado: ele não é cifrado.");
   };
 
   const context = summaryLine(rows);

@@ -4,12 +4,11 @@
  * to save the file. The bytes only ever live in this tab.
  */
 import { DomainError, dom, type Id } from "@opesvault/domain";
-import { Button, Dialog, Skeleton, useElementWidth } from "@opesvault/ui";
+import { Button, Dialog, Skeleton, useElementWidth, saveFile } from "@opesvault/ui";
 import { Download } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { renderPdf, type RenderedPdf } from "../../data/pdf_render.ts";
 import { useWorkspace } from "../../data/react.tsx";
-import { downloadFile } from "./export.ts";
 
 export interface ReceiptDialogProps {
   open: boolean;
@@ -102,7 +101,7 @@ export function ReceiptDialog({ open, onClose, documentId }: ReceiptDialogProps)
           <Button
             icon={<Download />}
             disabled={loaded.state !== "ready"}
-            onClick={() => loaded.state === "ready" && downloadFile(name, loaded.bytes, mime(loaded.kind))}
+            onClick={() => loaded.state === "ready" && saveFile(name, loaded.bytes, mime(loaded.kind))}
           >
             Salvar arquivo
           </Button>

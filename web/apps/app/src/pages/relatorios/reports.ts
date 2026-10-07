@@ -26,6 +26,7 @@ import {
 import { formatBrDate, formatMonth, formatValue, type ChartUnit, type SelectOption } from "@opesvault/ui";
 import { encodeRef } from "../../data/links.ts";
 import { balanceAccounts, categoryItems } from "../../dialogs/account_choices.ts";
+import { csvRow } from "../../data/csv.ts";
 
 type Chart = charts.data.Chart;
 type Point = charts.data.Point;
@@ -378,7 +379,6 @@ export function ledgerRef(ledger: Ledger, key: ReportKey, chart: Chart, index: n
 /** The table of values as CSV (';', decimals with '.', months as AAAA-MM), like the Livro's export. */
 export function valuesCsv(chart: Chart): string {
   const [headers, rows] = charts.data.tableRows(chart);
-  const field = (value: string) => (/[;"\n\r]/.test(value) ? `"${value.replaceAll('"', '""')}"` : value);
   const lines = [
     ["item", ...headers.map(exporting.spreadsheetText)],
     ...rows.map((row) => [
@@ -386,7 +386,7 @@ export function valuesCsv(chart: Chart): string {
       ...row.values.map((value) => (value === null ? "" : value.toFixed())),
     ]),
   ];
-  return String.fromCharCode(0xfeff) + lines.map((line) => line.map(field).join(";")).join("\n") + "\n";
+  return String.fromCharCode(0xfeff) + lines.map(csvRow).join("");
 }
 
 export const csvFileName = (key: ReportKey) => `valores-${key}.csv`;

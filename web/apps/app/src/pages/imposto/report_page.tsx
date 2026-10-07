@@ -5,7 +5,7 @@
  * paper, whatever the theme of the screen. It carries CPFs and CNPJs: it leaves the project's protection only
  * when the person prints or downloads it.
  */
-import { Button, applyTheme, cn, notify } from "@opesvault/ui";
+import { Button, applyTheme, cn, notify, saveFile, HTML_TYPE } from "@opesvault/ui";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { ArrowLeft, FileDown, Printer } from "lucide-react";
 import { useEffect, useRef } from "react";
@@ -13,7 +13,6 @@ import { useLedger, useOptionalWorkspace } from "../../data/react.tsx";
 import type { Workspace } from "../../data/workspace.ts";
 import { useTheme } from "../../theme.tsx";
 import { cellText, type ReportTable } from "../visao-geral/report.ts";
-import { saveTextFile } from "../../data/save_file.ts";
 import { taxReportData, taxReportFile, taxReportFileName, type ReportSection } from "./report.ts";
 import type { TaxReportSearch } from "./report_search.ts";
 
@@ -166,7 +165,7 @@ function ReportSheet({ workspace }: { workspace: Workspace }) {
   const back = () => void navigate({ to: "/imposto-de-renda", search: { ref: `year:${year}` } });
   const download = () => {
     const html = taxReportFile(workspace.ledger, year, today, declarant);
-    saveTextFile(taxReportFileName(year, "html"), html);
+    saveFile(taxReportFileName(year, "html"), html, HTML_TYPE);
     notify(`Relatório de ${year} salvo como arquivo HTML.`);
   };
 

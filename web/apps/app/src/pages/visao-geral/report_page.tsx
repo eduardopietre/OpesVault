@@ -5,7 +5,7 @@
  * paper, whatever the theme of the screen.
  */
 import { ymParse, type Id, type YearMonth } from "@opesvault/domain";
-import { Button, applyTheme, cn, notify } from "@opesvault/ui";
+import { Button, applyTheme, cn, notify, saveFile, HTML_TYPE } from "@opesvault/ui";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { ArrowLeft, FileDown, Printer } from "lucide-react";
 import { useEffect, useMemo, useRef } from "react";
@@ -14,7 +14,6 @@ import type { Workspace } from "../../data/workspace.ts";
 import { chooseMonth, useSharedMonth } from "../../data/month.ts";
 import { useTheme } from "../../theme.tsx";
 import { cellText, monthlyReportData, monthlyReportFile, reportFileName, type ReportTable } from "./report.ts";
-import { saveTextFile } from "../../data/save_file.ts";
 import type { ReportSearch } from "./report_search.ts";
 
 function monthOf(text: string | undefined, fallback: YearMonth): YearMonth {
@@ -126,7 +125,7 @@ function ReportSheet({ workspace }: { workspace: Workspace }) {
   };
   const download = () => {
     const html = monthlyReportFile(workspace.ledger, month, today, memberId);
-    saveTextFile(reportFileName(month, "html"), html);
+    saveFile(reportFileName(month, "html"), html, HTML_TYPE);
     notify(`Relatório de ${data.monthTitle} salvo como arquivo HTML.`);
   };
 

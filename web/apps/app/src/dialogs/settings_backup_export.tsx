@@ -3,10 +3,9 @@
  * documents, sealed in this browser with the project password (asked again, so a file is never protected by a
  * mistyped one). The result is offered as a download; nothing is uploaded.
  */
-import { Button, TextField } from "@opesvault/ui";
+import { Button, TextField, saveFile } from "@opesvault/ui";
 import { Download } from "lucide-react";
 import { useState } from "react";
-import { saveBlob } from "../data/download.ts";
 import type { BackupFile, BackupProgress } from "../services/types.ts";
 import { useServices } from "../session.tsx";
 import { Caption } from "./livro_form.tsx";
@@ -68,7 +67,7 @@ export function ExportBackupDialog({ open, onClose, onDone }: ExportBackupDialog
         closeOnly
         onConfirm={close}
         extraActions={
-          <Button icon={<Download className="size-4" />} onClick={() => saveBlob(file.fileName, file.blob)}>
+          <Button icon={<Download className="size-4" />} onClick={() => saveFile(file.fileName, file.blob)}>
             Baixar de novo
           </Button>
         }
@@ -110,7 +109,7 @@ export function ExportBackupDialog({ open, onClose, onDone }: ExportBackupDialog
       onConfirm={async () => {
         const made = await services.exportBackup(password, setProgress);
         setPassword("");
-        saveBlob(made.fileName, made.blob);
+        saveFile(made.fileName, made.blob);
         onDone(made);
         setFile(made);
       }}

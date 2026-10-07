@@ -13,10 +13,11 @@ import {
   MonthPicker,
   PageHeader,
   Select,
-  confirm,
   notify,
   useMediaQuery,
   useMotionPreset,
+  saveFile,
+  CSV_TYPE,
 } from "@opesvault/ui";
 import { useNavigate } from "@tanstack/react-router";
 import { Download, FileText, ImageDown, ListTree } from "lucide-react";
@@ -26,7 +27,6 @@ import { toChartData } from "../../data/chart_data.ts";
 import { useSharedMonth } from "../../data/month.ts";
 import { useGoTo, useReveal } from "../../data/navigation.ts";
 import { useLedger, useWorkspace } from "../../data/react.tsx";
-import { downloadFile } from "../livro/export.ts";
 import { ReportList } from "./report_list.tsx";
 import {
   DEFAULT_PERIOD,
@@ -48,6 +48,7 @@ import {
   type Params,
   type ReportKey,
 } from "./reports.ts";
+import { exportUnencrypted } from "../../data/export_file.ts";
 
 /** Reports that do not read the shared month (they start today or look at everything). */
 const WITHOUT_MONTH: ReadonlySet<ReportKey> = new Set(["composition", "tags", "projected_balance"]);
@@ -108,26 +109,27 @@ export function Page() {
 
   const askImage = async () => {
     if (empty) return;
-    const ok = await confirm({
+    await exportUnencrypted({
       title: "Exportar imagem sem criptografia?",
       text: "A imagem será gravada fora do projeto, na pasta de downloads deste aparelho, sem criptografia.",
       confirmLabel: "Exportar",
+      save: () => {
+        if (exportImage.current?.()) return true;
+        notify("Abra a seção do gráfico para exportar a imagem.");
+        return false;
+      },
+      done: "Imagem do gráfico gerada. Guarde-a com cuidado: ela não é cifrada.",
     });
-    if (!ok) return;
-    if (exportImage.current?.()) notify("Imagem do gráfico gerada. Guarde-a com cuidado: ela não é cifrada.");
-    else notify("Abra a seção do gráfico para exportar a imagem.");
   };
 
   const askValues = async () => {
     if (empty) return;
-    const ok = await confirm({
+    await exportUnencrypted({
       title: "Exportar valores sem criptografia?",
       text: "O arquivo CSV será gravado fora do projeto, na pasta de downloads deste aparelho, sem criptografia.",
       confirmLabel: "Exportar",
+      save: () => saveFile(csvFileName(key), valuesCsv(chart), CSV_TYPE),
     });
-    if (!ok) return;
-    downloadFile(csvFileName(key), new TextEncoder().encode(valuesCsv(chart)), "text/csv;charset=utf-8");
-    notify("Arquivo CSV gerado. Guarde-o com cuidado: ele não é cifrado.");
   };
 
   const year = Number((scopeValue && SCOPES[key] === "year" ? scopeValue : null) ?? month.year);

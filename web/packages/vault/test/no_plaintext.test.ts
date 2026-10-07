@@ -5,7 +5,8 @@
  */
 import { describe, expect, it } from "vitest";
 import { MemoryServer, ProjectVault, signIn, signUp, type SyncBackend } from "../src/index.ts";
-import { device, dumpIndexedDb, settle, TEST_KDF } from "./helpers.ts";
+import { device, dumpIndexedDb, TEST_KDF } from "./helpers.ts";
+import { untilAsync } from "./support.ts";
 
 const SECRETS = {
   projectName: "Família Secreta Oliveira",
@@ -78,7 +79,7 @@ describe("no plaintext leaves the tab", () => {
     server.offline = false;
     await vault.syncNow();
     await dev.timers.advance(10);
-    for (let i = 0; i < 200 && (await dev.cache.getSnapshot(vault.projectId)) === null; i++) await settle(5);
+    await untilAsync(async () => (await dev.cache.getSnapshot(vault.projectId)) !== null);
     expect(await dev.cache.getSnapshot(vault.projectId)).not.toBeNull();
     await vault.putBlob(new TextEncoder().encode(SECRETS.attachment));
     await vault.rename(`${SECRETS.projectName} 2`);

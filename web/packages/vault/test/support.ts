@@ -66,3 +66,12 @@ export async function until(condition: () => boolean, timeoutMs = 30_000): Promi
     await new Promise((resolve) => setImmediate(resolve));
   }
 }
+
+/** `until` for a condition that has to read something asynchronously (the IndexedDB cache). */
+export async function untilAsync(condition: () => Promise<boolean>, timeoutMs = 30_000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (!(await condition())) {
+    if (Date.now() > deadline) throw new Error(`until: the condition did not hold within ${timeoutMs} ms`);
+    await new Promise((resolve) => setImmediate(resolve));
+  }
+}

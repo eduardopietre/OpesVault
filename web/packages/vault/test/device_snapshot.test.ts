@@ -2,6 +2,7 @@ import { IDBFactory, IDBKeyRange } from "fake-indexeddb";
 import { describe, expect, it } from "vitest";
 import { MemoryServer, VaultCache, type PlainRecord, type ProjectVault } from "../src/index.ts";
 import { account, createProject, device, settle, type Device } from "./helpers.ts";
+import { untilAsync } from "./support.ts";
 
 const op = (id: string, description: string): PlainRecord => ({
   kind: "operation",
@@ -31,7 +32,7 @@ async function open(dev: Device, projectId: string, holder: string): Promise<Pro
 
 async function writeSnapshot(dev: Device, projectId: string): Promise<void> {
   await dev.timers.advance(1000);
-  for (let i = 0; i < 200 && (await dev.cache.getSnapshot(projectId)) === null; i++) await settle(5);
+  await untilAsync(async () => (await dev.cache.getSnapshot(projectId)) !== null);
 }
 
 describe("the device snapshot (docs/19 §8)", () => {
@@ -81,7 +82,7 @@ describe("the device snapshot (docs/19 §8)", () => {
     await vault.stage([op("6", "seis"), op("7", "sete"), op("8", "oito")]);
     await vault.syncNow();
     await dev.timers.advance(1000);
-    for (let i = 0; i < 200 && (await dev.cache.getSnapshot(projectId))!.generation === before; i++) await settle();
+    await untilAsync(async () => (await dev.cache.getSnapshot(projectId))!.generation !== before);
     expect((await dev.cache.getSnapshot(projectId))!.generation).toBeGreaterThan(before);
     await vault.lock();
   });

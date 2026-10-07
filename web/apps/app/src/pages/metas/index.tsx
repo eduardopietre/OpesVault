@@ -20,7 +20,7 @@ import {
 } from "@opesvault/ui";
 import { Goal as GoalIcon } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef } from "react";
 import { toChartData } from "../../data/chart_data.ts";
 import { useLedger, useWorkspace } from "../../data/react.tsx";
 import { useReveal } from "../../data/navigation.ts";
@@ -28,7 +28,7 @@ import { GoalDialog } from "../../dialogs/goal_dialog.tsx";
 import { ReasonDialog } from "../../dialogs/livro_prompts.tsx";
 import { goalColumns } from "./columns.tsx";
 import { goalExample, goalRows, reachedLabel, summaryLine, type GoalExample } from "./rows.ts";
-import { EditButton } from "../../components/list_parts.tsx";
+import { EditButton, usePick } from "../../components/list_parts.tsx";
 import { useLock } from "../../data/read_only.ts";
 import { useDialog } from "../../data/dialog.ts";
 import { moneyOr, dateOr } from "../../data/money.ts";
@@ -52,8 +52,7 @@ export function Page() {
 
   const rows = useLedger((ledger) => goalRows(ledger, today), today);
   // Like the desktop, a goal is always selected when there is one: the first until the person picks another.
-  const [pick, setPick] = useState<string | null>(null);
-  const selected = rows.find((row) => row.id === pick) ?? rows[0] ?? null;
+  const { setPick, selected, need } = usePick(rows, (row) => row.id, { first: true });
   const chart = useLedger(
     (ledger) => (selected ? toChartData(charts.data.goalChart(ledger, selected.id, ymOf(today), today)) : null),
     `${selected?.id ?? ""}|${today}`,
@@ -72,19 +71,13 @@ export function Page() {
   };
 
   const editSelected = () => {
-    if (!selected) {
-      notify("Selecione uma meta.");
-      return;
-    }
-    openEdit(selected.goal);
+    const row = need("Selecione uma meta.");
+    if (row) openEdit(row.goal);
   };
 
   const archiveSelected = () => {
-    if (!selected) {
-      notify("Selecione uma meta.");
-      return;
-    }
-    archiveDialog.show(selected.goal);
+    const row = need("Selecione uma meta.");
+    if (row) archiveDialog.show(row.goal);
   };
 
   // A link from another page: the goal opens, selected, with its chart; "editar" also opens the form.

@@ -10,10 +10,11 @@ import {
   type ButtonProps,
   type DataTableProps,
   fitHeight,
+  notify,
   usePhone,
 } from "@opesvault/ui";
 import { TriangleAlert } from "lucide-react";
-import { useEffect, useMemo, useRef, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useLock } from "../data/read_only.ts";
 import { fitColumns, type TierColumn } from "./tier_columns.ts";
 
@@ -65,6 +66,27 @@ export function ListTable<T extends object>({
 /** An empty table or chart: what it is, why it is empty and what to do. */
 export function Empty({ title, children }: { title: string; children: ReactNode }) {
   return <EmptyState framed title={title} description={children} />;
+}
+
+export interface Pick<T> {
+  /** The id picked in the table (it may name a row that is gone). */
+  pick: string | null;
+  setPick: (id: string | null) => void;
+  /** The picked row, or the first with `first` (a table that always shows one in detail). */
+  selected: T | null;
+  /** For a command on the selected row: the row, or null after saying what to select. */
+  need: (message: string) => T | null;
+}
+
+/** The row a table has selected, by id, so a row read back from the project keeps its selection. */
+export function usePick<T>(rows: readonly T[], idOf: (row: T) => string, options: { first?: boolean } = {}): Pick<T> {
+  const [pick, setPick] = useState<string | null>(null);
+  const selected = rows.find((row) => idOf(row) === pick) ?? (options.first ? (rows[0] ?? null) : null);
+  const need = (message: string): T | null => {
+    if (!selected) notify(message);
+    return selected;
+  };
+  return { pick, setPick, selected, need };
 }
 
 /** What a link asks of a tab: made by the page, consumed once by the tab it names. */

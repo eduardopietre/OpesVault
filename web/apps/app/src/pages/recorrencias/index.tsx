@@ -30,7 +30,7 @@ import { RecurrenceRuleDialog } from "../../dialogs/recurrence_rule.tsx";
 import { useUndo } from "../../shell/undo.tsx";
 import { FORECAST_LABELS, candidateKey, forecastId, forecastWindow, parseRecurrenceRef, summaryLine } from "./rows.ts";
 import { CANDIDATE_COLUMNS, COMMITMENT_COLUMNS, FORECAST_COLUMNS, RULE_COLUMNS } from "./tables.tsx";
-import { EditButton } from "../../components/list_parts.tsx";
+import { EditButton, usePick } from "../../components/list_parts.tsx";
 import { useLock } from "../../data/read_only.ts";
 import { useDialog } from "../../data/dialog.ts";
 
@@ -64,9 +64,12 @@ export function Page() {
   const commitments = useLedger((ledger) => dom.subscriptions.commitments(ledger), "");
   const candidates = useLedger((ledger) => dom.subscriptions.candidates(ledger, today), today);
 
-  const [pickRule, setPickRule] = useState<string | null>(null);
-  const [pickForecast, setPickForecast] = useState<string | null>(null);
-  const [pickCandidate, setPickCandidate] = useState<string | null>(null);
+  const rulePick = usePick(rules, (r) => r.id);
+  const forecastPick = usePick(forecasts, (f) => forecastId(f.ruleId, f.dueOn));
+  const candidatePick = usePick(candidates, candidateKey);
+  const { pick: pickRule, setPick: setPickRule, selected: selectedRule } = rulePick;
+  const { setPick: setPickForecast, selected: selectedForecast } = forecastPick;
+  const { pick: pickCandidate, setPick: setPickCandidate } = candidatePick;
   const ruleSlot = useDialog<RuleDialogState>();
   const linkSlot = useDialog<LinkDialogState>();
   const ruleDialog = ruleSlot.spec;
@@ -79,9 +82,7 @@ export function Page() {
   const [forcedOpen, setForcedOpen] = useState(false);
 
   const late = forecasts.filter((f) => f.status === "late").length;
-  const selectedRule = rules.find((r) => r.id === pickRule) ?? null;
-  const selectedForecast = forecasts.find((f) => forecastId(f.ruleId, f.dueOn) === pickForecast) ?? null;
-  const selectedCandidate = candidates.find((c) => candidateKey(c) === pickCandidate) ?? null;
+  const selectedCandidate = candidatePick.selected;
 
   // ── rules ───────────────────────────────────────
 
@@ -99,11 +100,8 @@ export function Page() {
   };
 
   const toggle = () => {
-    if (!selectedRule) {
-      notify("Selecione uma regra.");
-      return;
-    }
-    const rule = selectedRule;
+    const rule = rulePick.need("Selecione uma regra.");
+    if (!rule) return;
     act((ledger) => dom.recurrence.updateRule(ledger, { ...rule, paused: !rule.paused }, "pausar/retomar"), {
       done: rule.paused ? `Recorrência “${rule.description}” retomada.` : `Recorrência “${rule.description}” pausada.`,
       label: rule.paused ? "retomar recorrência" : "pausar recorrência",
@@ -135,19 +133,13 @@ export function Page() {
   };
 
   const linkSelected = () => {
-    if (!selectedForecast) {
-      notify("Selecione uma previsão.");
-      return;
-    }
-    startLink(selectedForecast);
+    const forecast = forecastPick.need("Selecione uma previsão.");
+    if (forecast) startLink(forecast);
   };
 
   const skipSelected = () => {
-    const forecast = selectedForecast;
-    if (!forecast) {
-      notify("Selecione uma previsão.");
-      return;
-    }
+    const forecast = forecastPick.need("Selecione uma previsão.");
+    if (!forecast) return;
     if (forecast.status === "realized" || forecast.status === "skipped") {
       notify("Esta previsão já foi resolvida.");
       return;

@@ -38,7 +38,7 @@ import { InvestmentTradeDialog, type TradeKind } from "../../dialogs/investment_
 import { InvestmentFixDialog, InvestmentValuationDialog } from "../../dialogs/investment_valuation.tsx";
 import { useAct, useLedger, useWorkspace } from "../../data/react.tsx";
 import { useGoTo, useReveal } from "../../data/navigation.ts";
-import { Empty, EditButton, ListTable, Toolbar } from "../../components/list_parts.tsx";
+import { Empty, EditButton, ListTable, Toolbar, usePick } from "../../components/list_parts.tsx";
 import { NOTE_COLUMNS, PORTFOLIO_COLUMNS } from "./columns.tsx";
 import { Detail } from "./detail.tsx";
 import { eventRows, noteRows, parseReveal, portfolioRows, summaryLine, valuationRows, type NoteRow } from "./rows.ts";
@@ -70,8 +70,7 @@ export function Page() {
   const notes = useLedger((l) => noteRows(l));
   const dialog = useDialog<Spec>();
 
-  const [pick, setPick] = useState<Id | null>(null);
-  const selected = rows.find((r) => r.id === pick) ?? rows[0] ?? null;
+  const { setPick, selected, need: needRow } = usePick(rows, (r) => r.id, { first: true });
   // the rows chosen in the tables of the detail belong to one investment
   const [chosen, setChosen] = useState<{ positionId: Id | null; valuation: Id | null; event: Id | null }>({
     positionId: null,
@@ -90,13 +89,7 @@ export function Page() {
 
   // ── commands ─────────────────────────────────────
 
-  const need = (): Id | null => {
-    if (!selected) {
-      notify("Selecione um investimento.");
-      return null;
-    }
-    return selected.id;
-  };
+  const need = (): Id | null => needRow("Selecione um investimento.")?.id ?? null;
 
   const withPosition = (make: (positionId: Id) => Spec) => () => {
     const id = need();

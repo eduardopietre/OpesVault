@@ -27,7 +27,7 @@ import {
 } from "@opesvault/ui";
 import { CircleAlert, CircleCheck, TriangleAlert } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import { BudgetDialog } from "../../dialogs/budget_dialog.tsx";
 import { BudgetGridDialog } from "../../dialogs/budget_grid_dialog.tsx";
 import {
@@ -45,7 +45,7 @@ import { useGoTo, useReveal } from "../../data/navigation.ts";
 import { useUndo } from "../../shell/undo.tsx";
 import { toChartData } from "../../data/chart_data.ts";
 import { STATE_LABELS, categoryRef, parseCategoryRef, plural, summaryLine, usedPercent } from "./rows.ts";
-import { EditButton } from "../../components/list_parts.tsx";
+import { EditButton, usePick } from "../../components/list_parts.tsx";
 import { useLock } from "../../data/read_only.ts";
 import { useDialog } from "../../data/dialog.ts";
 import { cents } from "../../data/money.ts";
@@ -172,8 +172,7 @@ export function Page() {
   const tableBox = useRef<HTMLDivElement>(null);
 
   const status = useLedger((ledger) => dom.budget.status(ledger, month), monthKey);
-  const [pick, setPick] = useState<string | null>(null);
-  const selected = status.rows.find((row) => row.categoryId === pick) ?? null;
+  const { setPick, selected, need } = usePick(status.rows, (row) => row.categoryId);
 
   const history = useLedger(
     (ledger) =>
@@ -242,11 +241,7 @@ export function Page() {
     return changed !== undefined;
   };
 
-  const needsSelection = (): string | null => {
-    if (selected) return selected.categoryId;
-    notify("Selecione uma categoria na tabela.");
-    return null;
-  };
+  const needsSelection = (): string | null => need("Selecione uma categoria na tabela.")?.categoryId ?? null;
 
   const editSelected = () => {
     const id = needsSelection();

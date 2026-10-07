@@ -20,7 +20,7 @@ import {
 } from "@opesvault/ui";
 import { Ban, CircleCheck, Clock, Hourglass } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import { useMemo, useRef, type ReactNode } from "react";
 import { useAct, useLedger } from "../../data/react.tsx";
 import { useGoTo, useReveal } from "../../data/navigation.ts";
 import { TableBox } from "../../data/table_box.tsx";
@@ -37,7 +37,7 @@ import {
   type SettlementRow,
   type ShareRow,
 } from "./rows.ts";
-import { EditButton } from "../../components/list_parts.tsx";
+import { EditButton, usePick } from "../../components/list_parts.tsx";
 import { useLock } from "../../data/read_only.ts";
 import { useDialog } from "../../data/dialog.ts";
 import { cents, dateOr } from "../../data/money.ts";
@@ -212,14 +212,12 @@ export function Page() {
   const tableBox = useRef<HTMLDivElement>(null);
 
   const view = useLedger((ledger) => sharingView(ledger));
-  const [pickedReimbursement, setPickedReimbursement] = useState<string | null>(null);
-  const [pickedBalance, setPickedBalance] = useState<string | null>(null);
-  const [pickedShare, setPickedShare] = useState<string | null>(null);
-  const reimbursement = view.reimbursements.find((r) => r.id === pickedReimbursement) ?? null;
+  const reimbursementPick = usePick(view.reimbursements, (r) => r.id);
+  const { selected: reimbursement, setPick: setPickedReimbursement } = reimbursementPick;
   // The first balance is selected, as on the desktop, so the expenses behind it are always in view.
-  const balance = view.balances.find((b) => b.id === pickedBalance) ?? view.balances[0] ?? null;
+  const { selected: balance, setPick: setPickedBalance } = usePick(view.balances, (b) => b.id, { first: true });
   const shares = useMemo(() => sharesOf(balance), [balance]);
-  const share = shares.find((s) => s.id === pickedShare) ?? null;
+  const { selected: share, setPick: setPickedShare } = usePick(shares, (s) => s.id);
 
   const receiveSlot = useDialog<ReceiveOpening>();
   const settleSlot = useDialog<SettleOpening>();
@@ -228,11 +226,7 @@ export function Page() {
   const settle = settleSlot.spec;
   const deny = denySlot.spec;
 
-  const needsReimbursement = (): ReimbursementRow | null => {
-    if (reimbursement) return reimbursement;
-    notify("Selecione um reembolso na tabela.");
-    return null;
-  };
+  const needsReimbursement = () => reimbursementPick.need("Selecione um reembolso na tabela.");
 
   const openReceive = (row: ReimbursementRow | null = needsReimbursement()) => {
     if (!row) return;

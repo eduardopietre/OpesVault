@@ -102,7 +102,7 @@ export function category(ledger: Ledger, kind: AccountType, name: string): Id {
   return ledger.addAccount(LedgerAccountSchema.parse({ name, type: kind, subtype: AccountSubtype.CATEGORY })).id;
 }
 
-export function taxPayableAccount(ledger: Ledger): Id {
+function taxPayableAccount(ledger: Ledger): Id {
   for (const account of ledger.accounts.values()) {
     if (account.subtype === AccountSubtype.TAX_PAYABLE && !account.archived) return account.id;
   }

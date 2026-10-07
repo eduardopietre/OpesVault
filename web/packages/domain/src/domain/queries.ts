@@ -158,7 +158,7 @@ export interface MonthFlow {
   readonly net: Dec;
 }
 
-export function makeMonthFlow(): MonthFlow {
+function makeMonthFlow(): MonthFlow {
   return {
     inflow: ZERO,
     outflow: ZERO,
@@ -221,7 +221,7 @@ export interface Statement {
   readonly result: Dec;
 }
 
-export function makeStatement(): Statement {
+function makeStatement(): Statement {
   return {
     income: new Map(),
     expense: new Map(),

@@ -33,8 +33,7 @@ import {
 } from "./model.ts";
 import * as records from "./records.ts";
 
-export const VERSION = "informe-generico v1";
-export const LIMITATIONS = "Leitura genérica de informes; não validada com documentos reais. Confira cada linha.";
+// Reader version: "informe-generico v1" (limitations in the header above).
 export const MAX_LINES = 400;
 
 const AMOUNT = /(-?\s*R?\$?\s*-?\d{1,3}(?:\.\d{3})*,\d{2})\s*$/;

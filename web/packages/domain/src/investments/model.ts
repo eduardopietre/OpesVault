@@ -9,11 +9,7 @@ import { z } from "zod";
 import { Ledger } from "../domain/ledger.ts";
 import { zEntityId } from "../domain/model.ts";
 import { Dec } from "../lib/dec.ts";
-import { zDate, zDec, zId } from "../lib/schema.ts";
-
-function values<T extends Record<string, string>>(o: T): [T[keyof T], ...T[keyof T][]] {
-  return Object.values(o) as [T[keyof T], ...T[keyof T][]];
-}
+import { zDate, zDec, zId, zEnumOf } from "../lib/schema.ts";
 
 /** Decimal("0") default of an `Amount` field (zod defaults are output values). */
 const decZero = () => Dec.from("0");
@@ -43,13 +39,10 @@ export const ASSET_CLASS_LABELS: Readonly<Record<AssetClass, string>> = {
   other: "Outros",
 };
 
-/** Classes where selling more than held makes no sense (no short selling, docs/04 §2). */
-export const NO_SHORT: ReadonlySet<AssetClass> = new Set(Object.values(AssetClass));
-
 export const AssetSchema = z.strictObject({
   id: zEntityId,
   name: z.string().min(1).max(200),
-  asset_class: z.enum(values(AssetClass)),
+  asset_class: zEnumOf(AssetClass),
   ticker: z.string().max(20).nullable().default(null),
   currency: z.string().default("BRL"),
 });
@@ -66,7 +59,7 @@ export const PositionSchema = z.strictObject({
   asset_id: zId,
   account_id: zId, // ledger asset account holding the cost basis
   holder_id: zId.nullable().default(null),
-  mode: z.enum(values(TrackingMode)).default(TrackingMode.VALUE),
+  mode: zEnumOf(TrackingMode).default(TrackingMode.VALUE),
   opened_on: zDate,
   cost_known: z.boolean().default(true), // false: tracked from a reference value; gain since acquisition is unknown
   closed: z.boolean().default(false),
@@ -93,7 +86,7 @@ export const ValuationSchema = z.strictObject({
   position_id: zId,
   on: zDate,
   value: zDec,
-  nature: z.enum(values(ValueNature)),
+  nature: zEnumOf(ValueNature),
   source: z.string().max(120).default("manual"),
   quantity: zDec.nullable().default(null),
   unit_price: zDec.nullable().default(null),
@@ -124,7 +117,7 @@ export type EventQuality = (typeof EventQuality)[keyof typeof EventQuality];
 export const InvestmentEventSchema = z.strictObject({
   id: zEntityId,
   position_id: zId,
-  kind: z.enum(values(EventKind)),
+  kind: zEnumOf(EventKind),
   on: zDate,
   gross: zDec.nullable().default(null),
   quantity: zDec.nullable().default(null),
@@ -137,7 +130,7 @@ export const InvestmentEventSchema = z.strictObject({
   net: zDec.nullable().default(null),
   cash_account_id: zId.nullable().default(null),
   operation_ids: z.array(zId).readonly().default([]),
-  quality: z.enum(values(EventQuality)).default(EventQuality.COMPLETE),
+  quality: zEnumOf(EventQuality).default(EventQuality.COMPLETE),
   factor: zDec.nullable().default(null), // SPLIT
   lot_id: zId.nullable().default(null),
   note: z.string().max(500).nullable().default(null),
@@ -177,7 +170,7 @@ export const TaxRuleSchema = z.strictObject({
   id: zEntityId,
   name: z.string().min(1).max(120),
   version: z.string().default("1"),
-  kind: z.enum(values(TaxRuleKind)),
+  kind: zEnumOf(TaxRuleKind),
   rate: zDec.nullable().default(null), // e.g. 0.15
   fixed_amount: zDec.nullable().default(null),
   valid_from: zDate.nullable().default(null),

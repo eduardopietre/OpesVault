@@ -17,15 +17,11 @@ import { formatDateBr } from "../lib/dates.ts";
 import { indexBy } from "../lib/collections.ts";
 import { Dec } from "../lib/dec.ts";
 import type { Id } from "../lib/ids.ts";
-import { zDate, zDec, zId } from "../lib/schema.ts";
+import { zDate, zDec, zId, zEnumOf } from "../lib/schema.ts";
 import { display, isCnpj } from "../tax/ids.ts";
 import { AssetClass } from "./model.ts";
 import { getOrKeyError, pyEquals, pyHead } from "../lib/py.ts";
 import { assets, positions } from "./service.ts";
-
-function values<T extends Record<string, string>>(o: T): [T[keyof T], ...T[keyof T][]] {
-  return Object.values(o) as [T[keyof T], ...T[keyof T][]];
-}
 
 export const Indexer = {
   FIXED: "fixed", // prefixado
@@ -104,13 +100,13 @@ export const InvestmentProfileSchema = z.strictObject({
     .regex(/^\d{14}$/)
     .nullable()
     .default(null),
-  indexer: z.enum(values(Indexer)).nullable().default(null),
+  indexer: zEnumOf(Indexer).nullable().default(null),
   rate: zDec.nullable().default(null), // percent: 110 (% do CDI), 6.5 (IPCA + 6,5%), 12.4 (prefixado)
   applied_on: zDate.nullable().default(null),
   maturity: zDate.nullable().default(null),
-  liquidity: z.enum(values(Liquidity)).nullable().default(null),
+  liquidity: zEnumOf(Liquidity).nullable().default(null),
   liquidity_days: z.number().int().min(0).max(3650).nullable().default(null),
-  tax: z.enum(values(TaxTreatment)).nullable().default(null),
+  tax: zEnumOf(TaxTreatment).nullable().default(null),
   income_code: z
     .string()
     .regex(/^(isento|exclusivo):\d{2}$/)

@@ -184,7 +184,7 @@ function checkText(
 }
 
 /** Validates `input` against `spec`: the parsed arguments, or the problems in Pydantic's order. */
-export function validateArgs(
+function validateArgs(
   spec: ArgSpec,
   input: Record<string, unknown>,
 ): { value: Record<string, unknown> } | { problems: Problem[] } {
@@ -287,7 +287,7 @@ function desc(field: { description: string }): { description?: string } {
   return field.description ? { description: field.description } : {};
 }
 
-export function jsonSchema(spec: ArgSpec): Record<string, unknown> {
+function jsonSchema(spec: ArgSpec): Record<string, unknown> {
   const properties: Record<string, unknown> = {};
   const required: string[] = [];
   for (const [name, field] of spec) {
@@ -363,7 +363,7 @@ export interface Tool {
 /** Validated arguments: field names as the model wrote them. */
 export type Args = Record<string, unknown>;
 
-export function toolSchema(tool: Tool): Record<string, unknown> {
+function toolSchema(tool: Tool): Record<string, unknown> {
   return jsonSchema(tool.arguments);
 }
 
@@ -466,7 +466,7 @@ export function money(value: unknown, what = "valor"): Dec {
 }
 
 /** Python 3.12's `date.fromisoformat`: YYYY-MM-DD, YYYYMMDD and ISO week dates; null when invalid. */
-export function fromIsoFormat(text: string): IsoDate | null {
+function fromIsoFormat(text: string): IsoDate | null {
   let m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text) ?? /^(\d{4})(\d{2})(\d{2})$/.exec(text);
   if (m !== null) {
     const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];

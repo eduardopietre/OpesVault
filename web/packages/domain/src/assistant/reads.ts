@@ -80,7 +80,7 @@ const SHOW_ARGS: ArgSpec = [
 
 const str = (v: unknown) => v as string | null;
 
-export function latestMonth(ledger: Ledger, today: IsoDate): YearMonth {
+function latestMonth(ledger: Ledger, today: IsoDate): YearMonth {
   let latest: IsoDate | null = null;
   for (const op of ledger.activeOperations()) {
     const d = op.occurred_on ?? cashDate(op);
@@ -114,7 +114,7 @@ export function amountOf(ledger: Ledger, op: Operation): Dec {
   return best;
 }
 
-export function operationRow(ledger: Ledger, op: Operation): Record<string, unknown> {
+function operationRow(ledger: Ledger, op: Operation): Record<string, unknown> {
   const sources = op.postings
     .filter((p) => p.amount.isNegative())
     .map((p) => accountLabel(ledger, ledger.account(p.account_id)));

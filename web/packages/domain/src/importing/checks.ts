@@ -135,7 +135,7 @@ export function reconcile(ledger: Ledger, batch: ImportBatch): readonly Reconcil
 }
 
 /** Equal items have equal fingerprints; amounts compare by value, like Python's Decimal keys. */
-export function fingerprint(item: ExtractedItem): string {
+function fingerprint(item: ExtractedItem): string {
   const amount = item.amount === null ? null : item.amount.isZero() ? "0" : item.amount.normalize().toString();
   return JSON.stringify([CARD_KINDS.has(item.kind), item.kind, item.occurred_on, amount, normalize(item.description)]);
 }
@@ -151,7 +151,7 @@ function byIdInt(a: ExtractedItem, b: ExtractedItem): number {
  * Identical lines are counted: if an earlier import approved one 'X 10,00' on a day and this file
  * has two, the second is new (two equal purchases can be legitimate).
  */
-export function findDuplicates(ledger: Ledger, batch: ImportBatch): void {
+function findDuplicates(ledger: Ledger, batch: ImportBatch): void {
   if (batch.account_id === null) return;
   const previous = new Map<string, number>();
   const linked = new Map<string, Id[]>();
@@ -212,7 +212,7 @@ export function findDuplicates(ledger: Ledger, batch: ImportBatch): void {
  * payment seen in the bank) that already holds this fact. Value and date alone are a suggestion,
  * shown to the user, never a silent merge (docs/05 §6).
  */
-export function matchExistingOperation(
+function matchExistingOperation(
   ledger: Ledger,
   batch: ImportBatch,
   item: ExtractedItem,

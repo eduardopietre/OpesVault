@@ -37,7 +37,7 @@ export const PY_WS = "\\t\\n\\v\\f\\r\\x1c-\\x1f \\x85\\xa0\\u1680\\u2000-\\u200
 const WS_CLASS = new RegExp(`[${PY_WS}]`, "u");
 const WS_RUNS = new RegExp(`[${PY_WS}]+`, "gu");
 
-export function isPySpace(ch: string): boolean {
+function isPySpace(ch: string): boolean {
   return WS_CLASS.test(ch);
 }
 

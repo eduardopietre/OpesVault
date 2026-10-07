@@ -9,8 +9,6 @@
  * Maps, not objects: keys like "12" and "99" would be reordered by a plain object.
  */
 
-export const REFERENCE = "Tabelas do programa IRPF (layout desde a declaração de 2022), conferidas em 03/10/2026";
-
 /** group -> (group name, {code: description}) */
 export const ASSET_CODES: ReadonlyMap<string, readonly [name: string, codes: ReadonlyMap<string, string>]> = new Map<
   string,

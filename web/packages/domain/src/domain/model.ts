@@ -9,7 +9,7 @@ import { z } from "zod";
 import { type IsoDate, type YearMonth, ymOf } from "../lib/dates.ts";
 import { Dec } from "../lib/dec.ts";
 import { newId } from "../lib/ids.ts";
-import { zDate, zDec, zId, zInstant, zYearMonth } from "../lib/schema.ts";
+import { zDate, zDec, zId, zInstant, zYearMonth, zEnumOf } from "../lib/schema.ts";
 import { BRL, toDecimal } from "./money.ts";
 
 /** Field that gets a fresh id when absent, like Pydantic's `default_factory=new_id`. */
@@ -25,10 +25,6 @@ const zAmount = z.union([zDec, z.number(), z.bigint()]).transform((v, ctx): Dec 
   }
 });
 
-function values<T extends Record<string, string>>(o: T): [T[keyof T], ...T[keyof T][]] {
-  return Object.values(o) as [T[keyof T], ...T[keyof T][]];
-}
-
 // ── people and accounts ─────────────────────────────
 
 /** Who answers for the family's money (holder) and who depends on it (dependent). Informative only. */
@@ -39,7 +35,7 @@ export const MemberSchema = z.strictObject({
   id: zEntityId,
   name: z.string().min(1).max(120),
   active: z.boolean().default(true),
-  role: z.enum(values(MemberRole)).default(MemberRole.HOLDER),
+  role: zEnumOf(MemberRole).default(MemberRole.HOLDER),
 });
 export type Member = Readonly<z.output<typeof MemberSchema>>;
 
@@ -79,8 +75,8 @@ export const LIQUID_SUBTYPES: ReadonlySet<AccountSubtype> = new Set([
 export const LedgerAccountSchema = z.strictObject({
   id: zEntityId,
   name: z.string().min(1).max(120),
-  type: z.enum(values(AccountType)),
-  subtype: z.enum(values(AccountSubtype)),
+  type: zEnumOf(AccountType),
+  subtype: zEnumOf(AccountSubtype),
   currency: z.string().default(BRL),
   institution: z.string().nullable().default(null),
   masked_number: z.string().max(32).nullable().default(null),
@@ -92,12 +88,6 @@ export type LedgerAccount = Readonly<z.output<typeof LedgerAccountSchema>>;
 
 export function isLiquid(account: LedgerAccount): boolean {
   return LIQUID_SUBTYPES.has(account.subtype);
-}
-
-export function isBalanceSheet(account: LedgerAccount): boolean {
-  return (
-    account.type === AccountType.ASSET || account.type === AccountType.LIABILITY || account.type === AccountType.EQUITY
-  );
 }
 
 export const AdditionalCardSchema = z.strictObject({
@@ -144,7 +134,7 @@ export const OriginKind = { MANUAL: "manual", IMPORT: "import", RECURRENCE: "rec
 export type OriginKind = (typeof OriginKind)[keyof typeof OriginKind];
 
 export const OriginSchema = z.strictObject({
-  kind: z.enum(values(OriginKind)).default(OriginKind.MANUAL),
+  kind: zEnumOf(OriginKind).default(OriginKind.MANUAL),
   import_id: zId.nullable().default(null),
   evidence_ids: z.array(zId).readonly().default([]),
 });
@@ -178,7 +168,7 @@ export type OperationStatus = (typeof OperationStatus)[keyof typeof OperationSta
 
 export const OperationSchema = z.strictObject({
   id: zEntityId,
-  kind: z.enum(values(OperationKind)),
+  kind: zEnumOf(OperationKind),
   description: z.string().max(500),
   currency: z.string().default(BRL),
   postings: z.array(PostingSchema).readonly(),
@@ -195,7 +185,7 @@ export const OperationSchema = z.strictObject({
   installment: InstallmentRefSchema.nullable().default(null),
   reversal_of: zId.nullable().default(null),
   forecast_id: zId.nullable().default(null),
-  status: z.enum(values(OperationStatus)).default(OperationStatus.ACTIVE),
+  status: zEnumOf(OperationStatus).default(OperationStatus.ACTIVE),
   notes: z.string().max(2000).nullable().default(null),
   version: z.number().int().default(1),
 });
@@ -239,7 +229,7 @@ export const HistoryEntrySchema = z.strictObject({
   id: zEntityId,
   entity_kind: z.string(),
   entity_id: zId,
-  action: z.enum(values(HistoryAction)),
+  action: zEnumOf(HistoryAction),
   version: z.number().int(),
   before: z.record(z.string(), z.unknown()).nullable().default(null),
   after: z.record(z.string(), z.unknown()).nullable().default(null),

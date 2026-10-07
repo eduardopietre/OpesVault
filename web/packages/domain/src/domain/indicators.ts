@@ -36,7 +36,7 @@ function lastMonths(month: YearMonth, count: number): YearMonth[] {
   return Array.from({ length: count }, (_, i) => ymAdd(month, -i));
 }
 
-export function savingsRate(ledger: Ledger, month: YearMonth): Indicator {
+function savingsRate(ledger: Ledger, month: YearMonth): Indicator {
   const statement = queries.incomeStatement(ledger, month);
   const label = "Taxa de poupança do mês";
   if (!statement.totalIncome.isPositive()) {
@@ -51,7 +51,7 @@ export function savingsRate(ledger: Ledger, month: YearMonth): Indicator {
   };
 }
 
-export function savingsRateYear(ledger: Ledger, month: YearMonth): Indicator {
+function savingsRateYear(ledger: Ledger, month: YearMonth): Indicator {
   const months = knownMonths(ledger, lastMonths(month, 12));
   let income = ZERO;
   let expense = ZERO;
@@ -69,7 +69,7 @@ export function savingsRateYear(ledger: Ledger, month: YearMonth): Indicator {
 }
 
 /** Share of the month's expenses that are commitments: linked to a recurrence or loan installments. */
-export function fixedShare(ledger: Ledger, month: YearMonth): Indicator {
+function fixedShare(ledger: Ledger, month: YearMonth): Indicator {
   const loans = loanOperationIds(ledger);
   let total = ZERO;
   let fixed = ZERO;
@@ -94,7 +94,7 @@ export function fixedShare(ledger: Ledger, month: YearMonth): Indicator {
 }
 
 /** Card installments billed in the month plus loan installments due in it, over the month's income. */
-export function committedIncome(ledger: Ledger, month: YearMonth): Indicator {
+function committedIncome(ledger: Ledger, month: YearMonth): Indicator {
   let installments = ZERO;
   for (const plan of cardPlans(ledger).values()) {
     installments = installments.add(
@@ -129,7 +129,7 @@ export function committedIncome(ledger: Ledger, month: YearMonth): Indicator {
 }
 
 /** How many months of the average expense the liquid accounts cover. */
-export function reserveMonths(ledger: Ledger, month: YearMonth): Indicator {
+function reserveMonths(ledger: Ledger, month: YearMonth): Indicator {
   const months = knownMonths(ledger, lastMonths(month, RESERVE_WINDOW));
   const expense = Dec.sum(
     months.map((m) => queries.incomeStatement(ledger, m).totalExpense),

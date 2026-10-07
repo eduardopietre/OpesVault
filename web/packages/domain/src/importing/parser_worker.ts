@@ -19,13 +19,11 @@
 import { z } from "zod";
 
 import { Dec } from "../lib/dec.ts";
-import { zDate } from "../lib/schema.ts";
+import { zDate, zEnumOf } from "../lib/schema.ts";
 import { DocFormat, ItemKind, StatementHeaderSchema } from "./model.ts";
 import type { ParsedItem, ParseResult } from "./parsers/base.ts";
 import { type Analysis, analyzeDocument, type Choice, type ImportRequest } from "./pipeline.ts";
 import { type Line, type PdfTextExtractor, type Source, SourceError, SourceProblem } from "./source.ts";
-
-const vals = <T extends Record<string, string>>(o: T) => Object.values(o) as [T[keyof T], ...T[keyof T][]];
 
 // ── what crosses the boundary ───────────────────────
 
@@ -41,7 +39,7 @@ const LineJson = z.strictObject({
 
 const SourceJson = z.strictObject({
   name: z.string(),
-  format: z.enum(vals(DocFormat)),
+  format: zEnumOf(DocFormat),
   lines: z.array(LineJson),
   rows: z.array(z.tuple([z.number().int(), z.array(z.string())])),
   ofx: z
@@ -64,7 +62,7 @@ const SourceJson = z.strictObject({
 });
 
 const ItemJson = z.strictObject({
-  kind: z.enum(vals(ItemKind)),
+  kind: zEnumOf(ItemKind),
   occurred_on: zDate.nullable(),
   description: z.string(),
   amount: zDecText.nullable(),
@@ -102,7 +100,7 @@ const ChoiceJson = z.discriminatedUnion("kind", [
 ]);
 
 const AnalysisJson = z.discriminatedUnion("kind", [
-  z.strictObject({ kind: z.literal("problem"), problem: z.enum(vals(SourceProblem)) }),
+  z.strictObject({ kind: z.literal("problem"), problem: zEnumOf(SourceProblem) }),
   z.strictObject({ kind: z.literal("read"), source: SourceJson, choice: ChoiceJson }),
 ]);
 
@@ -118,7 +116,7 @@ export type WorkerRequest = z.output<typeof WorkerRequestSchema>;
 /** Error codes only: nothing from the document or the exception text crosses back. */
 export const WorkerReplySchema = z.discriminatedUnion("kind", [
   z.strictObject({ id: z.number().int(), kind: z.literal("analysis"), analysis: AnalysisJson }),
-  z.strictObject({ id: z.number().int(), kind: z.literal("source_error"), problem: z.enum(vals(SourceProblem)) }),
+  z.strictObject({ id: z.number().int(), kind: z.literal("source_error"), problem: zEnumOf(SourceProblem) }),
   z.strictObject({ id: z.number().int(), kind: z.literal("error"), code: z.literal("WORKER_FAILED") }),
 ]);
 export type WorkerReply = z.output<typeof WorkerReplySchema>;

@@ -91,7 +91,7 @@ export interface SetupResult {
 }
 
 /** Raises DomainError with a user-facing message for the first problem found. */
-export function checkPlan(ledger: Ledger, plan: SetupPlan): void {
+function checkPlan(ledger: Ledger, plan: SetupPlan): void {
   const existingMembers = new Set([...ledger.members.values()].map((m) => casefold(m.name)));
   const names = plan.members.map((m) => m.trim());
   if (names.some((n) => !n)) throw new DomainError("Há um integrante sem nome.");

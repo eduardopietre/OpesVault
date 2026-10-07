@@ -51,7 +51,7 @@ export function best(comparison: Comparison): Model | null {
   return known[1]!.tax!.lt(known[0]!.tax!) ? known[1]! : known[0]!;
 }
 
-export function tableTax(brackets: readonly Bracket[], base: Dec): Dec {
+function tableTax(brackets: readonly Bracket[], base: Dec): Dec {
   if (!base.isPositive() || !brackets.length) return ZERO;
   for (const bracket of brackets) {
     if (bracket.up_to === null || base.lte(bracket.up_to)) {

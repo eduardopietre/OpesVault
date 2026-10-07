@@ -28,7 +28,6 @@ import * as prompts from "./prompts.ts";
 
 export const DEFAULT_PORT = 11434;
 export const DEFAULT_URL = `http://127.0.0.1:${DEFAULT_PORT}`;
-export const PROMPT_VERSION = prompts.CATEGORY_VERSION;
 export const TIMEOUT_S = 180; // the first call also loads the model into memory
 export const INFO_TIMEOUT_S = 5;
 export const UNLOAD_TIMEOUT_S = 2;

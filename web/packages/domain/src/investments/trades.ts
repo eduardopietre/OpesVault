@@ -41,7 +41,7 @@ export const AVERAGE_CLASSES: ReadonlySet<AssetClass> = new Set([
   AssetClass.CRYPTO,
 ]);
 
-export function defaultMethod(assetClass: AssetClass): CostMethod {
+function defaultMethod(assetClass: AssetClass): CostMethod {
   return AVERAGE_CLASSES.has(assetClass) ? CostMethod.AVERAGE : CostMethod.FIFO;
 }
 

@@ -8,7 +8,7 @@
 import { z } from "zod";
 
 import type { Dec } from "../lib/dec.ts";
-import { zDate, zDec, zId, zInstant } from "../lib/schema.ts";
+import { zDate, zDec, zId, zInstant, zEnumOf } from "../lib/schema.ts";
 import { Ledger } from "../domain/ledger.ts";
 import { zEntityId } from "../domain/model.ts";
 
@@ -54,8 +54,6 @@ export const ItemStatus = {
 } as const;
 export type ItemStatus = (typeof ItemStatus)[keyof typeof ItemStatus];
 
-const vals = <T extends Record<string, string>>(o: T) => Object.values(o) as [T[keyof T], ...T[keyof T][]];
-
 export const EvidenceSchema = z.strictObject({
   id: zEntityId,
   document_id: zId,
@@ -79,7 +77,7 @@ export type Correction = Readonly<z.output<typeof CorrectionSchema>>;
 export const ExtractedItemSchema = z.strictObject({
   id: zEntityId,
   batch_id: zId,
-  kind: z.enum(vals(ItemKind)),
+  kind: zEnumOf(ItemKind),
   occurred_on: zDate.nullable(),
   description: z.string().max(500),
   amount: zDec.nullable(), // always positive; direction comes from `kind`
@@ -93,7 +91,7 @@ export const ExtractedItemSchema = z.strictObject({
   unit_price: zDec.nullable().default(null),
   ticker: z.string().nullable().default(null),
   credit: z.boolean().default(false),
-  status: z.enum(vals(ItemStatus)).default(ItemStatus.NEEDS_REVIEW),
+  status: zEnumOf(ItemStatus).default(ItemStatus.NEEDS_REVIEW),
   warnings: z.array(z.string()).readonly().default([]),
   target_account_id: zId.nullable().default(null), // category, counterpart account or card chosen in review
   member_id: zId.nullable().default(null),
@@ -142,9 +140,9 @@ export const ImportBatchSchema = z.strictObject({
   document_id: zId,
   parser_id: z.string().nullable(),
   parser_version: z.string().nullable(),
-  doc_format: z.enum(vals(DocFormat)),
-  doc_type: z.enum(vals(DocType)).nullable().default(null),
-  status: z.enum(vals(BatchStatus)),
+  doc_format: zEnumOf(DocFormat),
+  doc_type: zEnumOf(DocType).nullable().default(null),
+  status: zEnumOf(BatchStatus),
   created_at: zInstant,
   account_id: zId.nullable().default(null), // bank account or card liability this document belongs to
   card_id: zId.nullable().default(null),

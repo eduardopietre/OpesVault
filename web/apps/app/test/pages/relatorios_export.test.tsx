@@ -4,12 +4,10 @@ import { act, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { annualReportData } from "../../src/pages/relatorios/annual.ts";
 import { REPORTS, buildChart, valuesCsv } from "../../src/pages/relatorios/reports.ts";
-import { choose, setViewport } from "./livro_harness.tsx";
+import { choose, setViewport } from "../dom.ts";
 import { openPrint, openReport, openReports, paramsOf } from "./relatorios_harness.tsx";
 import { cellText } from "../../src/pages/visao-geral/report.ts";
 import { addressSettles } from "../navigations.ts";
-
-vi.mock("../../../../packages/ui/src/chart/echarts.ts", () => import("./fake_echarts.ts"));
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -186,7 +184,7 @@ describe("Relatórios: the year-end closing", () => {
 
 describe("Relatórios: states", () => {
   it("shows every report of an empty project with its empty state, and nothing leaves", async () => {
-    const { user } = await openReports("/relatorios", { empty: true });
+    const { user } = await openReports("/relatorios", { project: "blank" });
     for (const report of REPORTS) {
       await openReport(user, report.label);
       expect(await screen.findByText("Sem dados neste relatório"), report.label).toBeTruthy();
@@ -198,7 +196,7 @@ describe("Relatórios: states", () => {
 
   it("prints the closing of an empty project without breaking", async () => {
     vi.stubGlobal("print", vi.fn());
-    await openPrint("/imprimir/relatorio-anual?ano=2026", { empty: true });
+    await openPrint("/imprimir/relatorio-anual?ano=2026", { project: "blank" });
     expect(await screen.findByRole("heading", { level: 1, name: /fechamento de 2026/ })).toBeTruthy();
     expect(screen.getByText("Nenhuma despesa dedutível no ano.")).toBeTruthy();
   });

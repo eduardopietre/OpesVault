@@ -10,64 +10,35 @@ import {
   type Ledger,
   type YearMonth,
 } from "@opesvault/domain";
-import { memoryPreferences, tableRows as chartRows, type ChartData } from "@opesvault/ui";
-import { createMemoryHistory } from "@tanstack/react-router";
-import { act as reactAct, render, screen, waitFor, within } from "@testing-library/react";
+import { tableRows as chartRows, type ChartData } from "@opesvault/ui";
+import { act as reactAct, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
-import { App } from "../../src/App.tsx";
+import { describe, expect, it } from "vitest";
 import { chooseMonth } from "../../src/data/month.ts";
 import { toChartData } from "../../src/data/chart_data.ts";
 import { categoryRef, cents, parseCategoryRef, summaryLine, usedPercent } from "../../src/pages/orcamento/rows.ts";
-import { createAppRouter } from "../../src/router.tsx";
-import { DEMO, createFakeServices } from "../../src/services/fake.ts";
-import { SessionStore } from "../../src/session.tsx";
 import { addressSettles, navigations, wentTo } from "../navigations.ts";
-
-// happy-dom has no canvas: the chart itself is not drawn here (the e2e tests do); its table is.
-vi.mock("../../../../packages/ui/src/chart/echarts.ts", () => ({
-  echarts: {
-    init: () => ({
-      on: () => undefined,
-      setOption: () => undefined,
-      resize: () => undefined,
-      dispose: () => undefined,
-      dispatchAction: () => undefined,
-      getDataURL: () => "",
-    }),
-  },
-}));
+import { undoOnce, clickInTable, flat } from "../dom.ts";
+import { accountNamed } from "../lookup.ts";
+import { mountApp } from "../mount.tsx";
 
 async function openPage(path = "/orcamento", month?: (now: YearMonth) => YearMonth) {
-  const services = createFakeServices({ seed: true });
-  const session = new SessionStore();
-  const account = await services.signIn(DEMO.email, DEMO.password);
-  const open = await services.openProject(services.demoProjectId!, DEMO.projectPassword);
-  session.update({ account, open, operatorId: open.members[0]?.id ?? null });
-  const workspace = open.workspace;
-  const now = ymOf(workspace.today());
-  reactAct(() => chooseMonth(month ? month(now) : now));
-  const router = createAppRouter({ session, history: createMemoryHistory({ initialEntries: [path] }) });
-  render(<App router={router} services={services} session={session} preferences={memoryPreferences()} />);
-  await screen.findByRole("heading", { level: 1, name: "Orçamento" });
-  return { router, workspace, ledger: workspace.ledger, now, user: userEvent.setup() };
+  let now: YearMonth | null = null;
+  const mounted = await mountApp(path, {
+    heading: "Orçamento",
+    prepare: (workspace) => {
+      now = ymOf(workspace.today());
+      reactAct(() => chooseMonth(month ? month(now!) : now!));
+    },
+  });
+  return { ...mounted, now: now! as YearMonth };
 }
-
-const categoryId = (ledger: Ledger, name: string) =>
-  [...ledger.accounts.values()].find((account) => account.name === name)!.id;
 
 const lines = (ledger: Ledger, month: YearMonth) =>
   dom.budget
     .linesOf(ledger, month)
     .map((line) => [line.category_id, line.amount.toFixed()] as const)
     .sort((a, b) => a[0].localeCompare(b[0]));
-
-const pickRow = async (user: ReturnType<typeof userEvent.setup>, name: string) => {
-  const table = await screen.findByRole("grid", { name: "Orçamento por categoria" });
-  await user.click(within(table).getByText(name));
-};
-
-const flat = (text: string | null | undefined) => (text ?? "").replace(/\s+/g, " ").trim();
 
 describe("Orçamento", () => {
   it("shows the planned, spent and remaining of each category with the state in words", async () => {
@@ -98,9 +69,9 @@ describe("Orçamento", () => {
 
   it("sets the planned value of one category (Alterar valor… with the row selected) and one undo reverts it", async () => {
     const { ledger, workspace, now, user } = await openPage();
-    const food = categoryId(ledger, "Alimentação");
+    const food = accountNamed(ledger, "Alimentação").id;
     const before = lines(ledger, now);
-    await pickRow(user, "Alimentação");
+    await clickInTable(user, "Orçamento por categoria", "Alimentação");
     await user.click(screen.getByRole("button", { name: "Alterar valor…" }));
     const dialog = await screen.findByRole("dialog", { name: /Orçamento de/ });
     const amount = within(dialog).getByLabelText(/Planejado para o mês/) as HTMLInputElement;
@@ -114,7 +85,7 @@ describe("Orçamento", () => {
     expect(dom.budget.lineFor(ledger, food, now)!.amount.toFixed()).toBe("1234.56");
     expect(await screen.findByText(/Orçamento de .* atualizado\./)).toBeTruthy();
     expect(flat(screen.getByRole("grid", { name: "Orçamento por categoria" }).textContent)).toContain("R$ 1.234,56");
-    reactAct(() => void workspace.undo());
+    undoOnce(workspace);
     expect(lines(ledger, now)).toEqual(before);
   });
 
@@ -140,7 +111,7 @@ describe("Orçamento", () => {
 
   it("defines a value for a category without a plan (Definir valor…) and one undo reverts it", async () => {
     const { ledger, workspace, now, user } = await openPage();
-    const leisure = categoryId(ledger, "Lazer");
+    const leisure = accountNamed(ledger, "Lazer").id;
     expect(dom.budget.lineFor(ledger, leisure, now)).toBeNull();
     await user.click(screen.getByRole("button", { name: "Mais" }));
     await user.click(await screen.findByRole("menuitem", { name: "Definir valor…" }));
@@ -150,7 +121,7 @@ describe("Orçamento", () => {
     await user.type(within(dialog).getByLabelText(/Planejado para o mês/), "300");
     await user.click(within(dialog).getByRole("button", { name: "Salvar" }));
     await waitFor(() => expect(dom.budget.lineFor(ledger, leisure, now)?.amount.toFixed()).toBe("300"));
-    reactAct(() => void workspace.undo());
+    undoOnce(workspace);
     expect(dom.budget.lineFor(ledger, leisure, now)).toBeNull();
   });
 
@@ -173,14 +144,14 @@ describe("Orçamento", () => {
     await user.clear(field("Saúde"));
     await user.click(within(dialog).getByRole("button", { name: "Salvar orçamento" }));
     await waitFor(() => expect(screen.queryByRole("dialog", { name: /Orçamento de abril/ })).toBeNull());
-    const byName = (name: string) => dom.budget.lineFor(ledger, categoryId(ledger, name), april)?.amount ?? null;
+    const byName = (name: string) => dom.budget.lineFor(ledger, accountNamed(ledger, name).id, april)?.amount ?? null;
     expect(byName("Alimentação")?.eq("600")).toBe(true);
     expect(byName("Moradia")?.eq("2350")).toBe(true);
     expect(byName("Transporte")?.eq("120")).toBe(true);
     expect(byName("Lazer")?.eq("250.5")).toBe(true);
     expect(byName("Saúde")).toBeNull();
     expect(await screen.findByText("Orçamento de abril de 2026: 4 categorias alteradas.")).toBeTruthy();
-    reactAct(() => void workspace.undo());
+    undoOnce(workspace);
     expect(lines(ledger, april)).toEqual([]);
   });
 
@@ -218,15 +189,15 @@ describe("Orçamento", () => {
     await user.click(screen.getByRole("button", { name: "Mais" }));
     await user.click(await screen.findByRole("menuitem", { name: "Copiar do mês anterior" }));
     expect(await screen.findByText(/Nada a copiar: março de 2026 não tem orçamento/)).toBeTruthy();
-    reactAct(() => void workspace.undo()); // the second copy took no step: this reverts the first
+    undoOnce(workspace); // the second copy took no step: this reverts the first
     expect(lines(ledger, april)).toEqual([]);
   });
 
   it("removes the selected category, offers Desfazer and one undo brings it back", async () => {
     const { ledger, now, user } = await openPage();
-    const food = categoryId(ledger, "Alimentação");
+    const food = accountNamed(ledger, "Alimentação").id;
     const before = lines(ledger, now);
-    await pickRow(user, "Alimentação");
+    await clickInTable(user, "Orçamento por categoria", "Alimentação");
     await user.click(screen.getByRole("button", { name: "Remover do orçamento" }));
     expect(dom.budget.lineFor(ledger, food, now)).toBeNull();
     expect(screen.queryByText("Selecionada:")).toBeNull();
@@ -272,7 +243,7 @@ describe("Orçamento", () => {
       expect(cells).toEqual(row.values.map((value) => (value === null ? "—" : flat(formatBrl(value)))));
     });
     // selecting a category narrows the history to it
-    await pickRow(user, "Transporte");
+    await clickInTable(user, "Orçamento por categoria", "Transporte");
     expect(await screen.findByRole("table", { name: "Valores de Orçamento mês a mês: Transporte" })).toBeTruthy();
   });
 
@@ -302,14 +273,14 @@ describe("Orçamento", () => {
   it("goes to the ledger with the category and the month (Ver lançamentos)", async () => {
     const { ledger, now, router, user } = await openPage();
     const went = navigations(router);
-    await pickRow(user, "Transporte");
+    await clickInTable(user, "Orçamento por categoria", "Transporte");
     await user.click(screen.getByRole("button", { name: "Ver lançamentos" }));
-    await wentTo(went, "/livro", { ref: `categoria:${categoryId(ledger, "Transporte")}:${ymStr(now)}` });
+    await wentTo(went, "/livro", { ref: `categoria:${accountNamed(ledger, "Transporte").id}:${ymStr(now)}` });
   });
 
   it("opens the category from an overview alert (ref) and selects it", async () => {
     const probe = await openPage();
-    const transport = categoryId(probe.ledger, "Transporte");
+    const transport = accountNamed(probe.ledger, "Transporte").id;
     probe.router.navigate({ to: "/orcamento", search: { ref: `categoria:${transport}` } as never });
     const selection = await screen.findByText("Selecionada:");
     expect(flat(selection.parentElement!.textContent)).toContain("Transporte");
@@ -318,7 +289,7 @@ describe("Orçamento", () => {
 
   it("opens the edit dialog from a link with act=alterar and a month in the ref", async () => {
     const probe = await openPage();
-    const transport = categoryId(probe.ledger, "Transporte");
+    const transport = accountNamed(probe.ledger, "Transporte").id;
     const month = ymStr(probe.now);
     probe.router.navigate({
       to: "/orcamento",
@@ -336,7 +307,7 @@ describe("Orçamento", () => {
       expect((screen.getByRole("button", { name: "Orçamento do mês…" }) as HTMLButtonElement).disabled).toBe(true),
     );
     const user = userEvent.setup();
-    await pickRow(user, "Alimentação");
+    await clickInTable(user, "Orçamento por categoria", "Alimentação");
     expect((screen.getByRole("button", { name: "Alterar valor…" }) as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByRole("button", { name: "Remover do orçamento" }) as HTMLButtonElement).disabled).toBe(true);
     // looking is still allowed

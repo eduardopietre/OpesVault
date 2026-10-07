@@ -1,10 +1,9 @@
 import { charts, dom, ymAdd } from "@opesvault/domain";
 import { screen, within } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { REPORTS, buildChart, isEmpty } from "../../src/pages/relatorios/reports.ts";
-import { bodyOf, cell, flat, openReport, openReports, paramsOf, valuesTable } from "./relatorios_harness.tsx";
-
-vi.mock("../../../../packages/ui/src/chart/echarts.ts", () => import("./fake_echarts.ts"));
+import { bodyOf, cell, openReport, openReports, paramsOf, valuesTable } from "./relatorios_harness.tsx";
+import { flat } from "../dom.ts";
 
 describe("Relatórios: every report with the table of its values", () => {
   it("lists the thirteen reports of the desktop, the first one open", async () => {

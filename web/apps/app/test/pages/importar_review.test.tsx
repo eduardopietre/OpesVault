@@ -4,7 +4,7 @@
  * match), correcting, rejecting, duplicates linked as evidence, reading again with another layout and the
  * keyboard. Every action that changes the project is one undo step and one undo reverts it.
  */
-import { AccountType, importing, type Id } from "@opesvault/domain";
+import { importing, type Id } from "@opesvault/domain";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { BANK_OFX } from "../../../../packages/domain/src/demo_docs/index.ts";
@@ -20,9 +20,10 @@ import {
   pickItem,
   rowWith,
   type Opened,
-  type User,
 } from "./importar_harness.tsx";
+import { type User, choose, dialog, menu } from "../dom.ts";
 import { fakePdfRender } from "./importar_pdf_mock.ts";
+import { categoryNamed, accountNamed } from "../lookup.ts";
 
 vi.mock("../../src/data/pdf_render.ts", async () =>
   fakePdfRender(await vi.importActual<typeof import("../../src/data/pdf_render.ts")>("../../src/data/pdf_render.ts")),
@@ -35,19 +36,8 @@ const demoBatch = (o: Opened) => batches(o)[0]!;
 const item = (o: Opened, description: string, batchId: Id = demoBatch(o).id) =>
   itemsOf(o, batchId).find((i) => i.description === description)!;
 const operations = (o: Opened) => o.ledger.operations.size;
-const category = (o: Opened, name: string, type: AccountType = AccountType.EXPENSE) =>
-  o.ledger.categories(type).find((a) => a.name === name)!;
 
-async function choose(user: User, name: string | RegExp, option: string | RegExp) {
-  await user.click(screen.getByRole("combobox", { name }));
-  await user.click(await screen.findByRole("option", { name: option }));
-}
-async function menu(user: User, item: string | RegExp) {
-  await user.click(screen.getByRole("button", { name: "Mais" }));
-  await user.click(await screen.findByRole("menuitem", { name: item }));
-}
 const button = (name: string) => screen.getByRole("button", { name }) as HTMLButtonElement;
-const dialog = (name: string | RegExp) => screen.findByRole("dialog", { name });
 const field = (scope: HTMLElement, label: string | RegExp) => within(scope).getByLabelText(label) as HTMLInputElement;
 
 async function type(user: User, input: HTMLElement, text: string) {
@@ -95,7 +85,7 @@ describe("Importar e revisar: categoria de cada item e regras", () => {
     const o = await openImport();
     const loja = item(o, "Loja Eletro");
     expect(loja.target_account_id).toBeNull();
-    const lazer = category(o, "Lazer");
+    const lazer = categoryNamed(o.ledger, "Lazer");
     await choose(o.user, "Categoria ou conta de Loja Eletro", "Lazer");
     expect(importing.pipeline.items(o.ledger).get(loja.id)!.target_account_id).toBe(lazer.id);
     expect(importing.pipeline.items(o.ledger).get(loja.id)!.suggestion_source).toBeNull();
@@ -135,7 +125,7 @@ describe("Importar e revisar: categoria de cada item e regras", () => {
     // a card purchase can only go to a category; a bank outflow also to another of the person's accounts
     await choose(o.user, "Categoria ou conta de PIX ALUGUEL", /↔ Poupança/);
     const aluguel = itemsOf(o, lastBatch(o).id).find((i) => i.description === "PIX ALUGUEL")!;
-    expect(aluguel.target_account_id).toBe([...o.ledger.accounts.values()].find((a) => a.name === "Poupança")!.id);
+    expect(aluguel.target_account_id).toBe(accountNamed(o.ledger, "Poupança").id);
     expect(screen.queryByText(/Usar sempre/)).toBeNull();
     o.workspace.undo();
     expect(itemsOf(o, lastBatch(o).id).find((i) => i.description === "PIX ALUGUEL")!.target_account_id).not.toBe(
@@ -145,11 +135,11 @@ describe("Importar e revisar: categoria de cada item e regras", () => {
 
   it("creates a rule from the selected item with the menu, and asks for an item when none is selected", async () => {
     const o = await openImport();
-    await menu(o.user, /^Criar regra a partir do item…/);
+    await menu(o.user, "Mais", /^Criar regra a partir do item…/);
     expect(await screen.findByText("Selecione um item para criar a regra a partir dele.")).toBeTruthy();
     await pickItem(o, "Loja Eletro");
     const rules = importing.rules.rules(o.ledger).size;
-    await menu(o.user, /^Criar regra a partir do item…/);
+    await menu(o.user, "Mais", /^Criar regra a partir do item…/);
     const rule = await dialog("Regra de categoria");
     expect(field(rule, /A descrição contém/).value.toLowerCase()).toContain("loja");
     await choose(o.user, "Categoria", "Despesa: Lazer");
@@ -303,7 +293,7 @@ describe("Importar e revisar: corrigir e rejeitar", () => {
   it("rejects an item with a reason, moves on to the next one and one undo brings it back", async () => {
     const o = await openImport();
     await pickItem(o, "Amazon.com");
-    await menu(o.user, /^Rejeitar item…/);
+    await menu(o.user, "Mais", /^Rejeitar item…/);
     const ask = await dialog("Rejeitar item");
     await o.user.click(within(ask).getByRole("button", { name: "Rejeitar" }));
     expect(await within(ask).findByText("O motivo é obrigatório.")).toBeTruthy();
@@ -350,7 +340,7 @@ describe("Importar e revisar: já registrados", () => {
   it("keeps a repeated item as a separate entry, with a reason", async () => {
     const { o, batch } = await withDuplicates();
     await pickItem(o, "PIX ALUGUEL");
-    await menu(o.user, /^Manter separado…/);
+    await menu(o.user, "Mais", /^Manter separado…/);
     const ask = await dialog("Manter como lançamento separado");
     await type(o.user, field(ask, /Motivo/), "Dois aluguéis mesmo");
     await o.user.click(within(ask).getByRole("button", { name: "Manter separado" }));

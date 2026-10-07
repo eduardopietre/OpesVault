@@ -1,7 +1,7 @@
 /** Links in and out of Relatórios: a report opened by key, and "Ver lançamentos" to the Livro. */
-import { AccountType, dom, ymAdd, ymFirstDay, ymLastDay, ymStr } from "@opesvault/domain";
+import { dom, ymAdd, ymFirstDay, ymLastDay, ymStr } from "@opesvault/domain";
 import { act, screen, waitFor, within } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { parseReveal } from "../../src/pages/livro/rows.ts";
 import {
   REPORTS,
@@ -12,11 +12,10 @@ import {
   ledgerRef,
   type ReportKey,
 } from "../../src/pages/relatorios/reports.ts";
-import { account, choose } from "./livro_harness.tsx";
+import { accountNamed, memberNamed, categoryNamed } from "../lookup.ts";
+import { choose } from "../dom.ts";
 import { openReport, openReports, paramsOf, valuesTable } from "./relatorios_harness.tsx";
 import { addressSettles } from "../navigations.ts";
-
-vi.mock("../../../../packages/ui/src/chart/echarts.ts", () => import("./fake_echarts.ts"));
 
 const current = () => {
   const list = screen.getByRole("navigation", { name: "Relatórios" });
@@ -116,8 +115,8 @@ describe("Relatórios: what stands behind a point (Ver lançamentos)", () => {
       const p = params(key, scope, months);
       return ledgerRef(ledger, key, buildChart(ledger, key, p), index, p);
     };
-    const bank = account({ workspace: { ledger } } as never, "Banco A").id;
-    const ana = [...ledger.members.values()].find((m) => m.name === "Ana")!.id;
+    const bank = accountNamed(ledger, "Banco A").id;
+    const ana = memberNamed(ledger, "Ana").id;
     const may = ymStr(ymAdd(now, -11));
 
     // the project in a month, then an account in a month, then a member's month
@@ -135,16 +134,16 @@ describe("Relatórios: what stands behind a point (Ver lançamentos)", () => {
     // a category over the whole period, or in the month of a bar
     const chart = buildChart(ledger, "categories", params("categories"));
     const first = chart.series[0]!.points[0]!.x;
-    const categoryId = ledger.categories(AccountType.EXPENSE).find((c) => c.name === first)!.id;
+    const categoryId = categoryNamed(ledger, first).id;
     const start = ymAdd(now, -11);
     expect(ref("categories", 0)).toBe(`filter:${categoryId}:${ymFirstDay(start)}..${ymLastDay(now)}`);
-    const food = ledger.categories(AccountType.EXPENSE).find((c) => c.name === "Alimentação")!.id;
+    const food = categoryNamed(ledger, "Alimentação").id;
     expect(ref("categories", 3, food)).toBe(`filter:${food}:${ymStr(ymAdd(now, -8))}`);
 
     // a category in the month of the comparison
     const comparison = buildChart(ledger, "comparison", params("comparison"));
     const name = comparison.series[0]!.points[0]!.x;
-    const id = ledger.categories(AccountType.EXPENSE).find((c) => c.name === name)!.id;
+    const id = categoryNamed(ledger, name).id;
     expect(ref("comparison", 0)).toBe(`filter:${id}:${ymStr(now)}`);
 
     // a marker (the chosen one, or the point's own)

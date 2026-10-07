@@ -8,20 +8,12 @@ import { App } from "../src/App.tsx";
 import { createAppRouter } from "../src/router.tsx";
 import { DEMO, createFakeServices } from "../src/services/fake.ts";
 import { SessionStore } from "../src/session.tsx";
-
-function mount(path: string) {
-  const services = createFakeServices({ seed: true });
-  const session = new SessionStore();
-  const history = createMemoryHistory({ initialEntries: [path] });
-  const router = createAppRouter({ session, history });
-  render(<App router={router} services={services} session={session} preferences={memoryPreferences()} />);
-  return { router, session, services };
-}
+import { mountApp } from "./mount.tsx";
 
 describe("screens before a project", () => {
   it("send a signed-out visitor to sign in, validate the form and open the projects", async () => {
     const user = userEvent.setup();
-    const { router } = mount("/livro");
+    const { router } = await mountApp("/livro", { project: "signed-out" });
     await screen.findByRole("heading", { name: "Entrar" });
     expect(router.state.location.pathname).toBe("/entrar");
     await user.click(screen.getByRole("button", { name: "Entrar" }));
@@ -35,7 +27,7 @@ describe("screens before a project", () => {
 
   it("enables Criar conta only when the passwords match", async () => {
     const user = userEvent.setup();
-    mount("/criar-conta");
+    await mountApp("/criar-conta", { project: "signed-out" });
     await screen.findByRole("heading", { name: "Criar conta" });
     const submit = screen.getByRole("button", { name: "Criar conta" }) as HTMLButtonElement;
     await user.type(screen.getByLabelText("Seu nome"), "Carla");
@@ -52,17 +44,10 @@ describe("screens before a project", () => {
 describe("the shell", () => {
   it("shows the destination with its header, the current link and the counts, and locks", async () => {
     const user = userEvent.setup();
-    const services = createFakeServices({ seed: true });
-    const session = new SessionStore();
-    const account = await services.signIn(DEMO.email, DEMO.password);
-    const open = await services.openProject(services.demoProjectId!, DEMO.projectPassword);
-    session.update({ account, open, operatorId: open.members[0]?.id ?? null });
-    const router = createAppRouter({ session, history: createMemoryHistory({ initialEntries: ["/livro"] }) });
-    render(<App router={router} services={services} session={session} preferences={memoryPreferences()} />);
-    await screen.findByRole("heading", { level: 1, name: "Livro financeiro" });
+    const { session, workspace } = await mountApp("/livro", { heading: "Livro financeiro" });
     expect(screen.getByRole("link", { name: "Livro financeiro" }).getAttribute("aria-current")).toBe("page");
     // Counts come from the project itself (notices and items waiting for review).
-    const counts = attentionCounts(open.workspace.ledger, open.workspace.today());
+    const counts = attentionCounts(workspace.ledger, workspace.today());
     const importName = counts["importar"]
       ? `Importar e revisar, ${counts["importar"]} itens pedem atenção`
       : "Importar e revisar";
@@ -81,13 +66,7 @@ describe("views outside the shell", () => {
   for (const path of ["/imprimir/relatorio-mensal", "/imprimir/relatorio-anual", "/imprimir/imposto", "/comecar"]) {
     it(`${path} shows the lock screen while the project is locked, and the view after unlocking`, async () => {
       const user = userEvent.setup();
-      const services = createFakeServices({ seed: true });
-      const session = new SessionStore();
-      const account = await services.signIn(DEMO.email, DEMO.password);
-      const open = await services.openProject(services.demoProjectId!, DEMO.projectPassword);
-      session.update({ account, open, operatorId: open.members[0]?.id ?? null });
-      const router = createAppRouter({ session, history: createMemoryHistory({ initialEntries: [path] }) });
-      render(<App router={router} services={services} session={session} preferences={memoryPreferences()} />);
+      const { services, session } = await mountApp(path);
       await waitFor(() => expect(session.get().open).not.toBeNull());
       await screen.findAllByRole("heading", { level: 1 });
       await act(async () => {

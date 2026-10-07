@@ -1,19 +1,10 @@
 /** Mounts the Assistente with the demonstration project and a scripted model that stands in for Ollama. */
 import type { ai, Operation } from "@opesvault/domain";
-import { memoryPreferences } from "@opesvault/ui";
-import { createMemoryHistory } from "@tanstack/react-router";
-import { act as reactAct, render, screen, waitFor, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { screen, waitFor, within } from "@testing-library/react";
 import { expect } from "vitest";
-import { App } from "../../src/App.tsx";
 import { setAiTransport } from "../../src/data/ai.ts";
 import { setServerProbe } from "../../src/pages/assistente/reach.ts";
-import { createAppRouter } from "../../src/router.tsx";
-import { DEMO, createFakeServices } from "../../src/services/fake.ts";
-import { SessionStore } from "../../src/session.tsx";
-import { setViewport } from "./livro_harness.tsx";
-
-export { setViewport };
+import { mountApp, type MountOptions } from "../mount.tsx";
 
 type Transport = ai.ollama.Transport;
 
@@ -77,30 +68,9 @@ export function resetModel(): void {
   setServerProbe(null);
 }
 
-export async function openAssistente(
-  options: { width?: number; empty?: boolean; readOnly?: boolean; path?: string } = {},
-) {
-  setViewport(options.width ?? 1600);
-  const services = createFakeServices({ seed: true });
-  const session = new SessionStore();
-  let account = await services.signIn(DEMO.email, DEMO.password);
-  let projectId = services.demoProjectId!;
-  let password: string = DEMO.projectPassword;
-  if (options.empty) {
-    account = await services.signUp({ name: "Carla", email: "carla@example.com", password: "uma frase longa" });
-    const created = await services.createProject({ name: "Vazio", password: "senha do projeto" });
-    projectId = created.project.id;
-    password = "senha do projeto";
-  }
-  const open = await services.openProject(projectId, password);
-  if (options.readOnly) open.workspace.setReadOnly(true);
-  session.update({ account, open, operatorId: open.members[0]?.id ?? null });
-  const history = createMemoryHistory({ initialEntries: [options.path ?? "/assistente"] });
-  const router = createAppRouter({ session, history });
-  const preferences = memoryPreferences();
-  render(<App router={router} services={services} session={session} preferences={preferences} />);
-  await screen.findByRole("heading", { level: 1, name: "Assistente" });
-  return { workspace: open.workspace, router, session, preferences, user: userEvent.setup(), services };
+export async function openAssistente(options: MountOptions & { path?: string } = {}) {
+  const { path, ...mount } = options;
+  return mountApp(path ?? "/assistente", { width: 1600, heading: "Assistente", ...mount });
 }
 
 export type Opened = Awaited<ReturnType<typeof openAssistente>>;
@@ -126,5 +96,3 @@ export const opsNamed = (o: Opened, description: string): Operation[] =>
 
 /** The 8-character id the tools use for an operation. */
 export const shortId = (op: { id: string }) => op.id.replaceAll("-", "").slice(0, 8);
-
-export { reactAct };

@@ -26,6 +26,7 @@ import {
   summaryLine,
   whereLine,
 } from "../../src/pages/contas/rows.ts";
+import { accountNamed } from "../lookup.ts";
 
 let ledger: Ledger;
 const today = makeDate(2026, 10, 6);
@@ -172,7 +173,7 @@ describe("the tables", () => {
 
 describe("the charts", () => {
   it("draws the bank's informed balances as isolated points and hides what the domain hides", () => {
-    const account = [...ledger.accounts.values()].find((a) => a.name === "Banco A")!;
+    const account = accountNamed(ledger, "Banco A");
     const data = toChartData(
       charts.data.accountBalanceHistory(ledger, account.id, { year: 2025, month: 11 }, { year: 2026, month: 10 }),
     );

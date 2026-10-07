@@ -7,7 +7,7 @@ import { chooseMonth } from "../../src/data/month.ts";
 import { pageById } from "../../src/pages.tsx";
 import { dayLabel } from "../../src/pages/calendario/month_grid.tsx";
 import { agendaFigures, dayTitle, entriesOf, monthWeeks } from "../../src/pages/calendario/rows.ts";
-import { mountPage } from "./overview_calendar_helpers.tsx";
+import { mountApp } from "../mount.tsx";
 import { navigations, wentTo } from "../navigations.ts";
 
 beforeEach(() => chooseMonth(ymOf(today())));
@@ -33,7 +33,7 @@ describe("Calendário rows", () => {
   });
 
   it("adds the figures: to pay, late, paid and to receive, from the entries", async () => {
-    const { workspace } = await mountPage("/calendario");
+    const { workspace } = await mountApp("/calendario");
     const events = monthEventsOf(workspace.ledger, workspace.today());
     const figures = agendaFigures(events);
     const outgoing = events.filter((e) => e.amount.isNegative());
@@ -52,7 +52,7 @@ describe("Calendário rows", () => {
 
 describe("Calendário", () => {
   it("shows the month's entries with their state in words, the figures and the grid", async () => {
-    const { workspace } = await mountPage("/calendario");
+    const { workspace } = await mountApp("/calendario");
     await heading();
     const events = monthEventsOf(workspace.ledger, workspace.today());
     expect(events.length).toBeGreaterThan(0);
@@ -82,7 +82,7 @@ describe("Calendário", () => {
 
   it("chooses a day to see only its entries, and 'Mês inteiro' shows them all again", async () => {
     const user = userEvent.setup();
-    const { workspace } = await mountPage("/calendario");
+    const { workspace } = await mountApp("/calendario");
     await heading();
     const events = monthEventsOf(workspace.ledger, workspace.today());
     const weeks = monthWeeks(ymOf(workspace.today()), events, workspace.today());
@@ -113,7 +113,7 @@ describe("Calendário", () => {
 
   it("opens, from each entry, the place where it is paid or linked, ready to act", async () => {
     const user = userEvent.setup();
-    const { router, workspace } = await mountPage("/calendario");
+    const { router, workspace } = await mountApp("/calendario");
     await heading();
     const events = monthEventsOf(workspace.ledger, workspace.today());
     const seen = new Set<string>();
@@ -140,7 +140,7 @@ describe("Calendário", () => {
 
   it("opens the selected entry with 'Abrir…', by double click, and asks to select one first", async () => {
     const user = userEvent.setup();
-    const { router, workspace } = await mountPage("/calendario");
+    const { router, workspace } = await mountApp("/calendario");
     await heading();
     await user.click(screen.getByRole("button", { name: "Abrir…" }));
     expect(await screen.findByText("Selecione um vencimento.")).toBeTruthy();
@@ -164,7 +164,7 @@ describe("Calendário", () => {
 
   it("changes month with the picker, shared with the other screens, and never edits the project", async () => {
     const user = userEvent.setup();
-    const { router, workspace } = await mountPage("/calendario");
+    const { router, workspace } = await mountApp("/calendario");
     await heading();
     await user.click(screen.getByRole("button", { name: "Próximo mês" }));
     const next = ymAdd(ymOf(workspace.today()), 1);
@@ -185,7 +185,7 @@ describe("Calendário", () => {
       addEventListener: () => undefined,
       removeEventListener: () => undefined,
     }));
-    const { router, workspace } = await mountPage("/calendario");
+    const { router, workspace } = await mountApp("/calendario");
     await heading();
     expect(screen.queryByRole("table", { name: "Dias do mês" })).toBeNull();
     const list = screen.getByRole("list", { name: "Dias com vencimentos" });
@@ -198,7 +198,7 @@ describe("Calendário", () => {
   });
 
   it("shows an empty month and an empty project without crashing (TA-31)", async () => {
-    await mountPage("/calendario", { empty: true });
+    await mountApp("/calendario", { project: "blank" });
     await heading();
     expect(screen.getByText(/0 vencimento\(s\) em/)).toBeTruthy();
     expect(screen.getByText("Nenhum vencimento neste período.")).toBeTruthy();

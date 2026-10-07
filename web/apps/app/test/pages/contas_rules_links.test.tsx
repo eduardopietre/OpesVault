@@ -1,18 +1,9 @@
 /** Regras (own rules, learned proposals, contradicted rules) and the links into the page (docs `data/links.ts`). */
-import {
-  AccountType,
-  Dec,
-  dom,
-  formatDateBr,
-  importing,
-  makeDate,
-  ymOf,
-  type Id,
-  type Ledger,
-} from "@opesvault/domain";
+import { Dec, dom, formatDateBr, importing, makeDate, ymOf, type Id, type Ledger } from "@opesvault/domain";
 import { act as reactAct, screen, waitFor, within } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { alertLink, eventLink } from "../../src/data/links.ts";
+import { openContas, snapshot } from "./contas_harness.tsx";
 import {
   choose,
   closed,
@@ -20,23 +11,20 @@ import {
   fill,
   flat,
   goTab,
-  openContas,
-  pick,
+  clickRow,
   rowOf,
-  snapshot,
   submit,
   table,
   undoOnce,
-} from "./contas_harness.tsx";
+  selectedRow,
+} from "../dom.ts";
 import { addressSettles } from "../navigations.ts";
-
-vi.mock("../../../../packages/ui/src/chart/echarts.ts", async () => await import("./fake_echarts.ts"));
+import { accountNamed, categoryNamed } from "../lookup.ts";
 
 const { rules, learning } = importing;
 const { ItemStatus } = importing.importModel;
 
-const category = (ledger: Ledger, name: string) =>
-  ledger.categories(AccountType.EXPENSE).find((c) => c.name === name)!.id;
+const category = (ledger: Ledger, name: string) => categoryNamed(ledger, name).id;
 const rulesOf = (ledger: Ledger) => [...rules.rules(ledger).values()];
 const patterns = (ledger: Ledger) =>
   JSON.stringify(rulesOf(ledger).map((r) => [r.id, r.pattern, r.target_account_id, r.active, r.version]));
@@ -54,7 +42,7 @@ function learnFrom(
   text: string,
   name: string,
 ) {
-  const bank = [...ledger.accounts.values()].find((a) => a.name === "Banco A")!.id;
+  const bank = accountNamed(ledger, "Banco A").id;
   workspace.act((l) => {
     for (const day of [2, 9, 16]) l.recordExpense(bank, category(l, name), "30.00", makeDate(2026, 3, day), text);
   });
@@ -91,7 +79,7 @@ describe("Regras", () => {
     await fill(user, box, "A descrição contém", pattern);
     const hits = pending.filter((i) => rules.normalize(i.description).includes(rules.normalize(pattern)));
     expect(within(box).getByRole("status").textContent).toContain(`Pega ${hits.length} item(ns) pendente(s) agora.`);
-    await choose(user, box, "Categoria", "Despesa: Lazer");
+    await choose(user, "Categoria", "Despesa: Lazer", box);
     await submit(user, box, "Criar regra");
     await closed("Regra de categoria");
     const created = rulesOf(ledger).find((r) => r.pattern === rules.normalize(pattern))!;
@@ -118,7 +106,7 @@ describe("Regras", () => {
     await user.click(screen.getByRole("button", { name: "Nova regra…" }));
     const box = await dialog("Regra de categoria");
     await fill(user, box, "A descrição contém", rules.suggestPattern(sample.description));
-    await choose(user, box, "Categoria", "Despesa: Lazer");
+    await choose(user, "Categoria", "Despesa: Lazer", box);
     await user.click(within(box).getByRole("checkbox", { name: "Aplicar agora aos itens pendentes de revisão" }));
     await submit(user, box, "Criar regra");
     await closed("Regra de categoria");
@@ -135,7 +123,7 @@ describe("Regras", () => {
     const box = await dialog("Regra de categoria");
     await submit(user, box, "Criar regra");
     expect(within(box).getByText("Escolha a categoria.")).toBeTruthy();
-    await choose(user, box, "Categoria", "Despesa: Lazer");
+    await choose(user, "Categoria", "Despesa: Lazer", box);
     await fill(user, box, "A descrição contém", "ab");
     await submit(user, box, "Criar regra");
     expect(within(box).getByText("O texto precisa ter ao menos 3 caracteres.")).toBeTruthy();
@@ -150,11 +138,11 @@ describe("Regras", () => {
     const { ledger, workspace, user, grid } = await openRules();
     const rule = rulesOf(ledger)[0]!;
     const before = patterns(ledger);
-    await pick(user, grid, rule.pattern);
+    await clickRow(user, grid, rule.pattern);
     await user.click(screen.getByRole("button", { name: "Editar…" }));
     const box = await dialog("Regra de categoria");
     expect((within(box).getByLabelText(/^A descrição contém/) as HTMLInputElement).value).toBe(rule.pattern);
-    await choose(user, box, "Categoria", "Despesa: Lazer");
+    await choose(user, "Categoria", "Despesa: Lazer", box);
     await submit(user, box, "Salvar regra");
     expect(within(box).getByText("Informe o motivo da alteração.")).toBeTruthy();
     await fill(user, box, "Motivo da alteração", "Padaria virou lazer");
@@ -171,7 +159,7 @@ describe("Regras", () => {
   it("turns a rule off and on, asking the reason each time; one undo reverts each", async () => {
     const { ledger, workspace, user, grid } = await openRules();
     const rule = rulesOf(ledger)[0]!;
-    await pick(user, grid, rule.pattern);
+    await clickRow(user, grid, rule.pattern);
     await user.click(screen.getByRole("button", { name: "Ativar ou desativar…" }));
     let box = await dialog("Desativar regra");
     await submit(user, box, "Desativar");
@@ -229,7 +217,7 @@ describe("Regras", () => {
     expect(await screen.findByText("Escolha uma das regras sugeridas.")).toBeTruthy();
     expect(screen.queryByRole("dialog")).toBeNull();
     const before = patterns(ledger);
-    await pick(user, grid, "FARMACIA SAUDE VIVA");
+    await clickRow(user, grid, "FARMACIA SAUDE VIVA");
     await user.click(screen.getByRole("button", { name: "Criar regra…" }));
     const box = await dialog("Regra de categoria");
     // pattern and category come filled in, still editable
@@ -258,10 +246,6 @@ describe("Regras", () => {
 // ── links into the page ──────────────────────────
 
 const cardOf = (ledger: Ledger) => [...ledger.cards.values()][0]!;
-const selectedRow = (grid: HTMLElement) =>
-  within(grid)
-    .getAllByRole("row")
-    .find((row) => row.getAttribute("aria-selected") === "true");
 const monthKey = (month: { year: number; month: number }) => `${month.year}-${String(month.month).padStart(2, "0")}`;
 
 type Router = Awaited<ReturnType<typeof openContas>>["router"];
@@ -361,7 +345,7 @@ describe("Links into Contas e cartões", () => {
 
   it("'conta:' selects the account and 'cartao:' the card, each in its own tab", async () => {
     const { ledger, router } = await openContas();
-    const account = [...ledger.accounts.values()].find((a) => a.name === "Conjunta")!;
+    const account = accountNamed(ledger, "Conjunta");
     await follow(router, `conta:${account.id}`);
     await tabSelected("Todas as contas");
     expect(selectedRow(await table("Contas"))!.getAttribute("data-row-id")).toBe(account.id);

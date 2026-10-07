@@ -4,31 +4,14 @@
  * demonstration lacks (a rule with a matching operation, a charge that repeats).
  */
 import { dom, type IsoDate, type Ledger } from "@opesvault/domain";
-import { act as reactAct, screen, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { mountPage, type MountOptions } from "./overview_calendar_helpers.tsx";
+import { accountNamed } from "../lookup.ts";
+import { mountApp, type MountOptions, type Mounted } from "../mount.tsx";
 
-export type Workspace = Awaited<ReturnType<typeof mountPage>>["workspace"];
+export type Workspace = Mounted["workspace"];
 
 export async function openPage(path: string, title: string, options: MountOptions = {}) {
-  const mounted = await mountPage(path, options);
-  await screen.findByRole("heading", { level: 1, name: title });
-  return { ...mounted, ledger: mounted.workspace.ledger, user: userEvent.setup() };
+  return mountApp(path, { heading: title, ...options });
 }
-
-export const accountId = (ledger: Ledger, name: string) =>
-  [...ledger.accounts.values()].find((account) => account.name === name)!.id;
-
-export const flat = (text: string | null | undefined) => (text ?? "").replace(/\s+/g, " ").trim();
-
-/** The row of a table (by the id the page gives it), or null. */
-export const rowOf = (table: HTMLElement, id: string) => table.querySelector<HTMLElement>(`[data-row-id="${id}"]`);
-
-export const pickRow = async (user: ReturnType<typeof userEvent.setup>, tableName: string, text: string) => {
-  const table = await screen.findByRole("grid", { name: tableName });
-  await user.click(within(table).getAllByText(text)[0]!);
-  return table;
-};
 
 /** A rule and, optionally, an operation that realizes its first forecast; one call, outside any undo step. */
 export function seedRule(
@@ -40,8 +23,8 @@ export function seedRule(
       ledger,
       dom.recurrence.RecurrenceRuleSchema.parse({
         description: fields.description,
-        account_id: accountId(ledger, "Banco A"),
-        counterpart_id: accountId(ledger, fields.category),
+        account_id: accountNamed(ledger, "Banco A").id,
+        counterpart_id: accountNamed(ledger, fields.category).id,
         amount: fields.amount,
         tolerance: fields.tolerance ?? "0",
         day: fields.day,
@@ -53,7 +36,13 @@ export function seedRule(
 
 export function seedExpense(workspace: Workspace, description: string, amount: string, category: string, on: IsoDate) {
   return workspace.act((ledger) =>
-    ledger.recordExpense(accountId(ledger, "Banco A"), accountId(ledger, category), amount, on, description),
+    ledger.recordExpense(
+      accountNamed(ledger, "Banco A").id,
+      accountNamed(ledger, category).id,
+      amount,
+      on,
+      description,
+    ),
   );
 }
 
@@ -63,9 +52,6 @@ export function seedRepeatingCharge(workspace: Workspace, description = "Netflix
     seedExpense(workspace, description, "39.90", "Lazer", on);
   }
 }
-
-/** Starts a new step so the test's undo reverts only what the page did. */
-export const undoOnce = (workspace: Workspace) => reactAct(() => void workspace.undo());
 
 export const rules = (ledger: Ledger) => [...dom.recurrence.rules(ledger).values()];
 export const linkCount = (ledger: Ledger) => dom.recurrence.links(ledger).size;

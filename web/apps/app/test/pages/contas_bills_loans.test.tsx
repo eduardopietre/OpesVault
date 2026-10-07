@@ -13,7 +13,8 @@ import {
   ymOf,
 } from "@opesvault/domain";
 import { screen, within } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
+import { openContas, snapshot } from "./contas_harness.tsx";
 import {
   choose,
   closed,
@@ -21,18 +22,15 @@ import {
   fill,
   flat,
   goTab,
-  openContas,
-  pick,
+  clickRow,
   rowById,
   rowOf,
-  snapshot,
   submit,
   table,
   undoOnce,
-} from "./contas_harness.tsx";
+} from "../dom.ts";
 import { navigations, wentTo } from "../navigations.ts";
-
-vi.mock("../../../../packages/ui/src/chart/echarts.ts", async () => await import("./fake_echarts.ts"));
+import { accountNamed } from "../lookup.ts";
 
 const { cards, loans } = dom;
 
@@ -125,7 +123,7 @@ describe("Faturas", () => {
       .filter((b) => b.remaining.isPositive())
       .at(-1)!;
     expect(oldest.cycle.due < newer.cycle.due).toBe(true);
-    await pick(user, grid, dueText(newer.cycle.due));
+    await clickRow(user, grid, dueText(newer.cycle.due));
     await user.click(screen.getByRole("button", { name: "Pagar…" }));
     const box = await dialog("Pagar fatura — Cartão X");
     await fill(user, box, "Valor", "300,00");
@@ -319,7 +317,7 @@ describe("Financiamentos", () => {
     // nothing was recorded by simulating
     expect(snapshot(ledger)).toBe(before);
     // the other effect changes the numbers
-    await choose(user, box, "Efeito", "Reduzir a parcela");
+    await choose(user, "Efeito", "Reduzir a parcela", box);
     const payment = loans.simulatePrepayment(ledger, plan.id, "10000", loans.PrepaymentMode.REDUCE_PAYMENT);
     expect(result.textContent).toContain(
       `Próxima parcela: ${formatBrl(payment.nextPaymentBefore!)} → ${formatBrl(payment.nextPaymentAfter!)}`,
@@ -359,7 +357,7 @@ describe("Financiamentos", () => {
     await fill(user, box, "Saldo devedor", "120.000,00");
     await fill(user, box, "Parcelas restantes", "120");
     await fill(user, box, "Taxa de juros (%)", "0,80");
-    await choose(user, box, "Sistema de amortização", /SAC/);
+    await choose(user, "Sistema de amortização", /SAC/, box);
     await fill(user, box, "Vencimento da próxima parcela", "10/11/2026");
     await fill(user, box, "Seguros e tarifas por parcela", "45,00");
     await submit(user, box, "Criar financiamento");
@@ -383,19 +381,19 @@ describe("Financiamentos", () => {
 
   it("creates a financing whose money was received now in an account, with a yearly rate", async () => {
     const { ledger, user } = await openLoans();
-    const checking = [...ledger.accounts.values()].find((a) => a.name === "Banco A")!;
+    const checking = accountNamed(ledger, "Banco A");
     await user.click(screen.getByRole("button", { name: "Novo financiamento…" }));
     const box = await dialog("Novo financiamento");
     await fill(user, box, "Nome", "Empréstimo pessoal");
     await fill(user, box, "Saldo devedor", "5.000,00");
     await fill(user, box, "Parcelas restantes", "12");
     await fill(user, box, "Taxa de juros (%)", "12");
-    await choose(user, box, "Período da taxa", "% ao ano (efetiva)");
+    await choose(user, "Período da taxa", "% ao ano (efetiva)", box);
     expect(
       (within(box).getByRole("combobox", { name: "Conta que recebeu o dinheiro" }) as HTMLButtonElement).disabled,
     ).toBe(true);
-    await choose(user, box, "Como a dívida entra no livro", "Dinheiro recebido agora numa conta");
-    await choose(user, box, "Conta que recebeu o dinheiro", "Banco A");
+    await choose(user, "Como a dívida entra no livro", "Dinheiro recebido agora numa conta", box);
+    await choose(user, "Conta que recebeu o dinheiro", "Banco A", box);
     await fill(user, box, "Data do saldo", "01/10/2026");
     await submit(user, box, "Criar financiamento");
     await closed("Novo financiamento");
@@ -440,7 +438,7 @@ describe("Financiamentos", () => {
   });
 
   it("explains that nothing is selected in an empty project", async () => {
-    const { user } = await openContas("/contas", { empty: true });
+    const { user } = await openContas("/contas", { project: "blank" });
     await goTab(user, "Financiamentos");
     await user.click(screen.getByRole("button", { name: "Pagar parcela…" }));
     expect(await screen.findByText("Selecione uma parcela.")).toBeTruthy();

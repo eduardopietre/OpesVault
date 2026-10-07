@@ -1,8 +1,12 @@
 import { cancelAllDecisions, clearToasts } from "@opesvault/ui";
 import { cleanup, configure } from "@testing-library/react";
 import { MotionGlobalConfig } from "motion/react";
-import { afterEach, beforeAll } from "vitest";
+import { afterEach, beforeAll, vi } from "vitest";
 import { preloadProjectScreens } from "../src/router.tsx";
+
+// happy-dom has no canvas: every component test draws charts with a stand-in (the e2e tests draw them for real);
+// their tables of values are what these tests read.
+vi.mock("../../../packages/ui/src/chart/echarts.ts", () => import("./fake_echarts.ts"));
 
 // Whole screens over the demo project render slowly when the machine is busy: wait up to 5 s for an element
 // (findBy…/waitFor) instead of 1 s. A missing element still fails, only later.

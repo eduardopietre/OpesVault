@@ -1,7 +1,8 @@
 /** Contas bancárias: the list, the composition, the three dialogs, archiving; every change one undo step. */
 import { dom, formatBrl, investments, makeDate, queries, type Id, type Ledger } from "@opesvault/domain";
 import { screen, waitFor, within } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
+import { openContas, snapshot } from "./contas_harness.tsx";
 import {
   choose,
   closed,
@@ -9,24 +10,21 @@ import {
   fill,
   flat,
   goTab,
-  openContas,
-  pick,
+  clickRow,
   rowOf,
-  snapshot,
   submit,
   table,
   undoOnce,
   type User,
-} from "./contas_harness.tsx";
-
-vi.mock("../../../../packages/ui/src/chart/echarts.ts", async () => await import("./fake_echarts.ts"));
+} from "../dom.ts";
+import { memberNamed } from "../lookup.ts";
 
 const { banking } = dom;
 const MARCH_31 = makeDate(2026, 3, 31);
 
 const bankByName = (ledger: Ledger, name: string) =>
   [...banking.bankAccounts(ledger).values()].find((b) => b.name === name)!;
-const memberId = (ledger: Ledger, name: string) => [...ledger.members.values()].find((m) => m.name === name)!.id;
+const memberId = (ledger: Ledger, name: string) => memberNamed(ledger, name).id;
 
 /** Chooses a bank in the searchable list by typing part of its code. */
 async function chooseBank(user: User, box: HTMLElement, typed: string, option: RegExp) {
@@ -76,7 +74,7 @@ describe("Contas bancárias", () => {
     expect(cdb).toContain("Retido na fonte");
     expect(itau.checking_id).not.toBeNull();
     // another account: its own composition
-    await pick(user, grid, "Nubank do Bruno");
+    await clickRow(user, grid, "Nubank do Bruno");
     parts = await screen.findByRole("grid", { name: "Composição da conta bancária" });
     expect(within(parts).queryByText("CDB Banco X 2028")).toBeNull();
     expect(flat(parts.textContent)).toContain("Conta corrente");
@@ -90,9 +88,9 @@ describe("Contas bancárias", () => {
     await chooseBank(user, box, "260", /^260/);
     await fill(user, box, "Agência", "0002");
     await fill(user, box, "Número da conta", "55555-5");
-    await choose(user, box, "Titular", "Ana");
+    await choose(user, "Titular", "Ana", box);
     await user.click(within(box).getByRole("checkbox", { name: "Conta conjunta" }));
-    await choose(user, box, "Segundo titular", "Bruno");
+    await choose(user, "Segundo titular", "Bruno", box);
     await user.click(within(box).getByRole("checkbox", { name: "Incluir conta corrente" }));
     await user.click(within(box).getByRole("checkbox", { name: "Incluir poupança" }));
     await fill(user, box, "Conta corrente: saldo inicial", "1.000,00");
@@ -149,7 +147,7 @@ describe("Contas bancárias", () => {
     const box = await dialog("Nova conta bancária");
     await chooseBank(user, box, "341", /^341/);
     await user.click(within(box).getByRole("checkbox", { name: "Incluir conta corrente" }));
-    await choose(user, box, "Conta corrente: nova ou existente", `Usar ${free.name}`);
+    await choose(user, "Conta corrente: nova ou existente", `Usar ${free.name}`, box);
     await submit(user, box, "Salvar");
     await closed("Nova conta bancária");
     expect(ledger.accounts.size).toBe(accounts);
@@ -169,7 +167,7 @@ describe("Contas bancárias", () => {
     expect(within(box).getByText("Agência: use letras, números e símbolos, sem espaços (até 30).")).toBeTruthy();
     await fill(user, box, "Agência", "0123");
     await user.click(within(box).getByRole("checkbox", { name: "Conta conjunta" }));
-    await choose(user, box, "Titular", "Ana");
+    await choose(user, "Titular", "Ana", box);
     // the second holder cannot be the first: that option is not offered
     await user.click(within(box).getByRole("combobox", { name: "Segundo titular" }));
     expect(screen.queryByRole("option", { name: "Ana" })).toBeNull();
@@ -182,7 +180,7 @@ describe("Contas bancárias", () => {
     const { ledger, workspace, user, grid } = await openBank();
     const before = snapshot(ledger);
     const nubank = bankByName(ledger, "Nubank do Bruno");
-    await pick(user, grid, "Nubank do Bruno");
+    await clickRow(user, grid, "Nubank do Bruno");
     await user.click(screen.getByRole("button", { name: "Editar…" }));
     const box = await dialog("Editar conta bancária");
     expect((within(box).getByLabelText("Nome da conta") as HTMLInputElement).value).toBe("Nubank do Bruno");
@@ -193,7 +191,7 @@ describe("Contas bancárias", () => {
     expect(within(box).getByRole("checkbox", { name: "Incluir conta corrente" }).hasAttribute("disabled")).toBe(true);
     await fill(user, box, "Nome da conta", "Nubank do Bruno e da Ana");
     await user.click(within(box).getByRole("checkbox", { name: "Conta conjunta" }));
-    await choose(user, box, "Segundo titular", "Ana");
+    await choose(user, "Segundo titular", "Ana", box);
     await user.click(within(box).getByRole("checkbox", { name: "Incluir poupança" }));
     await fill(user, box, "Poupança: saldo inicial", "75,00");
     await submit(user, box, "Salvar");
@@ -216,7 +214,7 @@ describe("Contas bancárias", () => {
     const itau = bankByName(ledger, "Itaú da Ana");
     const checks = dom.balanceChecks.checks(ledger).size;
     const operations = ledger.operations.size;
-    await pick(user, grid, "Itaú da Ana");
+    await clickRow(user, grid, "Itaú da Ana");
     await user.click(screen.getByRole("button", { name: "Valores em uma data…" }));
     const box = await dialog(/Valores em uma data — Itaú da Ana/);
     const list = within(box).getByRole("list", { name: "Valores por item" });
@@ -276,7 +274,7 @@ describe("Contas bancárias", () => {
     const before = snapshot(ledger);
     const positions = investments.service.positions(ledger).size;
     const nubank = bankByName(ledger, "Nubank do Bruno");
-    await pick(user, grid, "Nubank do Bruno");
+    await clickRow(user, grid, "Nubank do Bruno");
     await user.click(screen.getByRole("button", { name: "Novo investimento…" }));
     const box = await dialog("Novo investimento");
     await submit(user, box, "Salvar");
@@ -293,7 +291,7 @@ describe("Contas bancárias", () => {
     await user.click(await screen.findByRole("option", { name: /^04\.02/ }));
     // choosing the type suggests the tax treatment and the app's class
     expect(within(box).getByRole("combobox", { name: "Tributação" }).textContent).toContain("Retido na fonte");
-    await choose(user, box, "Indexador", "CDI");
+    await choose(user, "Indexador", "CDI", box);
     await fill(user, box, "Taxa (%)", "105");
     await user.click(within(box).getByRole("checkbox", { name: "Vencimento: informada" }));
     await fill(user, box, "Vencimento", "15/06/2027");
@@ -326,11 +324,11 @@ describe("Contas bancárias", () => {
     const before = investments.profile.profileOf(ledger, position.id)!;
     const parts = await screen.findByRole("grid", { name: "Composição da conta bancária" });
     // a part that is not an investment explains instead of opening a dialog
-    await pick(user, parts, "Conta corrente");
+    await clickRow(user, parts, "Conta corrente");
     await user.click(screen.getByRole("button", { name: "Características…" }));
     expect(await screen.findByText("Escolha um investimento na composição.")).toBeTruthy();
     expect(screen.queryByRole("dialog")).toBeNull();
-    await pick(user, parts, "CDB Banco X 2028");
+    await clickRow(user, parts, "CDB Banco X 2028");
     await user.click(screen.getByRole("button", { name: "Características…" }));
     const box = await dialog("Características do investimento");
     // a new investment's own fields are not here
@@ -339,7 +337,7 @@ describe("Contas bancárias", () => {
     await fill(user, box, "Taxa (%)", "112,5");
     await fill(user, box, "Emissor", "Banco X");
     await fill(user, box, "CNPJ do emissor", "11.222.333/0001-81");
-    await choose(user, box, "Cobertura do FGC", "Sim");
+    await choose(user, "Cobertura do FGC", "Sim", box);
     await submit(user, box, "Salvar");
     await closed("Características do investimento");
     const saved = investments.profile.profileOf(ledger, position.id)!;
@@ -353,7 +351,7 @@ describe("Contas bancárias", () => {
   it("refuses an invalid CNPJ and a rate that is not a number in the characteristics", async () => {
     const { workspace, user } = await openBank();
     const parts = await screen.findByRole("grid", { name: "Composição da conta bancária" });
-    await pick(user, parts, "CDB Banco X 2028");
+    await clickRow(user, parts, "CDB Banco X 2028");
     await user.click(screen.getByRole("button", { name: "Características…" }));
     const box = await dialog("Características do investimento");
     await fill(user, box, "CNPJ do emissor", "11.111.111/1111-11");
@@ -370,7 +368,7 @@ describe("Contas bancárias", () => {
     const { ledger, user, grid } = await openBank();
     const nubank = bankByName(ledger, "Nubank do Bruno");
     const accounts = ledger.accounts.size;
-    await pick(user, grid, "Nubank do Bruno");
+    await clickRow(user, grid, "Nubank do Bruno");
     await user.click(screen.getByRole("button", { name: "Mais" }));
     await user.click(await screen.findByRole("menuitem", { name: "Encerrar conta bancária…" }));
     // cancel keeps it
@@ -390,7 +388,7 @@ describe("Contas bancárias", () => {
   });
 
   it("asks to cadastre the holder first when the project has no members", async () => {
-    const { user } = await openContas("/contas", { empty: true });
+    const { user } = await openContas("/contas", { project: "blank" });
     await user.click(screen.getByRole("button", { name: "Nova conta bancária…" }));
     expect(await screen.findByText("Cadastre o titular na aba Integrantes antes.")).toBeTruthy();
     expect(screen.queryByRole("dialog")).toBeNull();

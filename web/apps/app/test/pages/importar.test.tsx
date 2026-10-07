@@ -22,7 +22,7 @@ const documents = (o: { workspace: { session: { documents: readonly unknown[] } 
 
 describe("Importar e revisar: o projeto", () => {
   it("shows what the page is for when the project has no documents, and nothing crashes", async () => {
-    const o = await openImport({ empty: true });
+    const o = await openImport({ project: "new" });
     expect(await screen.findByRole("heading", { level: 2, name: "Nenhum documento importado" })).toBeTruthy();
     expect(screen.getByText(/arrastar os arquivos para esta janela/)).toBeTruthy();
     expect(tableOf("Documentos importados")).toBeNull();

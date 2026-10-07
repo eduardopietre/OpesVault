@@ -8,24 +8,19 @@ import { afterEach, describe, expect, it } from "vitest";
 import { setAiTransport } from "../../src/data/ai.ts";
 import { FakeOllama } from "./fake_ollama.ts";
 import {
-  account,
   byId,
-  category,
   count,
-  choose,
   closeDialog,
-  dialog,
   grid,
-  menu,
   openLivro,
   opByDescription,
-  pickRow,
   rowsWith,
-  submit,
   typeInto,
   type Opened,
-  type User,
+  selectOperation,
 } from "./livro_harness.tsx";
+import { accountNamed, categoryNamed, memberNamed } from "../lookup.ts";
+import { choose, dialog, menu, submit, type User } from "../dom.ts";
 
 afterEach(() => setAiTransport(null));
 
@@ -59,7 +54,7 @@ describe("Livro: the table", () => {
 
   it("shows the inspector beside the table with the operation's details", async () => {
     const { user } = await openLivro();
-    await pickRow(user, "Aluguel");
+    await selectOperation(user, "Aluguel");
     const details = await screen.findByTestId("operation-details");
     expect(within(details).getAllByText("Aluguel").length).toBeGreaterThan(0);
     expect(within(details).getByText("Partidas")).toBeTruthy();
@@ -82,7 +77,7 @@ describe("Livro: Novo lançamento", () => {
     const [op] = opByDescription(o.workspace, "Livraria do centro") as [Operation];
     expect(op.kind).toBe(OperationKind.EXPENSE);
     expect(op.postings.map((p) => p.amount.toFixed()).sort()).toEqual(["-89.90", "89.90"]);
-    expect(op.postings.some((p) => p.account_id === category(o, "Lazer").id)).toBe(true);
+    expect(op.postings.some((p) => p.account_id === categoryNamed(o.ledger, "Lazer").id)).toBe(true);
     // the new row is shown and selected, so the person sees where it went
     await waitFor(() => expect(rowsWith("Livraria do centro").length).toBe(1));
     expectUndo(o, before);
@@ -126,7 +121,9 @@ describe("Livro: Novo lançamento", () => {
     const transfer = [...o.workspace.ledger.operations.values()].find(
       (op) => op.kind === OperationKind.TRANSFER && op.description === "Transferência",
     ) as Operation;
-    expect(transfer.postings.find((p) => p.amount.isPositive())?.account_id).toBe(account(o, "Poupança").id);
+    expect(transfer.postings.find((p) => p.amount.isPositive())?.account_id).toBe(
+      accountNamed(o.ledger, "Poupança").id,
+    );
     expectUndo(o, before);
 
     before = count(o);
@@ -252,7 +249,7 @@ async function openActions(user: User, item: string | RegExp) {
 describe("Livro: correções", () => {
   it("corrects a day-to-day entry in its own words, with a reason kept in the history", async () => {
     const o = await openLivro();
-    const id = await pickRow(o.user, "Aluguel");
+    const id = await selectOperation(o.user, "Aluguel");
     await screen.findByTestId("operation-details");
     const original = byId(o, id);
     await openActions(o.user, "Corrigir…");
@@ -276,7 +273,7 @@ describe("Livro: correções", () => {
 
   it("refuses a correction that changes nothing", async () => {
     const o = await openLivro();
-    await pickRow(o.user, "Aluguel");
+    await selectOperation(o.user, "Aluguel");
     await openActions(o.user, "Corrigir…");
     const d = await dialog("Corrigir lançamento");
     await typeInto(o.user, d, /Motivo da correção/, "Conferi");
@@ -286,7 +283,7 @@ describe("Livro: correções", () => {
 
   it("opens the day-to-day editor with Enter, and the full editor from it", async () => {
     const o = await openLivro();
-    await pickRow(o.user, "Aluguel");
+    await selectOperation(o.user, "Aluguel");
     await o.user.keyboard("{Enter}");
     const d = await dialog("Corrigir lançamento");
     await o.user.click(within(d).getByRole("button", { name: "Corrigir partidas…" }));
@@ -296,14 +293,14 @@ describe("Livro: correções", () => {
 
   it("edits the postings, and the share of each posting is the rateio by member", async () => {
     const o = await openLivro();
-    const id = await pickRow(o.user, "Aluguel");
+    const id = await selectOperation(o.user, "Aluguel");
     await openActions(o.user, "Corrigir partidas…");
     const d = await dialog("Editar lançamento");
     expect(within(d).getByText("Equilibrada ✓")).toBeTruthy();
     await choose(o.user, "Integrante da partida 1", "Ana", d);
     await typeInto(o.user, d, /Motivo da correção/, "Quem paga a parte da Ana");
     await submit(o.user, d, "Salvar correção");
-    const ana = [...o.workspace.ledger.members.values()].find((m) => m.name === "Ana")!;
+    const ana = memberNamed(o.ledger, "Ana");
     await waitFor(() => expect(byId(o, id).postings.some((p) => p.member_id === ana.id)).toBe(true));
     expect(o.workspace.ledger.historyOf(id).at(-1)?.reason).toBe("Quem paga a parte da Ana");
     o.workspace.undo();
@@ -312,7 +309,7 @@ describe("Livro: correções", () => {
 
   it("shows the imbalance of the postings and refuses to save it", async () => {
     const o = await openLivro();
-    await pickRow(o.user, "Aluguel");
+    await selectOperation(o.user, "Aluguel");
     await openActions(o.user, "Corrigir partidas…");
     const d = await dialog("Editar lançamento");
     await typeInto(o.user, d, "Débito da partida 1", "2000,00");
@@ -326,7 +323,7 @@ describe("Livro: correções", () => {
 
   it("cancels an operation with a reason: it stays in the book as cancelled", async () => {
     const o = await openLivro();
-    const id = await pickRow(o.user, "Aluguel");
+    const id = await selectOperation(o.user, "Aluguel");
     await openActions(o.user, "Cancelar lançamento…");
     const d = await dialog("Cancelar lançamento");
     await submit(o.user, d, "Cancelar lançamento");
@@ -342,7 +339,7 @@ describe("Livro: correções", () => {
 
   it("does not correct a cancelled operation", async () => {
     const o = await openLivro();
-    const id = await pickRow(o.user, "Aluguel");
+    const id = await selectOperation(o.user, "Aluguel");
     o.workspace.act((l) => l.cancelOperation(id, "teste"));
     await openActions(o.user, "Corrigir…");
     expect(await screen.findByText("Lançamento cancelado não pode ser corrigido.")).toBeTruthy();
@@ -351,7 +348,7 @@ describe("Livro: correções", () => {
 
   it("reverses an operation: a new opposite entry, the original kept", async () => {
     const o = await openLivro();
-    const id = await pickRow(o.user, "Aluguel");
+    const id = await selectOperation(o.user, "Aluguel");
     const before = count(o);
     await openActions(o.user, "Estornar…");
     const d = await dialog("Estornar lançamento");
@@ -367,7 +364,7 @@ describe("Livro: correções", () => {
 
   it("shows the whole history of an operation", async () => {
     const o = await openLivro();
-    const id = await pickRow(o.user, "Aluguel");
+    const id = await selectOperation(o.user, "Aluguel");
     o.workspace.act((l) => l.updateOperation({ ...byId(o, id), notes: "ajuste" }, "Primeira correção"));
     await openActions(o.user, "Histórico");
     const d = await dialog("Histórico");
@@ -393,7 +390,7 @@ describe("Livro: classificar", () => {
     expect(await within(d).findByText("O motivo é obrigatório.")).toBeTruthy();
     await typeInto(o.user, d, /Motivo/, "Era lazer");
     await submit(o.user, d, "Reclassificar");
-    const lazer = category(o, "Lazer").id;
+    const lazer = categoryNamed(o.ledger, "Lazer").id;
     await waitFor(() => {
       const moved = [...o.workspace.ledger.operations.values()].filter(
         (op) => op.description === "Padaria Real" && op.postings.some((p) => p.account_id === lazer),
@@ -415,7 +412,7 @@ describe("Livro: classificar", () => {
 
   it("tags operations, filters by the tag, removes it and renames it", async () => {
     const o = await openLivro();
-    const id = await pickRow(o.user, "Posto Shell");
+    const id = await selectOperation(o.user, "Posto Shell");
     await openActions(o.user, "Marcadores…");
     let d = await dialog("Marcadores");
     await submit(o.user, d, "Aplicar");
@@ -441,7 +438,7 @@ describe("Livro: classificar", () => {
 
     // remove it
     await choose(o.user, "Marcador", "Viagem de férias");
-    await pickRow(o.user, "Posto Shell");
+    await selectOperation(o.user, "Posto Shell");
     await openActions(o.user, "Marcadores…");
     d = await dialog("Marcadores");
     await typeInto(o.user, d, "Marcador", "Viagem de férias");
@@ -452,7 +449,7 @@ describe("Livro: classificar", () => {
 
   it("marks an operation as checked, silencing the warning", async () => {
     const o = await openLivro();
-    await pickRow(o.user, "Mercado do mês");
+    await selectOperation(o.user, "Mercado do mês");
     const details = await screen.findByTestId("operation-details");
     expect(within(details).getByText(/Valor fora do comum/)).toBeTruthy();
     const id = [...o.workspace.ledger.operations.values()].find((op) => op.description === "Mercado do mês")!.id;
@@ -467,7 +464,7 @@ describe("Livro: classificar", () => {
 
   it("names a merchant for every similar description", async () => {
     const o = await openLivro();
-    await pickRow(o.user, "Padaria Real");
+    await selectOperation(o.user, "Padaria Real");
     await openActions(o.user, "Nomear estabelecimento…");
     const d = await dialog("Nomear estabelecimento");
     await typeInto(o.user, d, "Nome do estabelecimento", "Padaria da Rua");
@@ -482,7 +479,7 @@ describe("Livro: classificar", () => {
 describe("Livro: planejamento a partir de um lançamento", () => {
   it("registers a reimbursement to receive", async () => {
     const o = await openLivro();
-    const id = await pickRow(o.user, "Mercado do mês");
+    const id = await selectOperation(o.user, "Mercado do mês");
     await openActions(o.user, "Reembolso a receber…");
     const d = await dialog("Reembolso a receber");
     expect((within(d).getByLabelText("Valor esperado") as HTMLInputElement).value).toBe("560,00");
@@ -506,7 +503,7 @@ describe("Livro: planejamento a partir de um lançamento", () => {
 
   it("refuses a reimbursement above the expense", async () => {
     const o = await openLivro();
-    await pickRow(o.user, "Mercado do mês");
+    await selectOperation(o.user, "Mercado do mês");
     await openActions(o.user, "Reembolso a receber…");
     const d = await dialog("Reembolso a receber");
     await typeInto(o.user, d, "Quem reembolsa", "Empresa");
@@ -517,8 +514,8 @@ describe("Livro: planejamento a partir de um lançamento", () => {
 
   it("marks the category of an expense as deductible, and clears it", async () => {
     const o = await openLivro();
-    await pickRow(o.user, "Mercado do mês");
-    const alimentacao = category(o, "Alimentação").id;
+    await selectOperation(o.user, "Mercado do mês");
+    const alimentacao = categoryNamed(o.ledger, "Alimentação").id;
     await openActions(o.user, "Marcar categoria como dedutível…");
     const d = await dialog(/Despesa dedutível/);
     await choose(o.user, "Tipo de dedução", "Saúde", d);
@@ -530,8 +527,8 @@ describe("Livro: planejamento a partir de um lançamento", () => {
 
   it("records the balance the bank shows and tells whether it matches", async () => {
     const o = await openLivro();
-    await pickRow(o.user, "Aluguel");
-    const bank = account(o, "Banco A").id;
+    await selectOperation(o.user, "Aluguel");
+    const bank = accountNamed(o.ledger, "Banco A").id;
     const checks = dom.balanceChecks.checks(o.workspace.ledger).size;
     await openActions(o.user, "Conferir saldo da conta…");
     const d = await dialog(/Conferir saldo/);
@@ -550,7 +547,7 @@ describe("Livro: planejamento a partir de um lançamento", () => {
   it("details the income of a deposit for the annual return", async () => {
     const o = await openLivro();
     const details = o.workspace.ledger.entities("income_detail").size;
-    const id = await pickRow(o.user, "Salário");
+    const id = await selectOperation(o.user, "Salário");
     await openActions(o.user, "Detalhar rendimento (IR)…");
     const d = await dialog("Detalhar rendimento");
     await typeInto(o.user, d, "Bruto", "9.000,00");
@@ -567,7 +564,7 @@ describe("Livro: planejamento a partir de um lançamento", () => {
 
   it("only offers the income detail for an income", async () => {
     const o = await openLivro();
-    await pickRow(o.user, "Aluguel");
+    await selectOperation(o.user, "Aluguel");
     await openActions(o.user, "Detalhar rendimento (IR)…");
     expect(await screen.findByText("Só receitas têm detalhamento de rendimento.")).toBeTruthy();
   });
@@ -581,7 +578,7 @@ describe("Livro: comprovantes", () => {
 
   it("attaches a receipt, opens it from the details, and one undo takes it away", async () => {
     const o = await openLivro();
-    const id = await pickRow(o.user, "Aluguel");
+    const id = await selectOperation(o.user, "Aluguel");
     const input = screen.getByLabelText("Escolher o comprovante") as HTMLInputElement;
     await o.user.upload(input, png());
     await waitFor(() => expect(dom.attachments.ofOperation(o.workspace.ledger, id).length).toBe(1));
@@ -598,7 +595,7 @@ describe("Livro: comprovantes", () => {
 
   it("unlinks a receipt from the Livro in one act, and undo puts the file back", async () => {
     const o = await openLivro();
-    const id = await pickRow(o.user, "Aluguel");
+    const id = await selectOperation(o.user, "Aluguel");
     await openActions(o.user, "Desvincular comprovante…");
     expect(await screen.findByText("Este lançamento não tem comprovante.")).toBeTruthy();
     await o.user.upload(screen.getByLabelText("Escolher o comprovante") as HTMLInputElement, png());
@@ -624,7 +621,7 @@ describe("Livro: comprovantes", () => {
 
   it("refuses a file that is not a PDF or an image", async () => {
     const o = await openLivro();
-    await pickRow(o.user, "Aluguel");
+    await selectOperation(o.user, "Aluguel");
     const input = screen.getByLabelText("Escolher o comprovante") as HTMLInputElement;
     await o.user.upload(input, new File(["texto"], "nota.pdf", { type: "application/pdf" }));
     expect(await screen.findByText("Anexe um PDF ou uma imagem (PNG ou JPEG).")).toBeTruthy();

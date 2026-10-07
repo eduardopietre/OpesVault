@@ -16,10 +16,9 @@ import {
   latestActivityMonth,
   monthFigures,
 } from "../../src/pages/visao-geral/rows.ts";
-import { mountPage } from "./overview_calendar_helpers.tsx";
+import { mountApp } from "../mount.tsx";
 import { addressSettles, navigations, wentTo } from "../navigations.ts";
-
-vi.mock("../../../../packages/ui/src/chart/echarts.ts", () => import("./fake_echarts.ts"));
+import { memberNamed } from "../lookup.ts";
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -31,7 +30,7 @@ function monthOf(ledger: Ledger, today: string) {
 
 describe("Visão geral", () => {
   it("shows the figures of the month from the domain, the accounts, the categories and the indicators", async () => {
-    const { workspace } = await mountPage("/visao-geral");
+    const { workspace } = await mountApp("/visao-geral");
     await heading();
     const ledger = workspace.ledger;
     const month = monthOf(ledger, workspace.today());
@@ -60,7 +59,7 @@ describe("Visão geral", () => {
   });
 
   it("opens on the latest month with activity, not on an empty current month", async () => {
-    const { workspace } = await mountPage("/visao-geral");
+    const { workspace } = await mountApp("/visao-geral");
     await heading();
     const month = monthOf(workspace.ledger, workspace.today());
     const label = screen.getByRole("button", { name: /^Mês: .*Escolher outro mês$/ });
@@ -70,7 +69,7 @@ describe("Visão geral", () => {
   describe("Atenção", () => {
     it("links every notice to the place and the action where it is resolved", async () => {
       const user = userEvent.setup();
-      const { router, workspace } = await mountPage("/visao-geral");
+      const { router, workspace } = await mountApp("/visao-geral");
       await heading();
       const alerts = dom.alerts.alerts(workspace.ledger, workspace.today());
       expect(alerts.length).toBeGreaterThan(MAX_VISIBLE); // the demo shows "Mostrar todos"
@@ -104,7 +103,7 @@ describe("Visão geral", () => {
 
     it("counts the notices, shows six and the rest on request", async () => {
       const user = userEvent.setup();
-      const { workspace } = await mountPage("/visao-geral");
+      const { workspace } = await mountApp("/visao-geral");
       await heading();
       // the demonstration was never backed up on this device: that notice comes after the project's own
       const alerts = [
@@ -124,7 +123,7 @@ describe("Visão geral", () => {
     it("hides until the next opening: the preference holds this opening, a new one shows it again", async () => {
       const user = userEvent.setup();
       const preferences = memoryPreferences();
-      const first = await mountPage("/visao-geral", { preferences });
+      const first = await mountApp("/visao-geral", { preferences });
       await heading();
       expect(screen.getByRole("region", { name: "Atenção" })).toBeTruthy();
       await user.click(screen.getByRole("button", { name: "Ocultar" }));
@@ -144,7 +143,7 @@ describe("Visão geral", () => {
       await user.click(screen.getByRole("button", { name: "Ocultar" }));
       await waitFor(() => expect(screen.queryByRole("region", { name: "Atenção" })).toBeNull());
       first.view.unmount();
-      await mountPage("/visao-geral", { preferences });
+      await mountApp("/visao-geral", { preferences });
       await heading();
       expect(screen.getByRole("region", { name: "Atenção" })).toBeTruthy();
     });
@@ -153,7 +152,7 @@ describe("Visão geral", () => {
   describe("closing and reopening the month", () => {
     it("closes a month without pending items at once, and one undo reopens it", async () => {
       const user = userEvent.setup();
-      const { workspace } = await mountPage("/visao-geral", { empty: true });
+      const { workspace } = await mountApp("/visao-geral", { project: "blank" });
       await heading();
       const month = ymOf(workspace.today());
       expect(screen.queryByRole("region", { name: "Antes de fechar o mês" })).toBeNull();
@@ -170,7 +169,7 @@ describe("Visão geral", () => {
 
     it("asks a reason to close with pending items, listing them, and one undo reverts", async () => {
       const user = userEvent.setup();
-      const { workspace } = await mountPage("/visao-geral");
+      const { workspace } = await mountApp("/visao-geral");
       await heading();
       const month = monthOf(workspace.ledger, workspace.today());
       const pending = dom.periods.pendingItems(workspace.ledger, month);
@@ -196,7 +195,7 @@ describe("Visão geral", () => {
 
     it("does not close with pending items when the dialog is cancelled", async () => {
       const user = userEvent.setup();
-      const { workspace } = await mountPage("/visao-geral");
+      const { workspace } = await mountApp("/visao-geral");
       await heading();
       const month = monthOf(workspace.ledger, workspace.today());
       await user.click(screen.getByRole("button", { name: "Fechar mês…" }));
@@ -209,7 +208,7 @@ describe("Visão geral", () => {
 
     it("reopens a closed month only with a reason, kept in the history, and one undo closes it again", async () => {
       const user = userEvent.setup();
-      const { workspace } = await mountPage("/visao-geral", { empty: true });
+      const { workspace } = await mountApp("/visao-geral", { project: "blank" });
       await heading();
       const month = ymOf(workspace.today());
       workspace.act((ledger) => dom.periods.closeMonth(ledger, month, null));
@@ -230,7 +229,7 @@ describe("Visão geral", () => {
     });
 
     it("disables closing and reopening while another tab or device edits (read-only)", async () => {
-      const { workspace } = await mountPage("/visao-geral", { readOnly: true });
+      const { workspace } = await mountApp("/visao-geral", { project: "blank", readOnly: true });
       await heading();
       expect(workspace.readOnly).toBe(true);
       const close = screen.getByRole("button", { name: "Fechar mês…" }) as HTMLButtonElement;
@@ -242,7 +241,7 @@ describe("Visão geral", () => {
   describe("links to the operations and other screens", () => {
     it("opens the operations of an account or a category in the Livro, for the month", async () => {
       const user = userEvent.setup();
-      const { router, workspace } = await mountPage("/visao-geral");
+      const { router, workspace } = await mountApp("/visao-geral");
       await heading();
       const seen = navigations(router);
       const ledger = workspace.ledger;
@@ -258,7 +257,7 @@ describe("Visão geral", () => {
 
     it("goes to Relatórios from 'Comparação completa' and from the Mais menu", async () => {
       const user = userEvent.setup();
-      const { router } = await mountPage("/visao-geral");
+      const { router } = await mountApp("/visao-geral");
       await heading();
       await user.click(screen.getByRole("button", { name: "Comparação completa" }));
       await waitFor(() => expect(router.state.location.pathname).toBe("/relatorios"));
@@ -278,7 +277,7 @@ describe("Visão geral", () => {
 
     it("links the pending items to where they are resolved", async () => {
       const user = userEvent.setup();
-      const { router, workspace } = await mountPage("/visao-geral");
+      const { router, workspace } = await mountApp("/visao-geral");
       await heading();
       const month = monthOf(workspace.ledger, workspace.today());
       const pending = dom.periods.pendingItems(workspace.ledger, month);
@@ -292,11 +291,11 @@ describe("Visão geral", () => {
   describe("the member's view", () => {
     it("shows a member's competence by their shares and the accounts they hold", async () => {
       const user = userEvent.setup();
-      const { workspace } = await mountPage("/visao-geral");
+      const { workspace } = await mountApp("/visao-geral");
       await heading();
       const ledger = workspace.ledger;
       const month = monthOf(ledger, workspace.today());
-      const ana = [...ledger.members.values()].find((m) => m.name === "Ana")!;
+      const ana = memberNamed(ledger, "Ana");
       await user.click(screen.getByRole("combobox", { name: "Visão de" }));
       await user.click(await screen.findByRole("option", { name: "Ana" }));
       const mine = monthFigures(ledger, month, ana.id);
@@ -310,7 +309,7 @@ describe("Visão geral", () => {
   describe("the month", () => {
     it("is the shared month: the picker moves it and the figures follow", async () => {
       const user = userEvent.setup();
-      const { workspace } = await mountPage("/visao-geral");
+      const { workspace } = await mountApp("/visao-geral");
       await heading();
       const ledger = workspace.ledger;
       const month = monthOf(ledger, workspace.today());
@@ -326,7 +325,7 @@ describe("Visão geral", () => {
 
   describe("an empty project", () => {
     it("shows every figure, table and chart with its empty state and does not crash (TA-31)", async () => {
-      await mountPage("/visao-geral", { empty: true });
+      await mountApp("/visao-geral", { project: "blank" });
       await heading();
       expect(screen.getByText("Nenhuma conta ainda. Cadastre em Contas e cartões.")).toBeTruthy();
       expect(screen.getByText("Sem despesas neste mês.")).toBeTruthy();
@@ -338,7 +337,7 @@ describe("Visão geral", () => {
 
 describe("the report of the month", () => {
   it("has the same figures as the domain's HTML report, section by section", async () => {
-    const { workspace } = await mountPage("/visao-geral");
+    const { workspace } = await mountApp("/visao-geral");
     const ledger = workspace.ledger;
     const month = monthOf(ledger, workspace.today());
     const html = exporting.monthlyReportHtml(ledger, month, workspace.today());
@@ -378,7 +377,7 @@ describe("the report of the month", () => {
       return "blob:test";
     });
     vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined);
-    const { workspace, router } = await mountPage("/visao-geral");
+    const { workspace, router } = await mountApp("/visao-geral");
     await heading();
     const month = monthOf(workspace.ledger, workspace.today());
     const key = `${month.year}-${String(month.month).padStart(2, "0")}`;

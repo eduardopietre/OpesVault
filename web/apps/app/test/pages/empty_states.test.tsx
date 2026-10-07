@@ -2,24 +2,22 @@
 import { Dec, dom, formatBrl, queries, ym, ymAdd, type Ledger } from "@opesvault/domain";
 import { act as reactAct, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { chooseMonth } from "../../src/data/month.ts";
 import { averageSpending } from "../../src/dialogs/budget_logic.ts";
 import { goalExample } from "../../src/pages/metas/rows.ts";
 import { navigations, wentTo } from "../navigations.ts";
-import { mountPage } from "./overview_calendar_helpers.tsx";
-
-vi.mock("../../../../packages/ui/src/chart/echarts.ts", () => import("./fake_echarts.ts"));
+import { mountApp } from "../mount.tsx";
+import { accountNamed } from "../lookup.ts";
 
 const money = (value: Dec) => formatBrl(value).replace("R$", "").trim();
-const categoryId = (ledger: Ledger, name: string) =>
-  [...ledger.accounts.values()].find((account) => account.name === name)!.id;
+const categoryId = (ledger: Ledger, name: string) => accountNamed(ledger, name).id;
 
 describe("Orçamento without a plan", () => {
   it("creates the month's plan from the average of the last three months, checked before saving", async () => {
     // April 2026 of the demonstration has no plan; January to March have spending.
     reactAct(() => chooseMonth(ym(2026, 4)));
-    const { workspace } = await mountPage("/orcamento");
+    const { workspace } = await mountApp("/orcamento");
     const user = userEvent.setup();
     const ledger = workspace.ledger;
     const april = ym(2026, 4);
@@ -54,7 +52,7 @@ describe("Orçamento without a plan", () => {
 
   it("without earlier spending, defining the month is the first step", async () => {
     reactAct(() => chooseMonth(ym(2026, 10)));
-    await mountPage("/orcamento", { empty: true });
+    await mountApp("/orcamento", { project: "blank" });
     await screen.findByRole("heading", { name: "Sem orçamento em outubro de 2026" });
     expect(screen.queryByRole("button", { name: /Criar a partir/ })).toBeNull();
     expect(screen.queryByRole("button", { name: "Copiar do mês anterior" })).toBeNull();
@@ -64,7 +62,7 @@ describe("Orçamento without a plan", () => {
 
 describe("Metas without goals", () => {
   it("the example is an emergency reserve of six months of the average spending, within a year", async () => {
-    const { workspace } = await mountPage("/metas");
+    const { workspace } = await mountApp("/metas");
     const ledger = workspace.ledger;
     const on = workspace.today();
     const example = goalExample(ledger, on);
@@ -80,7 +78,7 @@ describe("Metas without goals", () => {
   });
 
   it("Definir uma meta opens the new-goal form with the example, saved only when confirmed", async () => {
-    const { workspace } = await mountPage("/metas", { empty: true });
+    const { workspace } = await mountApp("/metas", { project: "blank" });
     const user = userEvent.setup();
     await screen.findByRole("heading", { name: "Nenhuma meta" });
     const primary = screen.getByRole("button", { name: "Definir uma meta…" });
@@ -101,7 +99,7 @@ describe("Metas without goals", () => {
 
 describe("Investimentos without investments", () => {
   it("Cadastrar conta de investimento goes to Contas › Contas bancárias with the new-investment action", async () => {
-    const { router } = await mountPage("/investimentos", { empty: true });
+    const { router } = await mountApp("/investimentos", { project: "blank" });
     const user = userEvent.setup();
     await screen.findByText("Nenhum investimento");
     const seen = navigations(router);
@@ -115,7 +113,7 @@ describe("Investimentos without investments", () => {
   });
 
   it("in Contas, the action opens the new investment at the selected bank account", async () => {
-    await mountPage("/contas?ref=bancarias&act=investimento");
+    await mountApp("/contas?ref=bancarias&act=investimento");
     expect(await screen.findByRole("dialog", { name: "Novo investimento" })).toBeTruthy();
   });
 });

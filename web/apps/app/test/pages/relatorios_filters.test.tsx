@@ -1,12 +1,11 @@
 /** The filters of Relatórios: by account, member, category, tag, period, year, average and horizon. */
 import { charts, dom, ymAdd } from "@opesvault/domain";
 import { screen, within } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
-import { account, category, choose } from "./livro_harness.tsx";
+import { describe, expect, it } from "vitest";
+import { accountNamed, categoryNamed, memberNamed } from "../lookup.ts";
+import { choose } from "../dom.ts";
 import { SCOPES } from "../../src/pages/relatorios/reports.ts";
 import { expectTable, openReport, openReports } from "./relatorios_harness.tsx";
-
-vi.mock("../../../../packages/ui/src/chart/echarts.ts", () => import("./fake_echarts.ts"));
 
 const filters = () => screen.queryByRole("group", { name: "Filtros do relatório" });
 
@@ -44,7 +43,7 @@ describe("Relatórios: filters", () => {
 
   it("filters the entries and exits, the cash flow and the categories by account or category", async () => {
     const { ledger, now, user } = await openReports();
-    const bank = account({ workspace: { ledger } } as never, "Banco A");
+    const bank = accountNamed(ledger, "Banco A");
     await choose(user, "Conta", "Banco A");
     await expectTable(charts.data.monthlyInOut(ledger, ymAdd(now, -11), now, [bank.id]));
     await choose(user, "Conta", "Todas as contas");
@@ -53,7 +52,7 @@ describe("Relatórios: filters", () => {
     await choose(user, "Conta", "Banco A");
     await expectTable(charts.data.cashFlowBalance(ledger, ymAdd(now, -11), now, [bank.id]));
     await openReport(user, "Despesas por categoria");
-    const food = category({ workspace: { ledger } } as never, "Alimentação");
+    const food = categoryNamed(ledger, "Alimentação");
     await choose(user, "Categoria", "Alimentação");
     await expectTable(charts.data.categoryMonthly(ledger, food.id, ymAdd(now, -11), now));
   });
@@ -61,7 +60,7 @@ describe("Relatórios: filters", () => {
   it("shows the result of one member", async () => {
     const { ledger, now, user } = await openReports();
     await openReport(user, "Resultado mensal (competência)");
-    const bruno = [...ledger.members.values()].find((m) => m.name === "Bruno")!;
+    const bruno = memberNamed(ledger, "Bruno");
     await choose(user, "Integrante", "Bruno");
     const chart = charts.data.monthlyResult(ledger, ymAdd(now, -11), now, bruno.id);
     await expectTable(chart);

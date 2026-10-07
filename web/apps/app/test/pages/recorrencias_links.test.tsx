@@ -1,13 +1,12 @@
 import { dom, makeDate, type IsoDate } from "@opesvault/domain";
 import { act as reactAct, screen, waitFor, within } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { pinToday } from "../clock.ts";
 import { alertLink, eventLink } from "../../src/data/links.ts";
 import { forecastId, forecastWindow, ruleRef } from "../../src/pages/recorrencias/rows.ts";
-import { flat, linkCount, openPage, rowOf, rules, seedRule } from "./recorrencias_harness.tsx";
+import { linkCount, openPage, rules, seedRule } from "./recorrencias_harness.tsx";
+import { flat, rowById } from "../dom.ts";
 import { addressSettles, navigations, wentTo } from "../navigations.ts";
-
-vi.mock("../../../../packages/ui/src/chart/echarts.ts", () => import("./fake_echarts.ts"));
 
 const day = (d: number): IsoDate => makeDate(2026, 10, d);
 
@@ -20,7 +19,7 @@ async function goTo(o: Opened, search: { ref?: string; act?: string }) {
   });
 }
 
-const selected = (table: HTMLElement, id: string) => rowOf(table, id)?.getAttribute("aria-selected");
+const selected = (table: HTMLElement, id: string) => rowById(table, id).getAttribute("aria-selected");
 
 describe("Recorrências: vindo de outras páginas (useReveal)", () => {
   pinToday(2026, 10, 6);

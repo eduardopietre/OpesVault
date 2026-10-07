@@ -4,67 +4,16 @@
  * (export, verify, restore as a new project, tampering) and forgetting the device.
  */
 import "fake-indexeddb/auto";
-import { IDBFactory, IDBKeyRange } from "fake-indexeddb";
+import { IDBKeyRange } from "fake-indexeddb";
 import { AccountType, dom, queries, type IsoDate } from "@opesvault/domain";
-import { MemoryServer, VaultCache, type Timers } from "@opesvault/vault";
+import { MemoryServer, VaultCache } from "@opesvault/vault";
 import { describe, expect, it } from "vitest";
-import { createRealServices } from "../src/services/real.ts";
 import { ServiceError, type AppServices, type OpenProject } from "../src/services/types.ts";
+import { ManualTimers, realDevice, until } from "./real_device.ts";
+import { accountNamed, categoryNamed } from "./lookup.ts";
 
-const KDF = { algorithm: "argon2id", memoryKiB: 8192, iterations: 1, parallelism: 1 } as const;
 const PASSWORD = "senha do projeto";
 const ACCOUNT = "senha da conta";
-
-/** Timers that only fire when the test moves time. */
-class ManualTimers implements Timers {
-  #now = 1_000_000;
-  #next = 1;
-  readonly #due = new Map<number, { at: number; callback: () => void }>();
-  now() {
-    return this.#now;
-  }
-  setTimeout(callback: () => void, ms: number): unknown {
-    const handle = this.#next++;
-    this.#due.set(handle, { at: this.#now + ms, callback });
-    return handle;
-  }
-  clearTimeout(handle: unknown): void {
-    this.#due.delete(handle as number);
-  }
-  async advance(ms: number): Promise<void> {
-    const target = this.#now + ms;
-    for (;;) {
-      const next = [...this.#due.entries()].filter(([, t]) => t.at <= target).sort((a, b) => a[1].at - b[1].at)[0];
-      if (!next) break;
-      this.#due.delete(next[0]);
-      this.#now = next[1].at;
-      next[1].callback();
-      for (let i = 0; i < 20; i++) await new Promise((resolve) => setImmediate(resolve));
-    }
-    this.#now = target;
-  }
-}
-
-function device(server: MemoryServer, holder: string, extra: { timers?: Timers; idleLockMs?: number | null } = {}) {
-  const factory = new IDBFactory();
-  const services = createRealServices({
-    backend: server.client(),
-    openCache: () => VaultCache.open({ factory, keyRange: IDBKeyRange }),
-    holder,
-    kdf: KDF,
-    idleLockMs: extra.idleLockMs === undefined ? null : extra.idleLockMs,
-    vaultOptions: { pushDelayMs: 0, pollMs: 50, ...(extra.timers ? { timers: extra.timers } : {}) },
-  });
-  return { services, factory };
-}
-
-async function until(condition: () => boolean | Promise<boolean>, ms = 5000): Promise<void> {
-  const end = Date.now() + ms;
-  while (!(await condition())) {
-    if (Date.now() > end) throw new Error("timed out");
-    await new Promise((resolve) => setTimeout(resolve, 10));
-  }
-}
 
 async function expectService(work: Promise<unknown>, code: string): Promise<void> {
   const failure = await work.then(
@@ -95,7 +44,7 @@ async function project(services: AppServices, name = "Casa") {
       archived: false,
     }),
   );
-  const food = ws.ledger.categories(AccountType.EXPENSE).find((c) => c.name === "Alimentação")!.id;
+  const food = categoryNamed(ws.ledger, "Alimentação").id;
   ws.act((l) => l.recordOpeningBalance(bank.id, "1000.00", "2026-01-01" as IsoDate));
   const op = ws.act((l) => l.recordExpense(bank.id, food, "123.45", "2026-01-05" as IsoDate, "Mercado do Zé"));
   const pdf = new TextEncoder().encode("%PDF-1.4\nrecibo do plano de saúde\n%%EOF");
@@ -116,14 +65,14 @@ async function download(services: AppServices, password = PASSWORD) {
 describe("project password and recovery key", () => {
   it("changes the password: a wrong current one is refused, and afterwards only the new one opens the project", async () => {
     const server = new MemoryServer();
-    const a = device(server, "tab-a").services;
+    const a = realDevice(server, "tab-a").services;
     const { created } = await project(a);
     await expectService(a.changePassword("errada", "uma senha bem nova"), "bad-password");
     await expectService(a.changePassword(PASSWORD, ""), "empty-password");
     await a.changePassword(PASSWORD, "uma senha bem nova");
     await a.closeProject();
 
-    const b = device(server, "tab-b").services;
+    const b = realDevice(server, "tab-b").services;
     await b.signIn("ana@example.com", ACCOUNT);
     await expectService(b.openProject(created.project.id, PASSWORD), "bad-password");
     const open = await b.openProject(created.project.id, "uma senha bem nova");
@@ -133,7 +82,7 @@ describe("project password and recovery key", () => {
 
   it("regenerates the recovery key: shown once, the old one stops working and the new one resets the password", async () => {
     const server = new MemoryServer();
-    const a = device(server, "tab-a").services;
+    const a = realDevice(server, "tab-a").services;
     const { created } = await project(a);
     const first = created.recoveryKey;
     await expectService(a.regenerateRecoveryKey("errada"), "bad-password");
@@ -142,7 +91,7 @@ describe("project password and recovery key", () => {
     expect(second).not.toBe(first);
     await a.closeProject();
 
-    const b = device(server, "tab-b").services;
+    const b = realDevice(server, "tab-b").services;
     await b.signIn("ana@example.com", ACCOUNT);
     await expectService(b.recoverProject(created.project.id, first, "senha escolhida agora"), "bad-recovery-key");
     await expectService(b.recoverProject(created.project.id, "AAAA-BBBB", "senha escolhida agora"), "bad-recovery-key");
@@ -162,12 +111,12 @@ describe("project password and recovery key", () => {
 
   it("renames the project: another device sees the new name once it opens it", async () => {
     const server = new MemoryServer();
-    const a = device(server, "tab-a").services;
+    const a = realDevice(server, "tab-a").services;
     const { created } = await project(a);
     await expectService(a.renameProject("   "), "empty-name");
     const renamed = await a.renameProject("Casa da Praia");
     expect(renamed.name).toBe("Casa da Praia");
-    const b = device(server, "tab-b").services;
+    const b = realDevice(server, "tab-b").services;
     await b.signIn("ana@example.com", ACCOUNT);
     await until(async () => (await b.openProject(created.project.id, PASSWORD)).project.name === "Casa da Praia");
     expect(JSON.stringify(server)).not.toContain("Praia");
@@ -176,7 +125,7 @@ describe("project password and recovery key", () => {
   }, 30_000);
 
   it("needs an open project", async () => {
-    const a = device(new MemoryServer(), "tab-a").services;
+    const a = realDevice(new MemoryServer(), "tab-a").services;
     await a.signUp({ name: "Ana", email: "ana@example.com", password: ACCOUNT });
     await expectService(a.changePassword(PASSWORD, "outra senha longa"), "not-open");
     await expectService(a.exportBackup(PASSWORD), "not-open");
@@ -188,7 +137,7 @@ describe("the idle lock", () => {
   it("locks after the chosen time without use, restarts on activity and follows a change of the setting", async () => {
     const timers = new ManualTimers();
     const server = new MemoryServer();
-    const { services } = device(server, "tab-a", { timers, idleLockMs: 15 * 60_000 });
+    const { services } = realDevice(server, "tab-a", { timers, idleLockMs: 15 * 60_000 });
     const states: string[] = [];
     const { created } = await project(services);
     await services.closeProject();
@@ -221,7 +170,7 @@ describe("the idle lock", () => {
 describe("backup file", () => {
   it("exports a sealed file, verifies it, and restores it as a separate project identical to the original", async () => {
     const server = new MemoryServer();
-    const { services } = device(server, "tab-a");
+    const { services } = realDevice(server, "tab-a");
     const { created, ws, pdf } = await project(services);
     const progress: string[] = [];
     const file = await services.exportBackup(PASSWORD, (p) => void progress.push(p.phase));
@@ -261,14 +210,9 @@ describe("backup file", () => {
     // the restored project opens with the password, holds the same records and the same document
     const copy = await services.openProject(restored.project.id, PASSWORD);
     expect(canonical(copy.workspace.ledger.toRecords())).toBe(before);
-    expect(
-      queries
-        .balance(
-          copy.workspace.ledger,
-          [...copy.workspace.ledger.accounts.values()].find((a) => a.name === "Banco")!.id,
-        )
-        .toFixed(),
-    ).toBe("876.55");
+    expect(queries.balance(copy.workspace.ledger, accountNamed(copy.workspace.ledger, "Banco").id).toFixed()).toBe(
+      "876.55",
+    );
     const document = copy.workspace.session.documents[0]!;
     expect(new TextDecoder().decode(await copy.workspace.loadDocument(document.meta.id))).toContain(
       "recibo do plano de saúde",
@@ -278,7 +222,7 @@ describe("backup file", () => {
 
   it("refuses a wrong password, a changed file and a cut file, and creates no project", async () => {
     const server = new MemoryServer();
-    const { services } = device(server, "tab-a");
+    const { services } = realDevice(server, "tab-a");
     await project(services);
     const file = await download(services);
     await expectService(services.exportBackup("errada"), "bad-password");
@@ -310,7 +254,7 @@ describe("backup file", () => {
 
   it("restores a backup made before a password change with the old password", async () => {
     const server = new MemoryServer();
-    const { services } = device(server, "tab-a");
+    const { services } = realDevice(server, "tab-a");
     await project(services);
     const file = await download(services);
     await services.changePassword(PASSWORD, "uma senha bem nova");
@@ -323,11 +267,11 @@ describe("backup file", () => {
 
   it("restores onto another device of the same account, without any of the original's cache", async () => {
     const server = new MemoryServer();
-    const a = device(server, "tab-a").services;
+    const a = realDevice(server, "tab-a").services;
     await project(a);
     const file = await download(a);
     await a.closeProject();
-    const b = device(server, "tab-b").services;
+    const b = realDevice(server, "tab-b").services;
     await b.signIn("ana@example.com", ACCOUNT);
     const restored = await b.restoreBackup(file.blob, PASSWORD, "Outro aparelho");
     const open: OpenProject = await b.openProject(restored.project.id, PASSWORD);
@@ -339,7 +283,7 @@ describe("backup file", () => {
 describe("forgetting the device", () => {
   it("sends what is waiting, erases the local copy of every project and ends the session", async () => {
     const server = new MemoryServer();
-    const { services, factory } = device(server, "tab-a");
+    const { services, factory } = realDevice(server, "tab-a");
     const { created, ws, bank, op } = await project(services);
     const food = ws.ledger.categories(AccountType.EXPENSE)[0]!.id;
     ws.act((l) => l.recordExpense(bank.id, food, "9.90", "2026-01-06" as IsoDate, "Padaria"));

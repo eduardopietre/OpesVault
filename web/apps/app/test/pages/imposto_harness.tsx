@@ -10,68 +10,15 @@ import {
   type IsoDate,
   type Ledger,
 } from "@opesvault/domain";
-import { screen, waitFor, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { expect } from "vitest";
-import { mountPage, type MountOptions } from "./overview_calendar_helpers.tsx";
-import { setViewport } from "./livro_harness.tsx";
-
-export type User = ReturnType<typeof userEvent.setup>;
+import { mountApp, type MountOptions } from "../mount.tsx";
+import { accountNamed, memberNamed } from "../lookup.ts";
 
 /** The year the demonstration project has its tax data in. */
 export const YEAR = 2026;
 
-export async function openImposto(path = "/imposto-de-renda", options: MountOptions & { width?: number } = {}) {
-  setViewport(options.width ?? 1600);
-  const mounted = await mountPage(path, options);
-  await screen.findByRole("heading", { level: 1, name: "Imposto de renda" });
-  return { ...mounted, ledger: mounted.workspace.ledger, user: userEvent.setup() };
+export async function openImposto(path = "/imposto-de-renda", options: MountOptions = {}) {
+  return mountApp(path, { width: 1600, heading: "Imposto de renda", ...options });
 }
-
-export const flat = (text: string | null | undefined) => (text ?? "").replace(/\s+/g, " ").trim();
-
-/** The table (grid) with that accessible name. */
-export const table = (name: string) => screen.findByRole("grid", { name });
-
-/** The row of a table whose text contains `text`. */
-export function rowOf(grid: HTMLElement, text: string | RegExp): HTMLElement {
-  const rows = within(grid)
-    .getAllByRole("row")
-    .filter((row) =>
-      typeof text === "string" ? flat(row.textContent).includes(text) : text.test(flat(row.textContent)),
-    );
-  if (rows.length === 0) throw new Error(`no row with ${String(text)} in ${grid.getAttribute("aria-label")}`);
-  return rows[0]!;
-}
-
-export async function pick(user: User, grid: HTMLElement, text: string | RegExp) {
-  await user.click(rowOf(grid, text));
-}
-
-export const dialog = (name: string | RegExp, options: { timeout?: number } = {}) =>
-  screen.findByRole("dialog", { name }, options);
-
-export const closed = (name: string | RegExp) =>
-  waitFor(() => expect(screen.queryByRole("dialog", { name })).toBeNull());
-
-const labelPattern = (label: string | RegExp) =>
-  typeof label === "string" ? new RegExp(`^${label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*\\*?$`) : label;
-
-/** Replaces the text of a field. */
-export async function fill(user: User, within_: HTMLElement, label: string | RegExp, text: string) {
-  const field = within(within_).getByLabelText(labelPattern(label)) as HTMLInputElement;
-  await user.clear(field);
-  if (text) await user.type(field, text);
-}
-
-/** Opens a select and chooses an option by its text. */
-export async function choose(user: User, within_: HTMLElement, label: string | RegExp, option: string | RegExp) {
-  await user.click(within(within_).getByRole("combobox", { name: label }));
-  await user.click(await screen.findByRole("option", { name: option }));
-}
-
-export const submit = (user: User, within_: HTMLElement, name: string | RegExp) =>
-  user.click(within(within_).getByRole("button", { name }));
 
 /** What the project holds in the tax records, to prove an undo brought everything back. */
 export function taxSnapshot(ledger: Ledger): string {
@@ -83,24 +30,6 @@ export function taxSnapshot(ledger: Ledger): string {
   ]);
 }
 
-export const NAME = {
-  ana: "Ana",
-  bruno: "Bruno",
-} as const;
-
-/** An income category by name. */
-export function incomeCategory(ledger: Ledger, name: string) {
-  return ledger.categories(AccountType.INCOME).find((a) => a.name === name)!;
-}
-
-export function member(ledger: Ledger, name: string) {
-  return [...ledger.members.values()].find((m) => m.name === name)!;
-}
-
-export function account(ledger: Ledger, name: string) {
-  return [...ledger.accounts.values()].find((a) => a.name === name)!;
-}
-
 const d = (y: number, m: number, day: number): IsoDate => makeDate(y, m, day);
 
 /**
@@ -108,8 +37,8 @@ const d = (y: number, m: number, day: number): IsoDate => makeDate(y, m, day);
  * exempt one in February. Rates are the test's own: nothing fiscal is embedded in the app.
  */
 export function seedVariableIncome(ledger: Ledger, options: { rates?: boolean } = {}) {
-  const bank = account(ledger, "Banco A");
-  const ana = member(ledger, "Ana");
+  const bank = accountNamed(ledger, "Banco A");
+  const ana = memberNamed(ledger, "Ana");
   ledger.recordOpeningBalance(bank.id, "100000.00", d(YEAR - 1, 12, 1));
   const position = investments.service.createPosition(
     ledger,
@@ -140,8 +69,8 @@ export function seedVariableIncome(ledger: Ledger, options: { rates?: boolean } 
 
 /** A rent income category (no nature yet) with one deposit of Ana's. */
 export function seedRent(ledger: Ledger) {
-  const bank = account(ledger, "Banco A");
-  const ana = member(ledger, "Ana");
+  const bank = accountNamed(ledger, "Banco A");
+  const ana = memberNamed(ledger, "Ana");
   const rent = ledger.addAccount(
     LedgerAccountSchema.parse({ name: "Aluguel recebido", type: AccountType.INCOME, subtype: AccountSubtype.CATEGORY }),
   );

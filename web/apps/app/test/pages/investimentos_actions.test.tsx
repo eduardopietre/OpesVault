@@ -1,25 +1,9 @@
 /** Investimentos: every command of the page; each one is one undo step that brings the project back as it was. */
 import { Dec, formatBrl, investments, makeDate, queries, type Id, type Ledger } from "@opesvault/domain";
 import { screen, waitFor, within } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
-import {
-  cashOf,
-  cdbOf,
-  choose,
-  closed,
-  dialog,
-  fill,
-  flat,
-  menu,
-  openInvestimentos,
-  rowOf,
-  snapshot,
-  submit,
-  table,
-  undoOnce,
-} from "./investimentos_harness.tsx";
-
-vi.mock("../../../../packages/ui/src/chart/echarts.ts", async () => await import("./fake_echarts.ts"));
+import { describe, expect, it } from "vitest";
+import { cashOf, cdbOf, openInvestimentos, snapshot } from "./investimentos_harness.tsx";
+import { choose, closed, dialog, fill, flat, menu, rowOf, submit, table, undoOnce } from "../dom.ts";
 
 const { service, trades, performance, model } = investments;
 
@@ -59,10 +43,10 @@ describe("Novo investimento", () => {
     await user.click(screen.getAllByRole("button", { name: "Novo investimento…" })[0]!);
     const box = await dialog("Novo investimento");
     await fill(user, box, "Nome", "Tesouro IPCA+ 2035");
-    await choose(user, box, "Classe", "Tesouro Direto");
+    await choose(user, "Classe", "Tesouro Direto", box);
     await fill(user, box, "Data inicial", "02/03/2026");
     await fill(user, box, "Capital/custo inicial", "1.000,00");
-    await choose(user, box, "Dinheiro saiu de", /Banco A/);
+    await choose(user, "Dinheiro saiu de", /Banco A/, box);
     await submit(user, box, "Criar");
     await closed("Novo investimento");
     const created = [...service.positions(ledger).values()].find(
@@ -105,8 +89,8 @@ describe("Novo investimento", () => {
     await user.click(screen.getAllByRole("button", { name: "Novo investimento…" })[0]!);
     const box = await dialog("Novo investimento");
     await fill(user, box, "Nome", "VALE3");
-    await choose(user, box, "Classe", "Ações");
-    await choose(user, box, "Acompanhamento", "Por quantidade e preço");
+    await choose(user, "Classe", "Ações", box);
+    await choose(user, "Acompanhamento", "Por quantidade e preço", box);
     await fill(user, box, "Código (opcional)", "VALE3");
     expect(within(box).queryByLabelText(/Capital\/custo inicial/)).toBeNull();
     await submit(user, box, "Criar");
@@ -477,7 +461,7 @@ describe("Negociação", () => {
     box = await dialog(/Venda — PETR4/);
     await fill(user, box, "Quantidade", "40");
     await fill(user, box, "Preço unitário", "35,00");
-    await choose(user, box, "Custo", "Por lote (mais antigo)");
+    await choose(user, "Custo", "Por lote (mais antigo)", box);
     await submit(user, box, "Registrar");
     await closed(/Venda/);
     expect(qty()).toBe("60");
@@ -569,13 +553,13 @@ describe("Características, regras e índices", () => {
     expect(await screen.findByText("Índice CDI local importado.")).toBeTruthy();
 
     // beside the return
-    await choose(user, document.body, "Índice de referência", "CDI local");
-    await choose(user, document.body, "Início do período", "28/01/2026");
+    await choose(user, "Índice de referência", "CDI local", document.body);
+    await choose(user, "Início do período", "28/01/2026", document.body);
     const grid = await table("Rentabilidade por método");
     const row = flat(rowOf(grid, "variação do índice CDI local").textContent);
     expect(row).toContain("2,00%");
     // a period whose ends the series does not have: unavailable, with the reason
-    await choose(user, document.body, "Início do período", "28/02/2026");
+    await choose(user, "Início do período", "28/02/2026", document.body);
     const gap = flat(rowOf(await table("Rentabilidade por método"), "variação do índice CDI local").textContent);
     expect(gap).toContain("indisponível");
     expect(gap).toContain("A série local não tem valores exatamente nas datas do período.");

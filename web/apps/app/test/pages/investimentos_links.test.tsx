@@ -1,12 +1,11 @@
 /** Investimentos: the links into the page (maturity notices, calendar, "avaliar", "simular") and out of it. */
 import { addDays, dom, investments, ymOf, type Id } from "@opesvault/domain";
 import { act as reactAct, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { alertLink, eventLink } from "../../src/data/links.ts";
-import { cdbOf, dialog, openInvestimentos, rowOf, selectedRow, table } from "./investimentos_harness.tsx";
+import { cdbOf, openInvestimentos } from "./investimentos_harness.tsx";
+import { dialog, rowOf, selectedRow, table } from "../dom.ts";
 import { addressSettles, navigations } from "../navigations.ts";
-
-vi.mock("../../../../packages/ui/src/chart/echarts.ts", async () => await import("./fake_echarts.ts"));
 
 const { service, model, profile, trades } = investments;
 

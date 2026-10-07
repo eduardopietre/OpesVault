@@ -5,18 +5,8 @@ import { screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { lastBackupKey } from "../../src/data/backup.ts";
 import { DEMO } from "../../src/services/fake.ts";
-import {
-  captureDownloads,
-  closed,
-  dialog,
-  fileOf,
-  goTab,
-  openSettings,
-  type,
-  type User,
-} from "./configuracoes_harness.tsx";
-
-vi.mock("../../../../packages/ui/src/chart/echarts.ts", async () => await import("./fake_echarts.ts"));
+import { captureDownloads, fileOf, openSettings, type } from "./configuracoes_harness.tsx";
+import { closed, dialog, goTab, type User } from "../dom.ts";
 
 let downloads: ReturnType<typeof captureDownloads>;
 beforeEach(() => {
@@ -266,7 +256,7 @@ describe("the reminder of an old backup", () => {
 
   /** Opens the Visão geral of the demonstration project with the last backup of this device `days` ago. */
   async function overviewWithBackup(days: number | null, empty = false) {
-    const mounted = await openSettings("/configuracoes", { empty });
+    const mounted = await openSettings("/configuracoes", empty ? { project: "blank" } : {});
     const id = mounted.session.get().open!.project.id;
     if (days !== null) mounted.preferences.set(lastBackupKey(id), daysAgo(days));
     await mounted.router.navigate({ to: "/visao-geral" });

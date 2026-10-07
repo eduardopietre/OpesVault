@@ -2,21 +2,17 @@ import { dom, formatBrl, type Ledger } from "@opesvault/domain";
 import { act as reactAct, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { findReimbursement, sharingView, summaryLine } from "../../src/pages/reembolsos/rows.ts";
-import { flat, openAt, shareExpenses, type OpenOptions, type User } from "./sharing_docs_harness.tsx";
+import { openAt, shareExpenses } from "./sharing_docs_harness.tsx";
+import { flat, clickInTable, table, undoOnce } from "../dom.ts";
+import { type MountOptions } from "../mount.tsx";
 import { addressSettles, navigations, wentTo } from "../navigations.ts";
 
-const open = (path = "/reembolsos", options: OpenOptions = { prepare: shareExpenses }) =>
+const open = (path = "/reembolsos", options: MountOptions = { prepare: shareExpenses }) =>
   openAt(path, "Reembolsos e acertos", options);
 
 const sharing = dom.sharing;
 const only = <T,>(items: Iterable<T>): T => [...items][0]!;
 const names = (ledger: Ledger) => new Map([...ledger.members.values()].map((m) => [m.id, m.name]));
-
-const table = (name: string) => screen.findByRole("grid", { name });
-const pickRow = async (user: User, gridName: string, text: string | RegExp) => {
-  const grid = await table(gridName);
-  await user.click(within(grid).getByText(text));
-};
 
 const snapshot = (ledger: Ledger) => ({
   operations: ledger.operations.size,
@@ -61,7 +57,7 @@ describe("Reembolsos e acertos", () => {
     const { ledger, workspace, user } = await open();
     const item = only(sharing.reimbursements(ledger).values());
     const before = snapshot(ledger);
-    await pickRow(user, "Reembolsos", "Consulta pediatra");
+    await clickInTable(user, "Reembolsos", "Consulta pediatra");
     await user.click(screen.getByRole("button", { name: "Registrar recebimento…" }));
     const dialog = await screen.findByRole("dialog", { name: "Reembolso recebido" });
     const amount = within(dialog).getByLabelText(/Valor recebido/) as HTMLInputElement;
@@ -76,7 +72,7 @@ describe("Reembolsos e acertos", () => {
     expect(sharing.state(ledger, after)).toBe("partial");
     expect(await screen.findByText("Reembolso recebido: a despesa líquida foi reduzida.")).toBeTruthy();
     expect(flat((await table("Reembolsos")).textContent)).toContain("R$ 250,00");
-    reactAct(() => void workspace.undo());
+    undoOnce(workspace);
     expect(snapshot(ledger)).toEqual(before);
     // receiving all that is left finishes it
     await user.click(screen.getByRole("button", { name: "Registrar recebimento…" }));
@@ -89,7 +85,7 @@ describe("Reembolsos e acertos", () => {
   it("refuses an empty, zero or malformed receipt inside the dialog and writes nothing", async () => {
     const { ledger, user } = await open();
     const before = snapshot(ledger);
-    await pickRow(user, "Reembolsos", "Consulta pediatra");
+    await clickInTable(user, "Reembolsos", "Consulta pediatra");
     await user.click(screen.getByRole("button", { name: "Registrar recebimento…" }));
     const dialog = await screen.findByRole("dialog", { name: "Reembolso recebido" });
     const amount = within(dialog).getByLabelText(/Valor recebido/);
@@ -129,7 +125,7 @@ describe("Reembolsos e acertos", () => {
     const { ledger, workspace, user } = await open();
     const item = only(sharing.reimbursements(ledger).values());
     const before = snapshot(ledger);
-    await pickRow(user, "Reembolsos", "Consulta pediatra");
+    await clickInTable(user, "Reembolsos", "Consulta pediatra");
     await user.click(screen.getByRole("button", { name: "Negado…" }));
     const dialog = await screen.findByRole("dialog", { name: "Reembolso negado" });
     await user.click(within(dialog).getByRole("button", { name: "Marcar como negado" }));
@@ -148,7 +144,7 @@ describe("Reembolsos e acertos", () => {
     await user.click(within(receive).getByRole("button", { name: "Registrar recebimento" }));
     expect(await within(receive).findByText("Reembolso negado não recebe valores.")).toBeTruthy();
     await user.click(within(receive).getByRole("button", { name: "Cancelar" }));
-    reactAct(() => void workspace.undo());
+    undoOnce(workspace);
     expect(snapshot(ledger)).toEqual(before);
   });
 
@@ -183,7 +179,7 @@ describe("Reembolsos e acertos", () => {
     const next = only(sharing.balances(ledger));
     expect(next.amount.eq(balance.amount.sub("100"))).toBe(true);
     expect(next.settled.eq("100")).toBe(true);
-    reactAct(() => void workspace.undo());
+    undoOnce(workspace);
     expect(snapshot(ledger)).toEqual(before);
     await waitFor(() => expect(screen.queryByRole("grid", { name: "Acertos registrados" })).toBeNull());
   });
@@ -214,7 +210,7 @@ describe("Reembolsos e acertos", () => {
   it("opens the operation behind a reimbursement and behind a share in the Livro (ref = operation id)", async () => {
     const { ledger, router, user } = await open();
     const item = only(sharing.reimbursements(ledger).values());
-    await pickRow(user, "Reembolsos", "Consulta pediatra");
+    await clickInTable(user, "Reembolsos", "Consulta pediatra");
     const went = navigations(router);
     await user.click(screen.getByRole("button", { name: "Ver lançamento" }));
     await wentTo(went, "/livro", { ref: item.operation_id });
@@ -249,7 +245,7 @@ describe("Reembolsos e acertos", () => {
   });
 
   it("in an empty project says there is nothing to receive or settle and offers the way forward", async () => {
-    const { router, user } = await open("/reembolsos", { empty: true });
+    const { router, user } = await open("/reembolsos", { project: "new" });
     expect(await screen.findByRole("heading", { name: "Nada a receber nem a acertar" })).toBeTruthy();
     expect(screen.queryByRole("grid")).toBeNull();
     expect(screen.queryByRole("listbox")).toBeNull();
@@ -264,7 +260,7 @@ describe("Reembolsos e acertos", () => {
   it("is read only while another tab edits: no change can be started, but the operation can be opened", async () => {
     const { workspace, user } = await open();
     reactAct(() => workspace.setReadOnly(true));
-    await pickRow(user, "Reembolsos", "Consulta pediatra");
+    await clickInTable(user, "Reembolsos", "Consulta pediatra");
     for (const name of ["Registrar recebimento…", "Negado…", "Registrar acerto…"]) {
       expect((screen.getByRole("button", { name }) as HTMLButtonElement).disabled, name).toBe(true);
     }

@@ -22,6 +22,8 @@ import {
   useScriptedModel,
   type ScriptedModel,
 } from "./assistente_harness.tsx";
+import { undoOnce } from "../dom.ts";
+import { categoryNamed } from "../lookup.ts";
 
 let model: ScriptedModel;
 beforeEach(() => {
@@ -151,7 +153,7 @@ describe("Assistente: changes need the user", () => {
     // one user action, one undo step, and the reason says where it came from
     expect(o.workspace.undoStack.undoLabel()).not.toBe(steps);
     expect(o.workspace.ledger.historyOf(rent.id).at(-1)?.reason).toMatch(/assistente, ollama:gemma4:12b:a1/);
-    reactAct(() => void o.workspace.undo());
+    undoOnce(o.workspace);
     expect(categoryOf(o, rent.id)).toBe("Moradia");
     expect(o.workspace.undoStack.undoLabel()).toBe(steps);
     await idle();
@@ -240,7 +242,7 @@ describe("Assistente: changes need the user", () => {
     await o.user.click(within(d).getByRole("button", { name: "Aprovar" }));
     expect(await said("Registrei.")).toBeTruthy();
     expect(o.workspace.ledger.operations.size).toBe(count + 1);
-    reactAct(() => void o.workspace.undo());
+    undoOnce(o.workspace);
     expect(o.workspace.ledger.operations.size).toBe(count);
     await idle();
   });
@@ -251,14 +253,7 @@ describe("Assistente: changes need the user", () => {
     await ask(o, "Move o aluguel para Lazer");
     const d = await approval();
     // between the proposal and the approval the rent is moved by someone else
-    o.workspace.act((ledger) =>
-      edits.reclassify(
-        ledger,
-        [rent.id],
-        ledger.categories("expense").find((a) => a.name === "Lazer")!.id,
-        "Outra pessoa",
-      ),
-    );
+    o.workspace.act((ledger) => edits.reclassify(ledger, [rent.id], categoryNamed(ledger, "Lazer").id, "Outra pessoa"));
     const steps = o.workspace.undoStack.undoLabel();
     await o.user.click(within(d).getByRole("button", { name: "Aprovar" }));
     expect(await said("Não deu.")).toBeTruthy();
@@ -570,7 +565,7 @@ describe("Assistente: shortcuts to the Livro", () => {
 
 describe("Assistente: empty project", () => {
   it("says what the assistant can still do and answers", async () => {
-    const o = await openAssistente({ empty: true });
+    const o = await openAssistente({ project: "new" });
     // a new project has the AI off: the person turns it on in Configurações
     o.workspace.act((ledger) => dom.settings.updateSettings(ledger, { ai_enabled: true, ai_model: "gemma4:12b" }));
     expect(await screen.findByText(/O projeto ainda não tem lançamentos/)).toBeTruthy();

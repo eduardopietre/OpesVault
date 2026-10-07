@@ -1,5 +1,5 @@
 /** The lazy calculation: after the first paint, kept by the ledger's version, repeated only when its inputs change. */
-import { AccountSubtype, AccountType, LedgerAccountSchema } from "@opesvault/domain";
+import { AccountSubtype, AccountType, LedgerAccountSchema, Dec, makeDate } from "@opesvault/domain";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -7,7 +7,6 @@ import { WorkspaceProvider } from "../../src/data/react.tsx";
 import { Workspace } from "../../src/data/workspace.ts";
 import { useDeferred } from "../../src/pages/investimentos/deferred.ts";
 import { solveXirr } from "../../src/pages/investimentos/xirr_client.ts";
-import { Dec, makeDate } from "@opesvault/domain";
 
 function setup() {
   const workspace = Workspace.fromRecords([], "Teste");

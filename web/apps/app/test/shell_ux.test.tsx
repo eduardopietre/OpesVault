@@ -3,22 +3,18 @@
  * shortcuts sheet (`?`) with the shortcuts in the buttons' tooltips.
  */
 import { dom, edits, makeDate, ym, ymAdd, ymOf, type Ledger } from "@opesvault/domain";
-import { Sidebar, memoryPreferences } from "@opesvault/ui";
-import { createMemoryHistory } from "@tanstack/react-router";
+import { Sidebar } from "@opesvault/ui";
 import { act as reactAct, fireEvent, render, renderHook, screen, waitFor, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { App } from "../src/App.tsx";
 import { actionName, nameAction } from "../src/data/action_names.ts";
 import { lastCompleteMonth } from "../src/data/month.ts";
 import { sharedMonth } from "../src/data/shared_month.ts";
 import { preloadPage, screenLoader } from "../src/page_code.ts";
-import { createAppRouter } from "../src/router.tsx";
 import { DEMO, createFakeServices } from "../src/services/fake.ts";
 import { SessionStore, sessionActions } from "../src/session.tsx";
 import { SHORTCUTS, useShortcuts, type ShortcutHandlers } from "../src/shell/shortcuts.ts";
-
-vi.mock("../../../packages/ui/src/chart/echarts.ts", () => import("./pages/fake_echarts.ts"));
+import { accountNamed } from "./lookup.ts";
+import { mountApp } from "./mount.tsx";
 
 const preloaded = vi.hoisted(() => [] as string[]);
 vi.mock("../src/page_code.ts", async (original) => {
@@ -32,24 +28,13 @@ vi.mock("../src/page_code.ts", async (original) => {
   };
 });
 
-async function mountShell(path: string, options: { extras?: boolean } = {}) {
-  const services = createFakeServices({ seed: true, extras: options.extras ?? false });
-  const session = new SessionStore();
-  const actions = sessionActions(services, session);
-  await actions.signIn(DEMO.email, DEMO.password);
-  await actions.openProject(services.demoProjectId!, DEMO.projectPassword);
-  const router = createAppRouter({ session, history: createMemoryHistory({ initialEntries: [path] }) });
-  render(<App router={router} services={services} session={session} preferences={memoryPreferences()} />);
-  const workspace = session.get().open!.workspace;
-  return { router, session, services, workspace, user: userEvent.setup() };
-}
+/** The demonstration opened the way the screens open it (through the session's actions). */
+const mountShell = (path: string, options: { extras?: boolean } = {}) =>
+  mountApp(path, { viaActions: true, services: { extras: options.extras ?? false } });
 
-const category = (ledger: Ledger, name: string) =>
-  [...ledger.accounts.values()].find((account) => account.name === name)!.id;
 /** The demonstration's three rents (January to March). */
 const rents = (ledger: Ledger) =>
   [...ledger.operations.values()].filter((op) => op.description === "Aluguel").map((op) => op.id);
-const bank = (ledger: Ledger) => [...ledger.accounts.values()].find((account) => account.name === "Banco A")!.id;
 
 describe("preloading a destination's code", () => {
   it("is idempotent: the same load for the same destination, nothing for an unknown one", async () => {
@@ -102,22 +87,24 @@ describe("named undo", () => {
       const workspace = open.workspace;
       const ledger = workspace.ledger;
       const on = workspace.today();
-      workspace.act((l) => l.recordExpense(bank(l), category(l, "Lazer"), "10.00", on, "Cinema"));
+      workspace.act((l) =>
+        l.recordExpense(accountNamed(l, "Banco A").id, accountNamed(l, "Lazer").id, "10.00", on, "Cinema"),
+      );
       expect(workspace.undoStack.undoLabel()).toBe("novo lançamento");
       workspace.act((l) => {
-        l.recordExpense(bank(l), category(l, "Lazer"), "10.00", on, "Pipoca");
-        l.recordExpense(bank(l), category(l, "Lazer"), "12.00", on, "Refrigerante");
+        l.recordExpense(accountNamed(l, "Banco A").id, accountNamed(l, "Lazer").id, "10.00", on, "Pipoca");
+        l.recordExpense(accountNamed(l, "Banco A").id, accountNamed(l, "Lazer").id, "12.00", on, "Refrigerante");
       });
       expect(workspace.undoStack.undoLabel()).toBe("2 novos lançamentos");
       const month = ymOf(on);
-      workspace.act((l) => dom.budget.setBudget(l, category(l, "Lazer"), ymAdd(month, 5), "100.00"));
+      workspace.act((l) => dom.budget.setBudget(l, accountNamed(l, "Lazer").id, ymAdd(month, 5), "100.00"));
       expect(workspace.undoStack.undoLabel()).toBe("novo orçamento");
-      workspace.act((l) => dom.budget.removeBudget(l, category(l, "Lazer"), ymAdd(month, 5)));
+      workspace.act((l) => dom.budget.removeBudget(l, accountNamed(l, "Lazer").id, ymAdd(month, 5)));
       expect(workspace.undoStack.undoLabel()).toBe("excluir orçamento");
       // a screen that knows what the person did names it
       const ids = rents(ledger);
       workspace.act(
-        (l) => edits.reclassify(l, ids, category(l, "Saúde"), "teste"),
+        (l) => edits.reclassify(l, ids, accountNamed(l, "Saúde").id, "teste"),
         actionName("reclassificar", ids.length, "lançamento", "lançamentos"),
       );
       expect(workspace.undoStack.undoLabel()).toBe("reclassificar 3 lançamentos");
@@ -131,7 +118,10 @@ describe("named undo", () => {
     await screen.findByRole("heading", { level: 1, name: "Livro financeiro" });
     const ids = rents(workspace.ledger);
     reactAct(() => {
-      workspace.act((l) => edits.reclassify(l, ids, category(l, "Saúde"), "teste"), "reclassificar 3 lançamentos");
+      workspace.act(
+        (l) => edits.reclassify(l, ids, accountNamed(l, "Saúde").id, "teste"),
+        "reclassificar 3 lançamentos",
+      );
     });
     const undo = await screen.findByRole("button", { name: "Desfazer: reclassificar 3 lançamentos" });
     expect(undo.getAttribute("title")).toBe("Desfazer: reclassificar 3 lançamentos (Ctrl+Z)");

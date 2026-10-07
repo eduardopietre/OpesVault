@@ -6,6 +6,7 @@
 import { AccountSubtype, DomainError, Ledger, dec, dom, queries } from "@opesvault/domain";
 import { describe, expect, it } from "vitest";
 import { setupPlanOf } from "../src/screens/projects.tsx";
+import { accountNamed } from "./lookup.ts";
 
 const account = (name: string, changes: Record<string, unknown> = {}) => ({
   name,
@@ -46,7 +47,7 @@ describe("first-run assistant", () => {
     expect(plan.accounts[1]!.openingDate).toBeNull();
     const result = dom.onboarding.applySetup(ledger, plan);
     expect(result).toMatchObject({ members: 1, accounts: 2, cards: 1, openingBalances: 1 });
-    const bank = [...ledger.accounts.values()].find((a) => a.name === "Banco A")!;
+    const bank = accountNamed(ledger, "Banco A");
     expect(bank.institution).toBe("Banco do Povo");
     expect(bank.holders.map((id) => ledger.members.get(id)!.name)).toEqual(["Ana", "Bruno"]);
     expect(queries.balance(ledger, bank.id).eq(dec("1500.00"))).toBe(true);

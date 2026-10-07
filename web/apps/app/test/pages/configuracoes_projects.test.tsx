@@ -1,10 +1,9 @@
 /** The projects screen: restoring a backup as a new project and opening a project with its recovery key. */
 import { screen, waitFor, within } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { DEMO } from "../../src/services/fake.ts";
-import { captureDownloads, closed, dialog, fileOf, openProjects, type } from "./configuracoes_harness.tsx";
-
-vi.mock("../../../../packages/ui/src/chart/echarts.ts", async () => await import("./fake_echarts.ts"));
+import { captureDownloads, fileOf, openProjects, type } from "./configuracoes_harness.tsx";
+import { closed, dialog } from "../dom.ts";
 
 let downloads: ReturnType<typeof captureDownloads>;
 beforeEach(() => {

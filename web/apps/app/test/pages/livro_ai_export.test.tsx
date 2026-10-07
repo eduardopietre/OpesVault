@@ -7,18 +7,9 @@ import { afterEach, describe, expect, it } from "vitest";
 import { setAiTransport } from "../../src/data/ai.ts";
 import { operationsCsv } from "../../src/pages/livro/export.ts";
 import { FakeOllama } from "./fake_ollama.ts";
-import {
-  category,
-  choose,
-  dialog,
-  grid,
-  menu,
-  openLivro,
-  opByDescription,
-  rowsWith,
-  submit,
-  type Opened,
-} from "./livro_harness.tsx";
+import { grid, openLivro, opByDescription, rowsWith, type Opened } from "./livro_harness.tsx";
+import { categoryNamed } from "../lookup.ts";
+import { choose, dialog, menu, submit } from "../dom.ts";
 
 afterEach(() => setAiTransport(null));
 
@@ -41,7 +32,7 @@ describe("Livro: IA local", () => {
     fake.smart("Lazer");
     setAiTransport(fake.transport);
     const o = await openLivro();
-    const lazer = category(o, "Lazer").id;
+    const lazer = categoryNamed(o.ledger, "Lazer").id;
     const before = inCategory(o, lazer);
     const steps = o.workspace.undoStack.undoLabel();
     await menu(o.user, "IA local", "Sugerir categorias…");

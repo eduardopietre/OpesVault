@@ -5,27 +5,16 @@
  *          program is refused and nothing is sent.
  */
 import { DomainError, Ledger, SCHEMA_VERSION, type LedgerRecord } from "@opesvault/domain";
-import { memoryPreferences } from "@opesvault/ui";
-import { createMemoryHistory } from "@tanstack/react-router";
-import { render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { App } from "../src/App.tsx";
 import { Workspace, type PlainRecordLike } from "../src/data/workspace.ts";
-import { createAppRouter } from "../src/router.tsx";
-import { DEMO, createFakeServices } from "../src/services/fake.ts";
-import { SessionStore } from "../src/session.tsx";
+import { mountApp } from "./mount.tsx";
 
 describe("TA-03: cancelling the password", () => {
   it("opens no project, asks the services for nothing and leaves the list as it was", async () => {
-    const user = userEvent.setup();
-    const services = createFakeServices({ seed: true });
+    const { services, session, router, user } = await mountApp("/projetos", { project: "none" });
+    // the app looks the method up when it opens a project: a spy put in place now sees every call
     const opened = vi.spyOn(services, "openProject");
-    const session = new SessionStore();
-    const account = await services.signIn(DEMO.email, DEMO.password);
-    session.update({ account });
-    const router = createAppRouter({ session, history: createMemoryHistory({ initialEntries: ["/projetos"] }) });
-    render(<App router={router} services={services} session={session} preferences={memoryPreferences()} />);
 
     await user.click(await screen.findByRole("button", { name: /Casa/ }));
     const dialog = await screen.findByRole("dialog", { name: "Abrir Casa" });

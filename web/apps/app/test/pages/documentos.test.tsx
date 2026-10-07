@@ -6,8 +6,10 @@ import type { Workspace } from "../../src/data/workspace.ts";
 import { downloadFile } from "../../src/pages/livro/export.ts";
 import { documentRows, fileSize, summaryLine, usedBy } from "../../src/pages/documentos/rows.ts";
 import { DocumentUnavailable } from "../../src/data/workspace.ts";
-import { flat, openAt, type User } from "./sharing_docs_harness.tsx";
+import { openAt } from "./sharing_docs_harness.tsx";
+import { flat, type User, undoOnce } from "../dom.ts";
 import { addressSettles, navigations, wentTo } from "../navigations.ts";
+import { type MountOptions } from "../mount.tsx";
 
 // happy-dom has no canvas: pdf.js is replaced by a drawing that reports its pages and asks for a password.
 vi.mock("../../src/data/pdf_render.ts", async () => {
@@ -63,11 +65,10 @@ function prepare(workspace: Workspace): void {
   });
 }
 
-const open = (path = "/documentos", options: { empty?: boolean; prepare?: (w: Workspace) => void } = { prepare }) =>
-  openAt(path, "Documentos", options);
+const open = (path = "/documentos", options: MountOptions = { prepare }) => openAt(path, "Documentos", options);
 
 const list = () => screen.findByRole("grid", { name: "Documentos no projeto" });
-const choose = async (user: User, name: string) => user.click(within(await list()).getByText(name));
+const pickDocument = async (user: User, name: string) => user.click(within(await list()).getByText(name));
 const panel = () => screen.findByRole("region", { name: "Documento selecionado" });
 const documents = (workspace: Workspace) => workspace.session.documents.map((d) => d.meta.original_name);
 
@@ -121,7 +122,7 @@ describe("Documentos", () => {
 
   it("shows the operations that a receipt belongs to, each with a link to the Livro", async () => {
     const { ledger, router, user } = await open();
-    await choose(user, "nota-dividida.pdf");
+    await pickDocument(user, "nota-dividida.pdf");
     const region = await panel();
     await waitFor(() => expect(within(region).getByText(/Comprovante de “Posto Shell”/)).toBeTruthy());
     expect(within(region).getByText(/Comprovante de “Mercado do mês”/)).toBeTruthy();
@@ -133,15 +134,15 @@ describe("Documentos", () => {
 
   it("shows an image directly and says a structured file has no page view", async () => {
     const { user } = await open();
-    await choose(user, "recibo-posto.png");
+    await pickDocument(user, "recibo-posto.png");
     expect(await screen.findByRole("img", { name: "Documento recibo-posto.png" })).toBeTruthy();
-    await choose(user, "extrato.csv");
+    await pickDocument(user, "extrato.csv");
     expect(await screen.findByText("Arquivo estruturado (CSV/OFX): sem visualização de página.")).toBeTruthy();
   });
 
   it("notes when only the first pages are drawn", async () => {
     const { user } = await open();
-    await choose(user, "muitas-paginas.pdf");
+    await pickDocument(user, "muitas-paginas.pdf");
     expect(
       await screen.findByText("Mostrando as 30 primeiras de 40 páginas; salve o original para ver tudo."),
     ).toBeTruthy();
@@ -149,7 +150,7 @@ describe("Documentos", () => {
 
   it("asks for the password of a protected PDF, refuses a wrong one inside the dialog and never keeps it", async () => {
     const { user } = await open();
-    await choose(user, "protegido.pdf");
+    await pickDocument(user, "protegido.pdf");
     expect(await screen.findByText("Este PDF é protegido por senha.")).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Informar senha…" }));
     const dialog = await screen.findByRole("dialog", { name: "PDF protegido" });
@@ -178,7 +179,7 @@ describe("Documentos", () => {
   it("removes a document nothing uses, after confirming, and one undo brings it back", async () => {
     const { workspace, user } = await open();
     const before = documents(workspace);
-    await choose(user, "livre.pdf");
+    await pickDocument(user, "livre.pdf");
     expect(await screen.findByText("Nada usa este documento.")).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Remover…" }));
     let confirmation = await screen.findByRole("alertdialog", { name: "Remover o documento?" });
@@ -195,7 +196,7 @@ describe("Documentos", () => {
     await waitFor(() => expect([...documents(workspace)].sort()).toEqual([...before].sort()));
     expect(within(await list()).getByText("livre.pdf")).toBeTruthy();
     // and once more by the project's own undo
-    await choose(user, "livre.pdf");
+    await pickDocument(user, "livre.pdf");
     await user.click(screen.getByRole("button", { name: "Remover…" }));
     await user.click(
       within(await screen.findByRole("alertdialog", { name: "Remover o documento?" })).getByRole("button", {
@@ -203,7 +204,7 @@ describe("Documentos", () => {
       }),
     );
     await waitFor(() => expect(documents(workspace)).not.toContain("livre.pdf"));
-    reactAct(() => void workspace.undo());
+    undoOnce(workspace);
     expect([...documents(workspace)].sort()).toEqual([...before].sort());
   });
 
@@ -212,7 +213,7 @@ describe("Documentos", () => {
     const attachments = () => dom.attachments.attachments(ledger).size;
     const before = attachments();
     const names = documents(workspace);
-    await choose(user, "nota-dividida.pdf");
+    await pickDocument(user, "nota-dividida.pdf");
     await user.click(await screen.findByRole("button", { name: "Desvincular de Mercado do mês" }));
     const confirmation = await screen.findByRole("alertdialog", { name: "Desvincular o comprovante?" });
     expect(within(confirmation).getByText(/O arquivo continua no projeto/)).toBeTruthy();
@@ -221,7 +222,7 @@ describe("Documentos", () => {
     expect(documents(workspace)).toEqual(names);
     expect(screen.queryByRole("button", { name: "Desvincular de Mercado do mês" })).toBeNull();
     expect(await screen.findByText("Comprovante desvinculado.")).toBeTruthy();
-    reactAct(() => void workspace.undo());
+    undoOnce(workspace);
     expect(attachments()).toBe(before);
     expect(await screen.findByRole("button", { name: "Desvincular de Mercado do mês" })).toBeTruthy();
   });
@@ -230,7 +231,7 @@ describe("Documentos", () => {
     const { ledger, workspace, user } = await open();
     const before = documents(workspace);
     const attachments = dom.attachments.attachments(ledger).size;
-    await choose(user, "recibo-posto.png");
+    await pickDocument(user, "recibo-posto.png");
     await user.click(await screen.findByRole("button", { name: "Desvincular de Posto Shell" }));
     const confirmation = await screen.findByRole("alertdialog", { name: "Desvincular o comprovante?" });
     expect(within(confirmation).getByText(/o arquivo sai do projeto/)).toBeTruthy();
@@ -245,7 +246,7 @@ describe("Documentos", () => {
     await waitFor(() => expect(documents(workspace)).not.toContain("recibo-posto.png"));
     expect(within(await list()).queryByText("recibo-posto.png")).toBeNull();
     expect(await screen.findByText("Comprovante desvinculado e arquivo removido.")).toBeTruthy();
-    reactAct(() => void workspace.undo());
+    undoOnce(workspace);
     expect([...documents(workspace)].sort()).toEqual([...before].sort());
     expect(dom.attachments.attachments(ledger).size).toBe(attachments);
   });
@@ -253,18 +254,18 @@ describe("Documentos", () => {
   it("does not let a receipt be unlinked while another tab edits", async () => {
     const { workspace, user } = await open();
     reactAct(() => workspace.setReadOnly(true));
-    await choose(user, "recibo-posto.png");
+    await pickDocument(user, "recibo-posto.png");
     const button = (await screen.findByRole("button", { name: "Desvincular de Posto Shell" })) as HTMLButtonElement;
     expect(button.disabled).toBe(true);
   });
 
   it("does not let a document in use be removed and says what uses it", async () => {
     const { workspace, user } = await open();
-    await choose(user, "recibo-posto.png");
+    await pickDocument(user, "recibo-posto.png");
     const remove = (await screen.findByRole("button", { name: "Remover…" })) as HTMLButtonElement;
     expect(remove.disabled).toBe(true);
     expect(screen.getByText(/Em uso por 1 lançamento\(s\) como comprovante/)).toBeTruthy();
-    await choose(user, "fatura-nubank-03.pdf");
+    await pickDocument(user, "fatura-nubank-03.pdf");
     expect(screen.getByText(/Em uso por uma importação/)).toBeTruthy();
     expect(documents(workspace)).toContain("fatura-nubank-03.pdf");
     expect(usedBy(documentRows(workspace.ledger, workspace.session.documents)[0]!)).toBe("uma importação");
@@ -272,7 +273,7 @@ describe("Documentos", () => {
 
   it("saves the original only after warning that it leaves the encrypted storage", async () => {
     const { user } = await open();
-    await choose(user, "livre.pdf");
+    await pickDocument(user, "livre.pdf");
     const save = await screen.findByRole("button", { name: "Salvar o original…" });
     await waitFor(() => expect((save as HTMLButtonElement).disabled).toBe(false));
     await user.click(save);
@@ -308,7 +309,7 @@ describe("Documentos", () => {
     expect(screen.getByText(/Selecione um documento na lista para abrir o original/)).toBeTruthy();
     expect(calls).toBe(0);
     expect(screen.queryByRole("region", { name: "Documento selecionado" })).toBeNull();
-    await choose(user, "livre.pdf");
+    await pickDocument(user, "livre.pdf");
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toContain("O documento original ainda não foi baixado");
     // saving and removing wait for the bytes
@@ -331,7 +332,7 @@ describe("Documentos", () => {
         });
       },
     });
-    await choose(user, "livre.pdf");
+    await pickDocument(user, "livre.pdf");
     await screen.findByText("Nada usa este documento.");
     loads.length = 0;
     const livreId = workspace.session.documents.find((d) => d.meta.original_name === "livre.pdf")!.meta.id;
@@ -361,7 +362,7 @@ describe("Documentos", () => {
       },
     });
     const before = documents(workspace);
-    await choose(user, "livre.pdf");
+    await pickDocument(user, "livre.pdf");
     await screen.findByText("Nada usa este documento.");
     await user.click(screen.getByRole("button", { name: "Remover…" }));
     await user.click(
@@ -384,7 +385,7 @@ describe("Documentos", () => {
   });
 
   it("in a project without documents explains where they come from", async () => {
-    const { router, user } = await open("/documentos", { empty: true });
+    const { router, user } = await open("/documentos", { project: "new" });
     expect(await screen.findByRole("heading", { name: "Nenhum documento no projeto" })).toBeTruthy();
     expect(screen.queryByRole("grid")).toBeNull();
     await user.click(screen.getByRole("button", { name: "Abrir o Livro financeiro" }));
@@ -394,7 +395,7 @@ describe("Documentos", () => {
   it("is read only while another tab edits: the original can be seen and saved, not removed", async () => {
     const { workspace, user } = await open();
     reactAct(() => workspace.setReadOnly(true));
-    await choose(user, "livre.pdf");
+    await pickDocument(user, "livre.pdf");
     const remove = (await screen.findByRole("button", { name: "Remover…" })) as HTMLButtonElement;
     expect(remove.disabled).toBe(true);
     await waitFor(() =>

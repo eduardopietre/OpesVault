@@ -1,6 +1,6 @@
 import { dom, formatBrl, makeDate, type IsoDate } from "@opesvault/domain";
 import { act as reactAct, screen, waitFor, within } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { pinToday } from "../clock.ts";
 import {
   FORECAST_LABELS,
@@ -13,21 +13,9 @@ import {
   summaryLine,
 } from "../../src/pages/recorrencias/rows.ts";
 import { tableHeight } from "../../src/data/table_height.ts";
-import {
-  accountId,
-  flat,
-  linkCount,
-  openPage,
-  pickRow,
-  rowOf,
-  rules,
-  seedExpense,
-  seedRepeatingCharge,
-  seedRule,
-  undoOnce,
-} from "./recorrencias_harness.tsx";
-
-vi.mock("../../../../packages/ui/src/chart/echarts.ts", () => import("./fake_echarts.ts"));
+import { linkCount, openPage, rules, seedExpense, seedRepeatingCharge, seedRule } from "./recorrencias_harness.tsx";
+import { accountNamed } from "../lookup.ts";
+import { flat, clickInTable, rowById, undoOnce } from "../dom.ts";
 
 const open = () => openPage("/recorrencias", "Recorrências");
 const day = (d: number): IsoDate => makeDate(2026, 10, d);
@@ -72,7 +60,7 @@ describe("Recorrências", () => {
     const forecasts = dom.recurrence.forecasts(ledger, ...forecastWindow(workspace.today()), workspace.today());
     expect(rule.description).toBe("Aluguel");
     const ruleTable = await screen.findByRole("grid", { name: "Regras de recorrência" });
-    const ruleRow = flat(rowOf(ruleTable, rule.id)!.textContent);
+    const ruleRow = flat(rowById(ruleTable, rule.id).textContent);
     expect(ruleRow).toContain("Aluguel");
     expect(ruleRow).toContain(flat(formatBrl(rule.amount)));
     expect(ruleRow).toContain("Mensal");
@@ -81,9 +69,9 @@ describe("Recorrências", () => {
     const table = screen.getByRole("grid", { name: "Previsões" });
     expect(forecasts.map((f) => f.status)).toEqual(["late", "late", "late", ...Array<"pending">(7).fill("pending")]);
     for (const forecast of forecasts) {
-      const row = rowOf(table, forecastId(forecast.ruleId, forecast.dueOn));
+      const row = rowById(table, forecastId(forecast.ruleId, forecast.dueOn));
       expect(row, forecast.dueOn).toBeTruthy();
-      const text = flat(row!.textContent);
+      const text = flat(row.textContent);
       expect(text).toContain(forecast.dueOn.split("-").reverse().join("/"));
       expect(text).toContain(flat(formatBrl(forecast.amount)));
       expect(text).toContain(FORECAST_LABELS[forecast.status]);
@@ -137,10 +125,10 @@ describe("Recorrências", () => {
     expect(made.tolerance.eq("5")).toBe(true);
     expect(made.day).toBe(15);
     expect(made.start).toBe("2026-10-01");
-    expect(made.account_id).toBe(accountId(ledger, "Banco A"));
+    expect(made.account_id).toBe(accountNamed(ledger, "Banco A").id);
     expect(await screen.findByText("Recorrência criada.")).toBeTruthy();
     const forecasts = screen.getByRole("grid", { name: "Previsões" });
-    expect(rowOf(forecasts, forecastId(made.id, day(15)))).toBeTruthy();
+    expect(rowById(forecasts, forecastId(made.id, day(15)))).toBeTruthy();
     expect(screen.getByText("2 regra(s) ativa(s) · 3 previsão(ões) atrasada(s)")).toBeTruthy();
     undoOnce(workspace);
     expect(rules(ledger)).toHaveLength(before);
@@ -172,7 +160,7 @@ describe("Recorrências", () => {
     expect(await screen.findByText("Selecione uma regra.")).toBeTruthy();
     expect(screen.queryByRole("dialog")).toBeNull();
 
-    await pickRow(user, "Regras de recorrência", "Aluguel");
+    await clickInTable(user, "Regras de recorrência", "Aluguel");
     await user.click(screen.getByRole("button", { name: "Editar…" }));
     const dialog = await screen.findByRole("dialog", { name: "Editar recorrência" });
     const amount = within(dialog).getByLabelText("Valor esperado") as HTMLInputElement;
@@ -195,12 +183,12 @@ describe("Recorrências", () => {
     await user.click(screen.getByRole("button", { name: "Pausar ou retomar" }));
     expect(await screen.findByText("Selecione uma regra.")).toBeTruthy();
 
-    await pickRow(user, "Regras de recorrência", "Aluguel");
+    await clickInTable(user, "Regras de recorrência", "Aluguel");
     await user.click(screen.getByRole("button", { name: "Pausar" }));
     expect(rules(ledger)[0]!.paused).toBe(true);
     expect(await screen.findByText("Recorrência “Aluguel” pausada.")).toBeTruthy();
     const table = screen.getByRole("grid", { name: "Regras de recorrência" });
-    expect(flat(rowOf(table, rule.id)!.textContent)).toContain("Pausada");
+    expect(flat(rowById(table, rule.id).textContent)).toContain("Pausada");
     expect(screen.getByText(/Nenhuma previsão no período/)).toBeTruthy();
     expect(screen.queryByRole("grid", { name: "Assinaturas e contas fixas" })).toBeNull();
     expect(screen.getByText("0 regra(s) ativa(s)")).toBeTruthy();
@@ -226,12 +214,12 @@ describe("Recorrências", () => {
     });
     const forecasts = screen.getByRole("grid", { name: "Previsões" });
     const id = forecastId(rule.id, day(6));
-    await waitFor(() => expect(rowOf(forecasts, id)).toBeTruthy());
+    await waitFor(() => expect(rowById(forecasts, id)).toBeTruthy());
 
     await user.click(screen.getByRole("button", { name: "Vincular realizado…" }));
     expect(await screen.findByText("Selecione uma previsão.")).toBeTruthy();
 
-    await user.click(within(rowOf(forecasts, id)!).getByText("Posto Shell"));
+    await user.click(within(rowById(forecasts, id)).getByText("Posto Shell"));
     await user.click(screen.getByRole("button", { name: "Vincular realizado…" }));
     const dialog = await screen.findByRole("dialog", { name: "Vincular realizado" });
     const options = within(dialog).getAllByRole("radio");
@@ -246,7 +234,7 @@ describe("Recorrências", () => {
     expect(ledger.operations.get(link.operation_id!)!.description).toBe("Posto Shell");
     expect(ledger.operations.get(link.operation_id!)!.forecast_id).toBe(rule.id);
     expect(await screen.findByText("Previsão vinculada ao lançamento.")).toBeTruthy();
-    expect(flat(rowOf(forecasts, id)!.textContent)).toContain("Realizada");
+    expect(flat(rowById(forecasts, id).textContent)).toContain("Realizada");
     // a resolved forecast cannot be linked again
     await user.click(screen.getByRole("button", { name: "Vincular realizado…" }));
     expect(await screen.findByText("Esta previsão já foi resolvida.")).toBeTruthy();
@@ -258,12 +246,12 @@ describe("Recorrências", () => {
     undoOnce(workspace);
     expect(linkCount(ledger)).toBe(0);
     expect(ledger.operations.get(link.operation_id!)!.forecast_id).toBeNull();
-    await waitFor(() => expect(flat(rowOf(forecasts, id)!.textContent)).not.toContain("Realizada"));
+    await waitFor(() => expect(flat(rowById(forecasts, id).textContent)).not.toContain("Realizada"));
   });
 
   it("says there is no compatible operation when the forecast has no candidate", async () => {
     const { ledger, user } = await open();
-    const table = await pickRow(user, "Previsões", "Aluguel");
+    const table = await clickInTable(user, "Previsões", "Aluguel");
     expect(table).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Vincular realizado…" }));
     expect(await screen.findByText("Nenhum lançamento compatível (conta, valor e data).")).toBeTruthy();
@@ -279,7 +267,7 @@ describe("Recorrências", () => {
     expect(await screen.findByText("Selecione uma previsão.")).toBeTruthy();
 
     const forecasts = await screen.findByRole("grid", { name: "Previsões" });
-    await user.click(rowOf(forecasts, forecastId(rule.id, day(10)))!);
+    await user.click(rowById(forecasts, forecastId(rule.id, day(10))));
     await user.click(screen.getByRole("button", { name: "Mais" }));
     await user.click(await screen.findByRole("menuitem", { name: "Pular previsão" }));
     expect([...dom.recurrence.links(ledger).values()][0]).toMatchObject({
@@ -289,7 +277,7 @@ describe("Recorrências", () => {
       operation_id: null,
     });
     expect(await screen.findByText("Previsão de 10/10/2026 pulada.")).toBeTruthy();
-    expect(flat(rowOf(forecasts, forecastId(rule.id, day(10)))!.textContent)).toContain("Pulada");
+    expect(flat(rowById(forecasts, forecastId(rule.id, day(10))).textContent)).toContain("Pulada");
 
     await user.click(screen.getByRole("button", { name: "Mais" }));
     await user.click(await screen.findByRole("menuitem", { name: "Pular previsão" }));
@@ -364,7 +352,7 @@ describe("Recorrências", () => {
     const op = seedExpense(workspace, "Streaming", "39.90", "Lazer", day(6));
     workspace.act((l) => dom.recurrence.realize(l, rule.id, day(6), op.id));
     const commitments = await screen.findByRole("grid", { name: "Assinaturas e contas fixas" });
-    const row = flat(rowOf(commitments, rule.id)!.textContent);
+    const row = flat(rowById(commitments, rule.id).textContent);
     expect(row).toContain("Valor mudou");
     expect(row).toContain(flat(formatBrl(rule.amount.mul(12))));
     expect(row).toContain(
@@ -374,7 +362,7 @@ describe("Recorrências", () => {
     // selecting a commitment selects the same rule in the rules table
     await user.click(within(commitments).getByText("Streaming"));
     const rulesTable = screen.getByRole("grid", { name: "Regras de recorrência" });
-    expect(rowOf(rulesTable, rule.id)!.getAttribute("aria-selected")).toBe("true");
+    expect(rowById(rulesTable, rule.id).getAttribute("aria-selected")).toBe("true");
   });
 
   it("offers the charges that repeat and creates the rule from one, prefilled; one undo removes it", async () => {
@@ -387,7 +375,7 @@ describe("Recorrências", () => {
     expect(text).toContain("Netflix");
     expect(text).toContain("R$ 39,90");
     expect(text).toContain("3");
-    expect(rowOf(candidates, candidateKey(found[0]!))).toBeTruthy();
+    expect(rowById(candidates, candidateKey(found[0]!))).toBeTruthy();
 
     await user.click(screen.getByRole("button", { name: "Criar recorrência…" }));
     expect(await screen.findByText("Selecione uma cobrança.")).toBeTruthy();
@@ -425,7 +413,7 @@ describe("Recorrências", () => {
   });
 
   it("explains the empty project and its New button refuses to save without accounts", async () => {
-    const { workspace, user } = await openPage("/recorrencias", "Recorrências", { empty: true });
+    const { workspace, user } = await openPage("/recorrencias", "Recorrências", { project: "blank" });
     expect(await screen.findByRole("heading", { name: "Nenhuma recorrência" })).toBeTruthy();
     expect(screen.queryByRole("grid")).toBeNull();
     expect(flat(document.body.textContent)).toContain("Previsões nunca alteram saldos.");
@@ -441,7 +429,7 @@ describe("Recorrências", () => {
   });
 
   it("is read only while another tab or device edits: nothing can be changed", async () => {
-    const { workspace } = await openPage("/recorrencias", "Recorrências", { readOnly: true });
+    const { workspace } = await openPage("/recorrencias", "Recorrências", { project: "blank", readOnly: true });
     expect(workspace.readOnly).toBe(true);
     const button = screen.getAllByRole("button", { name: "Nova recorrência…" })[0]!;
     expect(button.hasAttribute("disabled")).toBe(true);

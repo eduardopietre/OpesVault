@@ -1,6 +1,6 @@
 import { charts, dom, formatBrl, makeDate, ymOf, type Id } from "@opesvault/domain";
 import { act as reactAct, screen, waitFor, within } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { pinToday } from "../clock.ts";
 import {
   NONE,
@@ -11,10 +11,10 @@ import {
   shareLabel,
   summaryLine,
 } from "../../src/pages/metas/rows.ts";
-import { accountId, flat, openPage, rowOf, undoOnce } from "./recorrencias_harness.tsx";
+import { openPage } from "./recorrencias_harness.tsx";
+import { accountNamed } from "../lookup.ts";
+import { flat, rowById, undoOnce } from "../dom.ts";
 import { addressSettles } from "../navigations.ts";
-
-vi.mock("../../../../packages/ui/src/chart/echarts.ts", () => import("./fake_echarts.ts"));
 
 const open = (options = {}) => openPage("/metas", "Metas", options);
 const goals = (ledger: Parameters<typeof dom.goals.goals>[0]) => dom.goals.goals(ledger);
@@ -41,7 +41,7 @@ describe("Metas", () => {
     const p = dom.goals.progress(ledger, goal!, workspace.today());
     expect(goal!.name).toBe("Reserva de emergência");
     const table = await screen.findByRole("grid", { name: "Metas" });
-    const text = flat(rowOf(table, goal!.id)!.textContent);
+    const text = flat(rowById(table, goal!.id).textContent);
     expect(text).toContain("Reserva de emergência");
     expect(text).toContain(flat(formatBrl(p.current)));
     expect(text).toContain(flat(formatBrl(goal!.target)));
@@ -88,7 +88,7 @@ describe("Metas", () => {
     expect(await screen.findByText("Meta criada.")).toBeTruthy();
     // no deadline: the monthly need is unknown, not zero
     const table = screen.getByRole("grid", { name: "Metas" });
-    expect(flat(rowOf(table, made.id)!.textContent)).toContain(NONE);
+    expect(flat(rowById(table, made.id).textContent)).toContain(NONE);
     expect(screen.getByText("2 meta(s) ativa(s)")).toBeTruthy();
     // the new goal is the selected one, with its own chart
     expect(await screen.findByRole("table", { name: "Valores de Meta: Patrimônio de 100 mil" })).toBeTruthy();
@@ -124,9 +124,9 @@ describe("Metas", () => {
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Nova meta" })).toBeNull());
     const made = goals(ledger).find((g) => g.name === "Viagem")!;
     expect(made).toMatchObject({ kind: "accounts", target_date: "2027-12-31" });
-    expect(made.account_ids).toEqual([accountId(ledger, "Poupança")]);
+    expect(made.account_ids).toEqual([accountNamed(ledger, "Poupança").id]);
     const table = screen.getByRole("grid", { name: "Metas" });
-    expect(flat(rowOf(table, made.id)!.textContent)).toContain("31/12/2027");
+    expect(flat(rowById(table, made.id).textContent)).toContain("31/12/2027");
     undoOnce(workspace);
     expect(goals(ledger).some((g) => g.name === "Viagem")).toBe(false);
   });
@@ -181,7 +181,7 @@ describe("Metas", () => {
     expect(await screen.findByText("Meta arquivada.")).toBeTruthy();
     expect(screen.getByText("0 meta(s) ativa(s)")).toBeTruthy();
     const table = screen.getByRole("grid", { name: "Metas" });
-    expect(flat(rowOf(table, goal.id)!.textContent)).toContain("arquivada");
+    expect(flat(rowById(table, goal.id).textContent)).toContain("arquivada");
 
     await user.click(screen.getByRole("button", { name: "Reativar…" }));
     const again = await screen.findByRole("dialog", { name: "Reativar meta" });
@@ -231,9 +231,9 @@ describe("Metas", () => {
     expect(await screen.findByRole("table", { name: "Valores de Meta: Reserva de emergência" })).toBeTruthy();
     expect(screen.getByText("Selecionada:").parentElement!.textContent).toContain("Reserva de emergência");
     expect(
-      rowOf(table, goals(ledger).find((g) => g.name === "Reserva de emergência")!.id)!.getAttribute("aria-selected"),
+      rowById(table, goals(ledger).find((g) => g.name === "Reserva de emergência")!.id).getAttribute("aria-selected"),
     ).toBe("true");
-    expect(rowOf(table, second.id)!.getAttribute("aria-selected")).toBe("false");
+    expect(rowById(table, second.id).getAttribute("aria-selected")).toBe("false");
     // the archived goal still has progress
     await user.click(within(table).getByText("Antiga"));
     expect(await screen.findByRole("button", { name: "Reativar…" })).toBeTruthy();
@@ -253,11 +253,11 @@ describe("Metas", () => {
       ),
     );
     const table = await screen.findByRole("grid", { name: "Metas" });
-    expect(rowOf(table, second.id)!.getAttribute("aria-selected")).toBe("false");
+    expect(rowById(table, second.id).getAttribute("aria-selected")).toBe("false");
     await reactAct(async () => {
       await router.navigate({ to: "/metas", search: { ref: second.id } });
     });
-    await waitFor(() => expect(rowOf(table, second.id)!.getAttribute("aria-selected")).toBe("true"));
+    await waitFor(() => expect(rowById(table, second.id).getAttribute("aria-selected")).toBe("true"));
     expect(await screen.findByRole("table", { name: "Valores de Meta: Zeladoria" })).toBeTruthy();
     expect(screen.queryByRole("dialog")).toBeNull();
     await addressSettles(router, {});
@@ -271,11 +271,11 @@ describe("Metas", () => {
     await reactAct(async () => {
       await router.navigate({ to: "/metas", search: { ref: "x" as Id } });
     });
-    expect(rowOf(table, first.id)!.getAttribute("aria-selected")).toBe("true");
+    expect(rowById(table, first.id).getAttribute("aria-selected")).toBe("true");
   });
 
   it("explains the empty project, and nothing is saved without a name", async () => {
-    const { workspace, user } = await open({ empty: true });
+    const { workspace, user } = await open({ project: "blank" });
     expect(await screen.findByRole("heading", { name: "Nenhuma meta" })).toBeTruthy();
     expect(screen.queryByRole("grid")).toBeNull();
     expect(screen.getAllByRole("button", { name: "Nova meta…" })).toHaveLength(1);
@@ -294,7 +294,7 @@ describe("Metas", () => {
   });
 
   it("is read only while another tab or device edits: nothing can be changed", async () => {
-    const { workspace } = await open({ readOnly: true });
+    const { workspace } = await open({ project: "blank", readOnly: true });
     expect(workspace.readOnly).toBe(true);
     const button = screen.getAllByRole("button", { name: "Nova meta…" })[0]!;
     expect(button.hasAttribute("disabled")).toBe(true);

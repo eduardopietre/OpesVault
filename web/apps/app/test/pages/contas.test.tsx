@@ -1,28 +1,11 @@
 /** Contas e cartões: the page, the plain lists (Integrantes, Cartões, Categorias) and Todas as contas. */
 import { AccountSubtype, AccountType, Dec, MemberRole, dom, formatBrl, queries } from "@opesvault/domain";
 import { screen, within } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
-import {
-  choose,
-  closed,
-  dialog,
-  fill,
-  flat,
-  goTab,
-  openContas,
-  pick,
-  rowOf,
-  snapshot,
-  submit,
-  table,
-  undoOnce,
-} from "./contas_harness.tsx";
+import { describe, expect, it } from "vitest";
+import { openContas, snapshot } from "./contas_harness.tsx";
+import { choose, closed, dialog, fill, flat, goTab, clickRow, rowOf, submit, table, undoOnce } from "../dom.ts";
 import { navigations, wentTo } from "../navigations.ts";
-
-vi.mock("../../../../packages/ui/src/chart/echarts.ts", async () => await import("./fake_echarts.ts"));
-
-const byName = (ledger: { accounts: Map<string, { id: string; name: string }> }, name: string) =>
-  [...ledger.accounts.values()].find((a) => a.name === name)!;
+import { accountNamed, memberNamed, categoryNamed } from "../lookup.ts";
 
 describe("Contas e cartões page", () => {
   it("shows the eight tabs, the count line and starts on Contas bancárias", async () => {
@@ -48,7 +31,7 @@ describe("Contas e cartões page", () => {
   });
 
   it("opens an empty project with a state in every tab and nothing crashing (TA-31)", async () => {
-    const { user } = await openContas("/contas", { empty: true });
+    const { user } = await openContas("/contas", { project: "blank" });
     for (const [tab, text] of [
       ["Contas bancárias", "Nenhuma conta bancária"],
       ["Todas as contas", "Nenhuma conta"],
@@ -68,7 +51,7 @@ describe("Contas e cartões page", () => {
   });
 
   it("disables every editing command in a read-only project, with the reason", async () => {
-    const { user, ledger } = await openContas("/contas", { readOnly: true });
+    const { user, ledger } = await openContas("/contas", { project: "blank", readOnly: true });
     const before = snapshot(ledger);
     for (const [tab, commands] of [
       ["Contas bancárias", ["Nova conta bancária…", "Editar…", "Valores em uma data…", "Novo investimento…"]],
@@ -109,10 +92,10 @@ describe("Integrantes", () => {
     await user.click(screen.getByRole("button", { name: "Novo integrante…" }));
     const box = await dialog("Novo integrante");
     await fill(user, box, /^Nome/, "Carla");
-    await choose(user, box, "Papel", "Dependente");
+    await choose(user, "Papel", "Dependente", box);
     await submit(user, box, "Adicionar");
     await closed("Novo integrante");
-    const carla = [...ledger.members.values()].find((m) => m.name === "Carla")!;
+    const carla = memberNamed(ledger, "Carla");
     expect(carla.role).toBe(MemberRole.DEPENDENT);
     expect(carla.active).toBe(true);
     expect(await screen.findByText("Integrante adicionado.")).toBeTruthy();
@@ -141,15 +124,15 @@ describe("Integrantes", () => {
   it("edits the selected member (name, role, situation); a double click opens it too; one undo reverts", async () => {
     const { ledger, workspace, user } = await openContas();
     await goTab(user, "Integrantes");
-    const bruno = [...ledger.members.values()].find((m) => m.name === "Bruno")!;
+    const bruno = memberNamed(ledger, "Bruno");
     const before = snapshot(ledger);
     const grid = await table("Integrantes");
-    await pick(user, grid, "Bruno");
+    await clickRow(user, grid, "Bruno");
     await user.click(screen.getByRole("button", { name: "Editar…" }));
     const box = await dialog("Editar integrante");
     expect((within(box).getByLabelText(/^Nome/) as HTMLInputElement).value).toBe("Bruno");
     await fill(user, box, /^Nome/, "Bruno Silva");
-    await choose(user, box, "Papel", "Dependente");
+    await choose(user, "Papel", "Dependente", box);
     await user.click(within(box).getByRole("checkbox", { name: /Ativo/ }));
     await submit(user, box, "Salvar");
     await closed("Editar integrante");
@@ -197,16 +180,16 @@ describe("Cartões", () => {
     const box = await dialog("Novo cartão de crédito");
     await fill(user, box, /^Nome/, "Cartão Y");
     await fill(user, box, "Instituição", "NU PAGAMENTOS S.A. - INSTITUIÇÃO DE PAGAMENTO");
-    await choose(user, box, "Portador", "Bruno");
+    await choose(user, "Portador", "Bruno", box);
     await fill(user, box, "Final", "4321");
     await fill(user, box, "Dia de fechamento", "20");
     await fill(user, box, "Dia de vencimento", "27");
-    await choose(user, box, "Conta de pagamento", "Banco A");
+    await choose(user, "Conta de pagamento", "Banco A", box);
     await submit(user, box, "Salvar cartão");
     await closed("Novo cartão de crédito");
     const card = [...ledger.cards.values()].find((c) => c.name === "Cartão Y")!;
     expect(card).toMatchObject({ last4: "4321", closing_day: 20, due_day: 27 });
-    expect(card.settlement_account_id).toBe(byName(ledger, "Banco A").id);
+    expect(card.settlement_account_id).toBe(accountNamed(ledger, "Banco A").id);
     const liability = ledger.accounts.get(card.liability_account_id)!;
     expect(liability).toMatchObject({ subtype: AccountSubtype.CREDIT_CARD, masked_number: "final 4321" });
     expect(await screen.findByText("Cartão cadastrado.")).toBeTruthy();
@@ -242,13 +225,13 @@ describe("Cartões", () => {
     await goTab(user, "Cartões");
     const card = [...ledger.cards.values()][0]!;
     const before = snapshot(ledger);
-    await pick(user, await table("Cartões"), card.name);
+    await clickRow(user, await table("Cartões"), card.name);
     await user.click(screen.getByRole("button", { name: "Editar…" }));
     const box = await dialog("Editar cartão de crédito");
     expect((within(box).getByLabelText("Final") as HTMLInputElement).value).toBe(card.last4);
     expect(within(box).queryByLabelText("Instituição")).toBeNull();
     await fill(user, box, "Dia de fechamento", "12");
-    await choose(user, box, "Conta de pagamento", "(não definida)");
+    await choose(user, "Conta de pagamento", "(não definida)", box);
     await submit(user, box, "Salvar cartão");
     await closed("Editar cartão de crédito");
     expect(ledger.cards.get(card.id)).toMatchObject({ closing_day: 12, settlement_account_id: null });
@@ -273,7 +256,7 @@ describe("Categorias", () => {
     const { ledger, user } = await openContas();
     await goTab(user, "Categorias");
     const grid = await table("Categorias");
-    const health = ledger.categories(AccountType.EXPENSE).find((c) => c.name === "Saúde")!;
+    const health = categoryNamed(ledger, "Saúde");
     const text = flat(rowOf(grid, "Saúde").textContent);
     expect(text).toContain("Despesa");
     expect(text).toContain(dom.deductibles.KIND_LABELS[dom.deductibles.kindOf(ledger, health.id)!]);
@@ -289,11 +272,11 @@ describe("Categorias", () => {
     await submit(user, box, "Criar categoria");
     expect(within(box).getByText("Informe o nome.")).toBeTruthy();
     await fill(user, box, /^Nome/, "Restaurantes");
-    await choose(user, box, "Dentro de", "Alimentação");
+    await choose(user, "Dentro de", "Alimentação", box);
     await submit(user, box, "Criar categoria");
     await closed("Nova categoria");
-    const created = ledger.categories(AccountType.EXPENSE).find((c) => c.name === "Restaurantes")!;
-    expect(created.parent_id).toBe(byName(ledger, "Alimentação").id);
+    const created = categoryNamed(ledger, "Restaurantes");
+    expect(created.parent_id).toBe(accountNamed(ledger, "Alimentação").id);
     expect(created.subtype).toBe(AccountSubtype.CATEGORY);
     expect(flat(rowOf(await table("Categorias"), "Restaurantes").textContent)).toContain("Alimentação");
     expect(await screen.findByText("Categoria criada.")).toBeTruthy();
@@ -307,7 +290,7 @@ describe("Categorias", () => {
     await user.click(screen.getByRole("button", { name: "Nova categoria…" }));
     const box = await dialog("Nova categoria");
     await fill(user, box, /^Nome/, "Freelas");
-    await choose(user, box, "Tipo", "Receita");
+    await choose(user, "Tipo", "Receita", box);
     await user.click(within(box).getByRole("combobox", { name: "Dentro de" }));
     expect(screen.queryByRole("option", { name: "Alimentação" })).toBeNull();
     expect(screen.getByRole("option", { name: "Salário" })).toBeTruthy();
@@ -319,13 +302,13 @@ describe("Categorias", () => {
 
   it("marks an expense category as deductible (Dedutível no IR…) and one undo reverts", async () => {
     const { ledger, workspace, user } = await openContas();
-    const leisure = ledger.categories(AccountType.EXPENSE).find((c) => c.name === "Lazer")!;
+    const leisure = categoryNamed(ledger, "Lazer");
     expect(dom.deductibles.kindOf(ledger, leisure.id)).toBeNull();
     await goTab(user, "Categorias");
-    await pick(user, await table("Categorias"), "Lazer");
+    await clickRow(user, await table("Categorias"), "Lazer");
     await user.click(screen.getByRole("button", { name: "Dedutível no IR…" }));
     const box = await dialog(/Despesa dedutível — Lazer/);
-    await choose(user, box, "Tipo de dedução", dom.deductibles.KIND_LABELS[dom.deductibles.DeductibleKind.HEALTH]);
+    await choose(user, "Tipo de dedução", dom.deductibles.KIND_LABELS[dom.deductibles.DeductibleKind.HEALTH], box);
     await submit(user, box, "Salvar");
     await closed(/Despesa dedutível/);
     expect(dom.deductibles.kindOf(ledger, leisure.id)).toBe(dom.deductibles.DeductibleKind.HEALTH);
@@ -342,7 +325,7 @@ describe("Categorias", () => {
     await goTab(user, "Categorias");
     await user.click(screen.getByRole("button", { name: "Dedutível no IR…" }));
     expect(await screen.findByText("Selecione uma categoria.")).toBeTruthy();
-    await pick(user, await table("Categorias"), "Salário");
+    await clickRow(user, await table("Categorias"), "Salário");
     await user.click(screen.getByRole("button", { name: "Dedutível no IR…" }));
     expect(await screen.findByText("Só categorias de despesa podem ser dedutíveis.")).toBeTruthy();
     expect(screen.queryByRole("dialog")).toBeNull();
@@ -392,20 +375,20 @@ describe("Todas as contas", () => {
     await submit(user, box, "Salvar conta");
     expect(within(box).getByText("Informe o nome da conta.")).toBeTruthy();
     await fill(user, box, /^Nome/, "Caixinha");
-    await choose(user, box, "Tipo", "Dinheiro");
+    await choose(user, "Tipo", "Dinheiro", box);
     await fill(user, box, "Identificação", "carteira");
-    await choose(user, box, "Titular", "Ana");
+    await choose(user, "Titular", "Ana", box);
     await fill(user, box, "Saldo de abertura", "150,25");
     await fill(user, box, "Data do saldo", "01/03/2026");
     await submit(user, box, "Salvar conta");
     await closed("Nova conta");
-    const account = byName(ledger, "Caixinha") as ReturnType<typeof byName> & {
+    const account = accountNamed(ledger, "Caixinha") as ReturnType<typeof accountNamed> & {
       subtype: string;
       holders: string[];
       masked_number: string;
     };
     expect(account.subtype).toBe(AccountSubtype.CASH);
-    expect(account.holders).toEqual([[...ledger.members.values()].find((m) => m.name === "Ana")!.id]);
+    expect(account.holders).toEqual([memberNamed(ledger, "Ana").id]);
     expect(account.masked_number).toBe("carteira");
     expect(queries.balance(ledger, account.id).toFixed()).toBe("150.25");
     expect(await screen.findByText("Conta cadastrada.")).toBeTruthy();
@@ -420,10 +403,10 @@ describe("Todas as contas", () => {
     await user.click(screen.getByRole("button", { name: "Nova conta…" }));
     const box = await dialog("Nova conta");
     await fill(user, box, /^Nome/, "Conjunta nova");
-    await choose(user, box, "Segundo titular", "Bruno");
+    await choose(user, "Segundo titular", "Bruno", box);
     await submit(user, box, "Salvar conta");
     expect(within(box).getByText("Escolha o titular antes do segundo titular.")).toBeTruthy();
-    await choose(user, box, "Titular", "Bruno");
+    await choose(user, "Titular", "Bruno", box);
     await submit(user, box, "Salvar conta");
     expect(within(box).getByText("O segundo titular precisa ser outra pessoa.")).toBeTruthy();
     expect(snapshot(ledger)).toBe(before);
@@ -434,7 +417,7 @@ describe("Todas as contas", () => {
     const { ledger, workspace, user } = await openContas();
     const before = snapshot(ledger);
     await goTab(user, "Todas as contas");
-    await pick(user, await table("Contas"), "Conjunta");
+    await clickRow(user, await table("Contas"), "Conjunta");
     await user.click(screen.getByRole("button", { name: "Editar…" }));
     const box = await dialog("Editar conta");
     expect(within(box).getByRole("combobox", { name: "Tipo" }).hasAttribute("disabled")).toBe(true);
@@ -443,17 +426,17 @@ describe("Todas as contas", () => {
     await fill(user, box, "Instituição", "ITAÚ UNIBANCO S.A.");
     await submit(user, box, "Salvar conta");
     await closed("Editar conta");
-    expect(ledger.account(byName(ledger, "Conta da casa").id).institution).toBe("ITAÚ UNIBANCO S.A.");
+    expect(ledger.account(accountNamed(ledger, "Conta da casa").id).institution).toBe("ITAÚ UNIBANCO S.A.");
     undoOnce(workspace);
     expect(snapshot(ledger)).toBe(before);
   });
 
   it("checks a balance with the bank: says it matches, or the difference; one undo reverts", async () => {
     const { ledger, workspace, user } = await openContas();
-    const account = byName(ledger, "Conjunta");
+    const account = accountNamed(ledger, "Conjunta");
     const before = dom.balanceChecks.checks(ledger).size;
     await goTab(user, "Todas as contas");
-    await pick(user, await table("Contas"), "Conjunta");
+    await clickRow(user, await table("Contas"), "Conjunta");
     await user.click(screen.getByRole("button", { name: "Conferir saldo…" }));
     let box = await dialog(/Conferir saldo — Conjunta/);
     await fill(user, box, "Saldo no banco", "2.300,00");
@@ -490,9 +473,9 @@ describe("Todas as contas", () => {
   it("opens the account's operations in the Livro (Ver lançamentos)", async () => {
     const { ledger, router, user } = await openContas();
     await goTab(user, "Todas as contas");
-    await pick(user, await table("Contas"), "Conjunta");
+    await clickRow(user, await table("Contas"), "Conjunta");
     const went = navigations(router);
     await user.click(screen.getByRole("button", { name: "Ver lançamentos" }));
-    await wentTo(went, "/livro", { ref: `conta:${byName(ledger, "Conjunta").id}` });
+    await wentTo(went, "/livro", { ref: `conta:${accountNamed(ledger, "Conjunta").id}` });
   });
 });

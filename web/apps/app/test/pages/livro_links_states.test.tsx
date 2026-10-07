@@ -5,18 +5,9 @@
 import { LedgerAccountSchema, dom } from "@opesvault/domain";
 import { act, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import {
-  account,
-  category,
-  count,
-  dialog,
-  grid,
-  menu,
-  openLivro,
-  pickRow,
-  rowsWith,
-  type Opened,
-} from "./livro_harness.tsx";
+import { count, grid, openLivro, rowsWith, type Opened, selectOperation } from "./livro_harness.tsx";
+import { accountNamed, categoryNamed, memberNamed } from "../lookup.ts";
+import { dialog, menu } from "../dom.ts";
 import { addressSettles } from "../navigations.ts";
 
 const rowCount = () => grid().querySelectorAll("[data-row-id]").length;
@@ -45,7 +36,7 @@ describe("Livro: vindo de outras páginas (useReveal)", () => {
   it("filters by a category and month, including its subcategories, and sets the shared month", async () => {
     const o = await openLivro();
     const ledger = o.workspace.ledger;
-    const alimentacao = category(o, "Alimentação");
+    const alimentacao = categoryNamed(o.ledger, "Alimentação");
     const child = o.workspace.act((l) =>
       l.addAccount(
         LedgerAccountSchema.parse({
@@ -56,7 +47,9 @@ describe("Livro: vindo de outras páginas (useReveal)", () => {
         }),
       ),
     );
-    o.workspace.act((l) => l.recordExpense(account(o, "Banco A").id, child.id, "20.00", "2026-03-20" as never, "Pão"));
+    o.workspace.act((l) =>
+      l.recordExpense(accountNamed(o.ledger, "Banco A").id, child.id, "20.00", "2026-03-20" as never, "Pão"),
+    );
     const wanted = (id: string) =>
       [...ledger.operations.values()].filter(
         (op) =>
@@ -73,7 +66,7 @@ describe("Livro: vindo de outras páginas (useReveal)", () => {
 
   it("filters by an account and a month, or a range of dates, as the calendar and the overview send", async () => {
     const o = await openLivro();
-    const bank = account(o, "Banco A").id;
+    const bank = accountNamed(o.ledger, "Banco A").id;
     const mine = (from: string, to: string) =>
       [...o.workspace.ledger.operations.values()].filter(
         (op) =>
@@ -89,14 +82,14 @@ describe("Livro: vindo de outras páginas (useReveal)", () => {
     expect(screen.getByRole("combobox", { name: "Período" }).textContent).toContain("Personalizado");
     expect((screen.getByLabelText("Data inicial") as HTMLInputElement).value).toBe("01/02/2026");
     // for a member as well
-    const ana = [...o.workspace.ledger.members.values()].find((m) => m.name === "Ana")!;
+    const ana = memberNamed(o.ledger, "Ana");
     await goToLivro(o, { ref: `filter:${bank}:2026-03:${ana.id}` });
     await waitFor(() => expect(screen.getByRole("combobox", { name: "Integrante" }).textContent).toContain("Ana"));
   });
 
   it("filters by an account and by a tag", async () => {
     const o = await openLivro();
-    await goToLivro(o, { ref: `conta:${account(o, "Cartão X").id}` });
+    await goToLivro(o, { ref: `conta:${accountNamed(o.ledger, "Cartão X").id}` });
     await waitFor(() =>
       expect(screen.getByRole("combobox", { name: "Conta ou categoria" }).textContent).toBe("Cartão X"),
     );
@@ -119,7 +112,7 @@ describe("Livro: vindo de outras páginas (useReveal)", () => {
   });
 
   it("goes on to another page from the empty state", async () => {
-    const o = await openLivro("/livro", { empty: true });
+    const o = await openLivro("/livro", { project: "new" });
     await o.user.click(await screen.findByRole("button", { name: "Importar e revisar" }));
     await waitFor(() => expect(o.router.state.location.pathname).toBe("/importar"));
   });
@@ -127,7 +120,7 @@ describe("Livro: vindo de outras páginas (useReveal)", () => {
 
 describe("Livro: estados", () => {
   it("shows an empty project without crashing (TA-31)", async () => {
-    const o = await openLivro("/livro", { empty: true });
+    const o = await openLivro("/livro", { project: "new" });
     expect(await screen.findByText("Nenhum lançamento ainda")).toBeTruthy();
     expect(screen.getByText("0 lançamentos")).toBeTruthy();
     expect(screen.queryByRole("grid")).toBeNull();
@@ -144,7 +137,7 @@ describe("Livro: estados", () => {
 
   it("marks the current row with Space and shows the count", async () => {
     const o = await openLivro();
-    await pickRow(o.user, "Aluguel");
+    await selectOperation(o.user, "Aluguel");
     await o.user.keyboard(" ");
     expect(await screen.findByText("1 marcado")).toBeTruthy();
     await o.user.keyboard(" ");
@@ -153,7 +146,7 @@ describe("Livro: estados", () => {
 
   it("marks and unmarks the current row from the Ações menu (the way on a phone)", async () => {
     const o = await openLivro();
-    await pickRow(o.user, "Aluguel");
+    await selectOperation(o.user, "Aluguel");
     await menu(o.user, "Ações", "Marcar este lançamento");
     expect(await screen.findByText("1 marcado")).toBeTruthy();
     await menu(o.user, "Ações", "Desmarcar este lançamento");

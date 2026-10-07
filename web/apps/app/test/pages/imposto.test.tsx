@@ -1,32 +1,14 @@
 /** Imposto de renda: the sheets of the year, the pending items that lead to the fix, DARFs, links, states. */
 import { investments, makeDate, tax, type IsoDate } from "@opesvault/domain";
 import { act as reactAct, screen, waitFor, within } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
-import {
-  YEAR,
-  account,
-  choose,
-  closed,
-  dialog,
-  fill,
-  flat,
-  member,
-  openImposto,
-  pick,
-  rowOf,
-  seedRent,
-  seedVariableIncome,
-  submit,
-  table,
-  taxSnapshot,
-} from "./imposto_harness.tsx";
+import { describe, expect, it } from "vitest";
+import { YEAR, openImposto, seedRent, seedVariableIncome, taxSnapshot } from "./imposto_harness.tsx";
+import { accountNamed, memberNamed } from "../lookup.ts";
+import { choose, closed, dialog, fill, flat, clickRow, rowOf, submit, table, undoOnce } from "../dom.ts";
 import { addressSettles } from "../navigations.ts";
-
-vi.mock("../../../../packages/ui/src/chart/echarts.ts", async () => await import("./fake_echarts.ts"));
 
 const LINK = `/imposto-de-renda?ref=year:${YEAR}`;
 const day = (m: number, d: number): IsoDate => makeDate(YEAR, m, d);
-const undo = (workspace: { undo(): unknown }) => reactAct(() => void workspace.undo());
 
 /** The button that resolves the pending item with these words. */
 const resolver = (title: string | RegExp) =>
@@ -76,19 +58,19 @@ describe("the page", () => {
 
   it("changes the year and the declarant, and the sheets follow", async () => {
     const { user, ledger } = await openImposto(LINK);
-    await choose(user, document.body, "Declarante", "Ana");
+    await choose(user, "Declarante", "Ana", document.body);
     await waitFor(() => expect(screen.getByText(/ano-calendário 2026\) · Ana/)).toBeTruthy());
     // Ana has no CPF recorded as a declarant? She has: the sheets are hers and her dependent Bruno's
-    expect(tax.records.peopleOf(ledger, member(ledger, "Ana").id)!.size).toBe(2);
-    await choose(user, document.body, "Declarante", "Projeto inteiro");
-    await choose(user, document.body, "Ano-calendário", `Ano-calendário ${YEAR - 1}`);
+    expect(tax.records.peopleOf(ledger, memberNamed(ledger, "Ana").id)!.size).toBe(2);
+    await choose(user, "Declarante", "Projeto inteiro", document.body);
+    await choose(user, "Ano-calendário", `Ano-calendário ${YEAR - 1}`, document.body);
     await waitFor(() => expect(screen.getByText(new RegExp(`ano-calendário ${YEAR - 1}\\)`))).toBeTruthy());
     expect(screen.queryByRole("grid", { name: "Rendimentos tributáveis de pessoa jurídica" })).toBeNull();
     expect(screen.getByText(/Nenhuma receita no ano/)).toBeTruthy();
   });
 
   it("opens an empty project with a state for every sheet and nothing crashing (TA-31)", async () => {
-    await openImposto("/imposto-de-renda", { empty: true });
+    await openImposto("/imposto-de-renda", { project: "blank" });
     expect(screen.getByText(/Nenhuma receita no ano/)).toBeTruthy();
     expect(screen.getByText(/Nenhum pagamento dedutível no ano/)).toBeTruthy();
     expect(screen.getByText("Nenhum bem com saldo ou custo no fim do ano.")).toBeTruthy();
@@ -98,7 +80,7 @@ describe("the page", () => {
   });
 
   it("disables every editing command in a read-only project, with the reason, and changes nothing", async () => {
-    const { user, ledger } = await openImposto(LINK, { readOnly: true });
+    const { user, ledger } = await openImposto(LINK, { project: "blank", readOnly: true });
     const before = taxSnapshot(ledger);
     expect((screen.getByRole("button", { name: "Importar informe…" }) as HTMLButtonElement).disabled).toBe(true);
     for (const name of ["CNPJ da fonte…", "Contracheques…", "Natureza…", "Registrar DARF do Carnê-Leão…"]) {
@@ -185,7 +167,7 @@ describe("pending items lead to what resolves them", () => {
     expect(
       screen.queryByRole("button", { name: /^Informar CPF\/CNPJ… \(CPF\/CNPJ de quem recebeu: Consulta/ }),
     ).toBeNull();
-    undo(workspace);
+    undoOnce(workspace);
     expect(taxSnapshot(ledger)).toBe(before);
   });
 
@@ -209,7 +191,7 @@ describe("pending items lead to what resolves them", () => {
     await closed("Comprovantes");
     expect(flat(rowOf(await table("Pagamentos efetuados"), "Consulta Pediatra").textContent)).toContain("1 de 1");
     expect(workspace.session.documents.some((d) => d.meta.original_name === "recibo.pdf")).toBe(true);
-    undo(workspace);
+    undoOnce(workspace);
     expect(flat(rowOf(await table("Pagamentos efetuados"), "Consulta Pediatra").textContent)).toContain("0 de 1");
     expect(ledger.operations.size).toBeGreaterThan(0);
   });
@@ -221,7 +203,7 @@ describe("pending items lead to what resolves them", () => {
     const list = await dialog("Contracheques");
     const grid = within(list).getByRole("grid", { name: "Lançamentos" });
     expect(flat(grid.textContent)).toContain("não detalhado");
-    await pick(user, grid, "05/02/2026");
+    await clickRow(user, grid, "05/02/2026");
     await user.click(within(list).getByRole("button", { name: "Detalhar…" }));
     const box = await dialog("Detalhar rendimento");
     await fill(user, box, "Bruto", "9600,00");
@@ -236,7 +218,7 @@ describe("pending items lead to what resolves them", () => {
     const details = [...tax.records.incomeDetails(ledger).values()];
     expect(details.some((d) => d.gross?.eq("9600") && d.withheld?.eq("800") && d.social_security === null)).toBe(true);
     expect(details).toHaveLength(2); // the demonstration's own payslip and this one
-    undo(workspace);
+    undoOnce(workspace);
     expect(taxSnapshot(ledger)).toBe(before);
   });
 
@@ -258,14 +240,14 @@ describe("pending items lead to what resolves them", () => {
     expect(await screen.findByText("Bem classificado.")).toBeTruthy();
     const [filing] = [...tax.records.filings(ledger).values()];
     expect(filing).toMatchObject({ subject: "account", description: "Conjunta" });
-    undo(workspace);
+    undoOnce(workspace);
     expect(taxSnapshot(ledger)).toBe(before);
   });
 
   it("nature of the income: a source with no nature is a pending item; choosing it is the user's", async () => {
     const { user, ledger, workspace } = await openImposto(LINK);
     await reactAct(async () => void workspace.act((l) => seedRent(l)));
-    const rent = [...ledger.accounts.values()].find((a) => a.name === "Aluguel recebido")!;
+    const rent = accountNamed(ledger, "Aluguel recebido");
     const before = taxSnapshot(ledger);
     await user.click(
       await screen.findByRole("button", { name: /^Definir natureza… \(Natureza do rendimento: Aluguel recebido/ }),
@@ -274,12 +256,12 @@ describe("pending items lead to what resolves them", () => {
     expect(within(box).getByRole("combobox", { name: "Natureza: Aluguel recebido" }).textContent).toContain(
       "A definir",
     );
-    await choose(user, box, "Natureza: Aluguel recebido", /Carnê-Leão/);
+    await choose(user, "Natureza: Aluguel recebido", /Carnê-Leão/, box);
     await submit(user, box, "Salvar");
     await closed("Natureza dos rendimentos");
     expect(tax.records.natureOf(ledger, "category", rent.id)).toBe("carne_leao");
     expect(await table("Carnê-Leão mês a mês")).toBeTruthy();
-    undo(workspace);
+    undoOnce(workspace);
     expect(taxSnapshot(ledger)).toBe(before);
     expect(tax.records.natureOf(ledger, "category", rent.id)).toBeNull();
   });
@@ -289,7 +271,7 @@ describe("pending items lead to what resolves them", () => {
     const before = taxSnapshot(ledger);
     await user.click(screen.getByRole("button", { name: /^Ver documentos/ }));
     const grid = await table("Documentos do ano");
-    await pick(user, grid, "Saldo devedor em 31/12");
+    await clickRow(user, grid, "Saldo devedor em 31/12");
     await user.click(screen.getByRole("button", { name: "Recebido / não recebido" }));
     await waitFor(() =>
       expect(flat(rowOf(grid, "Saldo devedor em 31/12").textContent)).toContain("Recebido (marcado)"),
@@ -302,14 +284,14 @@ describe("pending items lead to what resolves them", () => {
     expect(taxSnapshot(ledger)).toBe(before);
     await user.click(screen.getByRole("button", { name: "Recebido / não recebido" }));
     await waitFor(() => expect(tax.records.marks(ledger).size).toBe(1));
-    undo(workspace);
+    undoOnce(workspace);
     expect(taxSnapshot(ledger)).toBe(before);
   });
 
   it("opens a document of the checklist: receipts open the payments, an informe already read opens its review", async () => {
     const { user } = await openImposto(LINK);
     const grid = await table("Documentos do ano");
-    await pick(user, grid, "Recibos e notas — Farmácia");
+    await clickRow(user, grid, "Recibos e notas — Farmácia");
     const docs = within(screen.getByRole("heading", { name: /^Documentos do ano/ }).closest("section")!);
     await user.click(docs.getByRole("button", { name: "Abrir…" }));
     expect(await dialog("Comprovantes")).toBeTruthy();
@@ -319,7 +301,7 @@ describe("pending items lead to what resolves them", () => {
         .at(-1)!,
     );
     await closed("Comprovantes");
-    await pick(user, grid, "Informe de rendimentos — ITAÚ");
+    await clickRow(user, grid, "Informe de rendimentos — ITAÚ");
     await user.click(docs.getByRole("button", { name: "Abrir…" }));
     const review = await dialog("Informe de rendimentos");
     expect(within(review).getByRole("combobox", { name: "De quem é o informe" }).textContent).toContain("Banco A");
@@ -329,14 +311,14 @@ describe("pending items lead to what resolves them", () => {
 describe("pending items that need seeded data", () => {
   it("a declarant without CPF: the pending item opens the member's tax data", async () => {
     const { user, ledger, workspace } = await openImposto(LINK);
-    const ana = member(ledger, "Ana");
+    const ana = memberNamed(ledger, "Ana");
     await reactAct(
       async () =>
         void workspace.act((l) =>
           tax.records.setMemberInfo(l, ana.id, { cpf: null, birth_date: null, declared_by: null }, workspace.today()),
         ),
     );
-    await choose(user, document.body, "Declarante", "Ana");
+    await choose(user, "Declarante", "Ana", document.body);
     await user.click(await screen.findByRole("button", { name: /^Dados fiscais… \(CPF: Ana\)/ }));
     const box = await dialog("Dados fiscais — Ana");
     expect(box).toBeTruthy();
@@ -345,7 +327,7 @@ describe("pending items that need seeded data", () => {
     await closed("Dados fiscais — Ana");
     expect(tax.records.memberInfo(ledger, ana.id)!.cpf).toBe("52998224725");
     expect(screen.queryByRole("button", { name: /^Dados fiscais… \(CPF: Ana\)/ })).toBeNull();
-    undo(workspace);
+    undoOnce(workspace);
     expect(tax.records.memberInfo(ledger, ana.id)!.cpf).toBeNull();
   });
 
@@ -391,18 +373,18 @@ describe("pending items that need seeded data", () => {
     await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Remover" }));
     await waitFor(() => expect(tax.records.reportsOf(ledger, YEAR)).toHaveLength(0));
     expect(await screen.findByText(/Nenhum informe deste ano/)).toBeTruthy();
-    undo(workspace);
+    undoOnce(workspace);
     expect(taxSnapshot(ledger)).toBe(before);
   });
 
   it("income of nobody in particular, seen from a declarant, leads to the Livro", async () => {
     const { user, workspace, router } = await openImposto(LINK);
-    const joint = account(workspace.ledger, "Conjunta");
+    const joint = accountNamed(workspace.ledger, "Conjunta");
     const salary = [...workspace.ledger.categories("income" as never)][0]!;
     await reactAct(
       async () => void workspace.act((l) => l.recordIncome(joint.id, salary.id, "100.00", day(5, 5), "Prêmio")),
     );
-    await choose(user, document.body, "Declarante", "Ana");
+    await choose(user, "Declarante", "Ana", document.body);
     await user.click(await screen.findByRole("button", { name: /^Ver no Livro \(Receitas sem integrante/ }));
     await waitFor(() => expect(router.state.location.pathname).toBe("/livro"));
   });
@@ -413,7 +395,7 @@ describe("pending items that need seeded data", () => {
       async () =>
         void workspace.act((l) =>
           investments.service.createPosition(l, "Fundo sem custo", investments.model.AssetClass.FUND, day(2, 1), {
-            holder_id: member(l, "Ana").id,
+            holder_id: memberNamed(l, "Ana").id,
             reference_value: "1000.00",
           }),
         ),
@@ -455,7 +437,7 @@ describe("variable income and DARF", () => {
     ).toBe(true);
     await waitFor(() => expect(flat(rowOf(grid, "04/2026").textContent)).toContain("R$ 3.000,00"));
     expect(screen.queryByText(/Há base tributável sem alíquota/)).toBeNull();
-    undo(workspace);
+    undoOnce(workspace);
     expect(tax.records.variableRules(ledger)).toBeNull();
   });
 
@@ -481,7 +463,7 @@ describe("variable income and DARF", () => {
     expect(payment!.amount.eq("3000")).toBe(true);
     expect(payment!.operation_id).not.toBeNull();
     await waitFor(() => expect(flat(rowOf(grid, "04/2026").textContent)).toMatch(/29\/05\/2026R\$ 3\.000,00$/));
-    undo(workspace);
+    undoOnce(workspace);
     expect(taxSnapshot(ledger)).toBe(before);
     expect(tax.records.payments(ledger).size).toBe(0);
   });
@@ -512,7 +494,7 @@ describe("variable income and DARF", () => {
     expect(screen.getByText(/ano-calendário 2026\)/)).toBeTruthy();
     await user.click(within(box).getByRole("button", { name: "Cancelar" }));
     await closed("DARF de renda variável");
-    const ana = member(ledger, "Ana");
+    const ana = memberNamed(ledger, "Ana");
     await reactAct(() =>
       router.navigate({ to: "/imposto-de-renda", search: { ref: `carne_leao:${YEAR}-03:${ana.id}`, act: "darf" } }),
     );

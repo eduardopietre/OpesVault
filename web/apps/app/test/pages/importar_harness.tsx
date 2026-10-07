@@ -11,9 +11,7 @@ import { takeDroppedFiles } from "../../src/data/dropped_files.ts";
 import { browserExtractor } from "../../src/data/pdf.ts";
 import { setParserPortFactory, type ParserPort } from "../../src/data/parser_client.ts";
 import { FakeOllama } from "./fake_ollama.ts";
-import { openAt, type OpenOptions } from "./sharing_docs_harness.tsx";
-
-export type { User } from "./sharing_docs_harness.tsx";
+import { mountApp, type MountOptions } from "../mount.tsx";
 
 export interface FakeWorker {
   /** Messages the page sent to the worker (their `data` is the document: never a password check here). */
@@ -79,17 +77,17 @@ afterEach(() => {
  * Opens the page. The local AI is off unless `ai` is set (it would change categories and add an undo step after
  * each import); a fake Ollama is always in place, so a test never talks to a real one.
  */
-export async function openImport(
-  options: OpenOptions & { path?: string; heading?: string; ai?: boolean; timeoutMs?: number } = {},
-) {
-  const worker = installFakeWorker(options.timeoutMs);
+export async function openImport(options: MountOptions & { path?: string; ai?: boolean; timeoutMs?: number } = {}) {
+  const { path, ai, timeoutMs, prepare, ...mount } = options;
+  const worker = installFakeWorker(timeoutMs);
   const ollama = new FakeOllama();
   setAiTransport(ollama.transport);
-  const opened = await openAt(options.path ?? "/importar", options.heading ?? "Importar e revisar", {
-    ...(options.empty !== undefined ? { empty: options.empty } : {}),
+  const opened = await mountApp(path ?? "/importar", {
+    heading: "Importar e revisar",
+    ...mount,
     prepare: (workspace) => {
-      if (!options.ai) workspace.act((ledger) => dom.settings.updateSettings(ledger, { ai_enabled: false }));
-      options.prepare?.(workspace);
+      if (!ai) workspace.act((ledger) => dom.settings.updateSettings(ledger, { ai_enabled: false }));
+      prepare?.(workspace);
     },
   });
   return { ...opened, worker, ollama };

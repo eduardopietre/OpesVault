@@ -9,28 +9,8 @@ import { MemoryServer, VaultCache } from "@opesvault/vault";
 import { describe, expect, it } from "vitest";
 import { createRealServices } from "../src/services/real.ts";
 import { ServiceError } from "../src/services/types.ts";
-
-const KDF = { algorithm: "argon2id", memoryKiB: 8192, iterations: 1, parallelism: 1 } as const;
-
-function device(server: MemoryServer, holder: string) {
-  const factory = new IDBFactory();
-  return createRealServices({
-    backend: server.client(),
-    openCache: () => VaultCache.open({ factory, keyRange: IDBKeyRange }),
-    holder,
-    kdf: KDF,
-    idleLockMs: null,
-    vaultOptions: { pushDelayMs: 0, pollMs: 50 },
-  });
-}
-
-async function until(condition: () => boolean | Promise<boolean>, ms = 5000): Promise<void> {
-  const end = Date.now() + ms;
-  while (!(await condition())) {
-    if (Date.now() > end) throw new Error("timed out");
-    await new Promise((resolve) => setTimeout(resolve, 10));
-  }
-}
+import { realServices, until, TEST_KDF } from "./real_device.ts";
+import { categoryNamed } from "./lookup.ts";
 
 describe("real services", () => {
   it("after a page load, restores the account of the session that is still valid, never the keys", async () => {
@@ -42,7 +22,7 @@ describe("real services", () => {
         backend,
         openCache: () => VaultCache.open({ factory, keyRange: IDBKeyRange }),
         holder: "tab-a",
-        kdf: KDF,
+        kdf: TEST_KDF,
         idleLockMs: null,
         vaultOptions: { pushDelayMs: 0, pollMs: 50 },
       });
@@ -63,7 +43,7 @@ describe("real services", () => {
 
   it("creates, edits, syncs and opens a project on another device", async () => {
     const server = new MemoryServer();
-    const a = device(server, "tab-a");
+    const a = realServices(server, "tab-a");
     await a.signUp({ name: "Ana Souza", email: "ana@example.com", password: "senha da conta" });
     const created = await a.createProject({ name: "Casa", password: "senha do projeto" });
     expect(created.recoveryKey.split("-").length).toBeGreaterThan(4);
@@ -84,7 +64,7 @@ describe("real services", () => {
         archived: false,
       }),
     );
-    const food = ws.ledger.categories(AccountType.EXPENSE).find((c) => c.name === "Alimentação")!.id;
+    const food = categoryNamed(ws.ledger, "Alimentação").id;
     ws.act((l) => l.recordOpeningBalance(bank.id, "1000.00", "2026-01-01" as IsoDate));
     ws.act((l) => l.recordExpense(bank.id, food, "123.45", "2026-01-05" as IsoDate, "Mercado"));
     expect(queries.balance(ws.ledger, bank.id).toFixed()).toBe("876.55");
@@ -104,7 +84,7 @@ describe("real services", () => {
     expect(dump).not.toContain("Casa");
 
     // Same account on another device: wrong password first, then the right one, read-only.
-    const b = device(server, "tab-b");
+    const b = realServices(server, "tab-b");
     await b.signIn("ana@example.com", "senha da conta");
     const listed = await b.listProjects();
     expect(listed.map((p) => p.id)).toEqual([created.project.id]);
@@ -125,7 +105,7 @@ describe("real services", () => {
 
   it("attachments travel as encrypted blobs and are fetched only when needed", async () => {
     const server = new MemoryServer();
-    const a = device(server, "tab-a");
+    const a = realServices(server, "tab-a");
     await a.signUp({ name: "Ana", email: "ana@example.com", password: "senha da conta" });
     const created = await a.createProject({ name: "Casa", password: "senha do projeto" });
     const ws = (await a.openProject(created.project.id, "senha do projeto")).workspace;
@@ -151,7 +131,7 @@ describe("real services", () => {
     expect(ws.unsentDocuments).toBe(0);
     expect(JSON.stringify(server)).not.toContain("recibo");
 
-    const b = device(server, "tab-b");
+    const b = realServices(server, "tab-b");
     await b.signIn("ana@example.com", "senha da conta");
     await until(async () => {
       const other = await b.openProject(created.project.id, "senha do projeto");

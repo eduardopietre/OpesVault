@@ -1,18 +1,15 @@
 /** Configurações: the sections, the project, the local AI, security, links and the read-only state. */
 import { dom } from "@opesvault/domain";
-import { act as reactAct, screen, waitFor, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AI_PORT_KEY, setAiTransport } from "../../src/data/ai.ts";
 import { DEMO } from "../../src/services/fake.ts";
 import { FakeOllama } from "./fake_ollama.ts";
-import { closed, dialog, goTab, openSettings, type } from "./configuracoes_harness.tsx";
+import { openSettings, type } from "./configuracoes_harness.tsx";
 import { addressSettles } from "../navigations.ts";
-
-vi.mock("../../../../packages/ui/src/chart/echarts.ts", async () => await import("./fake_echarts.ts"));
+import { undoOnce, closed, dialog, goTab } from "../dom.ts";
 
 afterEach(() => setAiTransport(null));
-
-const undo = (workspace: { undo(): unknown }) => reactAct(() => void workspace.undo());
 
 describe("Configurações page", () => {
   it("shows the five sections, says where each kind of setting lives and starts on the project", async () => {
@@ -96,7 +93,7 @@ describe("IA local", () => {
     expect(dom.settings.getSettings(ledger).ai_enabled).toBe(false);
     expect(await screen.findByText("IA local desligada para o projeto.")).toBeTruthy();
     expect(screen.queryByLabelText("Modelo")).toBeNull();
-    await undo(workspace);
+    await undoOnce(workspace);
     expect(dom.settings.getSettings(ledger).ai_enabled).toBe(true);
     await waitFor(() => expect(screen.getByLabelText("Modelo")).toBeTruthy());
     expect(
@@ -117,7 +114,7 @@ describe("IA local", () => {
     await user.keyboard("{Enter}");
     expect(dom.settings.getSettings(ledger).ai_model).toBe("llama3.2:3b");
     expect(await screen.findByText("Modelo da IA alterado.")).toBeTruthy();
-    await undo(workspace);
+    await undoOnce(workspace);
     expect(dom.settings.getSettings(ledger).ai_model).toBe("gemma4:12b");
     await waitFor(() => expect((screen.getByLabelText("Modelo") as HTMLInputElement).value).toBe("gemma4:12b"));
   });
@@ -331,7 +328,11 @@ describe("Segurança", () => {
 
 describe("a project open for reading only", () => {
   it("disables what edits the project and keeps the security actions", async () => {
-    const { user, ledger } = await openSettings("/configuracoes", { readOnly: true });
+    const { user, ledger } = await openSettings("/configuracoes", {
+      project: "blank",
+      readOnly: true,
+      openReadOnly: true,
+    });
     const before = ledger.changeCount;
     expect((screen.getByLabelText("Nome do projeto") as HTMLInputElement).disabled).toBe(true);
     expect((screen.getByRole("button", { name: "Renomear" }) as HTMLButtonElement).disabled).toBe(true);
@@ -348,7 +349,7 @@ describe("a project open for reading only", () => {
   });
 
   it("opens an empty project with every section in a state (TA-31)", async () => {
-    const { user } = await openSettings("/configuracoes", { empty: true });
+    const { user } = await openSettings("/configuracoes", { project: "blank" });
     expect(screen.getByText("Nenhum integrante cadastrado ainda.")).toBeTruthy();
     for (const tab of ["IA local", "Segurança", "Backup e salvamento", "Privacidade deste aparelho"]) {
       const panel = await goTab(user, tab);

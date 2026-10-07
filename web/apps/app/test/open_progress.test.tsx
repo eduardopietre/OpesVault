@@ -3,9 +3,8 @@
  * erase changes not yet sent (docs/19 §8).
  */
 import "fake-indexeddb/auto";
-import { IDBFactory, IDBKeyRange } from "fake-indexeddb";
-import { AccountType, type IsoDate } from "@opesvault/domain";
-import { MemoryServer, VaultCache } from "@opesvault/vault";
+import { type IsoDate } from "@opesvault/domain";
+import { MemoryServer } from "@opesvault/vault";
 import { memoryPreferences } from "@opesvault/ui";
 import { createMemoryHistory } from "@tanstack/react-router";
 import { act, render, screen, waitFor } from "@testing-library/react";
@@ -15,37 +14,17 @@ import { App } from "../src/App.tsx";
 import { createAppRouter } from "../src/router.tsx";
 import { openProgressText } from "../src/screens/projects.tsx";
 import { DEMO, createFakeServices } from "../src/services/fake.ts";
-import { createRealServices } from "../src/services/real.ts";
 import type { OpenOptions, OpenProgress, SyncDetail } from "../src/services/types.ts";
 import { SessionStore, sessionActions } from "../src/session.tsx";
 import { storageWarningText } from "../src/shell/StorageWarning.tsx";
-
-const KDF = { algorithm: "argon2id", memoryKiB: 8192, iterations: 1, parallelism: 1 } as const;
-
-function device(server: MemoryServer, holder: string) {
-  const factory = new IDBFactory();
-  return createRealServices({
-    backend: server.client(),
-    openCache: () => VaultCache.open({ factory, keyRange: IDBKeyRange }),
-    holder,
-    kdf: KDF,
-    idleLockMs: null,
-    vaultOptions: { pushDelayMs: 0, pollMs: 50 },
-  });
-}
-
-async function until(condition: () => boolean, ms = 10_000): Promise<void> {
-  const end = Date.now() + ms;
-  while (!condition()) {
-    if (Date.now() > end) throw new Error("timed out");
-    await new Promise((resolve) => setTimeout(resolve, 10));
-  }
-}
+import { realServices, until } from "./real_device.ts";
+import { mountApp } from "./mount.tsx";
+import { accountNamed, categoryNamed } from "./lookup.ts";
 
 /** A project with a few operations, created on device A; device B (same account) has never opened it. */
 async function sharedProject() {
   const server = new MemoryServer();
-  const a = device(server, "tab-a");
+  const a = realServices(server, "tab-a");
   await a.signUp({ name: "Ana Souza", email: "ana@example.com", password: "senha da conta" });
   const created = await a.createProject({ name: "Casa", password: "senha do projeto" });
   const ws = (await a.openProject(created.project.id, "senha do projeto")).workspace;
@@ -63,13 +42,13 @@ async function sharedProject() {
       archived: false,
     }),
   );
-  const food = ws.ledger.categories(AccountType.EXPENSE).find((c) => c.name === "Alimentação")!.id;
+  const food = categoryNamed(ws.ledger, "Alimentação").id;
   for (let day = 1; day <= 5; day++) {
     ws.act((l) => l.recordExpense(bank.id, food, "10.00", `2026-01-0${day}` as IsoDate, `Mercado ${day}`));
   }
   await ws.settled();
   await a.closeProject();
-  const b = device(server, "tab-b");
+  const b = realServices(server, "tab-b");
   await b.signIn("ana@example.com", "senha da conta");
   return { server, a, b, projectId: created.project.id };
 }
@@ -159,26 +138,22 @@ describe("when the browser may erase this device's data", () => {
     const details: SyncDetail[] = [];
     a.watchSync((_status, detail) => detail && details.push(detail));
     const ws = (await a.openProject(projectId, "senha do projeto")).workspace;
-    await until(() => details.some((d) => d.storageAtRisk));
+    await until(() => details.some((d) => d.storageAtRisk), 10_000);
     server.offline = true;
-    const bank = [...ws.ledger.accounts.values()].find((acc) => acc.name === "Banco")!;
-    const food = ws.ledger.categories(AccountType.EXPENSE).find((c) => c.name === "Alimentação")!.id;
+    const bank = accountNamed(ws.ledger, "Banco");
+    const food = categoryNamed(ws.ledger, "Alimentação").id;
     ws.act((l) => l.recordExpense(bank.id, food, "1.00", "2026-01-09" as IsoDate, "Sem rede"));
-    await until(() => (details.at(-1)?.pending ?? 0) > 0);
+    await until(() => (details.at(-1)?.pending ?? 0) > 0, 10_000);
     expect(details.at(-1)).toMatchObject({ storageAtRisk: true });
     server.offline = false;
     await a.closeProject();
   }, 30_000);
 
   it("the shell warns while there are changes not yet sent", async () => {
-    const services = createFakeServices({ seed: true });
-    const session = new SessionStore();
-    const account = await services.signIn(DEMO.email, DEMO.password);
-    const open = await services.openProject(services.demoProjectId!, DEMO.projectPassword);
-    session.update({ account, open, operatorId: open.members[0]?.id ?? null, storageAtRisk: true, pending: 0 });
-    const router = createAppRouter({ session, history: createMemoryHistory({ initialEntries: ["/livro"] }) });
-    render(<App router={router} services={services} session={session} preferences={memoryPreferences()} />);
-    await screen.findByRole("heading", { level: 1, name: "Livro financeiro" });
+    const { session } = await mountApp("/livro", {
+      heading: "Livro financeiro",
+      session: { storageAtRisk: true, pending: 0 },
+    });
     expect(screen.queryByText(/O navegador pode apagar/)).toBeNull();
     act(() => session.update({ pending: 3 }));
     expect(await screen.findByText(storageWarningText(3))).toBeTruthy();

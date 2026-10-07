@@ -1,36 +1,25 @@
 /** Mounting Relatórios on the demonstration project (or an empty one) for the component tests. */
-import { charts, ymOf, type Dec, type Ledger, type YearMonth } from "@opesvault/domain";
+import { charts, ymOf, type Dec, type YearMonth } from "@opesvault/domain";
 import { formatValue } from "@opesvault/ui";
 import { act as reactAct, screen, waitFor, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { expect } from "vitest";
 import { chooseMonth } from "../../src/data/month.ts";
-import { buildChart, type Params, type ReportKey } from "../../src/pages/relatorios/reports.ts";
-import { setViewport } from "./livro_harness.tsx";
-import { mountPage, type MountOptions } from "./overview_calendar_helpers.tsx";
-
-export type User = ReturnType<typeof userEvent.setup>;
-
-export const flat = (text: string | null | undefined) => (text ?? "").replace(/\s+/g, " ").trim();
+import { buildChart, type Params } from "../../src/pages/relatorios/reports.ts";
+import { flat, type User } from "../dom.ts";
+import { mountApp, type MountOptions } from "../mount.tsx";
 
 /** The page open on the demonstration project, on the project's current month. */
-export async function openReports(
-  path = "/relatorios",
-  options: MountOptions & { month?: YearMonth; width?: number } = {},
-) {
-  setViewport(options.width ?? 1600);
-  const mounted = await mountPage(path, options);
+export async function openReports(path = "/relatorios", options: MountOptions & { month?: YearMonth } = {}) {
+  const { month, ...mount } = options;
+  const mounted = await mountApp(path, { width: 1600, ...mount });
   const now = ymOf(mounted.workspace.today());
-  reactAct(() => chooseMonth(options.month ?? now));
+  reactAct(() => chooseMonth(month ?? now));
   await screen.findByRole("heading", { level: 1, name: "Relatórios" });
-  return { ...mounted, ledger: mounted.workspace.ledger, now, user: userEvent.setup() };
+  return { ...mounted, now };
 }
 
 /** A print route (outside the shell), mounted on the demonstration project or an empty one. */
-export async function openPrint(path: string, options: MountOptions = {}) {
-  const mounted = await mountPage(path, options);
-  return { ...mounted, ledger: mounted.workspace.ledger, user: userEvent.setup() };
-}
+export const openPrint = (path: string, options: MountOptions = {}) => mountApp(path, options);
 
 export const paramsOf = (now: YearMonth, today: string, extra: Partial<Params> = {}): Params => ({
   end: now,
@@ -43,8 +32,6 @@ export const paramsOf = (now: YearMonth, today: string, extra: Partial<Params> =
 /** A domain value as the table shows it. */
 export const cell = (value: Dec | null, unit: string) =>
   value === null ? "—" : flat(formatValue(value.toFixed(), unit === "BRL" ? "money" : "percent"));
-
-export const chartOf = (ledger: Ledger, key: ReportKey, params: Params) => buildChart(ledger, key, params);
 
 /** The table of values of the open report. */
 export async function valuesTable(title: string | RegExp) {

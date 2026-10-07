@@ -2,11 +2,11 @@
 import { Dec, charts, formatBrl, formatDateBr, formatDecimalBr, investments, makeDate } from "@opesvault/domain";
 import { tableRows as chartRows } from "@opesvault/ui";
 import { screen, waitFor, within } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { toInvestmentChart, toPercentChart } from "../../src/pages/investimentos/chart.ts";
-import { cdbOf, flat, openInvestimentos, rowOf, selectedRow, snapshot, table } from "./investimentos_harness.tsx";
-
-vi.mock("../../../../packages/ui/src/chart/echarts.ts", async () => await import("./fake_echarts.ts"));
+import { cdbOf, openInvestimentos, snapshot } from "./investimentos_harness.tsx";
+import { flat, rowOf, selectedRow, table } from "../dom.ts";
+import { accountNamed } from "../lookup.ts";
 
 const { performance, service, returns } = investments;
 
@@ -66,15 +66,7 @@ describe("Investimentos: carteira e detalhe", () => {
   it("keeps markers as points and joins the observed values across dates (the chart adapter)", async () => {
     const { ledger, workspace } = await openInvestimentos();
     const id = cdbOf(ledger);
-    workspace.act((l) =>
-      service.contribute(
-        l,
-        id,
-        "100",
-        makeDate(2026, 2, 10),
-        [...l.accounts.values()].find((a) => a.name === "Banco A")!.id,
-      ),
-    );
+    workspace.act((l) => service.contribute(l, id, "100", makeDate(2026, 2, 10), accountNamed(l, "Banco A").id));
     const data = toInvestmentChart(charts.data.investmentEvolution(ledger, id));
     const marker = data.series.find((s) => s.name === "Aporte")!;
     expect(marker.kind).toBe("scatter");
@@ -109,7 +101,7 @@ describe("Investimentos: carteira e detalhe", () => {
 
 describe("Investimentos: projeto vazio e somente leitura", () => {
   it("an empty project says what to do and offers the first investment; every table and chart is empty, not broken", async () => {
-    const { user } = await openInvestimentos("/investimentos", { empty: true });
+    const { user } = await openInvestimentos("/investimentos", { project: "blank" });
     expect(await screen.findByText("Nenhum investimento")).toBeTruthy();
     expect(screen.queryByRole("grid", { name: "Investimentos" })).toBeNull();
     expect(screen.getByText("0 em carteira")).toBeTruthy();
@@ -122,7 +114,7 @@ describe("Investimentos: projeto vazio e somente leitura", () => {
   });
 
   it("disables every editing command of a read-only project, with the reason, and changes nothing", async () => {
-    const { user, ledger } = await openInvestimentos("/investimentos", { readOnly: true });
+    const { user, ledger } = await openInvestimentos("/investimentos", { project: "blank", readOnly: true });
     const before = snapshot(ledger);
     const button = screen.getAllByRole("button", { name: "Novo investimento…" })[0] as HTMLButtonElement;
     expect(button.disabled).toBe(true);

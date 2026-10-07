@@ -2,6 +2,8 @@
 
 Versão 1.0 • 01/10/2026.
 
+> **07/10/2026:** o desktop descrito aqui (PySide6, SQLCipher, worker do cofre) foi removido; a arquitetura em vigor é a da web (`18` §3). Os princípios de produto continuam valendo.
+
 ## 1. Forma do aplicativo
 
 Monólito desktop modular em Python com interface PySide6/Qt Widgets. Não há servidor web próprio nem necessidade de navegador. Os módulos mantêm fronteiras internas claras; as operações sensíveis de cofre e o processamento pesado podem executar em processos auxiliares.

@@ -2,6 +2,8 @@
 
 Versão 1.4 • 03/10/2026. Complementa o `07` (telas e gráficos) com as regras de interface adotadas na revisão orientada pelos princípios de interação de desktop da Apple (HIG): hierarquia clara, conteúdo acima de cromo, teclado como recurso de primeira classe e consistência entre telas. A meta não é imitar a aparência do macOS: o alvo continua sendo Windows, com Qt Widgets.
 
+> **07/10/2026:** as regras de interação continuam valendo na web (`18` §5); os nomes de widgets Qt e de `ui/theme.py` são históricos, e os componentes equivalentes estão em `web/packages/ui`.
+
 ## 1. Arquitetura da janela
 
 ```

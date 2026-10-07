@@ -2,6 +2,8 @@
 
 Versão 1.1 • 02/10/2026. Registra o que foi construído em cada fase do roadmap (`09` §1), como os critérios de saída foram verificados e o que continua pendente. A fase 0 está em `11`. Das fases 7 a 10 foi feito o que não depende do Windows nem de documentos reais (§2.1); o andamento detalhado está no `09` §1.4.
 
+> **07/10/2026:** documento histórico. O código Python descrito aqui foi removido (está no histórico do git); a implementação em vigor é a web (`18` §10).
+
 **Escopo da verificação:** tudo foi testado em Python no Linux, com testes automatizados e interface em modo `offscreen`. Os gates do Windows continuam presumidos aprovados (`11` §4). Os layouts de faturas e extratos são sintéticos até haver documentos reais.
 
 ## 1. Mapa do código

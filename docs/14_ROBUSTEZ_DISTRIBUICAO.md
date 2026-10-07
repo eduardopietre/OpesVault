@@ -2,6 +2,8 @@
 
 Versão 1.0 • 02/10/2026. Registra o que a fase 10 (`09` §1.2) entregou: fuzzing, registro técnico, inventário de licenças e SBOM, e a revisão de segurança feita até aqui. O que depende do Windows ou de versões validadas na fase 7 está em §5.
 
+> **07/10/2026:** documento histórico do desktop (Nuitka, OpenSSL, SBOM do Python). Na web, o fuzzing dos parsers está em `web/packages/domain/test/fuzz.test.ts` e a segurança no `19`.
+
 ## 1. Fuzzing de documentos
 
 `tests/test_fuzz.py` gera variações de cada documento sintético a partir de sementes fixas. Uma falha sempre se reproduz.

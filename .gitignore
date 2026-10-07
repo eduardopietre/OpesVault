@@ -1,67 +1,26 @@
-# ── Python ──────────────────────────────────────────────
-__pycache__/
-*.py[cod]
-*$py.class
-*.egg-info/
-.eggs/
+# ── Saídas de build e testes ──────────────────────────
 build/
 dist/
-wheels/
-pip-wheel-metadata/
-
-# Ambientes virtuais
-.venv/
-venv/
-env/
-.python-version.local
-
-# Ferramentas de qualidade e testes
-.pytest_cache/
-.mypy_cache/
-.pyright/
-.ruff_cache/
-.hypothesis/
-.tox/
-.nox/
-.coverage
-.coverage.*
-coverage.xml
-htmlcov/
-
-# ── Empacotamento (Nuitka / pyside6-deploy) ────────────
-*.build/
-*.dist/
-*.onefile-build/
-deployment/
-*.exe
-*.msi
-*.pyd
-*.dll
+coverage/
 
 # ── Dados sensíveis: NUNCA versionar ───────────────────
-# Cofres, candidatos de gravação, backups e bloqueios
+# Projetos, backups e bancos locais (cifrados ou não)
 *.opesvault
 *.opesvault.*
 *.opesvault-*
 *.bak
-# Bancos locais (cifrados ou não)
 *.db
 *.db-*
 *.sqlite
 *.sqlite3
-*.sqlcipher
-# Documentos financeiros: só PDFs sintéticos explicitamente liberados
+# Documentos financeiros: nenhum PDF real (os sintéticos da demonstração ficam em código, em web/packages/domain/src/demo_docs)
 *.pdf
-!tests/fixtures/sinteticos/**/*.pdf
-# Notas anonimizadas de terceiros, auditadas (docs/12 §4)
-!tests/fixtures/terceiros/**/*.pdf
-# Exportações claras, amostras privadas e o corpus de validação (fase 7)
+# Exportações claras, amostras privadas e o corpus de validação
 exports/
 amostras_privadas/
 private/
 corpus/
 *.esperado.json
-!tests/fixtures/sinteticos/**/*.esperado.json
 # Segredos e logs
 .env
 .env.*
@@ -79,10 +38,4 @@ desktop.ini
 
 # ── Claude Code ────────────────────────────────────────
 .claude/settings.local.json
-
-# ── Saídas de medição da fase 0 e inventário gerado ────
-sbom.cdx.json
-THIRD_PARTY_LICENSES.*
-fase0-*.json
-opesvault-selftest.json
 .claude/worktrees/

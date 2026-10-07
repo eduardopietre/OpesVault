@@ -52,7 +52,7 @@ web/                                  monorepo pnpm, TypeScript estrito
 │  ├─ app/         a aplicação React (páginas, rotas, shell, PWA)
 │  └─ server/      Hono (Node): contas, projetos, registros, blobs, concessão de edição
 └─ tools/          verificações de paridade e scripts
-scripts/golden/    gerador Python de arquivos de referência (removido em W13; os JSON ficam)
+(o gerador Python de arquivos de referência saiu com o desktop em 07/10/2026; os JSON ficam em packages/domain/golden)
 ```
 
 O domínio não importa nada de `ui`, `vault` ou rede, e uma regra de lint garante isso, como o domínio Python que hoje não depende de Qt.
@@ -365,6 +365,7 @@ Atualizado a cada fase. Detalhes técnicos em `web/README.md` e `web/PORTING.md`
 | W10 | Concluída | Investimentos (XIRR num Web Worker), Relatórios (13 relatórios, relatório anual para impressão), Imposto de renda (12 diálogos, informes, relatório para a declaração) |
 | W11 | Concluída | Importar e revisar (leitura num Web Worker), Assistente (aprovação de cada alteração), Configurações e backup cifrado (`19` §13); 501 testes de ponta a ponta em 5 tamanhos, claro e escuro |
 | W12 | Pronta para revisão com o usuário | Teste de todas as telas (passeio por todos os botões e menus em 4 tamanhos, estado sem projeto TA-31, fluxos só pelo teclado); matriz TA na coluna web: 29 automatizados, 2 substituídos por garantias equivalentes, 5 parciais, nenhum pendente (`15`); desempenho com 50 006 lançamentos: abrir em 2,6 s com 470 MiB na aba; revisão de segurança (`19` §12.1); 607 testes de ponta a ponta e 2 100 unitários. Falta: o teste com NVDA e a revisão com o usuário, e as decisões da §8 |
+| W13 | Em andamento | Saída do desktop feita em 07/10/2026: `src/`, `tests/`, `scripts/`, `packaging/`, Python, Qt e Nuitka removidos, com os `11` e `17`; arquivos de referência congelados; CLAUDE.md só da web. Faltam a imagem publicada, o guia de instalação e a decisão de domínio e hospedagem (§8) |
 
 Notas desta etapa:
 - O app usa o domínio por um `Workspace` (`apps/app/src/data/`): cada ação do usuário é um passo de desfazer e só os registros alterados vão, cifrados, ao cofre. Com a sincronização automática, o desfazer vale para a sessão da aba, mesmo depois de sincronizado (o estado anterior é enviado como nova alteração).

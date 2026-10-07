@@ -2,6 +2,8 @@
 
 Versão 1.0 • 01/10/2026. Este documento distingue requisito de produto de garantia criptográfica.
 
+> **07/10/2026:** o cofre SQLCipher e o worker transitório descritos aqui saíram com o desktop. A segurança em vigor é a do `19` (normativo); os requisitos de produto deste documento continuam valendo.
+
 ## 1. Modelo de ameaça
 
 O cofre deve proteger contra leitura de arquivos e backups copiados sem a senha. Deve detectar corrupção e falhas de gravação. Não promete proteção contra malware ativo, administrador do Windows, keylogger, captura de tela, inspeção de processo desbloqueado ou manipulação maliciosa feita por quem conhece a senha.

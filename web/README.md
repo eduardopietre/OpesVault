@@ -1,7 +1,7 @@
 # OpesVault web
 
-The web version of OpesVault (docs/18): zero-knowledge, TypeScript, React. Porting rules are in
-[PORTING.md](PORTING.md). Security is specified in `docs/19_SEGURANCA_WEB.md` (normative) and
+The web version of OpesVault (docs/18): zero-knowledge, TypeScript, React. How the domain was ported from the former desktop app, and what the
+frozen reference files are, is in [PORTING.md](PORTING.md). Security is specified in `docs/19_SEGURANCA_WEB.md` (normative) and
 self-hosting in `docs/20_HOSPEDAGEM.md`.
 
 ```
@@ -15,7 +15,6 @@ pnpm --filter @opesvault/app e2e:real   # the same build against the real server
 pnpm --filter @opesvault/app perf       # a generated 50 000-entry project: opening, memory, Livro (build/perf/results.json, ~6 min)
 pnpm --filter @opesvault/server build   # the server as one bundle (dist/server.mjs)
 docker compose up -d --build            # server + app behind Caddy (docs/20)
-uv run python -m scripts.golden.generate   # from the repository root: reference files from the Python domain
 ```
 
 | Folder                  | What                                                                              |

@@ -1,144 +1,84 @@
 # CLAUDE.md
 
-OpesVault: aplicativo desktop Windows, 100% offline, para finanças familiares, com cofre cifrado por família. A especificação completa está em `docs/`, e **ela é a fonte de verdade**. Este arquivo não a resume: diz onde procurar, registra decisões posteriores aos docs e lista as armadilhas de implementação.
+OpesVault: aplicativo web para finanças familiares, **zero-knowledge** (senha e chave só no navegador; o servidor guarda só registros cifrados), em TypeScript e React, instalável como PWA e hospedado pelo próprio usuário. Todo o código está em `web/`. A especificação está em `docs/`, e **ela é a fonte de verdade**. Este arquivo não a resume: diz onde procurar, registra decisões e lista as armadilhas de implementação.
 
 ## Estado atual
 
-**Branch `web`:** o aplicativo está migrando para a web (zero-knowledge, TypeScript, React). Decisões, arquitetura e fases W0–W14 em `docs/18`; nessa branch, ele prevalece sobre os outros documentos no que tratar da web. O texto abaixo descreve o desktop atual.
-
-As **fases 0 a 6** estão implementadas e testadas (`docs/13`). Das fases 7 a 10 foi feito tudo o que não depende de documentos reais nem do build (`docs/09` §1.4). Regras de categoria, orçamento, avisos ao abrir e desfazer já foram feitos (`docs/13` §2.2).
-
-- **Windows, em Python:** o desenvolvimento passou para o Windows. G0 foi aprovado (suíte completa, inclusive os testes `windows`); G1 foi aprovado só em modo Python (`--self-test`); G2 foi medido. O build Nuitka e os gates G3–G7 seguem pendentes (`docs/11` §2.1).
-- **Desempenho:** com 250 MiB e 50 mil lançamentos, abrir leva 2,65 s, mas o pico de RAM da UI (833 MiB) passa da meta. Carregar documentos sob demanda (fase 8) continua necessário.
-- **Interface:** passou por duas revisões, a visual e a de fluxos (`docs/16` §2–§5). Avisos levam ao objeto e à ação. Faturas são pagas na aba Faturas. Configurações não têm botão Aplicar. "Salvar…" retoma a ação interrompida. Visão geral, Orçamento, Livro e Relatórios compartilham o mês.
-- **Esquema do domínio 2:** integrantes têm papel. Cofres do esquema 1 são migrados ao abrir (`domain/migrations.py`).
-- **Faturas:** pagamento atrasado quita primeiro a fatura vencida (`docs/04` §5).
-- **Revisão de 03/10/2026** (`docs/09` §1.3 E, `docs/13` §2.3): gráfico e tabela de valores juntos e recolhíveis (sem abas para o mesmo dado), saldo projetado, comparações, financiamentos, marcadores, reembolsos e acertos, assinaturas, calendário, indicadores, conferência de saldo e despesas dedutíveis; e as pendências do §1.3 A–D sem decisão: comprovantes, visão por integrante, filtros salvos, relatórios em PDF, verificação de backup, suspeitos, estabelecimentos, metas e fechamento do ano (apoio). Falta a compactação do histórico (aguarda decisão).
-- **Imposto de renda** (`docs/09` §1.3 F, `docs/13` §2.4): página, pacote `opesvault/tax/` e apoio às fichas, informes, pendências, renda variável e simulação. Nenhuma tabela, alíquota ou limite fiscal embutido: tudo é informado pelo usuário (`docs/00` §5).
-- **Contas bancárias** (`docs/13` §2.5): banco COMPE, agência, conta, titular ou conjunta, corrente/poupança/investimentos, valores numa data e características de investimento, com listas embutidas (bancos e códigos do IRPF).
-- **IA local em todas as telas** (`docs/13` §2.10, `docs/05` §5): Importar, Livro (categorias e nomes de estabelecimentos, com lista de conferência), Novo lançamento e Configurações (porta, GPU).
-- **Assistente** (`docs/13` §2.11, `docs/05` §5): a IA local com ferramentas do aplicativo no formato do MCP, sem servidor; toda alteração com aprovação.
-- **Regras que aprendem** (`docs/13` §2.8): `importing/learning.py` sugere a categoria pelo que a família escolheu antes (depois das regras do usuário, antes das palavras-chave), propõe regras e aponta regras contrariadas, sem gravar nada novo no cofre.
-- **Ainda sintético:** os layouts de faturas, extratos e informes de rendimentos, até haver documentos reais.
-- **Fase 7 em andamento** (`docs/17`): G4 e G5 aprovados em modo Python, escalas 150/200% verificadas, todos os controles com nome acessível. Faltam o build (G1), G3, G6, G7, o teste com leitor de tela, as notas de terceiros e o corpus de documentos reais. As funcionalidades das fases 11 a 14 estão em `docs/09` §1.3 e dependem das decisões do §4. A dívida técnica está no §1.5.
+- **Só web (07/10/2026):** o aplicativo desktop em Python (PySide6, SQLCipher, Nuitka) foi removido. Ele continua no histórico do git, no commit anterior a "Remove the Python desktop app". O domínio foi portado com paridade comprovada; os arquivos de referência gerados pelo Python (`web/packages/domain/golden/*.json`) ficaram **congelados** como especificação executável (`web/PORTING.md`).
+- **Fases W0–W12** concluídas (`docs/18` §10); W12 aguarda revisão do usuário e o teste com leitor de tela. W13 (lançamento hospedado) está em andamento: a saída do desktop já foi feita; faltam a imagem publicada, o guia e a decisão sobre domínio e hospedagem (`docs/18` §8). W14 (Firebase) é futuro.
+- **Desempenho** (50 mil lançamentos): abrir no mesmo aparelho 2,1 s com 482 MiB; primeira abertura num aparelho novo 69 s, com progresso e cancelamento (`docs/18` §10).
+- **Importação:** PDF (layouts sintéticos de Itaú, Bradesco, Nubank e notas Sinacor), OFX, CSV do Nubank e **CSV de extrato de qualquer banco** pelos nomes das colunas (`docs/05` §3). Os layouts ainda não foram validados com documentos reais.
 
 ## Comandos
 
-Web (branch `web`, pasta `web/`; ver `web/README.md` e `web/PORTING.md`):
+Tudo a partir de `web/` (ver `web/README.md`):
 
 ```
-cd web && pnpm install && pnpm check              # formatação, lint, tipos e testes da web
-pnpm dev                                          # app com serviços falsos e projeto de demonstração
-pnpm --filter @opesvault/app e2e                  # Playwright rápido, só 1280×800 e tema claro (Chromium já instalado; nunca "playwright install")
-pnpm --filter @opesvault/app e2e:full             # o mesmo nos cinco tamanhos, claro e escuro (E2E_FULL=1), antes de fechar uma fase
-pnpm --filter @opesvault/app perf                 # desempenho com 50 mil lançamentos (build/perf/results.json, ~6 min)
-docker compose up --build                         # servidor + app atrás do Caddy (web/docker-compose.yml)
-uv run python -m scripts.golden.generate [NOME]   # arquivos de referência do domínio Python para a paridade
+pnpm install && pnpm check                  # formatação, lint, tipos e testes (Vitest); rode antes de todo commit
+pnpm dev                                    # app com serviços falsos e projeto de demonstração (?demo)
+pnpm server                                 # servidor próprio em desenvolvimento
+pnpm --filter @opesvault/app e2e            # Playwright rápido: 1280×800, tema claro (~7 min)
+pnpm --filter @opesvault/app e2e:full       # cinco tamanhos, claro e escuro (E2E_FULL=1), antes de fechar uma fase
+pnpm --filter @opesvault/app e2e:real       # contra o servidor real e SQLite
+pnpm --filter @opesvault/app screens        # capturas de todas as telas em web/build/telas
+pnpm --filter @opesvault/app perf           # 50 mil lançamentos (build/perf/results.json, ~6 min)
+docker compose up --build                   # servidor + app atrás do Caddy (docs/20)
 ```
 
-Desktop:
+O Chromium já está instalado (`/opt/pw-browsers`); **nunca** rode `playwright install`. Rodando suítes do Playwright em paralelo, use portas diferentes (`E2E_PORT=4321`…).
 
-```
-uv sync                                  # dependências (uv sync --group build para o Nuitka)
-uv run pytest -q                         # testes; os marcados "windows" são pulados fora do Windows
-uv run ruff format . && uv run ruff check . && uv run pyright
-uv run python -m opesvault               # o aplicativo
-uv run python -m opesvault --self-test relatorio.json   # autoteste (G1 em modo Python)
-uv run python scripts/fase0_medir_ram.py --mib 50 250
-uv run --group build python scripts/build.py   # opcional, ~25 min (--installer: Inno Setup, também opcional)
-OPV_FUZZ_ITERATIONS=3000 uv run pytest tests/test_fuzz.py   # fuzzing longo (~45 s)
-uv run python scripts/inventario_licencas.py [--check]       # licenças + SBOM em build/licencas
-uv run python scripts/validar_layouts.py PASTA_DO_CORPUS     # documentos reais, fora do git (docs/15 §2)
-uv run python scripts/capturar_telas.py [--dark] [--size 900x640]  # capturas de todas as telas (build/telas)
-uv run python scripts/avaliar_modelos.py [MODELO ...]       # compara modelos do Ollama local (build/ia)
-uv run python scripts/fase7_gates.py disco|antivirus        # G4 e G5 em modo Python (build/fase7)
-uv run python scripts/auditar_acessibilidade.py             # controles sem nome para leitor de tela
-```
-
-Desenvolva e teste direto em Python. O build Nuitka é **opcional**: só rode quando o usuário pedir ou quando a mudança afetar empacotamento (dependências nativas, plugins Qt, relançamento do worker).
-
-Testes e capturas rodam sem janela. No Windows, a plataforma Qt é `minimal:enable_fonts`; o `offscreen` não tem banco de fontes ali e mede com uma fonte genérica. No Linux é `offscreen`, e o Qt precisa de `libegl1`, `libgl1`, `libxkbcommon0` e `libfontconfig1`. O `tests/conftest.py` e o `scripts/capturar_telas.py` já escolhem a plataforma certa.
-
-No Windows, se o `uv sync` falhar com "arquivo em uso" (os error 32, antivírus) ou "wheel inválido", o cache global ficou corrompido. Rode com `UV_CACHE_DIR` apontando para uma pasta temporária, ou peça ao usuário para rodar `uv cache clean`.
-
-## Decisões tomadas depois dos docs (prevalecem sobre eles)
+## Decisões (prevalecem sobre os docs mais antigos)
 
 - Idioma: código, identificadores, comentários e commits em **inglês**. Textos de interface, mensagens ao usuário e `docs/` em **português brasileiro**.
-- Na interface, o cofre é de um **Projeto**, não de uma "Família": "Projeto inteiro", "(projeto)", "Nome do projeto", "dados financeiros do projeto". Os `docs/` e os identificadores (`family_name`, `domain/family`) continuam falando em família; ao escrever texto novo de interface, use "projeto" (masculino: "o projeto inteiro", "do projeto").
-- Tooling: **Python 3.12**, **uv** (com lockfile versionado), **ruff** (lint e formatação), **pyright** e **pytest**.
-- Importação aceita **PDF, CSV e OFX** (`docs/05` §1 e §3).
-- Repositório **privado** e **sem CI** por enquanto. A branch principal é a `main`. Os gates do Windows que exigem build ou intervenção física (G3–G7) são executados manualmente pelo usuário.
-- Pagamento de fatura feito depois do vencimento quita primeiro as faturas vencidas com saldo, da mais antiga para a mais nova (`docs/04` §5).
-- Cofres recentes só são lembrados com consentimento explícito (`docs/07` §1); a lista nasce desligada.
-- **Web (05/10/2026, `docs/18` §1):** a web substitui o desktop; zero-knowledge (senha e chave só no navegador, servidor guarda registros cifrados); domínio reescrito em TypeScript com paridade por arquivos de referência gerados pelo Python; React + TS + Vite; chave na memória da aba enquanto desbloqueado, com sincronização automática; contas locais no servidor próprio agora e Firebase depois, pela porta `SyncBackend`; sem migração de cofres do desktop; sem CI; chave de recuperação; senha compartilhada por projeto.
-- O Assistente pode usar ferramentas (04/10/2026), revendo o `docs/05` §5 e o `docs/02` §2 só para ele: ferramentas do próprio aplicativo, sem servidor MCP nem porta; **toda alteração exige aprovação explícita** do usuário; resposta inválida volta ao modelo como erro, e três seguidas interrompem a pergunta; CPF e CNPJ fora do alcance.
+- Na interface, o cofre é de um **Projeto**, não de uma "Família" ("o projeto inteiro", "do projeto"). Os `docs/` e alguns identificadores (`family`) ainda falam em família.
+- **Web (05/10/2026, `docs/18` §1):** zero-knowledge; React + TS + Vite; chave na memória da aba enquanto desbloqueado, com sincronização automática; contas no servidor próprio agora e Firebase depois, pela porta `SyncBackend`; chave de recuperação; senha compartilhada por projeto; sem CI.
+- **Desktop removido (07/10/2026):** sem Python no repositório. Os `docs/13`–`16` descrevem a implementação do desktop e valem como histórico; o que vale para a web está no `18`, `19` e `20`.
+- Exportação CSV: texto livre que começa com `=`, `+`, `-`, `@`, tabulação ou retorno de carro ganha `'` na frente; colunas de valor não mudam (`docs/19` achado 12).
+- O Assistente usa ferramentas do próprio aplicativo (sem servidor MCP); **toda alteração exige aprovação explícita**; resposta inválida volta ao modelo como erro, e três seguidas interrompem a pergunta; CPF e CNPJ fora do alcance.
+- Repositório **privado**, sem CI. Trabalho na branch `web`; a `main` recebe a web ao fim da W13.
 
 ## Onde procurar
 
 | Preciso de… | Ler |
 |---|---|
 | Escopo, princípios, o que está fora | `docs/00` |
-| Requisitos RF/RNF e fluxos | `docs/01` |
-| Componentes e o que cada um **não** deve fazer | `docs/02` §2 |
-| Senha, sessão, gravação atômica, backup | `docs/03` (normativo para tudo que toca o cofre) |
+| Requisitos e fluxos | `docs/01` |
 | Entidades, invariantes, partidas dobradas | `docs/04` |
-| Pipeline de PDF, Ollama, duplicatas | `docs/05` |
-| Fórmulas de retorno, resgate, imposto | `docs/06` (os exemplos A–F são casos de teste) |
+| Importação, layouts, OFX/CSV, duplicatas, IA local | `docs/05` |
+| Fórmulas de retorno, resgate, imposto (exemplos A–F são casos de teste) | `docs/06` |
 | Telas e gráficos | `docs/07` |
 | Testes de aceitação TA-01…TA-36 | `docs/08` |
-| Roadmap (próximas fases), dívida técnica, ADRs, riscos, decisões pendentes | `docs/09` |
-| Resultados da fase 0 e roteiro Windows | `docs/11` |
-| Projetos de referência e particularidades de layouts | `docs/12` |
-| O que foi implementado por fase, cobertura e pendências | `docs/13` |
-| Fuzzing, registro técnico, licenças, SBOM, OpenSSL | `docs/14` |
-| Qual teste cobre cada TA; validação de layouts reais | `docs/15` |
-| Arquitetura da janela, tokens, componentes e regras de interface | `docs/16` |
-| Situação da fase 7 e o que falta fazer com o usuário | `docs/17` |
-| Migração para a web: decisões, arquitetura, paridade de telas e fases W0–W14 | `docs/18` |
+| Roadmap de produto, ADRs, riscos | `docs/09` |
+| Arquitetura web, decisões, paridade de telas, fases W0–W14, andamento | `docs/18` |
+| Segurança web: chaves, formatos, cache, sessão, regras para o código (**normativo**) | `docs/19` |
+| Hospedagem do servidor | `docs/20` |
+| Como o domínio foi portado e o que são os arquivos de referência | `web/PORTING.md` |
 
-Se dois documentos entrarem em conflito, vale o `docs/00` §2. Conflitos de segurança ou cálculo devem ser levados ao usuário, nunca resolvidos pela interpretação mais simples. Mudar de stack, adicionar cloud, reter chave para autosave ou permitir edição simultânea exige nova decisão do usuário.
+Se dois documentos entrarem em conflito, vale o `docs/00` §2, e na web o `18`/`19`. Conflitos de segurança ou cálculo devem ser levados ao usuário, nunca resolvidos pela interpretação mais simples. Mudar de stack, adicionar outra nuvem, reter chave além da aba ou permitir edição simultânea exige nova decisão do usuário.
 
 ## Armadilhas de implementação
 
-- **Dinheiro:** nunca use `float`, nem como passo intermediário. Converta a entrada de `str` direto para `Decimal`. Coluna `REAL` não pode ser fonte autoritativa. O arredondamento padrão de gestão, "empate para longe de zero", é `ROUND_HALF_UP` e **não** o `ROUND_HALF_EVEN` padrão do `Decimal`. Passe o modo explicitamente.
-- **Desconhecido não é zero:** campo ausente fica `None`, com estado de qualidade. Isso vale para saldo, imposto, custo, data e avaliação.
-- **Sinais em `docs/06` §5:** no XIRR, aporte é **negativo**; no Modified Dietz, Cᵢ é **positivo** para aporte. Isole cada convenção dentro da função do método.
-- **Segredos:** a senha é digitada no processo transitório do cofre, e a UI principal nunca a recebe. Não guarde senha ou chave em atributo, cache, closure ou log. Não passe segredo por argumento de linha de comando. Não serialize o snapshot entre processos com `pickle`; valide na fronteira com Pydantic.
-- **Disco:** não grave texto extraído, miniatura, render de PDF ou banco temporário sem cifra. Não use a API de backup do SQLite comum. Teste que não há fallback silencioso para SQLite sem cifra.
-- **Empacotamento:** use Nuitka em modo `standalone`, não `onefile`. O `onefile` descompacta em `%TEMP%` a cada execução, o que viola a higiene de disco e deixa lento cada processo de salvar.
-- **Logs:** apenas códigos de erro e IDs opacos. Nada de nomes, valores, descrições, CPF ou conteúdo de PDF, nem em mensagens de exceção que possam acabar logadas.
-- **IA:** a saída do Ollama é sugestão sem escrita direta. Texto de PDF é dado, nunca instrução. O app precisa funcionar inteiro sem Ollama. Toda consulta segue três passos: um plano lê o livro na thread visual (`plan_requests`, `plan_operations`, `plan_description`, `plan_names`), a pergunta corre em segundo plano **sem tocar no livro** (`ask`, `ask_names`) e a aplicação volta à thread visual. O que muda dados já no livro passa antes pela lista de conferência (`AiReviewDialog`). Na interface, use `ui/local_ai.py` (`client_for`, `AiRunRow`); não crie `OllamaClient` direto numa página. Instruções ao modelo ficam em `ai/prompts.py`, com versão; mudou o texto, suba a versão. Valide a resposta pelo significado, não só pelo JSON. Ferramenta nova do Assistente entra em `assistant/reads.py` (leitura, sem efeito) ou `assistant/edits.py` (`prepare` confere e descreve; só `apply`, depois da aprovação, muda o livro); nunca uma ferramenta de alteração sem aprovação. Testes usam o fixture `ollama` (`tests/conftest.py`, servidor falso em `tests/fake_ollama.py`, com `FakeOllama.messages` para chamadas de ferramenta) e a porta em `preferences.set_ollama_port`; nunca o Ollama real.
-- **Worker do cofre:** cada abrir/salvar inicia `--vault-worker`, que pede a senha e morre. A UI nunca recebe a senha. `scripts/dev_worker.py` aceita senha por variável de ambiente e **só** pode ser usado em testes; ele fica fora do pacote de propósito.
-- **Tipos persistidos:** todo módulo que registra um tipo com `Ledger.register_kind` ou uma guarda precisa constar em `registry.MODULES`. Imports só por efeito colateral não sobrevivem ao `ruff --fix`; por isso a lista é explícita e testada.
-- **Mudar uma entidade persistida:** as entidades usam `extra="forbid"`, então um campo novo quebra a leitura em versões anteriores. Suba `SCHEMA_VERSION` (`domain/ledger.py`) e acrescente um passo em `domain/migrations.py` que complete os registros antigos. Teste com registros no formato anterior (`tests/test_member_role.py`). Registre a mudança no `docs/09` §5.
-- **Parsers:** um por instituição + produto + layout, com `version`, `limitations` e `validated_with_real_documents`. Nunca deduza o ano pelo relógio; use a data do próprio documento.
-- **Investimentos:** avaliação não é fluxo, aporte não é rendimento, e resultado indisponível é `None` com motivo. Métodos de retorno só calculam quando os dados permitem.
-- **Thread da UI:** não extraia PDF, não chame modelo e não faça operação de cofre na thread visual. Trabalho em segundo plano que altera a sessão chama `Page.set_busy`, que bloqueia salvar e editar.
-- **Desfazer:** cada chamada a `Page.changed()` fecha um passo de desfazer (`MainWindow.on_changed` → `UndoStack.seal`); chame-a uma vez por ação do usuário. Alterações fora das coleções rastreadas, do setter de `meta` e de `Session.add_document`/`remove_document` não entram no diário e não podem ser desfeitas.
-- **Gravação incremental:** o salvamento só leva o que está em `Ledger.dirty`. Toda alteração passa por `Ledger.put`, pelas coleções rastreadas ou pelo setter de `meta`; mutar um objeto já guardado não é visto e não é gravado. Documentos entram e saem por `Session.add_document` e `remove_document`.
-- **Parsers como código não confiável:** chame-os por `pipeline.run_parser`, que isola falhas em `ParseFailed`. Valor ilegível ou data impossível vai para as linhas não mapeadas, nunca vira exceção. Rode o fuzzing depois de mexer num parser.
-- **Interface:** não fixe cores nem tamanhos de fonte em widgets. Use os tokens de `ui/theme.py` pelas propriedades `textStyle`, `role` e `tone`. Use os componentes de `ui/components/`: `PageHeader`, `EmptyState`, `Section` (com `add_actions`), `scroll_body`, `menu_button`, `flow_row`, `decide`/`confirm`. Nada de `QMessageBox.question`; orientação curta ("Selecione…") vai para `Page.notify`, não para caixa de diálogo. Texto de uma linha com nome do usuário usa `ElidedLabel`, e selecionar uma linha pelo id usa `select_id` (`ui/common.py`). Tabelas curtas usam `summary_table`/`fit_to_rows`; listas em abas usam `frameless`. Toda página monta o layout com `page_layout()`. Confira o resultado com `scripts/capturar_telas.py` em claro, escuro e janela estreita.
-- **Fluxos entre telas:** use `Page.navigate(alvo, ref, act=...)`, que leva ao objeto, e implemente `Page.reveal` na página de destino. O mês compartilhado passa por `Page.month_chosen` e `follow_month`. Edições que uma página acumula (um campo sendo digitado) entram na sessão por `Page.flush`, chamado antes de salvar ou fechar. Configuração do cofre vale na hora e é gravada pelo Salvar; preferência do computador grava na hora em `QSettings`.
-- **Qt e enums:** `QComboBox.currentData()` devolve um `StrEnum` como `str` simples, e `model_copy` não revalida. Converta (`MemberRole(...)`) antes de copiar uma entidade.
-- **Tabelas:** `resizeColumnsToContents` desfaz o esticamento de colunas. O `common.set_rows` reaplica esse esticamento; quem redimensionar fora dele precisa reaplicar também.
-- **Preferências do computador:** só `ui/preferences.py` cria `QSettings` (no Windows, o registro do usuário). O fixture automático `settings_file` (`tests/conftest.py`) desvia tudo para um arquivo temporário em cada teste; um teste impede `QSettings(` em outro lugar.
-- **Organização da interface:** a janela monta partes de `ui/shell/`; páginas grandes são pacotes (`pages/ledger`, `investments`, `tax`, `imports`, `accounts`) com página, widgets próprios e grupos de comandos. Um grupo de comandos (mixin) declara o que usa da página num bloco `TYPE_CHECKING` (como `ui/shell/contract.py`); uma aba com estado próprio herda `PageTab`. Linhas de tabela que não dependem de Qt ficam em funções puras testáveis (`pages/tax/rows.py`).
-- **Combos e seleção por id:** nunca `QComboBox.findData`: ele compara objetos Python por identidade e não acha um UUID ou tupla lidos de volta do cofre. Use `select_combo` e `select_id` (tabelas e listas). Um teste impede `findData`.
-- **Trabalho em segundo plano na interface:** ligue `done`/`progress` de um `BackgroundJob` com `while_alive(sinal, página, slot)` (`ui/background.py`); uma resposta que chega depois de a janela fechar é descartada em vez de tocar widgets apagados.
-- **Testes de todas as telas:** `tests/test_every_screen.py` aciona cada botão e item de menu de cada página com o cofre de demonstração (`tests/demo_vault.py`) e confere TA-31, erros, passos de desfazer e largura. Página, aba ou botão novo entra sozinho; se ele abrir um modal que o teste não conhece, o teste trava (ligue `TRACE` para ver o último clique).
-- **Telas largas:** o alvo é 1920×1080, mas a janela precisa funcionar em ~900×640. Partes relacionadas ficam lado a lado com `Adaptive`/`adaptive` (`ui/components/`), cuja largura mínima é a da forma empilhada; nunca use um `QHBoxLayout` fixo para isso, porque ele soma as larguras mínimas e alarga a janela. Tabelas de trabalho repartem a sobra com `share_width`. Confira em 1920x1080, 1280x800 e 900x640 (`docs/16` §4, regra 5).
-- **Gráfico e tabela:** valores ao longo do tempo aparecem com `ChartPanel` (gráfico e tabela do mesmo `Chart`, em `Collapsible`), nunca em abas separadas; abas só separam objetos diferentes. Toda tabela ou gráfico novo precisa ser limpo no ramo sem sessão do `refresh` (`clear()`/`setRowCount(0)`), ou o TA-31 falha.
-- **Cache por estado do livro:** consultas pesadas (índice, histórico de faturas, suspeitas) guardam o resultado com `ledger.change_count`; toda alteração passa por `Ledger.put`/coleções rastreadas e invalida. Não guarde resultados de outra forma.
-- **Classificação não é fato financeiro:** marcadores, reembolsos, acertos, conferências e dedutíveis ficam em tipos próprios ao lado da operação; não mude `Operation` para eles (mudaria o esquema e esbarraria no mês fechado).
-- **Imposto de renda:** nunca embuta tabela, alíquota, limite ou regra de isenção com valor; o usuário informa (`TaxParameters`, `VariableIncomeRules`) e, sem o valor, o resultado é `None`. Natureza dos rendimentos, grupo e código dos bens são escolhas do usuário; a interface pode sugerir, marcado como "sugerido", nunca gravar sozinha. CPF/CNPJ são dados pessoais: só no cofre, nunca em log ou mensagem que possa ser registrada.
-- **Listas embutidas** (`opesvault/catalogs/`): bancos e códigos do IRPF são listas de nomes, embutidas por decisão do usuário; alíquotas e limites continuam fora. `catalogs/banks.py` é gerado (`scripts/atualizar_bancos.py`, depois `ruff format`); não edite à mão. Se o programa IRPF mudar um código, atualize `catalogs/irpf.py` e o teste.
-- **Titulares:** uma conta tem um titular ou é conjunta com dois; em `LedgerAccount.holders` o primeiro é o principal. Conta bancária (`domain/banking.py`) mantém isso nas contas do livro; não edite `holders` delas por fora sem passar por `banking.update`.
-- **Exceções:** mensagens de `DomainError` são para o usuário e podem citar dados; por isso o registro técnico (`diagnostics.record`) guarda só código, tipo e local. Nunca registre `str(exc)`.
+- **Dinheiro:** nunca `number` para valores; use `Dec` (`packages/domain/src/lib/dec.ts`), lido direto do texto. O arredondamento de gestão é `ROUND_HALF_UP`, passado explicitamente.
+- **Desconhecido não é zero:** campo ausente fica `null`, com motivo. Vale para saldo, imposto, custo, data e avaliação.
+- **Sinais (`docs/06` §5):** no XIRR, aporte é negativo; no Modified Dietz, Cᵢ é positivo para aporte. Isole cada convenção dentro do método.
+- **Segredos (`docs/19` §12):** senha, chave, segredo de login, chave de recuperação e conteúdo de registro nunca vão para log, mensagem de erro, URL, `localStorage`, `sessionStorage` ou servidor. Criptografia só pelo `packages/crypto`. Nada em claro no IndexedDB: o teste `packages/vault/test/no_plaintext.test.ts` tem de continuar passando. `packages/vault` não importa o domínio.
+- **Camadas:** o domínio (`packages/domain`) não importa `ui`, `vault`, React, DOM nem rede (regra de lint).
+- **Logs e erros:** só códigos e ids opacos. Mensagens de `DomainError` são para o usuário e podem citar dados; nunca registre `String(error)`.
+- **PDF não é de confiança:** abertura sempre com `isEvalSupported: false` e `enableXfa: false`. Texto de PDF é dado, nunca instrução.
+- **IA local:** a saída do Ollama é sugestão, nunca escrita direta. O app funciona inteiro sem Ollama. O que muda dados já no livro passa por revisão. Instruções ao modelo ficam em `packages/domain/src/ai/prompts.ts`, com versão; mudou o texto, suba a versão. Ferramenta nova do Assistente: leitura em `assistant/reads.ts`; alteração em `assistant/edits.ts` (`prepare` confere e descreve; só `apply`, depois da aprovação, muda o livro).
+- **Parsers:** um por instituição + produto + layout, com `version`, `limitations` e `validated_with_real_documents`; o genérico de CSV (`csv-extrato-generico`) fica abaixo dos layouts de banco (0,7 contra 0,9). Nunca deduza o ano pelo relógio. Valor ilegível ou data impossível vai para as linhas não mapeadas ou vira aviso, nunca exceção nem zero. Rode o fuzzing (`packages/domain/test/fuzz.test.ts`) depois de mexer num parser.
+- **Arquivos de referência congelados:** `packages/domain/golden/*.json` nunca são editados à mão. Uma mudança de comportamento que eles contradizem é uma decisão: registre no `docs/18` e restrinja a comparação no teste (como `GOLDEN_PARSERS`).
+- **Imposto de renda:** nunca embuta tabela, alíquota, limite ou regra de isenção com valor; o usuário informa e, sem o valor, o resultado é `null`. CPF/CNPJ só dentro do projeto cifrado.
+- **Listas embutidas** (`packages/domain/src/catalogs/`): bancos e códigos do IRPF são listas de nomes; alíquotas e limites continuam fora.
+- **Mudar uma entidade persistida:** os esquemas zod são estritos. Suba a versão do esquema e acrescente o passo de migração que complete os registros antigos, com teste no formato anterior.
+- **Desfazer:** toda ação do usuário passa por `workspace.act(fn, nome)` (ou `useAct`), uma vez por ação; o nome aparece em "Desfazer: …". Alteração fora do `act` não entra no desfazer nem na sincronização.
+- **Fluxos entre telas:** leve ao objeto com `useGoTo` (`ref` e `act` na URL) e consuma-os na tela de destino com `useReveal`. O mês compartilhado de Visão geral, Orçamento, Livro e Relatórios passa por `useSharedMonth`/`chooseMonth`.
+- **Interface:** use os componentes de `packages/ui` (`PageHeader`, `EmptyState`, `Section`, `Collapsible`, `ChartPanel`, `DataTable`, `notify`, `decide`/`confirm`) e os tokens do tema; nada de cor ou tamanho fixo. Valores em dinheiro não quebram linha (`money`). Toda tela funciona em 1920×1080, 1280×800 e 390 px de largura, sem rolagem lateral; todo controle tem nome acessível; animações só com `transform`/`opacity` e respeitando `prefers-reduced-motion`.
+- **Gráfico e tabela:** valores ao longo do tempo aparecem com `ChartPanel` (gráfico e tabela do mesmo dado), nunca em abas separadas; abas só separam objetos diferentes.
+- **Thread visual:** extração de PDF, XIRR e outras contas pesadas rodam em Web Worker; a chave nunca sai da thread principal.
+- **Testes de tela:** um teste não lê o endereço depois de navegar (a tela de destino consome `ref`/`act`); use `apps/app/test/navigations.ts` (`navigations()`, `wentTo()`, `addressSettles()`). Há uma regra de lint para isso. Teste que depende da data fixa o relógio com `pinToday` (`apps/app/test/clock.ts`); e2e que cita um mês usa `monthName()` (`e2e/helpers.ts`). Locators de botão por nome usam `exact: true` quando outro botão pode conter o mesmo texto (o desfazer tem nome).
+- **Teste de todas as telas:** `apps/app/e2e/every_screen.spec.ts` aciona cada botão e item de menu de cada tela com o projeto de demonstração e confere erros, TA-31 e largura. Tela ou botão novo entra sozinho; um diálogo novo que o passeio não conhece pode travá-lo.
 
 ## Dados de teste
 
-Nunca versione PDF real, cofre ou exportação; o `.gitignore` bloqueia esses arquivos. PDFs sintéticos ficam em `tests/fixtures/sinteticos/`, com o valor esperado revisado ao lado. A outra exceção é `tests/fixtures/terceiros/`: notas anonimizadas de outros projetos, com licença e origem no README da pasta. Anonimizar significa alterar o conteúdo e os metadados, não só cobrir com tarja.
-
-## Ambiente
-
-O desenvolvimento acontece no Windows e pode acontecer no Linux. Domínio, cálculos e parsers precisam ser testáveis sem Windows nem Qt. Testes que dependem de Windows (empacotamento, substituição atômica, SQLCipher no `.exe`) devem ser marcados e pulados fora do Windows, com instrução de execução manual.
+Nunca versione PDF real, projeto, backup ou exportação; o `.gitignore` bloqueia esses arquivos. Os documentos sintéticos da demonstração e dos testes estão em `web/packages/domain/src/demo_docs/` (nomes e valores fictícios); os arquivos de referência e os testes de ponta a ponta dependem desses bytes exatos, então um documento novo entra numa constante nova.

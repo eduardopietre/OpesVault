@@ -2,6 +2,8 @@
 
 Versão 1.1 • 06/10/2026 (coluna Web, W12). Liga cada teste de aceitação do `08` aos testes automatizados que o verificam e diz o que falta. É o critério de saída da fase 7 (`09` §1.2): todo TA marcado como automatizado, manual ou pendente. As três últimas colunas fazem o mesmo para a versão web (`18` W12): enquanto o desktop existir, as duas versões ficam lado a lado; ao fim da migração (W13) as colunas do desktop saem com o código Qt.
 
+> **07/10/2026:** os testes Python citados na coluna do desktop foram removidos com ele; vale a coluna Web.
+
 **Situação:** automatizado (roda no `pytest` em qualquer sistema); parcial (parte do resultado esperado ainda não é verificada); Windows (precisa de execução manual numa máquina Windows, `11` §4); pendente (sem teste).
 
 Os caminhos das colunas do desktop são relativos a `tests/`; os da coluna Web, a `web/`. Na web, **substituído** quer dizer que o TA descreve um mecanismo que só existia no desktop (processo de cofre, troca atômica de arquivo no Windows, SQLCipher no `.exe`) e que o requisito por trás dele é garantido de outro modo (`19`), com o teste que o cobre indicado; **novo** marca o teste escrito na W12 para fechar uma lacuna.

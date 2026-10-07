@@ -10,6 +10,7 @@
 import { z } from "zod";
 
 import { ymEq, type YearMonth } from "../lib/dates.ts";
+import { indexBy } from "../lib/collections.ts";
 import { Dec } from "../lib/dec.ts";
 import type { Id } from "../lib/ids.ts";
 import { zDec, zId, zYearMonth } from "../lib/schema.ts";
@@ -81,9 +82,16 @@ export function linesOf(ledger: Ledger, month: YearMonth): BudgetLine[] {
   return [...lines(ledger).values()].filter((line) => ymEq(line.month, month));
 }
 
+/** (category, month) as one map key: ids and numbers never contain "\u0000". */
+function lineKey(categoryId: Id, month: YearMonth): string {
+  return `${categoryId}\u0000${month.year}\u0000${month.month}`;
+}
+
 export function lineFor(ledger: Ledger, categoryId: Id, month: YearMonth): BudgetLine | null {
-  for (const x of lines(ledger).values()) if (x.category_id === categoryId && ymEq(x.month, month)) return x;
-  return null;
+  const index = ledger.cachedFor("budget.lineFor", ["budget_line"], () =>
+    indexBy(lines(ledger).values(), (x) => lineKey(x.category_id, x.month)),
+  );
+  return index.get(lineKey(categoryId, month)) ?? null;
 }
 
 function expenseCategory(ledger: Ledger, categoryId: Id): void {

@@ -17,6 +17,7 @@
  * description repeated (a monthly subscription, installments) is asked once.
  */
 import type { IsoDate } from "../lib/dates.ts";
+import { pushTo } from "../lib/collections.ts";
 import type { Id } from "../lib/ids.ts";
 import { cmpStr, sortedBy } from "../lib/text.ts";
 import type { Ledger } from "../domain/ledger.ts";
@@ -211,8 +212,7 @@ export function planRequests(ledger: Ledger, batchId: Id): AiRequest[] {
     const grouped = new Map<string, ExtractedItem[]>();
     for (const item of pend) {
       if (!kinds.includes(item.kind)) continue;
-      const key = questionKey(item.description);
-      grouped.set(key, [...(grouped.get(key) ?? []), item]);
+      pushTo(grouped, questionKey(item.description), item);
     }
     if (!grouped.size || !categories.size) continue;
     const descriptions = [...grouped.values()].map((same) => same[0]!.description);
@@ -244,8 +244,7 @@ export function planOperations(ledger: Ledger, operationIds: readonly Id[]): AiR
     if (op === undefined || found === null) continue;
     const byKey = grouped.get(found[1]) ?? new Map<string, Operation[]>();
     grouped.set(found[1], byKey);
-    const key = questionKey(op.description);
-    byKey.set(key, [...(byKey.get(key) ?? []), op]);
+    pushTo(byKey, questionKey(op.description), op);
   }
   const requests: AiRequest[] = [];
   for (const accountType of [AccountType.EXPENSE, AccountType.INCOME]) {

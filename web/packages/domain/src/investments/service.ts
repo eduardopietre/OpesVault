@@ -20,8 +20,8 @@ import { balance } from "../domain/queries.ts";
 import type { IsoDate } from "../lib/dates.ts";
 import type { Dec } from "../lib/dec.ts";
 import type { Id } from "../lib/ids.ts";
+import { sortedGroupsBy } from "../lib/collections.ts";
 import { getOrKeyError } from "../lib/py.ts";
-import { sortedBy } from "../lib/text.ts";
 import {
   type Asset,
   AssetSchema,
@@ -62,18 +62,28 @@ export function events(ledger: Ledger) {
   return ledger.entities<InvestmentEvent>("investment_event");
 }
 
+/** A position's valuations by date (ties in collection order); a fresh array the caller may change. */
 export function valuationsOf(ledger: Ledger, positionId: Id): Valuation[] {
-  return sortedBy(
-    [...valuations(ledger).values()].filter((v) => v.position_id === positionId),
-    (v) => v.on,
+  const byPosition = ledger.cachedFor("investments.valuationsOf", ["valuation"], () =>
+    sortedGroupsBy(
+      valuations(ledger).values(),
+      (v) => v.position_id,
+      (v) => v.on,
+    ),
   );
+  return [...(byPosition.get(positionId) ?? [])];
 }
 
+/** A position's events by date (ties in collection order); a fresh array the caller may change. */
 export function eventsOf(ledger: Ledger, positionId: Id): InvestmentEvent[] {
-  return sortedBy(
-    [...events(ledger).values()].filter((e) => e.position_id === positionId),
-    (e) => e.on,
+  const byPosition = ledger.cachedFor("investments.eventsOf", ["investment_event"], () =>
+    sortedGroupsBy(
+      events(ledger).values(),
+      (e) => e.position_id,
+      (e) => e.on,
+    ),
   );
+  return [...(byPosition.get(positionId) ?? [])];
 }
 
 export function position(ledger: Ledger, positionId: Id): Position {

@@ -1,5 +1,6 @@
 /** Small helpers for maps built from collections: indexes, groups and running sums. */
 import { DEC_ZERO, type Dec } from "./dec.ts";
+import { sortedBy } from "./text.ts";
 
 /** Values by key; the first value of a key wins, as `.find` over the same order would. */
 export function indexBy<K, V>(values: Iterable<V>, key: (value: V) => K): Map<K, V> {
@@ -15,6 +16,17 @@ export function indexBy<K, V>(values: Iterable<V>, key: (value: V) => K): Map<K,
 export function groupBy<K, V>(values: Iterable<V>, key: (value: V) => K): Map<K, V[]> {
   const out = new Map<K, V[]>();
   for (const value of values) pushTo(out, key(value), value);
+  return out;
+}
+
+/** `groupBy` with each group sorted by `sortKey` (`sortedBy`: stable, ties keep the original order). */
+export function sortedGroupsBy<K, V>(
+  values: Iterable<V>,
+  key: (value: V) => K,
+  sortKey: (value: V) => unknown,
+): Map<K, V[]> {
+  const out = groupBy(values, key);
+  for (const [k, group] of out) out.set(k, sortedBy(group, sortKey));
   return out;
 }
 

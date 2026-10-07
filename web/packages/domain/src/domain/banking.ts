@@ -24,6 +24,7 @@ import { addValuation, assets, correctValuation, positions, valuationsOf } from 
 import { formatDateBr, type IsoDate } from "../lib/dates.ts";
 import { record as recordBalanceCheck } from "./balance_checks.ts";
 import { collapseSpaces, getOrKeyError, pyEquals, pyHead } from "../lib/py.ts";
+import { pushTo } from "../lib/collections.ts";
 import { Dec } from "../lib/dec.ts";
 import type { Id } from "../lib/ids.ts";
 import { zId } from "../lib/schema.ts";
@@ -109,16 +110,35 @@ export function bankAccounts(ledger: Ledger) {
 
 /** The bank account a ledger account belongs to. */
 export function ofAccount(ledger: Ledger, accountId: Id): BankAccount | null {
-  return (
-    [...bankAccounts(ledger).values()].find((b) => accountId === b.checking_id || accountId === b.savings_id) ?? null
-  );
+  // The first bank account holding the ledger account wins, as a scan in collection order finds it.
+  const byAccount = ledger.cachedFor("banking.ofAccount", ["bank_account"], () => {
+    const out = new Map<Id | null, BankAccount>();
+    for (const b of bankAccounts(ledger).values()) {
+      if (!out.has(b.checking_id)) out.set(b.checking_id, b);
+      if (!out.has(b.savings_id)) out.set(b.savings_id, b);
+    }
+    return out;
+  });
+  return byAccount.get(accountId) ?? null;
 }
 
 export function positionsOf(ledger: Ledger, bankId: Id): Id[] {
-  const held = new Set(
-    [...profiles(ledger).values()].filter((p) => p.bank_account_id === bankId).map((p) => p.position_id),
-  );
-  return [...positions(ledger).values()].filter((p) => held.has(p.id) && !p.closed).map((p) => p.id);
+  // Open positions per bank account, in position order (a position counts once per bank).
+  const byBank = ledger.cachedFor("banking.positionsOf", ["investment_profile", "position"], () => {
+    const banksOf = new Map<Id, Set<Id | null>>();
+    for (const p of profiles(ledger).values()) {
+      let banks = banksOf.get(p.position_id);
+      if (banks === undefined) banksOf.set(p.position_id, (banks = new Set()));
+      banks.add(p.bank_account_id);
+    }
+    const out = new Map<Id | null, Id[]>();
+    for (const p of positions(ledger).values()) {
+      if (p.closed) continue;
+      for (const bank of banksOf.get(p.id) ?? []) pushTo(out, bank, p.id);
+    }
+    return out;
+  });
+  return [...(byBank.get(bankId) ?? [])];
 }
 
 function clean(value: string | null, label: string): string | null {

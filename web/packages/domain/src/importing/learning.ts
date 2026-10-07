@@ -14,7 +14,7 @@
  * - `proposals`: descriptions categorized the same way several times, offered as a rule;
  * - `contradictions`: user rules the family keeps overriding, so they can be revised.
  *
- * The result is cached until an operation or an account changes (`Ledger.changesOf`).
+ * The result is cached until an operation or an account changes (`Ledger.cachedFor`).
  */
 import type { IsoDate } from "../lib/dates.ts";
 import type { Id } from "../lib/ids.ts";
@@ -136,14 +136,13 @@ function knowledgeKey(key: string, kind: AccountType): string {
   return `${kind}\u0000${key}`;
 }
 
-const CACHE = new WeakMap<Ledger, { stamp: string; found: Knowledge }>();
-
 /** Every merchant key with the categories the family chose for it. */
 export function knowledge(ledger: Ledger): Knowledge {
   // Only operations and accounts teach anything: review items changing during an import keep it.
-  const stamp = ledger.changesOf("operation", "account").join(",");
-  const cached = CACHE.get(ledger);
-  if (cached !== undefined && cached.stamp === stamp) return cached.found;
+  return ledger.cachedFor("learning.knowledge", ["operation", "account"], () => learn(ledger));
+}
+
+function learn(ledger: Ledger): Knowledge {
   const found: Knowledge = new Map();
   const seenPlans = new Set<Id>();
   const when = (o: Operation) => cashDate(o) ?? o.occurred_on ?? DATE_MIN;
@@ -169,7 +168,6 @@ export function knowledge(ledger: Ledger): Knowledge {
       text: normalize(op.description),
     });
   }
-  CACHE.set(ledger, { stamp, found });
   return found;
 }
 

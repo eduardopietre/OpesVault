@@ -8,6 +8,7 @@
  * description per merchant key is asked (`merchants.keyOf`), so a store seen in a hundred
  * operations costs one line. The approval records which model suggested the name.
  */
+import { pushTo } from "../lib/collections.ts";
 import type { Id } from "../lib/ids.ts";
 import { pyLen } from "../lib/py.ts";
 import { DomainError, type Ledger } from "../domain/ledger.ts";
@@ -75,7 +76,7 @@ export function planNames(ledger: Ledger, operationIds: readonly Id[], renamed =
     if (op === undefined || !isActive(op) || categoryOf(ledger, op) === null) continue;
     const key = m.keyOf(op.description);
     if (pyLen(key) < 3 || (approved.has(key) && !renamed)) continue;
-    found.set(key, [...(found.get(key) ?? []), op.description]);
+    pushTo(found, key, op.description);
   }
   const keys = [...found.keys()];
   return {

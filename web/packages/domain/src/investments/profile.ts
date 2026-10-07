@@ -14,6 +14,7 @@ import { DomainError, Ledger } from "../domain/ledger.ts";
 import { zEntityId } from "../domain/model.ts";
 import { formatDecimalBr } from "../domain/money.ts";
 import { formatDateBr } from "../lib/dates.ts";
+import { indexBy } from "../lib/collections.ts";
 import { Dec } from "../lib/dec.ts";
 import type { Id } from "../lib/ids.ts";
 import { zDate, zDec, zId } from "../lib/schema.ts";
@@ -127,7 +128,10 @@ export function profiles(ledger: Ledger) {
 }
 
 export function profileOf(ledger: Ledger, positionId: Id): InvestmentProfile | null {
-  return [...profiles(ledger).values()].find((p) => p.position_id === positionId) ?? null;
+  const byPosition = ledger.cachedFor("investments.profileOf", ["investment_profile"], () =>
+    indexBy(profiles(ledger).values(), (p) => p.position_id),
+  );
+  return byPosition.get(positionId) ?? null;
 }
 
 export function saveProfile(ledger: Ledger, profile: InvestmentProfile): InvestmentProfile {

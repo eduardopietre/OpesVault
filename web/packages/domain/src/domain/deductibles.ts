@@ -56,8 +56,12 @@ export function marks(ledger: Ledger) {
 
 /** The mark of the category or of its nearest marked parent. */
 export function kindOf(ledger: Ledger, categoryId: Id): DeductibleKind | null {
-  const byCategory = new Map<Id, DeductibleKind>();
-  for (const m of marks(ledger).values()) byCategory.set(m.category_id, m.kind);
+  // The last mark of a category wins.
+  const byCategory = ledger.cachedFor("deductibles.kindOf", ["deductible_category"], () => {
+    const out = new Map<Id, DeductibleKind>();
+    for (const m of marks(ledger).values()) out.set(m.category_id, m.kind);
+    return out;
+  });
   const seen = new Set<Id>();
   let cursor: Id | null = categoryId;
   while (cursor !== null && !seen.has(cursor)) {

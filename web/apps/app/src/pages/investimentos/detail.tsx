@@ -88,7 +88,11 @@ function FigureCard({
         {...(tone ? { tone } : {})}
         {...(note ? { note } : {})}
         value={
-          raw !== null ? <NumberTicker value={raw} format={money} /> : <span className="text-secondary">{text}</span>
+          raw !== null ? (
+            <NumberTicker value={raw} format={money} />
+          ) : (
+            <span className="whitespace-normal text-secondary">{text}</span>
+          )
         }
       />
     </div>

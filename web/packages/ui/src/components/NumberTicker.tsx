@@ -5,6 +5,7 @@
  */
 import { animate } from "motion/react";
 import { useEffect, useRef, useState } from "react";
+import { cn } from "../cn.ts";
 import { fromScaled, formatDecimalBR, isDecimalText, scaleOf, toScaled } from "../format.ts";
 import { useReduceMotion } from "../motion.tsx";
 import { DURATION } from "../tokens.ts";
@@ -61,10 +62,9 @@ export function NumberTicker({ value, format, from, durationMs, className }: Num
   }, [value, reduce, durationMs]);
 
   return (
-    <span className={className}>
-      <span aria-hidden="true" className="tabular-nums">
-        {show(display)}
-      </span>
+    // An amount never wraps inside itself ("-R$" on one line, the digits on the next).
+    <span className={cn("money", className)}>
+      <span aria-hidden="true">{show(display)}</span>
       <span className="sr-only">{show(value)}</span>
     </span>
   );

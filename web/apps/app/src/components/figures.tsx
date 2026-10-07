@@ -25,23 +25,25 @@ export interface FigureSpec {
   note?: ReactNode;
 }
 
-/** Figures in a row that wraps by itself: as many as fit, never fewer than their own width. */
-export function FigureRow({ figures, min = "11rem" }: { figures: readonly FigureSpec[]; min?: string }) {
+/**
+ * Figures in a row that wraps by itself: as many as fit side by side, each at least `min` wide and never
+ * narrower than its own value (an amount stays on one line), so a figure that does not fit takes the next
+ * line instead of breaking its value. The row is also the container the values shrink against on very narrow
+ * screens (`Figure`).
+ */
+export function FigureRow({ figures, min = "8rem" }: { figures: readonly FigureSpec[]; min?: string }) {
   return (
-    <div
-      className={cn("grid gap-x-6 gap-y-4")}
-      // A container-driven grid: no breakpoints, the columns follow the room the card has.
-      data-min={min}
-      style={{ gridTemplateColumns: `repeat(auto-fit, minmax(${min}, 1fr))` }}
-    >
+    <div className={cn("@container flex flex-wrap gap-x-6 gap-y-4")} data-min={min}>
       {figures.map((figure) => (
-        <Figure
-          key={figure.label}
-          label={figure.label}
-          value={figure.value}
-          {...(figure.tone ? { tone: figure.tone } : {})}
-          {...(figure.note ? { note: figure.note } : {})}
-        />
+        // Basis `min`, automatic minimum width: the value's own width is the floor, the rest is shared.
+        <div key={figure.label} className="max-w-full" style={{ flex: `1 1 ${min}` }}>
+          <Figure
+            label={figure.label}
+            value={figure.value}
+            {...(figure.tone ? { tone: figure.tone } : {})}
+            {...(figure.note ? { note: figure.note } : {})}
+          />
+        </div>
       ))}
     </div>
   );

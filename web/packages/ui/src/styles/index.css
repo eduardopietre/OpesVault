@@ -79,6 +79,15 @@
   --ease-exit: var(--ov-ease-exit);
 }
 
+/*
+ * An amount of money is one word: "-R$ 1.485,00" never breaks between the sign, the currency and the digits
+ * (the domain formats with a plain space). Tabular figures keep the digits of a column aligned.
+ */
+@utility money {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
 @layer base {
   html {
     font-family: var(--ov-font-sans);

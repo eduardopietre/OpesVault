@@ -13,7 +13,7 @@ import {
   type Ledger,
   type YearMonth,
 } from "@opesvault/domain";
-import { Button, Collapsible, DateField, MonthPicker, Select, useBand, type SelectOption } from "@opesvault/ui";
+import { Button, DateField, MonthPicker, Select, cn, type SelectOption } from "@opesvault/ui";
 import { AnimatePresence, motion } from "motion/react";
 import { FilterX } from "lucide-react";
 import { useMemo } from "react";
@@ -55,33 +55,57 @@ export interface FilterBarProps {
   onReset: () => void;
   /** Commands that wrap together with the filters (saved filters, actions, details). */
   children?: React.ReactNode;
+  /**
+   * "row": one row that wraps, beside the table (wider screens). "sheet": one filter per line with its label,
+   * inside the "Filtros" sheet of a phone.
+   */
+  layout?: "row" | "sheet";
 }
 
-const w = "w-full tablet:w-auto tablet:min-w-40";
+/** How many filters narrow the list besides the search text (the badge of the phone's "Filtros" button). */
+export function activeFilterCount(filters: FilterState): number {
+  return (
+    (filters.period !== "all" ? 1 : 0) +
+    [filters.account, filters.member, filters.origin, filters.tag].filter((v) => v !== null).length +
+    (filters.status !== "all" ? 1 : 0)
+  );
+}
+
+const wide = "w-full tablet:w-auto tablet:min-w-40";
 
 function choose<T extends string>(id: string, empty: T | null = null): T | null {
   return id === NONE ? empty : (id as T);
 }
 
-export function FilterBar({ filters, onChange, month, onMonth, choices, onReset, children }: FilterBarProps) {
-  const band = useBand();
+export function FilterBar({
+  filters,
+  onChange,
+  month,
+  onMonth,
+  choices,
+  onReset,
+  children,
+  layout = "row",
+}: FilterBarProps) {
+  const sheet = layout === "sheet";
+  const hideLabel = !sheet;
+  const w = sheet ? "w-full" : wide;
   const set = (changes: Partial<FilterState>) => onChange({ ...filters, ...changes });
   const periods = useMemo<SelectOption[]>(
     () => PERIODS.map(([id, label]) => ({ id, label: id === "month" ? monthLabel(month) : label })),
     [month],
   );
   const active = filtersActive(filters);
-  const count =
-    (filters.period !== "all" ? 1 : 0) +
-    [filters.account, filters.member, filters.origin, filters.tag].filter((v) => v !== null).length +
-    (filters.status !== "all" ? 1 : 0) +
-    (filters.text.trim() ? 1 : 0);
 
   const row = (
-    <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filtros do livro">
+    <div
+      className={cn("flex gap-2", sheet ? "flex-col items-stretch gap-3" : "flex-wrap items-center")}
+      role="group"
+      aria-label="Filtros do livro"
+    >
       <Select
         label="Período"
-        hideLabel
+        hideLabel={hideLabel}
         className={w}
         options={periods}
         value={filters.period}
@@ -89,10 +113,10 @@ export function FilterBar({ filters, onChange, month, onMonth, choices, onReset,
       />
       {filters.period === "month" ? <MonthPicker value={month} onChange={onMonth} label="Mês do livro" /> : null}
       {filters.period === "custom" ? (
-        <div className="flex flex-wrap items-center gap-2">
+        <div className={cn("flex flex-wrap gap-2", sheet ? "items-end" : "items-center")}>
           <DateField
             label="Data inicial"
-            hideLabel
+            hideLabel={hideLabel}
             fieldClassName="w-36"
             value={filters.start}
             onChange={(start) => set({ start })}
@@ -100,7 +124,7 @@ export function FilterBar({ filters, onChange, month, onMonth, choices, onReset,
           <span className="text-body text-secondary">até</span>
           <DateField
             label="Data final"
-            hideLabel
+            hideLabel={hideLabel}
             fieldClassName="w-36"
             value={filters.end}
             onChange={(end) => set({ end })}
@@ -109,15 +133,15 @@ export function FilterBar({ filters, onChange, month, onMonth, choices, onReset,
       ) : null}
       <Select
         label="Conta ou categoria"
-        hideLabel
-        className={`${w} tablet:w-56`}
+        hideLabel={hideLabel}
+        className={sheet ? w : `${w} tablet:w-56`}
         options={[{ id: NONE, label: "Todas as contas" }, ...choices.accounts]}
         value={filters.account ?? NONE}
         onChange={(id) => set({ account: choose(id), withChildren: false })}
       />
       <Select
         label="Integrante"
-        hideLabel
+        hideLabel={hideLabel}
         className={w}
         options={[{ id: NONE, label: "Todos os integrantes" }, ...choices.members]}
         value={filters.member ?? NONE}
@@ -125,7 +149,7 @@ export function FilterBar({ filters, onChange, month, onMonth, choices, onReset,
       />
       <Select
         label="Situação"
-        hideLabel
+        hideLabel={hideLabel}
         className={w}
         options={Object.entries(STATUS_LABELS).map(([id, label]) => ({ id, label }))}
         value={filters.status}
@@ -133,7 +157,7 @@ export function FilterBar({ filters, onChange, month, onMonth, choices, onReset,
       />
       <Select
         label="Origem"
-        hideLabel
+        hideLabel={hideLabel}
         className={w}
         options={[
           { id: NONE, label: "Todas as origens" },
@@ -145,7 +169,7 @@ export function FilterBar({ filters, onChange, month, onMonth, choices, onReset,
       {choices.tags.length || filters.tag !== null ? (
         <Select
           label="Marcador"
-          hideLabel
+          hideLabel={hideLabel}
           className={w}
           options={[{ id: NONE, label: "Todos os marcadores" }, ...choices.tags.map((t) => ({ id: t, label: t }))]}
           value={filters.tag ?? NONE}
@@ -171,19 +195,8 @@ export function FilterBar({ filters, onChange, month, onMonth, choices, onReset,
   );
 
   return (
-    <div className="flex flex-col gap-2">
-      {band === "phone" ? (
-        <Collapsible
-          title={count ? `Filtros (${count} ativos)` : "Filtros"}
-          level={3}
-          defaultOpen={false}
-          prefKey="livro/filtros"
-        >
-          {row}
-        </Collapsible>
-      ) : (
-        row
-      )}
+    <div className={cn("flex flex-col", sheet ? "gap-4" : "gap-2")}>
+      {row}
       {children ? <div className="flex flex-wrap items-center gap-2">{children}</div> : null}
     </div>
   );

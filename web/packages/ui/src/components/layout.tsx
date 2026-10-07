@@ -225,7 +225,9 @@ export function Figure({
       <div className="text-caption text-secondary">{label}</div>
       <div
         className={cn(
-          "mt-1 text-figure font-semibold tracking-[-0.02em]",
+          // One line, whatever the room (an amount does not wrap); in a very narrow container the type shrinks
+          // instead (`FigureRow` is the container), so a long amount still fits on a phone.
+          "money mt-1 text-figure font-semibold tracking-[-0.02em] [font-size:min(var(--text-figure),10cqi)]",
           tone === "positive" && "text-positive",
           tone === "negative" && "text-negative",
           tone === "warning" && "text-warning",

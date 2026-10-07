@@ -6,6 +6,10 @@
  * the row commands and the local AI, then the table beside the inspector that follows the selection. The
  * table is virtualized, so tens of thousands of operations stay responsive. Row commands live in the "Ações"
  * menu and the keyboard (Enter corrects, Space marks); the inspector offers the main ones too.
+ *
+ * On a phone the entries come first: one toolbar row holds the search, a "Filtros" button (with the number of
+ * active filters) that opens a sheet with the filters and the saved filters, and one "Mais comandos" menu with
+ * the row commands, the local AI and the export. Each entry is a compact card (`LedgerCard`).
  */
 import {
   AccountType,
@@ -23,6 +27,7 @@ import {
   Button,
   DataTable,
   EmptyState,
+  IconButton,
   Inspector,
   MenuButton,
   PageHeader,
@@ -44,11 +49,13 @@ import {
   BookOpen,
   Download,
   Eye,
+  Ellipsis,
   FileSpreadsheet,
   Filter,
   ListChecks,
   Plus,
   Search,
+  SlidersHorizontal,
   Sparkles,
   Table2,
 } from "lucide-react";
@@ -60,9 +67,9 @@ import { AiRunRow } from "../../dialogs/ai_review.tsx";
 import { OPERATION_KINDS, type OperationKindKey } from "../../dialogs/operation.tsx";
 import { isSimple } from "../../dialogs/operation_edit.tsx";
 import { useLedgerAi } from "./ai.tsx";
-import { COLUMN_TITLES, REQUIRED_COLUMNS, ledgerColumns } from "./columns.tsx";
+import { COLUMN_TITLES, LedgerCard, REQUIRED_COLUMNS, ledgerColumns } from "./columns.tsx";
 import { downloadFile, operationsCsv } from "./export.ts";
-import { FilterBar, useFilterChoices } from "./filters.tsx";
+import { FilterBar, activeFilterCount, useFilterChoices } from "./filters.tsx";
 import { LedgerDialogs, useDialogHost, type DialogSpec } from "./host.tsx";
 import { OperationDetails, SelectionNote } from "./inspector.tsx";
 import {
@@ -106,6 +113,8 @@ export function Page() {
   const host = useDialogHost();
   const [measureTable, tableWidth] = useElementWidth<HTMLDivElement>();
   const cards = tableWidth > 0 && tableWidth < 640;
+  const phone = band === "phone";
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   // The search waits for a short pause in typing; the other choices apply at once.
   useEffect(() => {
@@ -411,6 +420,16 @@ export function Page() {
     (review) => host.show({ kind: "ai", review }),
   );
 
+  const aiEntries: MenuEntry[] = [
+    { id: "ai-categories", label: "Sugerir categorias…", onSelect: ai.suggestCategories, disabled: readOnly },
+    {
+      id: "ai-names",
+      label: "Sugerir nomes de estabelecimentos…",
+      onSelect: ai.suggestNames,
+      disabled: readOnly,
+    },
+  ];
+
   // ── filters saved in the project ───────────────
 
   const saveCurrentFilter = () => {
@@ -599,6 +618,59 @@ export function Page() {
     { id: "csv-all", label: "Livro completo (CSV)", onSelect: () => void exportCsv(true), icon: <FileSpreadsheet /> },
   ];
 
+  const balanceFiltered =
+    filters.account !== null &&
+    [AccountType.ASSET, AccountType.LIABILITY].some((t) => ledger.accounts.get(filters.account as Id)?.type === t);
+  const filterCount = activeFilterCount(filters);
+  /** The phone's one overflow menu: the row commands, the local AI and the export, in labelled groups. */
+  const phoneEntries: MenuEntry[] = [
+    { kind: "label", id: "label-actions", label: "Ações" },
+    ...rowCommands,
+    ...(balanceFiltered
+      ? [
+          {
+            id: "balance-filtered",
+            label: "Conferir saldo da conta filtrada…",
+            onSelect: checkFilteredBalance,
+            disabled: readOnly,
+          } satisfies MenuEntry,
+        ]
+      : []),
+    ...(ai.client !== null
+      ? [
+          { kind: "separator", id: "sep-ai" } as const,
+          { kind: "label", id: "label-ai", label: "IA local" } as const,
+          ...aiEntries,
+        ]
+      : []),
+    { kind: "separator", id: "sep-export" },
+    { kind: "label", id: "label-export", label: "Exportar" },
+    ...exportEntries,
+  ];
+
+  const searchBox = (
+    <TextField
+      ref={searchField}
+      label="Buscar lançamentos"
+      hideLabel
+      type="search"
+      value={searchText}
+      onChange={setSearchText}
+      placeholder={phone ? "Buscar" : "Buscar descrição ou observação"}
+      title="Buscar (tecla /)"
+      adornment={<Search />}
+      className={phone ? "min-w-0 flex-1" : undefined}
+      fieldClassName={phone ? "w-full" : "w-full tablet:w-80 tablet:shrink-0"}
+      autoComplete="off"
+      onKeyDown={(event) => {
+        if (event.key === "Escape" && searchText) {
+          event.stopPropagation();
+          setSearchText("");
+        }
+      }}
+    />
+  );
+
   const empty =
     total === 0 ? (
       <EmptyState
@@ -655,66 +727,58 @@ export function Page() {
         context={context}
         primary={<MenuButton label="Novo lançamento" variant="primary" icon={<Plus />} items={newEntries} />}
         actions={
-          <>
-            <TextField
-              ref={searchField}
-              label="Buscar lançamentos"
-              hideLabel
-              type="search"
-              value={searchText}
-              onChange={setSearchText}
-              placeholder="Buscar descrição ou observação"
-              title="Buscar (tecla /)"
-              adornment={<Search />}
-              fieldClassName="w-full tablet:w-80 tablet:shrink-0"
-              autoComplete="off"
-              onKeyDown={(event) => {
-                if (event.key === "Escape" && searchText) {
-                  event.stopPropagation();
-                  setSearchText("");
-                }
-              }}
-            />
-            <MenuButton label="Exportar" icon={<Download />} items={exportEntries} />
-          </>
+          phone ? null : (
+            <>
+              {searchBox}
+              <MenuButton label="Exportar" icon={<Download />} items={exportEntries} />
+            </>
+          )
         }
       />
 
-      <FilterBar
-        filters={filters}
-        onChange={(next) => setFilters(next)}
-        month={month}
-        onMonth={chooseMonth}
-        choices={choices}
-        onReset={reset}
-      >
-        <MenuButton label="Filtros salvos" icon={<Filter />} items={savedEntries} />
-        <MenuButton label="Ações" icon={<ListChecks />} items={rowCommands} />
-        {cards ? null : <MenuButton label="Colunas" icon={<Table2 />} items={columnChoices} />}
-        {ai.client !== null ? (
-          <MenuButton
-            label="IA local"
-            icon={<Sparkles />}
-            items={[
-              { id: "ai-categories", label: "Sugerir categorias…", onSelect: ai.suggestCategories, disabled: readOnly },
-              {
-                id: "ai-names",
-                label: "Sugerir nomes de estabelecimentos…",
-                onSelect: ai.suggestNames,
-                disabled: readOnly,
-              },
-            ]}
-          />
-        ) : null}
-        {filters.account !== null &&
-        [AccountType.ASSET, AccountType.LIABILITY].some(
-          (t) => ledger.accounts.get(filters.account as Id)?.type === t,
-        ) ? (
-          <Button variant="ghost" onClick={checkFilteredBalance} disabled={readOnly}>
-            Conferir saldo da conta
+      {phone ? (
+        <div role="toolbar" aria-label="Busca e comandos do livro" className="-mt-1 flex items-center gap-2">
+          {searchBox}
+          <Button
+            icon={<SlidersHorizontal />}
+            onClick={() => setFiltersOpen(true)}
+            aria-haspopup="dialog"
+            aria-label={filterCount ? `Filtros (${filterCount} ${filterCount === 1 ? "ativo" : "ativos"})` : "Filtros"}
+          >
+            Filtros
+            {filterCount ? (
+              <span
+                aria-hidden="true"
+                className="-mr-1 inline-grid h-5 min-w-5 place-items-center rounded-full bg-accent-fill px-1.5 text-caption font-semibold text-accent-text"
+              >
+                {filterCount}
+              </span>
+            ) : null}
           </Button>
-        ) : null}
-        {band === "phone" ? null : (
+          <MenuButton
+            label="Mais comandos"
+            items={phoneEntries}
+            trigger={<IconButton label="Mais comandos" icon={<Ellipsis />} variant="secondary" />}
+          />
+        </div>
+      ) : (
+        <FilterBar
+          filters={filters}
+          onChange={(next) => setFilters(next)}
+          month={month}
+          onMonth={chooseMonth}
+          choices={choices}
+          onReset={reset}
+        >
+          <MenuButton label="Filtros salvos" icon={<Filter />} items={savedEntries} />
+          <MenuButton label="Ações" icon={<ListChecks />} items={rowCommands} />
+          {cards ? null : <MenuButton label="Colunas" icon={<Table2 />} items={columnChoices} />}
+          {ai.client !== null ? <MenuButton label="IA local" icon={<Sparkles />} items={aiEntries} /> : null}
+          {balanceFiltered ? (
+            <Button variant="ghost" onClick={checkFilteredBalance} disabled={readOnly}>
+              Conferir saldo da conta
+            </Button>
+          ) : null}
           <Button
             variant="ghost"
             icon={<Eye />}
@@ -724,8 +788,8 @@ export function Page() {
           >
             Detalhes
           </Button>
-        )}
-      </FilterBar>
+        </FilterBar>
+      )}
 
       <AnimatePresence initial={false}>
         {ai.run.running ? (
@@ -777,9 +841,8 @@ export function Page() {
             onSelect={select}
             onActivate={(id) => openEdit(operationOf(id))}
             height="max(22rem, calc(100dvh - 20rem))"
-            cardTitle={(op) => (
-              <span className={isActive(op) ? "block truncate" : "block truncate text-tertiary"}>{op.description}</span>
-            )}
+            renderCard={(op) => <LedgerCard ledger={ledger} op={op} />}
+            cardHeight={66}
             empty={empty}
           />
         </div>
@@ -787,6 +850,27 @@ export function Page() {
           {renderDetails(band !== "wide")}
         </Inspector>
       </div>
+
+      {phone ? (
+        <Sheet open={filtersOpen} onOpenChange={setFiltersOpen} title="Filtros" side="bottom">
+          <div className="flex flex-col gap-4 px-4 pb-4">
+            <FilterBar
+              layout="sheet"
+              filters={filters}
+              onChange={(next) => setFilters(next)}
+              month={month}
+              onMonth={chooseMonth}
+              choices={choices}
+              onReset={reset}
+            >
+              <MenuButton label="Filtros salvos" icon={<Filter />} items={savedEntries} align="start" />
+            </FilterBar>
+            <Button variant="primary" className="w-full" onClick={() => setFiltersOpen(false)}>
+              {count === 1 ? "Ver 1 lançamento" : `Ver ${count} lançamentos`}
+            </Button>
+          </div>
+        </Sheet>
+      ) : null}
 
       <Sheet
         open={detailsOpen && (band === "tablet" || band === "phone")}

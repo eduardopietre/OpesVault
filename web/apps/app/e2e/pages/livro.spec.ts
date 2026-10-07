@@ -404,4 +404,52 @@ test.describe("livro on a phone", () => {
     await expectNoHorizontalOverflow(page);
     expect(errors).toEqual([]);
   });
+
+  test("one toolbar row before the entries: search, the filters sheet and one overflow menu", async ({ page }) => {
+    const errors = watchErrors(page);
+    await fakeOllama(page);
+    await openDemo(page, "/livro");
+    const toolbar = page.getByRole("toolbar", { name: "Busca e comandos do livro" });
+    const search = toolbar.getByRole("searchbox", { name: "Buscar lançamentos" });
+    const filters = toolbar.getByRole("button", { name: "Filtros", exact: true });
+    const more = toolbar.getByRole("button", { name: "Mais comandos" });
+    // The three controls share one row, and the old stacked commands are gone from the page.
+    const tops = await Promise.all([search, filters, more].map(async (l) => (await l.boundingBox())!.y));
+    expect(Math.max(...tops) - Math.min(...tops)).toBeLessThan(8);
+    for (const name of ["Filtros salvos", "Ações", "IA local", "Exportar"]) {
+      await expect(page.getByRole("button", { name, exact: true })).toHaveCount(0);
+    }
+
+    // A compact card: description and amount, then the accounts and the date, without column names.
+    const card = page.getByRole("listbox", { name: "Lançamentos" }).getByRole("option").first();
+    await expect(card).toBeVisible();
+    await expect(card).toContainText(/R\$/);
+    await expect(card).toContainText("→");
+    await expect(card).not.toContainText(/Valor|Data|De → Para/);
+    const box = (await card.boundingBox())!;
+    expect(box.height).toBeLessThan(80);
+
+    // The filters sheet: choosing one narrows the list and the button says how many are active.
+    await filters.click();
+    const sheet = dialogOf(page, "Filtros");
+    await expect(sheet.getByRole("button", { name: "Filtros salvos" })).toBeVisible();
+    await pick(page, sheet, "Situação", "Só ativos");
+    await sheet.getByRole("button", { name: /^Ver \d+ lançamento/ }).click();
+    await expect(sheet).toHaveCount(0);
+    await expect(toolbar.getByRole("button", { name: "Filtros (1 ativo)" })).toBeVisible();
+    await toolbar.getByRole("button", { name: "Filtros (1 ativo)" }).click();
+    await dialogOf(page, "Filtros").getByRole("button", { name: "Limpar filtros" }).click();
+    await page.keyboard.press("Escape");
+    await expect(filters).toBeVisible();
+
+    // The overflow menu: the row commands, the local AI and the export, in groups.
+    await more.click();
+    await expect(page.getByRole("menuitem", { name: /Marcar os \d+ exibidos/ })).toBeVisible();
+    await expect(page.getByRole("menuitem", { name: "Sugerir categorias…" })).toBeVisible();
+    await expect(page.getByRole("menuitem", { name: "Livro completo (CSV)" })).toBeVisible();
+    await page.getByRole("menuitem", { name: /Marcar os \d+ exibidos/ }).click();
+    await expect(page.getByText(/\d+ marcados/)).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+    expect(errors).toEqual([]);
+  });
 });

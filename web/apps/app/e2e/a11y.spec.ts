@@ -38,6 +38,17 @@ for (const scheme of SCHEMES) {
         for (const path of ["/visao-geral", "/livro", "/configuracoes"]) {
           await openDemo(page, path);
           await audit(page, path);
+          if (path === "/livro" && viewport.width < 640) {
+            // The phone's toolbar: the filters sheet and the one overflow menu.
+            await page.getByRole("button", { name: /^Filtros/ }).click();
+            await page.getByRole("dialog", { name: "Filtros" }).waitFor();
+            await audit(page, "livro: filtros");
+            await page.keyboard.press("Escape");
+            await page.getByRole("button", { name: "Mais comandos" }).click();
+            await page.getByRole("menu").waitFor();
+            await audit(page, "livro: mais comandos");
+            await page.keyboard.press("Escape");
+          }
         }
         await page.keyboard.press("Control+k");
         await page.getByRole("combobox", { name: "Buscar comando ou seção" }).waitFor();

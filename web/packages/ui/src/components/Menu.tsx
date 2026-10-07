@@ -47,11 +47,14 @@ export function MenuContent({
 }) {
   return (
     <DropdownMenu.Portal {...(container ? { container } : {})}>
+      {/* A long menu (the Livro's commands on a phone) scrolls inside the room the screen has; being focusable,
+          its scrolling also works from the keyboard (axe: scrollable-region-focusable). */}
       <DropdownMenu.Content
         align={align}
         sideOffset={6}
         collisionPadding={8}
-        className="z-50 min-w-[200px] max-w-[min(320px,calc(100vw-16px))] origin-[var(--radix-dropdown-menu-content-transform-origin)] rounded-lg border border-separator bg-raised p-1 shadow-lg data-[state=open]:animate-[ov-menu-in_var(--ov-duration-fast)_var(--ov-ease-enter)]"
+        tabIndex={0}
+        className="z-50 max-h-(--radix-dropdown-menu-content-available-height) min-w-[200px] max-w-[min(320px,calc(100vw-16px))] overflow-y-auto origin-[var(--radix-dropdown-menu-content-transform-origin)] rounded-lg border border-separator bg-raised p-1 shadow-lg data-[state=open]:animate-[ov-menu-in_var(--ov-duration-fast)_var(--ov-ease-enter)]"
       >
         {items.map((entry) => {
           if (entry.kind === "separator") {

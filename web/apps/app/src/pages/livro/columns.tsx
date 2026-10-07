@@ -136,8 +136,32 @@ export function ledgerColumns({ ledger, checked, onCheck, hidden, cards }: Colum
     },
   ];
   return all.filter((column) => {
-    // The first column of a card is its title, which the page draws (checkbox and description).
+    // A card is drawn by `LedgerCard`; the columns left are the ones its list can be sorted by.
     if (cards) return column.id !== "descricao";
     return REQUIRED_COLUMNS.has(column.id) || !hidden.has(column.id);
   });
+}
+
+/**
+ * One operation as a phone card (docs/18 §5.1): the description and the amount on the first line, the accounts
+ * ("Conta → Categoria") and the date under them, without repeating the column names. The amount and the date
+ * never wrap; the description and the accounts shorten instead. A cancelled entry is dimmed and says so.
+ */
+export function LedgerCard({ ledger, op }: { ledger: Ledger; op: Operation }) {
+  const active = isActive(op);
+  return (
+    <div className={cn("flex min-w-0 flex-col gap-0.5", !active && "text-tertiary")}>
+      <div className="flex min-w-0 items-baseline gap-3">
+        <span className="min-w-0 flex-1 truncate text-body font-semibold" title={op.notes ?? op.description}>
+          {op.description}
+        </span>
+        <span className="money shrink-0 text-body font-semibold">{operationAmount(op)}</span>
+      </div>
+      <div className={cn("flex min-w-0 items-baseline gap-3 text-caption", active && "text-secondary")}>
+        <span className="min-w-0 flex-1 truncate">{operationAccounts(ledger, op)}</span>
+        {active ? null : <span className="shrink-0 font-medium">Cancelado</span>}
+        <span className="shrink-0 tabular-nums">{dateLabel(operationDate(op))}</span>
+      </div>
+    </div>
+  );
 }

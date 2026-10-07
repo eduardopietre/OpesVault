@@ -67,7 +67,8 @@ for (const size of SIZES) {
         if (size.width < 640) await closeOverlay(page, "Detalhes do lançamento");
 
         await page.getByRole("searchbox", { name: "Buscar lançamentos" }).fill("");
-        await page.getByRole("button", { name: "IA local", exact: true }).click();
+        // On a phone the local AI is a group of the one "Mais comandos" menu of the toolbar.
+        await page.getByRole("button", { name: size.width < 640 ? "Mais comandos" : "IA local", exact: true }).click();
         await page.getByRole("menuitem", { name: "Sugerir categorias…" }).click();
         const review = page.getByRole("dialog", { name: "Sugestões de categoria" });
         await review.waitFor({ timeout: 15_000 });

@@ -60,6 +60,13 @@ export interface DataTableProps<T> {
   rowHeight?: number;
   /** Card title in the phone list (defaults to the first column). */
   cardTitle?: (row: T) => ReactNode;
+  /**
+   * The whole content of a card in the phone list, for a page that lays it out itself (the Livro: description
+   * and amount, then the accounts). Without it a card is the title and a "column: value" list.
+   */
+  renderCard?: (row: T) => ReactNode;
+  /** Expected height of a card in px, for the virtual list (each card is measured once shown). */
+  cardHeight?: number;
   className?: string | undefined;
   /** Forces the card layout (tests and catalog); otherwise it follows the container width. */
   layout?: "auto" | "table" | "cards";
@@ -158,6 +165,8 @@ export function DataTable<T extends object>({
   height = "min(70dvh, 640px)",
   rowHeight = 36,
   cardTitle,
+  renderCard,
+  cardHeight = 96,
   className,
   layout = "auto",
 }: DataTableProps<T>) {
@@ -210,7 +219,7 @@ export function DataTable<T extends object>({
   // The virtualizer measures every row again when these functions change identity: with 50 thousand rows
   // that is a few milliseconds per scroll frame, so they are kept stable between renders.
   const getScrollElement = useCallback(() => scroller.current, []);
-  const estimateSize = useCallback(() => (cards ? 96 : rowHeight), [cards, rowHeight]);
+  const estimateSize = useCallback(() => (cards ? cardHeight : rowHeight), [cards, cardHeight, rowHeight]);
   const getItemKey = useCallback((index: number) => ids[index] ?? index, [ids]);
   // TanStack Virtual returns fresh functions each render; this component is not memoized by the compiler.
   // eslint-disable-next-line react-hooks/incompatible-library
@@ -241,7 +250,10 @@ export function DataTable<T extends object>({
     // Ctrl/Alt/Cmd + a key belongs to the page (Ctrl+Enter approves, Alt+number changes section), not to the grid:
     // Ctrl+Enter used to open the row's correction as well as approve it.
     if (!ids.length || event.ctrlKey || event.metaKey || event.altKey) return;
-    const page = Math.max(1, Math.floor((scroller.current?.clientHeight ?? 400) / (cards ? 96 : rowHeight)) - 1);
+    const page = Math.max(
+      1,
+      Math.floor((scroller.current?.clientHeight ?? 400) / (cards ? cardHeight : rowHeight)) - 1,
+    );
     const from = selectedIndex < 0 ? -1 : selectedIndex;
     const actions: Record<string, () => void> = {
       ArrowDown: () => move(from + 1),
@@ -392,17 +404,23 @@ export function DataTable<T extends object>({
                       selected ? "border-accent ring-1 ring-accent" : "border-separator",
                     )}
                   >
-                    <div className="truncate text-body font-semibold">
-                      {cardTitle ? cardTitle(original) : first ? first.cell(original) : null}
-                    </div>
-                    <dl className="mt-1 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-0.5 text-caption">
-                      {rest.map((column) => (
-                        <div key={column.id} className="contents">
-                          <dt className="text-secondary">{column.header}</dt>
-                          <dd className="min-w-0 truncate text-text">{column.cell(original)}</dd>
+                    {renderCard ? (
+                      renderCard(original)
+                    ) : (
+                      <>
+                        <div className="truncate text-body font-semibold">
+                          {cardTitle ? cardTitle(original) : first ? first.cell(original) : null}
                         </div>
-                      ))}
-                    </dl>
+                        <dl className="mt-1 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-0.5 text-caption">
+                          {rest.map((column) => (
+                            <div key={column.id} className="contents">
+                              <dt className="text-secondary">{column.header}</dt>
+                              <dd className="min-w-0 truncate text-text">{column.cell(original)}</dd>
+                            </div>
+                          ))}
+                        </dl>
+                      </>
+                    )}
                   </div>
                 </div>
               );

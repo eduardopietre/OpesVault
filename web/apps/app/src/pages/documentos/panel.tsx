@@ -5,13 +5,13 @@
  * keep it.
  */
 import { formatDateBr, type Id } from "@opesvault/domain";
-import { Button, ElidedText, Skeleton, useMotionPreset } from "@opesvault/ui";
+import { Button, ElidedText, Skeleton, useMotionPreset, formatBytes } from "@opesvault/ui";
 import { Download, FileQuestion, KeyRound, Trash2 } from "lucide-react";
 import { motion } from "motion/react";
 import { useRef, type ReactNode } from "react";
 import { renderPdf } from "../../data/pdf_render.ts";
 import { DocumentsPasswordDialog } from "../../dialogs/documents_password.tsx";
-import { fileSize, usedBy, type DocumentRow, type ReceiptUse } from "./rows.ts";
+import { usedBy, type DocumentRow, type ReceiptUse } from "./rows.ts";
 import { READ_ONLY_TIP } from "../../data/read_only.ts";
 import { useDocument, useImageUrl, usePdfView, type DocumentKind } from "../../data/use_document.ts";
 
@@ -73,7 +73,7 @@ export function DocumentPanel({
           <ElidedText>{row.name}</ElidedText>
         </h2>
         <p className="mt-0.5 text-caption text-secondary">
-          {fileSize(row.size)} · SHA-256 <span className="font-mono">{row.sha256.slice(0, 12)}…</span>
+          {formatBytes(row.size)} · SHA-256 <span className="font-mono">{row.sha256.slice(0, 12)}…</span>
         </p>
       </div>
 

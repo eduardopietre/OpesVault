@@ -3,8 +3,8 @@ import { act as reactAct, screen, waitFor, within } from "@testing-library/react
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderPdf } from "../../src/data/pdf_render.ts";
 import type { Workspace } from "../../src/data/workspace.ts";
-import { saveFile } from "@opesvault/ui";
-import { documentRows, fileSize, summaryLine, usedBy } from "../../src/pages/documentos/rows.ts";
+import { saveFile, formatBytes as fileSize } from "@opesvault/ui";
+import { documentRows, summaryLine, usedBy } from "../../src/pages/documentos/rows.ts";
 import { DocumentUnavailable } from "../../src/data/workspace.ts";
 import { flat, openAt, type User } from "./sharing_docs_harness.tsx";
 import { addressSettles, navigations, wentTo } from "../navigations.ts";
@@ -402,10 +402,10 @@ describe("Documentos", () => {
   });
 
   it("formats sizes as people read them", () => {
-    expect(fileSize(840)).toBe("840 bytes");
-    expect(fileSize(1536)).toBe("1,5 KB");
-    expect(fileSize(12 * 1024)).toBe("12 KB");
-    expect(fileSize(3.4 * 1024 * 1024)).toBe("3,4 MB");
+    expect(fileSize(840)).toBe("840 B");
+    expect(fileSize(1536)).toBe("1,5 KiB");
+    expect(fileSize(12 * 1024)).toBe("12 KiB");
+    expect(fileSize(3.4 * 1024 * 1024)).toBe("3,4 MiB");
     expect(summaryLine([])).toBe("");
   });
 });

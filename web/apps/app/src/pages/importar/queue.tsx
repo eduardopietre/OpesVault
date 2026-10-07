@@ -5,7 +5,7 @@
  * that waits, is read or failed shows in `ReadingStrip` with the way to cancel it, so nothing happens out of sight.
  */
 import { DomainError, importing, type Id } from "@opesvault/domain";
-import { Button, notify, useMotionPreset } from "@opesvault/ui";
+import { Button, notify, useMotionPreset, formatBytes } from "@opesvault/ui";
 import { AnimatePresence, motion } from "motion/react";
 import { FileText, LoaderCircle, TriangleAlert, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
@@ -325,12 +325,6 @@ const STATE_TEXT: Record<JobState, string> = {
   failed: "Não importado",
 };
 
-function size(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
-  return `${(bytes / 1024 / 1024).toFixed(1).replace(".", ",")} MB`;
-}
-
 export function ReadingStrip({ queue, readOnly }: { queue: ImportQueue; readOnly: boolean }) {
   const preset = useMotionPreset();
   const reading = queue.jobs.some((job) => job.state !== "failed");
@@ -375,7 +369,7 @@ export function ReadingStrip({ queue, readOnly }: { queue: ImportQueue; readOnly
                       className={job.state === "failed" ? "text-caption text-negative" : "text-caption text-secondary"}
                       role={job.state === "failed" ? "alert" : undefined}
                     >
-                      {STATE_TEXT[job.state]} · {size(job.size)}
+                      {STATE_TEXT[job.state]} · {formatBytes(job.size)}
                       {job.message ? ` · ${job.message}` : ""}
                     </p>
                   </div>

@@ -14,6 +14,7 @@ import {
   notify,
   type DataColumn,
   saveFile,
+  formatBytes,
 } from "@opesvault/ui";
 import { useRef, useState } from "react";
 import { useGoTo, useReveal } from "../../data/navigation.ts";
@@ -21,7 +22,7 @@ import { useLedger, useWorkspace } from "../../data/react.tsx";
 import { TableBox } from "../../data/table_box.tsx";
 import { useUndo } from "../../shell/undo.tsx";
 import { DocumentPanel } from "./panel.tsx";
-import { documentRows, fileSize, summaryLine, type DocumentRow, type ReceiptUse } from "./rows.ts";
+import { documentRows, summaryLine, type DocumentRow, type ReceiptUse } from "./rows.ts";
 import { exportUnencrypted, NOT_ENCRYPTED } from "../../data/export_file.ts";
 import { DOCUMENT_MIME, type DocumentKind } from "../../data/use_document.ts";
 import { dateOr } from "../../data/money.ts";
@@ -55,7 +56,7 @@ const COLUMNS: DataColumn<DocumentRow>[] = [
   {
     id: "size",
     header: "Tamanho",
-    cell: (row) => fileSize(row.size),
+    cell: (row) => formatBytes(row.size),
     sortValue: (row) => row.size,
     align: "end",
     width: 90,
@@ -146,7 +147,7 @@ export function Page() {
   const save = async (row: DocumentRow, bytes: Uint8Array, kind: DocumentKind) => {
     await exportUnencrypted({
       title: "Salvar o original sem criptografia?",
-      text: `${exporting.WARNING} O arquivo “${row.name}” (${fileSize(row.size)}) vai para a pasta de downloads deste aparelho.`,
+      text: `${exporting.WARNING} O arquivo “${row.name}” (${formatBytes(row.size)}) vai para a pasta de downloads deste aparelho.`,
       confirmLabel: "Salvar o original",
       save: () => saveFile(row.name, bytes, DOCUMENT_MIME[kind]),
       done: `Arquivo salvo. ${NOT_ENCRYPTED}`,

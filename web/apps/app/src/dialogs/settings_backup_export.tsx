@@ -3,7 +3,7 @@
  * documents, sealed in this browser with the project password (asked again, so a file is never protected by a
  * mistyped one). The result is offered as a download; nothing is uploaded.
  */
-import { Button, TextField, saveFile } from "@opesvault/ui";
+import { Button, TextField, saveFile, formatBytes } from "@opesvault/ui";
 import { Download } from "lucide-react";
 import { useState } from "react";
 import type { BackupFile, BackupProgress } from "../services/types.ts";
@@ -31,18 +31,6 @@ export function progressText(progress: BackupProgress | null): string {
     case "restoring":
       return `Restaurando registros: ${progress.done}${of}…`;
   }
-}
-
-export function sizeText(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  const units = ["KiB", "MiB", "GiB"];
-  let value = bytes / 1024;
-  let unit = 0;
-  while (value >= 1024 && unit < units.length - 1) {
-    value /= 1024;
-    unit += 1;
-  }
-  return `${value.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} ${units[unit]}`;
 }
 
 export function ExportBackupDialog({ open, onClose, onDone }: ExportBackupDialogProps) {
@@ -76,7 +64,7 @@ export function ExportBackupDialog({ open, onClose, onDone }: ExportBackupDialog
           <dt className="text-secondary">Arquivo</dt>
           <dd className="min-w-0 break-all font-medium">{file.fileName}</dd>
           <dt className="text-secondary">Tamanho</dt>
-          <dd>{sizeText(file.blob.size)}</dd>
+          <dd>{formatBytes(file.blob.size)}</dd>
           <dt className="text-secondary">Registros</dt>
           <dd>{file.records}</dd>
           <dt className="text-secondary">Documentos</dt>

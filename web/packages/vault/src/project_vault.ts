@@ -192,6 +192,7 @@ export interface CreateProjectOptions extends Omit<ProjectVaultOptions, "project
 }
 
 type Mode = "none" | "edit" | "readOnly";
+type TimerName = "push" | "renew" | "poll" | "retry";
 
 function isOffline(error: unknown): boolean {
   return (error instanceof BackendError && error.code === "offline") || error instanceof TypeError;
@@ -199,6 +200,13 @@ function isOffline(error: unknown): boolean {
 
 function isLeaseError(error: unknown): boolean {
   return error instanceof BackendError && (error.code === "no_lease" || error.code === "lease_held");
+}
+
+/** A crypto call whose password and recovery-key failures become `VaultError`s. */
+function cryptoOp<T>(call: () => Promise<T>): Promise<T> {
+  return call().catch((error: unknown) => {
+    throw vaultErrorFromCrypto(error);
+  });
 }
 
 function vaultErrorFromCrypto(error: unknown): unknown {
@@ -350,10 +358,8 @@ export class ProjectVault {
   #syncRun: Promise<void> | null = null;
   #queue: Promise<unknown> = Promise.resolve();
 
-  #pushTimer: unknown = null;
-  #renewTimer: unknown = null;
-  #pollTimer: unknown = null;
-  #retryTimer: unknown = null;
+  /** Pending timers by name (`#schedule`); the device snapshot keeps its own. */
+  readonly #timerHandles = new Map<TimerName, unknown>();
 
   #snapshot: VaultSnapshot = LOCKED_SNAPSHOT;
   #conflictList: readonly Conflict[] = [];
@@ -545,6 +551,8 @@ export class ProjectVault {
     const snapshot = this.#cache.getSnapshot(this.projectId).catch(() => null);
     const envelope = await this.#envelope();
     t = span("envelope", t);
+    // Inline rather than `cryptoOp`: opening keeps its exact await sequence, which the background
+    // connect and the device snapshot started by `#open` are timed against.
     let keys: ProjectKeys;
     try {
       keys = await openWithPassword(this.projectId, envelope, password);
@@ -563,12 +571,9 @@ export class ProjectVault {
     if (this.#keys !== null) return;
     if (newPassword.length === 0) throw new VaultError("empty_password");
     const envelope = await this.#serverEnvelope();
-    let opened: { keys: ProjectKeys; envelope: EnvelopeContent };
-    try {
-      opened = await openWithRecoveryKey(this.projectId, envelope, recoveryKey, newPassword, this.#envelopeOptions());
-    } catch (error) {
-      throw vaultErrorFromCrypto(error);
-    }
+    const opened = await cryptoOp(() =>
+      openWithRecoveryKey(this.projectId, envelope, recoveryKey, newPassword, this.#envelopeOptions()),
+    );
     try {
       await this.#storeEnvelope(opened.envelope, envelope.revision);
     } catch (error) {
@@ -584,12 +589,7 @@ export class ProjectVault {
    */
   async checkPassword(password: string): Promise<void> {
     const envelope = await this.#envelope();
-    let keys: ProjectKeys;
-    try {
-      keys = await openWithPassword(this.projectId, envelope, password);
-    } catch (error) {
-      throw vaultErrorFromCrypto(error);
-    }
+    const keys = await cryptoOp(() => openWithPassword(this.projectId, envelope, password));
     keys.destroy();
   }
 
@@ -597,30 +597,18 @@ export class ProjectVault {
   async changePassword(currentPassword: string, newPassword: string): Promise<void> {
     if (newPassword.length === 0) throw new VaultError("empty_password");
     const envelope = await this.#serverEnvelope();
-    let updated: EnvelopeContent;
-    try {
-      updated = await changeEnvelopePassword(
-        this.projectId,
-        envelope,
-        currentPassword,
-        newPassword,
-        this.#envelopeOptions(),
-      );
-    } catch (error) {
-      throw vaultErrorFromCrypto(error);
-    }
+    const updated = await cryptoOp(() =>
+      changeEnvelopePassword(this.projectId, envelope, currentPassword, newPassword, this.#envelopeOptions()),
+    );
     await this.#storeEnvelope(updated, envelope.revision);
   }
 
   /** A new recovery key (returned once); the previous one stops opening the envelope. */
   async regenerateRecoveryKey(password: string): Promise<string> {
     const envelope = await this.#serverEnvelope();
-    let result: { envelope: EnvelopeContent; recoveryKey: string };
-    try {
-      result = await regenerateEnvelopeRecoveryKey(this.projectId, envelope, password, this.#envelopeOptions());
-    } catch (error) {
-      throw vaultErrorFromCrypto(error);
-    }
+    const result = await cryptoOp(() =>
+      regenerateEnvelopeRecoveryKey(this.projectId, envelope, password, this.#envelopeOptions()),
+    );
     await this.#storeEnvelope(result.envelope, envelope.revision);
     return result.recoveryKey;
   }
@@ -703,15 +691,31 @@ export class ProjectVault {
     }
   }
 
-  async #storeEnvelope(envelope: EnvelopeContent, expectedRevision: number): Promise<void> {
-    let stored: Envelope;
+  /**
+   * A backend call made for the user: a network failure is `offline`; with `conflict`, a conflict is
+   * `conflict`; with `lease`, a lost lease is `no_lease` (and the vault turns to getting it back).
+   */
+  async #remote<T>(call: () => Promise<T>, options: { lease?: boolean; conflict?: boolean } = {}): Promise<T> {
     try {
-      stored = await this.#backend.putEnvelope(this.projectId, envelopeContent(envelope), expectedRevision);
+      return await call();
     } catch (error) {
       if (isOffline(error)) throw new VaultError("offline");
-      if (error instanceof BackendError && error.code === "conflict") throw new VaultError("conflict");
+      if (options.conflict && error instanceof BackendError && error.code === "conflict") {
+        throw new VaultError("conflict");
+      }
+      if (options.lease && isLeaseError(error)) {
+        this.#leaseLost();
+        throw new VaultError("no_lease");
+      }
       throw error;
     }
+  }
+
+  async #storeEnvelope(envelope: EnvelopeContent, expectedRevision: number): Promise<void> {
+    const stored = await this.#remote(
+      () => this.#backend.putEnvelope(this.projectId, envelopeContent(envelope), expectedRevision),
+      { conflict: true },
+    );
     await this.#cache.updateProject(this.projectId, { envelope: stored });
   }
 
@@ -1016,12 +1020,7 @@ export class ProjectVault {
   async rename(name: string): Promise<void> {
     const keys = this.#requireUnlocked();
     const sealed = await keys.sealName(name, this.#random);
-    try {
-      await this.#backend.renameProject(this.projectId, sealed);
-    } catch (error) {
-      if (isOffline(error)) throw new VaultError("offline");
-      throw error;
-    }
+    await this.#remote(() => this.#backend.renameProject(this.projectId, sealed));
     await this.#cache.updateProject(this.projectId, { sealedName: sealed });
     this.#sealedName = sealed;
     this.#name = name;
@@ -1180,12 +1179,11 @@ export class ProjectVault {
   }
 
   #schedulePush(delay = this.#pushDelayMs): void {
-    if (!this.unlocked || this.#pending.size === 0 || this.#pushTimer !== null) return;
-    this.#pushTimer = this.#timers.setTimeout(() => {
-      this.#pushTimer = null;
+    if (!this.unlocked || this.#pending.size === 0 || this.#timerHandles.has("push")) return;
+    this.#schedule("push", delay, () => {
       this.#wantPush = true;
       void this.#runSync();
-    }, delay);
+    });
   }
 
   #runSync(): Promise<void> {
@@ -1239,11 +1237,8 @@ export class ProjectVault {
   }
 
   #scheduleRetry(): void {
-    if (this.#retryTimer !== null || !this.unlocked) return;
-    this.#retryTimer = this.#timers.setTimeout(() => {
-      this.#retryTimer = null;
-      void this.syncNow();
-    }, this.#retryMs);
+    if (this.#timerHandles.has("retry") || !this.unlocked) return;
+    this.#schedule("retry", this.#retryMs, () => void this.syncNow());
   }
 
   async #pullAll(generation: number): Promise<void> {
@@ -1651,11 +1646,7 @@ export class ProjectVault {
   }
 
   #scheduleRenew(delay = LEASE_MS / 3): void {
-    this.#clearTimer("renew");
-    this.#renewTimer = this.#timers.setTimeout(() => {
-      this.#renewTimer = null;
-      void this.#renew();
-    }, delay);
+    this.#schedule("renew", delay, () => void this.#renew());
   }
 
   async #renew(): Promise<void> {
@@ -1691,11 +1682,7 @@ export class ProjectVault {
   }
 
   #schedulePoll(): void {
-    this.#clearTimer("poll");
-    this.#pollTimer = this.#timers.setTimeout(() => {
-      this.#pollTimer = null;
-      void this.#poll();
-    }, this.#pollMs);
+    this.#schedule("poll", this.#pollMs, () => void this.#poll());
   }
 
   async #poll(): Promise<void> {
@@ -1722,21 +1709,24 @@ export class ProjectVault {
     if (this.#mode === "readOnly") this.#schedulePoll();
   }
 
-  #clearTimer(which: "push" | "renew" | "poll" | "retry"): void {
-    const handles = { push: this.#pushTimer, renew: this.#renewTimer, poll: this.#pollTimer, retry: this.#retryTimer };
-    const handle = handles[which];
-    if (handle !== null) this.#timers.clearTimeout(handle);
-    if (which === "push") this.#pushTimer = null;
-    else if (which === "renew") this.#renewTimer = null;
-    else if (which === "poll") this.#pollTimer = null;
-    else this.#retryTimer = null;
+  /** Runs `fn` after `delay`, replacing the pending timer of that name. */
+  #schedule(name: TimerName, delay: number, fn: () => void): void {
+    this.#clearTimer(name);
+    const handle = this.#timers.setTimeout(() => {
+      this.#timerHandles.delete(name);
+      fn();
+    }, delay);
+    this.#timerHandles.set(name, handle);
+  }
+
+  #clearTimer(name: TimerName): void {
+    if (!this.#timerHandles.has(name)) return;
+    this.#timers.clearTimeout(this.#timerHandles.get(name));
+    this.#timerHandles.delete(name);
   }
 
   #clearTimers(): void {
-    this.#clearTimer("push");
-    this.#clearTimer("renew");
-    this.#clearTimer("poll");
-    this.#clearTimer("retry");
+    for (const name of [...this.#timerHandles.keys()]) this.#clearTimer(name);
   }
 
   // ---------------------------------------------------------------- attachments
@@ -1751,16 +1741,7 @@ export class ProjectVault {
     if (lease === null) throw new VaultError(this.#online ? "no_lease" : "offline");
     if (!ID_PATTERN.test(blobId)) throw new TypeError("blob id must be 32 lowercase hex characters");
     const sealed = await keys.sealBlob(blobId, data, this.#random);
-    try {
-      await this.#backend.putBlob(this.projectId, lease.leaseId, blobId, sealed);
-    } catch (error) {
-      if (isOffline(error)) throw new VaultError("offline");
-      if (isLeaseError(error)) {
-        this.#leaseLost();
-        throw new VaultError("no_lease");
-      }
-      throw error;
-    }
+    await this.#remote(() => this.#backend.putBlob(this.projectId, lease.leaseId, blobId, sealed), { lease: true });
     this.#blobs.put(blobId, data.slice());
     return blobId;
   }
@@ -1770,13 +1751,7 @@ export class ProjectVault {
     const keys = this.#requireUnlocked();
     const cached = this.#blobs.get(blobId);
     if (cached !== undefined) return cached.slice();
-    let sealed: Uint8Array;
-    try {
-      sealed = await this.#backend.getBlob(this.projectId, blobId);
-    } catch (error) {
-      if (isOffline(error)) throw new VaultError("offline");
-      throw error;
-    }
+    const sealed = await this.#remote(() => this.#backend.getBlob(this.projectId, blobId));
     const data = await keys.openBlob(blobId, sealed);
     if (this.unlocked && this.#keys === keys) this.#blobs.put(blobId, data.slice());
     return data;
@@ -1786,16 +1761,7 @@ export class ProjectVault {
     this.#requireEditable();
     const lease = this.#lease;
     if (lease === null) throw new VaultError(this.#online ? "no_lease" : "offline");
-    try {
-      await this.#backend.deleteBlob(this.projectId, lease.leaseId, blobId);
-    } catch (error) {
-      if (isOffline(error)) throw new VaultError("offline");
-      if (isLeaseError(error)) {
-        this.#leaseLost();
-        throw new VaultError("no_lease");
-      }
-      throw error;
-    }
+    await this.#remote(() => this.#backend.deleteBlob(this.projectId, lease.leaseId, blobId), { lease: true });
     this.#blobs.delete(blobId);
   }
 

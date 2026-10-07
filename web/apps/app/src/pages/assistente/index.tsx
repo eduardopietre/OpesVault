@@ -126,14 +126,13 @@ export function Page() {
     return (
       <div className="flex flex-col gap-6">
         {header}
-        <div className="rounded-xl border border-dashed border-separator-strong bg-window/40">
-          <EmptyState
-            icon={<Bot />}
-            title="Assistente desligado"
-            description="Ligue a IA local e escolha um modelo que aceite ferramentas em Configurações › IA local. O aplicativo funciona inteiro sem ela."
-            actions={<Button onClick={() => goTo("configuracoes")}>Abrir Configurações</Button>}
-          />
-        </div>
+        <EmptyState
+          framed
+          icon={<Bot />}
+          title="Assistente desligado"
+          description="Ligue a IA local e escolha um modelo que aceite ferramentas em Configurações › IA local. O aplicativo funciona inteiro sem ela."
+          actions={<Button onClick={() => goTo("configuracoes")}>Abrir Configurações</Button>}
+        />
       </div>
     );
   }

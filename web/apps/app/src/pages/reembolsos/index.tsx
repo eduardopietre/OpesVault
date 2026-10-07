@@ -431,20 +431,19 @@ export function Page() {
           ) : null}
         </>
       ) : (
-        <div className="rounded-xl border border-dashed border-separator-strong bg-window/40">
-          <EmptyState
-            title="Nada a receber nem a acertar"
-            description="Marque uma despesa como reembolsável no Livro financeiro (Ações › Reembolso a receber) ou ratear despesas entre integrantes para ver aqui quem deve a quem."
-            actions={
-              <>
-                <EditButton onClick={() => openSettle(null)}>Registrar acerto…</EditButton>
-                <Button variant="primary" onClick={() => goTo("livro")}>
-                  Abrir o Livro financeiro
-                </Button>
-              </>
-            }
-          />
-        </div>
+        <EmptyState
+          framed
+          title="Nada a receber nem a acertar"
+          description="Marque uma despesa como reembolsável no Livro financeiro (Ações › Reembolso a receber) ou ratear despesas entre integrantes para ver aqui quem deve a quem."
+          actions={
+            <>
+              <EditButton onClick={() => openSettle(null)}>Registrar acerto…</EditButton>
+              <Button variant="primary" onClick={() => goTo("livro")}>
+                Abrir o Livro financeiro
+              </Button>
+            </>
+          }
+        />
       )}
 
       {receive ? (

@@ -255,9 +255,7 @@ export function Page() {
           </div>
 
           {empty ? (
-            <div className="rounded-xl border border-dashed border-separator-strong bg-window/40">
-              <EmptyState title="Sem dados neste relatório" description={EMPTY_TEXT} />
-            </div>
+            <EmptyState framed title="Sem dados neste relatório" description={EMPTY_TEXT} />
           ) : (
             <motion.div key={key} {...preset.enter}>
               <ChartPanel

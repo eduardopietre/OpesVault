@@ -64,11 +64,7 @@ export function ListTable<T extends object>({
 
 /** An empty table or chart: what it is, why it is empty and what to do. */
 export function Empty({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <div className="rounded-xl border border-dashed border-separator-strong bg-window/40">
-      <EmptyState title={title} description={children} />
-    </div>
-  );
+  return <EmptyState framed title={title} description={children} />;
 }
 
 /** What a link asks of a tab: made by the page, consumed once by the tab it names. */

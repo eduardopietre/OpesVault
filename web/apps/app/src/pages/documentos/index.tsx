@@ -199,13 +199,12 @@ export function Page() {
           </div>
         </Adaptive>
       ) : (
-        <div className="rounded-xl border border-dashed border-separator-strong bg-window/40">
-          <EmptyState
-            title="Nenhum documento no projeto"
-            description="Os arquivos importados e os comprovantes anexados no Livro ficam guardados aqui, cifrados, como evidência dos lançamentos."
-            actions={<Button onClick={() => goTo("livro")}>Abrir o Livro financeiro</Button>}
-          />
-        </div>
+        <EmptyState
+          framed
+          title="Nenhum documento no projeto"
+          description="Os arquivos importados e os comprovantes anexados no Livro ficam guardados aqui, cifrados, como evidência dos lançamentos."
+          actions={<Button onClick={() => goTo("livro")}>Abrir o Livro financeiro</Button>}
+        />
       )}
     </div>
   );

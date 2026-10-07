@@ -134,21 +134,20 @@ export function Page() {
       />
 
       {rows.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-separator-strong bg-window/40">
-          <EmptyState
-            icon={<GoalIcon />}
-            title="Nenhuma meta"
-            description="Defina uma meta de patrimônio ou de saldo para acompanhar quanto falta e em que ritmo o projeto chega lá. Comece pelo exemplo de uma reserva de emergência e ajuste os valores."
-            actions={
-              <>
-                <EditButton variant="primary" onClick={openExample}>
-                  Definir uma meta…
-                </EditButton>
-                <EditButton onClick={() => openEdit(null)}>Começar do zero…</EditButton>
-              </>
-            }
-          />
-        </div>
+        <EmptyState
+          framed
+          icon={<GoalIcon />}
+          title="Nenhuma meta"
+          description="Defina uma meta de patrimônio ou de saldo para acompanhar quanto falta e em que ritmo o projeto chega lá. Comece pelo exemplo de uma reserva de emergência e ajuste os valores."
+          actions={
+            <>
+              <EditButton variant="primary" onClick={openExample}>
+                Definir uma meta…
+              </EditButton>
+              <EditButton onClick={() => openEdit(null)}>Começar do zero…</EditButton>
+            </>
+          }
+        />
       ) : (
         <>
           <section ref={measure} aria-label="Metas do projeto" className="min-w-0">

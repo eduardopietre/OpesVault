@@ -604,17 +604,16 @@ export function Page() {
           </Adaptive>
         </>
       ) : (
-        <div className="rounded-xl border border-dashed border-separator-strong bg-window/40">
-          <EmptyState
-            title="Nada registrado neste ano"
-            description="A página organiza o ano nas fichas da declaração assim que houver lançamentos. Escolha outro ano acima ou registre receitas e despesas no Livro financeiro."
-            actions={
-              <Button variant="primary" onClick={() => goTo("livro")}>
-                Abrir o Livro financeiro
-              </Button>
-            }
-          />
-        </div>
+        <EmptyState
+          framed
+          title="Nada registrado neste ano"
+          description="A página organiza o ano nas fichas da declaração assim que houver lançamentos. Escolha outro ano acima ou registre receitas e despesas no Livro financeiro."
+          actions={
+            <Button variant="primary" onClick={() => goTo("livro")}>
+              Abrir o Livro financeiro
+            </Button>
+          }
+        />
       )}
 
       <DialogHost

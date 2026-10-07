@@ -395,38 +395,37 @@ export function Page() {
             </AnimatePresence>
           </>
         ) : (
-          <div className="rounded-xl border border-dashed border-separator-strong bg-window/40">
-            <EmptyState
-              title={`Sem orçamento em ${lower(month)}`}
-              description={
-                suggestion.size
-                  ? `Crie o orçamento do mês a partir dos gastos dos últimos ${SUGGESTION_MONTHS} meses: cada categoria começa com a média, e você confere antes de salvar.`
-                  : previousPlanned
-                    ? `Copie o plano de ${lower(previous)} ou defina quanto pretende gastar por categoria.`
-                    : "Defina quanto pretende gastar por categoria. O realizado vem dos lançamentos por competência: compras no cartão contam no mês em que aconteceram."
-              }
-              actions={
-                <>
-                  {suggestion.size ? (
-                    <EditButton variant="primary" onClick={suggestMonth}>
-                      Criar a partir dos últimos {SUGGESTION_MONTHS} meses…
-                    </EditButton>
-                  ) : null}
-                  {previousPlanned ? (
-                    <EditButton variant={suggestion.size ? "secondary" : "primary"} onClick={copyPrevious}>
-                      Copiar do mês anterior
-                    </EditButton>
-                  ) : null}
-                  <EditButton
-                    variant={suggestion.size || previousPlanned ? "secondary" : "primary"}
-                    onClick={defineMonth}
-                  >
-                    Definir o mês…
+          <EmptyState
+            framed
+            title={`Sem orçamento em ${lower(month)}`}
+            description={
+              suggestion.size
+                ? `Crie o orçamento do mês a partir dos gastos dos últimos ${SUGGESTION_MONTHS} meses: cada categoria começa com a média, e você confere antes de salvar.`
+                : previousPlanned
+                  ? `Copie o plano de ${lower(previous)} ou defina quanto pretende gastar por categoria.`
+                  : "Defina quanto pretende gastar por categoria. O realizado vem dos lançamentos por competência: compras no cartão contam no mês em que aconteceram."
+            }
+            actions={
+              <>
+                {suggestion.size ? (
+                  <EditButton variant="primary" onClick={suggestMonth}>
+                    Criar a partir dos últimos {SUGGESTION_MONTHS} meses…
                   </EditButton>
-                </>
-              }
-            />
-          </div>
+                ) : null}
+                {previousPlanned ? (
+                  <EditButton variant={suggestion.size ? "secondary" : "primary"} onClick={copyPrevious}>
+                    Copiar do mês anterior
+                  </EditButton>
+                ) : null}
+                <EditButton
+                  variant={suggestion.size || previousPlanned ? "secondary" : "primary"}
+                  onClick={defineMonth}
+                >
+                  Definir o mês…
+                </EditButton>
+              </>
+            }
+          />
         )}
       </section>
 

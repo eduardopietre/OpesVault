@@ -49,9 +49,20 @@ export interface EmptyStateProps {
   className?: string | undefined;
   /** Heading level for the title (2 inside a page, 1 when it is the whole screen). */
   level?: 1 | 2 | 3;
+  /** In a dashed frame: the place of a table or a chart that has nothing yet. */
+  framed?: boolean;
 }
 
-export function EmptyState({ title, description, icon, actions, className, level = 2 }: EmptyStateProps) {
+export function EmptyState({ framed = false, ...props }: EmptyStateProps) {
+  if (!framed) return <EmptyContent {...props} />;
+  return (
+    <div className="rounded-xl border border-dashed border-separator-strong bg-window/40">
+      <EmptyContent {...props} />
+    </div>
+  );
+}
+
+function EmptyContent({ title, description, icon, actions, className, level = 2 }: Omit<EmptyStateProps, "framed">) {
   const preset = useMotionPreset();
   const Heading = `h${level}` as "h1" | "h2" | "h3";
   return (

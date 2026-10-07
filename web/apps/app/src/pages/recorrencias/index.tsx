@@ -300,14 +300,13 @@ export function Page() {
       <PageHeader title="Recorrências" context={summaryLine(rules, late)} primary={newButton(true)} />
 
       {nothing ? (
-        <div className="rounded-xl border border-dashed border-separator-strong bg-window/40">
-          <EmptyState
-            icon={<Repeat />}
-            title="Nenhuma recorrência"
-            description="Cadastre contas fixas e receitas esperadas (aluguel, salário, escola). O aplicativo prevê cada vencimento, avisa quando atrasa e liga a previsão ao lançamento quando ele acontece. Previsões nunca alteram saldos."
-            actions={newButton(false)}
-          />
-        </div>
+        <EmptyState
+          framed
+          icon={<Repeat />}
+          title="Nenhuma recorrência"
+          description="Cadastre contas fixas e receitas esperadas (aluguel, salário, escola). O aplicativo prevê cada vencimento, avisa quando atrasa e liga a previsão ao lançamento quando ele acontece. Previsões nunca alteram saldos."
+          actions={newButton(false)}
+        />
       ) : (
         <>
           <Adaptive at={1300} columns="1fr 1fr" gap={32}>

@@ -271,20 +271,19 @@ export function Page() {
       {header}
 
       {rows.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-separator-strong bg-window/40">
-          <EmptyState
-            title="Nenhum investimento"
-            description="Cadastre uma conta de investimento no banco onde ela fica, com as características (tipo, rentabilidade, vencimento). Depois, acompanhe aqui avaliações, aportes, resgates e rentabilidade."
-            actions={
-              <>
-                <EditButton variant="primary" onClick={() => goTo("contas", { ref: "bancarias", act: "investimento" })}>
-                  Cadastrar conta de investimento…
-                </EditButton>
-                <EditButton onClick={() => dialog.show({ kind: "position" })}>Novo investimento…</EditButton>
-              </>
-            }
-          />
-        </div>
+        <EmptyState
+          framed
+          title="Nenhum investimento"
+          description="Cadastre uma conta de investimento no banco onde ela fica, com as características (tipo, rentabilidade, vencimento). Depois, acompanhe aqui avaliações, aportes, resgates e rentabilidade."
+          actions={
+            <>
+              <EditButton variant="primary" onClick={() => goTo("contas", { ref: "bancarias", act: "investimento" })}>
+                Cadastrar conta de investimento…
+              </EditButton>
+              <EditButton onClick={() => dialog.show({ kind: "position" })}>Novo investimento…</EditButton>
+            </>
+          }
+        />
       ) : (
         <>
           <section aria-label="Carteira" className="flex min-w-0 flex-col gap-2">

@@ -8,26 +8,25 @@ export function PlaceholderPage({ page }: { page: PageDef }) {
   return (
     <div className="flex flex-col gap-8">
       <PageHeader title={page.title} context="Ainda não disponível na versão web" />
-      <div className="rounded-xl border border-dashed border-separator-strong bg-window/40">
-        <EmptyState
-          icon={page.icon}
-          title={`${page.title} chega numa próxima etapa`}
-          description={
-            <>
-              <p>{page.about}</p>
-              <p className="mt-2">
-                Enquanto isso, a tela ocupa o seu lugar na navegação, com atalho e ajuda (F1). Etapa prevista:{" "}
-                {page.phase}.
-              </p>
-            </>
-          }
-          actions={
-            page.id === "visao-geral" ? null : (
-              <Button onClick={() => void navigate({ to: "/visao-geral" })}>Voltar à Visão geral</Button>
-            )
-          }
-        />
-      </div>
+      <EmptyState
+        framed
+        icon={page.icon}
+        title={`${page.title} chega numa próxima etapa`}
+        description={
+          <>
+            <p>{page.about}</p>
+            <p className="mt-2">
+              Enquanto isso, a tela ocupa o seu lugar na navegação, com atalho e ajuda (F1). Etapa prevista:{" "}
+              {page.phase}.
+            </p>
+          </>
+        }
+        actions={
+          page.id === "visao-geral" ? null : (
+            <Button onClick={() => void navigate({ to: "/visao-geral" })}>Voltar à Visão geral</Button>
+          )
+        }
+      />
     </div>
   );
 }

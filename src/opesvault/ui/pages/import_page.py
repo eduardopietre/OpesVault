@@ -78,6 +78,45 @@ def source_label(source: str) -> str:
     return SOURCE_LABELS.get(source, f"sugestão ({source})")
 
 
+def reconciliation_check(batch: ImportBatch) -> str:
+    """One word for the document's totals: "ok", "divergente", "não comparável" or "—" (none)."""
+    if not batch.reconciliations:
+        return "—"
+    if all(r.ok for r in batch.reconciliations):
+        return "ok"
+    return "divergente" if any(r.ok is False for r in batch.reconciliations) else "não comparável"
+
+
+def item_notes(item: ExtractedItem) -> list[str]:
+    """What the Observações column says about an extracted item, in reading order."""
+    notes = [*item.warnings]
+    if item.installment:
+        notes.append(f"parcela {item.installment[0]}/{item.installment[1]}")
+    if item.foreign_amount is not None:
+        notes.append(f"{item.foreign_currency} {item.foreign_amount}")
+    if item.card_last4:
+        notes.append(f"cartão final {item.card_last4}")
+    if item.suggestion_source:
+        notes.append(source_label(item.suggestion_source))
+    if item.status is ItemStatus.DUPLICATE:
+        notes.append("já existe no livro: aprovar só vincula a evidência")
+    return notes
+
+
+Options = list[tuple[str, UUID]]
+
+
+def target_options(kind: ItemKind, expense: Options, income: Options, balance: Options) -> Options | None:
+    """Choices for an item's category/counterpart selector; None when the item has none (trades, fees)."""
+    if kind in (ItemKind.TRADE, ItemKind.FEE):
+        return None
+    return {
+        ItemKind.CREDIT: income + balance,
+        ItemKind.DEBIT: expense + balance,
+        ItemKind.CARD_PAYMENT: balance,
+    }.get(kind, expense)
+
+
 class _ImportSignals(QObject):
     done = Signal(object)
 
@@ -299,13 +338,7 @@ class ImportPage(Page):
         for batch in sorted(pipeline.batches(ledger).values(), key=lambda b: b.created_at, reverse=True):
             name = self.session.document(batch.document_id).meta.original_name
             batch_items = pipeline.items_of(ledger, batch.id)
-            check = "—"
-            if batch.reconciliations:
-                check = (
-                    "ok"
-                    if all(r.ok for r in batch.reconciliations)
-                    else ("divergente" if any(r.ok is False for r in batch.reconciliations) else "não comparável")
-                )
+            check = reconciliation_check(batch)
             rows.append(
                 (
                     [
@@ -473,17 +506,7 @@ class ImportPage(Page):
         rows = []
         batch_items = sorted(pipeline.items_of(ledger, batch.id), key=lambda i: (i.occurred_on is None, i.occurred_on))
         for item in batch_items:
-            notes = [*item.warnings]
-            if item.installment:
-                notes.append(f"parcela {item.installment[0]}/{item.installment[1]}")
-            if item.foreign_amount is not None:
-                notes.append(f"{item.foreign_currency} {item.foreign_amount}")
-            if item.card_last4:
-                notes.append(f"cartão final {item.card_last4}")
-            if item.suggestion_source:
-                notes.append(source_label(item.suggestion_source))
-            if item.status is ItemStatus.DUPLICATE:
-                notes.append("já existe no livro: aprovar só vincula a evidência")
+            notes = item_notes(item)
             target = ledger.accounts.get(item.target_account_id) if item.target_account_id else None
             target_name = target.name if target else "—"
             rows.append(
@@ -520,13 +543,9 @@ class ImportPage(Page):
             item = by_id.get(cell.data(Qt.ItemDataRole.UserRole)) if cell else None
             if item is None or item.status not in (ItemStatus.READY, ItemStatus.NEEDS_REVIEW):
                 continue
-            if item.kind in (ItemKind.TRADE, ItemKind.FEE):
+            options = target_options(item.kind, expense, income, balance)
+            if options is None:
                 continue
-            options = {
-                ItemKind.CREDIT: income + balance,
-                ItemKind.DEBIT: expense + balance,
-                ItemKind.CARD_PAYMENT: balance,
-            }.get(item.kind, expense)
             combo = QComboBox()
             combo.setAccessibleName(f"Categoria ou conta de {item.description}")
             fill_combo(combo, options, empty="(padrão)")

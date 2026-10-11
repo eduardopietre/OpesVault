@@ -193,9 +193,12 @@ class DocumentsPage(Page):
                 state = STATUS_LABELS.get(batch.status, "—")
             rows.append(([d.meta.original_name, when, where, state], d.meta.id))
         set_rows(self.table, rows)
-        for row, d in enumerate(self.session.documents):
+        # The table is sortable: rows are matched by document id, not by position.
+        by_id = {d.meta.id: d for d in self.session.documents}
+        for row in range(self.table.rowCount()):
             item = self.table.item(row, 0)
-            if item is not None:
+            d = by_id.get(item.data(Qt.ItemDataRole.UserRole)) if item is not None else None
+            if item is not None and d is not None:
                 item.setToolTip(f"{file_size(d.meta.size)} · SHA-256 {d.meta.sha256}")
         documents = self.session.documents
         self.views.setCurrentIndex(0 if documents else 1)
@@ -216,4 +219,5 @@ class DocumentsPage(Page):
         if document.meta.original_name.lower().endswith(".pdf"):
             self.viewer.show_pdf(document.data)
         else:
+            self.viewer.show_pdf(None)  # drop the previous PDF, or turning the page would draw it again
             self.viewer.image.setText("Arquivo estruturado (CSV/OFX): sem visualização de página.")

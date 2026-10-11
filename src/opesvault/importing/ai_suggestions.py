@@ -225,13 +225,14 @@ def suggest_with_ai(ledger: Ledger, batch_id: UUID, client: OllamaClient | None 
 
 # ── models used in this session, released when the vault closes ──
 
-_used: set[str] = set()
+# (model, server) pairs: the unload goes to the server that actually answered, never a default one.
+_used: set[tuple[str, str]] = set()
 _used_lock = threading.Lock()
 
 
 def remember_used(client: OllamaClient) -> None:
     with _used_lock:
-        _used.add(client.model)
+        _used.add((client.model, client.base_url))
 
 
 def release_models(*, wait: bool = False) -> None:
@@ -243,8 +244,8 @@ def release_models(*, wait: bool = False) -> None:
         return
 
     def unload() -> None:
-        for model in models:
-            OllamaClient(model).unload()
+        for model, base_url in models:
+            OllamaClient(model, base_url).unload()
 
     worker = threading.Thread(target=unload, name="ollama-unload", daemon=True)
     worker.start()

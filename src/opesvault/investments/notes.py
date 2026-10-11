@@ -27,12 +27,13 @@ def guess_class(spec: str, ticker: str | None) -> AssetClass:
 def position_for(ledger: Ledger, ticker: str | None, description: str, opened_on, holder=None) -> Position:  # type: ignore[no-untyped-def]
     from opesvault.investments.service import create_position
 
-    key = ticker or description.split(" ", 1)[1]
+    # "Compra PETROBRAS PN" → "PETROBRAS PN"; a description without the verb is the spec itself.
+    spec = description.split(" ", 1)[1] if " " in description else description
+    key = ticker or spec
     for pos in positions(ledger).values():
         asset = assets(ledger)[pos.asset_id]
         if pos.mode is TrackingMode.QUANTITY and not pos.closed and (asset.ticker or asset.name) == key:
             return pos
-    spec = description.split(" ", 1)[1] if " " in description else description
     return create_position(
         ledger,
         ticker or spec,

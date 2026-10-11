@@ -35,6 +35,7 @@ from opesvault.domain.model import AccountSubtype, AccountType, Operation, Opera
 from opesvault.domain.money import ZERO
 from opesvault.domain.search import OperationFilter, StatusFilter, find_operations
 from opesvault.ui.common import (
+    combo_enum,
     combo_value,
     fill_combo,
     fmt,
@@ -114,6 +115,16 @@ def operation_total(op: Operation):  # type: ignore[no-untyped-def]
 
 def operation_amount(op: Operation) -> str:
     return fmt(operation_total(op))
+
+
+def history_text(ledger: Ledger, operation_id: UUID) -> str:
+    """Every version of an operation, one line each: when, version, action, who and why."""
+    lines = [
+        f"{h.at:%d/%m/%Y %H:%M} · v{h.version} · {h.action.value} · {h.operator or 'operador não informado'}"
+        + (f" · motivo: {h.reason}" if h.reason else "")
+        for h in ledger.history_of(operation_id)
+    ]
+    return "\n".join(lines) or "Sem histórico."
 
 
 def operation_accounts(ledger: Ledger, op: Operation) -> str:
@@ -514,14 +525,19 @@ class LedgerPage(Page):
             start, end = self._month.first_day(), self._month.last_day()
         else:
             start, end = period_range(key, date.today())
+        # Qt hands enum data back as plain text, and the filter compares enums by identity.
+        status, origin = (
+            combo_enum(self.filter_status, StatusFilter, StatusFilter.ALL),
+            combo_enum(self.filter_origin, OriginKind),
+        )
         return OperationFilter(
             start=start,
             end=end,
             account_id=self.filter_account.currentData(),
             member_id=self.filter_member.currentData(),
             text=self.filter_text.text(),
-            status=self.filter_status.currentData() or StatusFilter.ALL,
-            origin=self.filter_origin.currentData(),
+            status=status,
+            origin=origin,
         )
 
     def filters_active(self) -> bool:
@@ -641,7 +657,11 @@ class LedgerPage(Page):
             self.table.selectRow(index.row())
         menu = QMenu(self)
         fill_menu(menu, self._row_commands)
-        menu.exec(self.table.viewport().mapToGlobal(position))
+        self._popup(menu, self.table.viewport().mapToGlobal(position))
+
+    def _popup(self, menu: QMenu, at: QPoint) -> None:
+        """Shows a menu modally; the one place tests replace to read the menu instead."""
+        menu.exec(at)
 
     # ── actions ─────────────────────────────────────
 
@@ -731,9 +751,4 @@ class LedgerPage(Page):
         op = self._selected()
         if op is None or self.session is None:
             return
-        lines = [
-            f"{h.at:%d/%m/%Y %H:%M} · v{h.version} · {h.action.value} · {h.operator or 'operador não informado'}"
-            + (f" · motivo: {h.reason}" if h.reason else "")
-            for h in self.session.ledger.history_of(op.id)
-        ]
-        QMessageBox.information(self, "Histórico", "\n".join(lines) or "Sem histórico.")
+        QMessageBox.information(self, "Histórico", history_text(self.session.ledger, op.id))

@@ -2,6 +2,7 @@
 
 import json
 import threading
+import time
 from collections.abc import Iterator
 from contextlib import contextmanager
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -13,6 +14,9 @@ class FakeOllama(BaseHTTPRequestHandler):
     received: list[dict] = []  # noqa: RUF012 - test double
     reject_think = False
     missing_model = False
+    chat_status: int | None = None  # answer chats with this HTTP error instead
+    chat_body: bytes | None = None  # raw body sent back to chats (malformed answers)
+    get_delay = 0.0  # seconds before answering GETs (slow server)
 
     def _send(self, code: int, payload: dict) -> None:
         data = json.dumps(payload).encode()
@@ -22,6 +26,8 @@ class FakeOllama(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def do_GET(self) -> None:
+        if FakeOllama.get_delay:
+            time.sleep(FakeOllama.get_delay)
         if self.path == "/api/version":
             self._send(200, {"version": "0.35.1"})
         else:
@@ -37,6 +43,13 @@ class FakeOllama(BaseHTTPRequestHandler):
             self._send(200, {"model": body["model"], "done": True})
         elif FakeOllama.reject_think and "think" in body:
             self._send(400, {"error": f"{body['model']} does not support thinking"})
+        elif FakeOllama.chat_status is not None:
+            self._send(FakeOllama.chat_status, {"error": "internal failure"})
+        elif FakeOllama.chat_body is not None:
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(FakeOllama.chat_body)
         else:
             content = FakeOllama.answers.pop(0) if FakeOllama.answers else FakeOllama.answer
             self._send(200, {"message": {"role": "assistant", "content": content}})
@@ -55,6 +68,9 @@ def serve() -> Iterator[str]:
     FakeOllama.answers = []
     FakeOllama.reject_think = False
     FakeOllama.missing_model = False
+    FakeOllama.chat_status = None
+    FakeOllama.chat_body = None
+    FakeOllama.get_delay = 0.0
     try:
         yield f"http://127.0.0.1:{server.server_port}"
     finally:

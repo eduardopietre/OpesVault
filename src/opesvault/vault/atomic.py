@@ -46,16 +46,20 @@ def _replace_windows(src: Path, dst: Path) -> None:
         raise ctypes.WinError(ctypes.get_last_error())
 
 
+def _replace_once(src: Path, dst: Path) -> None:
+    if sys.platform == "win32":
+        _replace_windows(src, dst)
+    else:
+        os.replace(src, dst)
+
+
 def replace_durably(candidate: Path, target: Path) -> None:
     """Atomically move `candidate` over `target`; the old target stays valid on failure."""
     fsync_file(candidate)
     last_error: OSError | None = None
     for attempt in range(_REPLACE_ATTEMPTS):
         try:
-            if sys.platform == "win32":
-                _replace_windows(candidate, target)
-            else:
-                os.replace(candidate, target)
+            _replace_once(candidate, target)
             break
         except PermissionError as exc:
             last_error = exc

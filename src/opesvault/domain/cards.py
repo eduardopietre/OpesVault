@@ -98,6 +98,7 @@ def record_installment_purchase(
     policy: CompetencePolicy = CompetencePolicy.PURCHASE,
     **extra: Any,
 ) -> InstallmentPlan:
+    policy = CompetencePolicy(policy)  # plain strings from the UI must take the right branch
     card = ledger.cards.get(card_id)
     if card is None:
         raise DomainError("Cartão inexistente.")

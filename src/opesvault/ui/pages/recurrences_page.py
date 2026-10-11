@@ -60,6 +60,16 @@ FORECAST_LABELS = {
 FREQUENCY_LABELS = {Frequency.MONTHLY: "Mensal", Frequency.YEARLY: "Anual", Frequency.WEEKLY: "Semanal"}
 
 
+def distinct_labels(labels: list[str]) -> list[str]:
+    """Numbers repeated labels ("… (2)") so a choice picked by its text maps back to one entry."""
+    seen: dict[str, int] = {}
+    result = []
+    for label in labels:
+        seen[label] = seen.get(label, 0) + 1
+        result.append(label if seen[label] == 1 else f"{label} ({seen[label]})")
+    return result
+
+
 class RuleDialog(FormDialog):
     def __init__(self, parent, ledger: Ledger) -> None:  # type: ignore[no-untyped-def]
         super().__init__(parent, "Nova recorrência", "Criar recorrência")
@@ -256,9 +266,12 @@ class RecurrencesPage(Page):
         )
         if not confirm(self, f"Vincular {len(pairs)} previsão(ões) aos lançamentos?", summary, "Vincular"):
             return
-        for forecast, op in pairs:
+        linked = [
             run_guarded(self, lambda f=forecast, o=op: realize(ledger, f.rule_id, f.due_on, o.id))
-        self.changed()
+            for forecast, op in pairs
+        ]
+        if any(linked):
+            self.changed()
 
     def reveal(self, ref: object, *, act: bool = False) -> None:
         """A forecast alert: select that forecast and, when it is late, open Vincular."""
@@ -285,7 +298,7 @@ class RecurrencesPage(Page):
         if not found:
             QMessageBox.information(self, "Recorrências", "Nenhum lançamento compatível (conta, valor e data).")
             return
-        labels = [f"{fmt_date(o.cash_date)} {o.description}" for o in found]
+        labels = distinct_labels([f"{fmt_date(o.cash_date)} {o.description}" for o in found])
         choice, ok = QInputDialog.getItem(self, "Vincular", "Lançamento realizado:", labels, 0, False)
         if ok:
             op = found[labels.index(choice)]

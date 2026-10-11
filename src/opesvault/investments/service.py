@@ -123,6 +123,8 @@ def create_position(
     - `reference_value` without cost: only market value is known (docs/06 §8 F); gain since
       acquisition and tax base stay unknown.
     """
+    # Callers such as Qt combos may hand plain strings; `is` comparisons below need members.
+    asset_class, mode, reference_nature = AssetClass(asset_class), TrackingMode(mode), ValueNature(reference_nature)
     if mode is TrackingMode.QUANTITY:
         if initial_cost is not None and to_decimal(initial_cost) != 0:
             raise DomainError("Posições por quantidade começam vazias: registre compras ou uma posição inicial.")
@@ -193,6 +195,7 @@ def add_valuation(
     note: str | None = None,
 ) -> Valuation:
     """A new date adds a point; another source on the same date is kept apart (never averaged)."""
+    nature = ValueNature(nature)
     position(ledger, position_id)
     amount = to_decimal(value)
     if amount < 0:
@@ -224,7 +227,7 @@ def correct_valuation(
         raise DomainError("Correções exigem motivo.")
     update: dict[str, object] = {"value": to_decimal(value)}
     if nature is not None:
-        update["nature"] = nature
+        update["nature"] = ValueNature(nature)  # model_copy does not validate
     return ledger.put("valuation", current.model_copy(update=update), reason=reason)
 
 
@@ -395,7 +398,8 @@ def redeem(
         Operation(
             kind=OperationKind.INVESTMENT_WITHDRAWAL,
             description=f"Resgate — {assets(ledger)[pos.asset_id].name}",
-            postings=tuple(postings),
+            # A zero attributed cost (or a net fully taken by taxes and fees) leaves no posting there.
+            postings=tuple(p for p in postings if p.amount != 0),
             occurred_on=on,
             settled_on=on,
         )
@@ -412,8 +416,10 @@ def redeem(
                 occurred_on=on,
             )
         )
+    # Measured before posting: afterwards the remaining cost of a total redemption is already zero.
+    takes_everything = cost == remaining_cost(ledger, position_id)
     created = [ledger.add_operation(op) for op in operations]
-    if final and cost == remaining_cost(ledger, position_id) and pos.mode is TrackingMode.VALUE:
+    if final and takes_everything and pos.mode is TrackingMode.VALUE:
         ledger.put("position", pos.model_copy(update={"closed": True}), reason="resgate total")
     event = InvestmentEvent(
         position_id=position_id,
@@ -517,6 +523,8 @@ def pay_tax(
     """Cash leaves only when the tax is paid (TA-28)."""
     _require_cash(ledger, from_account)
     value = to_decimal(amount)
+    if value <= 0:
+        raise DomainError("Valor do pagamento de imposto inválido.")
     return ledger.add_operation(
         Operation(
             kind=OperationKind.TAX_PAYMENT,

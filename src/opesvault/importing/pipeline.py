@@ -422,7 +422,7 @@ def _find_duplicates(ledger: Ledger, batch: ImportBatch) -> None:
     seen: Counter[tuple[object, ...]] = Counter()
     claimed: set[UUID] = set()
     for item in sorted(items_of(ledger, batch.id), key=lambda i: i.id.int):
-        if item.status in (ItemStatus.APPROVED, ItemStatus.REJECTED):
+        if item.status in (ItemStatus.APPROVED, ItemStatus.REJECTED) or _kept_separate(item):
             continue
         duplicate: UUID | None = None
         plan_match = None
@@ -587,14 +587,32 @@ def correct_item(ledger: Ledger, item_id: UUID, field: str, value: object, reaso
     return items(ledger)[updated.id]
 
 
+# A correction of this field records "keep separate", so later duplicate detection respects it.
+KEPT_SEPARATE = "duplicate_of"
+
+
+def _kept_separate(item: ExtractedItem) -> bool:
+    return any(c.field == KEPT_SEPARATE for c in item.corrections)
+
+
 def keep_separate(ledger: Ledger, item_id: UUID, reason: str) -> None:
-    """User decides a suspected duplicate is a distinct fact."""
+    """User decides a suspected duplicate is a distinct fact; the decision survives every refresh."""
     item = items(ledger)[item_id]
     if item.status is not ItemStatus.DUPLICATE:
         return
+    decision = Correction(
+        field=KEPT_SEPARATE,
+        before=None if item.duplicate_of is None else str(item.duplicate_of),
+        after=None,
+        operator=ledger.operator,
+        reason=reason,
+        at=_now(),
+    )
     ledger.put(
         "extracted_item",
-        item.model_copy(update={"status": ItemStatus.READY, "duplicate_of": None}),
+        item.model_copy(
+            update={"status": ItemStatus.READY, "duplicate_of": None, "corrections": (*item.corrections, decision)}
+        ),
         reason=reason,
     )
     batch = batches(ledger)[item.batch_id]
@@ -665,14 +683,24 @@ def approve(
         from opesvault.investments.notes import approve_note
 
         return approve_note(ledger, batch, selected)
-    result = ApprovalResult()
+    # Every operation is built and validated before the first one is written, so an item that
+    # cannot become an operation stops the whole approval instead of leaving half of it done.
+    planned: dict[UUID, Operation] = {}
     for item in selected:
         if item.status is ItemStatus.DUPLICATE and item.duplicate_of is not None:
+            continue
+        op = _operation_for(ledger, batch, item)
+        ledger.validate_operation(op)
+        ledger._guard_new(op)  # the same checks add_operation runs (closed months…), without writing
+        planned[item.id] = op
+    result = ApprovalResult()
+    for item in selected:
+        if item.id not in planned:
+            assert item.duplicate_of is not None
             _link_evidence(ledger, item.duplicate_of, item)
             result.linked += 1
             continue
-        op = _operation_for(ledger, batch, item)
-        created = ledger.add_operation(op)
+        created = ledger.add_operation(planned[item.id])
         ledger.put(
             "extracted_item",
             item.model_copy(update={"status": ItemStatus.APPROVED, "operation_id": created.id}),

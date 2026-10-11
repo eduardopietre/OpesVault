@@ -65,14 +65,12 @@ def card_alerts(ledger: Ledger, today: date, horizon: int = HORIZON_DAYS) -> lis
         for bill in bills(ledger, card.id, months):
             due = bill.cycle.due
             if bill.total <= 0 or bill.remaining <= 0:
-                continue
+                continue  # nothing owed (a bill with something left to pay is never PAID)
             if not (today - timedelta(days=LOOKBACK_DAYS) <= due <= today + timedelta(days=horizon)):
                 continue
             state = bill.status(today)
             if state in (BillStatus.OVERDUE, BillStatus.PARTIAL) and due < today:
                 severity, verb = Severity.URGENT, "Fatura vencida"
-            elif state is BillStatus.PAID:
-                continue
             else:
                 severity, verb = Severity.SOON, "Fatura a vencer"
             out.append(

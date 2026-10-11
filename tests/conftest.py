@@ -30,6 +30,22 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
             item.add_marker(skip)
 
 
+@pytest.fixture(autouse=True)
+def _preferences_in_tmp(tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Computer preferences (QSettings: the registry on Windows) never touch the real user profile.
+
+    Tests that inspect the file use their own fixture (e.g. `settings_file` in test_flows.py).
+    """
+    try:
+        from PySide6.QtCore import QSettings
+
+        from opesvault.ui import common
+    except ImportError:  # domain-only environment without Qt
+        return
+    path = tmp_path_factory.mktemp("prefs") / "prefs.ini"
+    monkeypatch.setattr(common, "app_settings", lambda: QSettings(str(path), QSettings.Format.IniFormat))
+
+
 @pytest.fixture
 def ollama() -> Iterator[str]:
     """URL of a fake local Ollama (tests/fake_ollama.py)."""

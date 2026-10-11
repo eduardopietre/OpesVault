@@ -19,6 +19,7 @@ As **fases 0 a 6** estão implementadas e testadas (`docs/13`). Das fases 7 a 10
 ```
 uv sync                                  # dependências (uv sync --group build para o Nuitka)
 uv run pytest -q                         # testes; os marcados "windows" são pulados fora do Windows
+uv run pytest -q --cov                   # cobertura por ramo, inclusive o worker do cofre (subprocesso)
 uv run ruff format . && uv run ruff check . && uv run pyright
 uv run python -m opesvault               # o aplicativo
 uv run python -m opesvault --self-test relatorio.json   # autoteste (G1 em modo Python)
@@ -95,7 +96,7 @@ Se dois documentos entrarem em conflito, vale o `docs/00` §2. Conflitos de segu
 - **Fluxos entre telas:** use `Page.navigate(alvo, ref, act=...)`, que leva ao objeto, e implemente `Page.reveal` na página de destino. O mês compartilhado passa por `Page.month_chosen` e `follow_month`. Edições que uma página acumula (um campo sendo digitado) entram na sessão por `Page.flush`, chamado antes de salvar ou fechar. Configuração do cofre vale na hora e é gravada pelo Salvar; preferência do computador grava na hora em `QSettings`.
 - **Qt e enums:** `QComboBox.currentData()` devolve um `StrEnum` como `str` simples, e `model_copy` não revalida. Converta (`MemberRole(...)`) antes de copiar uma entidade.
 - **Tabelas:** `resizeColumnsToContents` desfaz o esticamento de colunas. O `common.set_rows` reaplica esse esticamento; quem redimensionar fora dele precisa reaplicar também.
-- **Testes de UI e o registro do Windows:** `MainWindow.app_settings()` usa `QSettings`, que no Windows grava no registro do usuário. Testes que mexem em preferências devem redirecionar para um arquivo temporário, como no fixture `settings_file` de `tests/test_flows.py`.
+- **Testes de UI e o registro do Windows:** toda preferência do computador passa por `ui/common.app_settings()` (`QSettings`, que no Windows grava no registro do usuário). O fixture automático `_preferences_in_tmp` do `tests/conftest.py` a redireciona para um arquivo temporário; não crie `QSettings` em outro lugar. `QComboBox` devolve `StrEnum` como `str`: use `common.combo_enum`.
 - **Exceções:** mensagens de `DomainError` são para o usuário e podem citar dados; por isso o registro técnico (`diagnostics.record`) guarda só código, tipo e local. Nunca registre `str(exc)`.
 
 ## Dados de teste

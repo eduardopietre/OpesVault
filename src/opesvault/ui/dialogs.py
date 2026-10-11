@@ -24,6 +24,7 @@ from opesvault.domain.ledger import DomainError, Ledger
 from opesvault.domain.model import AccountSubtype, AccountType, Card, LedgerAccount, Member, MemberRole, YearMonth
 from opesvault.ui.common import (
     CompetenceCombo,
+    combo_enum,
     combo_value,
     date_edit,
     fill_combo,
@@ -166,6 +167,9 @@ class AccountDialog(FormDialog):
             self.form.addRow("Saldo de abertura:", self.opening)
             self.form.addRow("Data do saldo:", self.opening_date)
         else:
+            if all(self.subtype.itemData(i) != account.subtype for i in range(self.subtype.count())):
+                # A card's liability account is listed with the others: show its kind as it is.
+                self.subtype.addItem(SUBTYPE_LABELS.get(account.subtype, account.subtype.value), account.subtype)
             select_combo(self.subtype, account.subtype)
             self.subtype.setEnabled(False)
 
@@ -178,12 +182,8 @@ class AccountDialog(FormDialog):
         return tuple(out)
 
     def build(self) -> LedgerAccount:
-        subtype: AccountSubtype = combo_value(self.subtype)
-        kind = AccountType.ASSET if subtype in ASSET_SUBTYPES else AccountType.LIABILITY
-        fields = {
+        fields: dict[str, Any] = {
             "name": self.name.text().strip(),
-            "type": kind,
-            "subtype": subtype,
             "institution": self.institution.text().strip() or None,
             "masked_number": self.masked.text().strip() or None,
             "holders": self.selected_holders(),
@@ -191,8 +191,12 @@ class AccountDialog(FormDialog):
         if not fields["name"]:
             raise DomainError("Informe o nome da conta.")
         if self.original is not None:
+            # Editing never changes what the account is (its type and subtype stay).
             return self.original.model_copy(update=fields)
-        return LedgerAccount(**fields)  # type: ignore[arg-type]
+        # Qt hands enum data back as plain text: convert before building the entity.
+        subtype = combo_enum(self.subtype, AccountSubtype, AccountSubtype.CHECKING)
+        kind = AccountType.ASSET if subtype in ASSET_SUBTYPES else AccountType.LIABILITY
+        return LedgerAccount(type=kind, subtype=subtype, **fields)
 
     def opening_balance(self) -> tuple[Decimal, date] | None:
         value = read_money(self.opening, allow_empty=True)
@@ -281,7 +285,9 @@ class CategoryDialog(FormDialog):
         self._reload_parents()
 
     def _reload_parents(self) -> None:
-        fill_combo(self.parent_cat, category_items(self.ledger, combo_value(self.kind)), empty="(nenhuma)")
+        # Qt hands enum data back as plain text; `categories` compares the type by identity.
+        kind = combo_enum(self.kind, AccountType, AccountType.EXPENSE)
+        fill_combo(self.parent_cat, category_items(self.ledger, kind), empty="(nenhuma)")
 
     def validate(self) -> None:
         if not self.name.text().strip():
@@ -290,7 +296,7 @@ class CategoryDialog(FormDialog):
     def build(self) -> LedgerAccount:
         return LedgerAccount(
             name=self.name.text().strip(),
-            type=combo_value(self.kind),
+            type=combo_enum(self.kind, AccountType, AccountType.EXPENSE),
             subtype=AccountSubtype.CATEGORY,
             parent_id=combo_value(self.parent_cat),
         )
@@ -402,7 +408,7 @@ class OperationDialog(FormDialog):
                     on,
                     description,
                     self.installments.value(),
-                    CompetencePolicy(combo_value(self.policy)),
+                    combo_enum(self.policy, CompetencePolicy, CompetencePolicy.PURCHASE),
                     **extra,
                 )
             else:

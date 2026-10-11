@@ -51,7 +51,8 @@ def selected_series(ledger: Ledger, position_id: UUID, nature: ValueNature | Non
     """Observed points actually used (one per date); natures are never mixed silently."""
     out = [v for v in valuations_of(ledger, position_id) if v.selected]
     if nature is not None:
-        out = [v for v in out if v.nature is nature]
+        wanted = ValueNature(nature)
+        out = [v for v in out if v.nature is wanted]
     return out
 
 

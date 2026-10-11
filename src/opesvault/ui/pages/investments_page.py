@@ -1,7 +1,7 @@
 """Investimentos: positions, valuations, flows, redemptions and the simulator (docs/07 §2-3, §6)."""
 
 from datetime import date
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import Any
 from uuid import UUID
 
@@ -64,6 +64,50 @@ EVENT_LABELS = {
 }
 
 
+def percent_label(value: Decimal | None) -> str:
+    """A rate as the user reads it ('12,34%'); a missing figure says so instead of showing zero."""
+    return "indisponível" if value is None else f"{format_decimal_br(value * 100, 2)}%"
+
+
+def parse_quantity(text: str) -> Decimal:
+    """A quantity typed in the Brazilian format ('1.234,5'); anything else is a DomainError."""
+    try:
+        return Decimal(text.strip().replace(".", "").replace(",", "."))
+    except InvalidOperation:
+        raise DomainError("Quantidade inválida.") from None
+
+
+def parse_rate(text: str) -> Decimal | None:
+    """A percentage typed as '15' or '22,5' becomes 0.15 / 0.225; empty means no rate."""
+    text = text.strip()
+    if not text:
+        return None
+    try:
+        return Decimal(text.replace(",", ".")) / 100
+    except InvalidOperation:
+        raise DomainError("Alíquota inválida.") from None
+
+
+def simulation_summary(sim: Any) -> str:
+    """The redemption simulator's result, line by line, stating that nothing was recorded."""
+    return "\n".join(
+        [
+            "SIMULAÇÃO — não registra operação",
+            f"Valor bruto: {fmt(sim.gross)}",
+            f"Custo atribuído: {fmt(sim.cost_attributed)} ({sim.cost_method})",
+            f"Ganho: {fmt(sim.gain)}",
+            f"Base do imposto: {fmt(sim.tax_base)}",
+            f"Regra: {sim.rule}",
+            f"Imposto (estimado): {fmt(sim.tax)}",
+            f"Taxas: {fmt(sim.fees)}",
+            f"Líquido estimado: {fmt(sim.net)}",
+            f"Retorno bruto: {percent_label(sim.gross_return)} · líquido: {percent_label(sim.net_return)} "
+            "(sem anualização)",
+            "Campos estimados: " + ", ".join(sim.estimated_fields),
+        ]
+    )
+
+
 def cash_accounts(ledger: Ledger) -> list[tuple[str, UUID]]:
     from opesvault.domain.model import AccountSubtype
 
@@ -90,6 +134,8 @@ class Form(FormDialog):
 
     def value(self, key: str) -> Any:
         widget = self.fields[key]
+        if isinstance(widget, ValueCombo):
+            return widget.value()
         if isinstance(widget, QComboBox):
             return combo_value(widget)
         if isinstance(widget, QCheckBox):
@@ -103,10 +149,25 @@ class Form(FormDialog):
             self._check(self)
 
 
-def _combo(items: list[tuple[str, Any]], empty: str | None = None) -> QComboBox:
-    combo = QComboBox()
-    fill_combo(combo, items, empty=empty)
-    return combo
+class ValueCombo(QComboBox):
+    """A combo that hands back the very object it was filled with.
+
+    Qt returns a StrEnum item as a plain `str`, and the investment services compare enums with
+    `is` (TrackingMode, CostMethod): the original value must reach them unchanged.
+    """
+
+    def __init__(self, items: list[tuple[str, Any]], empty: str | None = None) -> None:
+        super().__init__()
+        self._values: list[Any] = ([None] if empty is not None else []) + [value for _, value in items]
+        fill_combo(self, items, empty=empty)
+
+    def value(self) -> Any:
+        index = self.currentIndex()
+        return self._values[index] if 0 <= index < len(self._values) else None
+
+
+def _combo(items: list[tuple[str, Any]], empty: str | None = None) -> ValueCombo:
+    return ValueCombo(items, empty)
 
 
 class InvestmentsPage(Page):
@@ -432,12 +493,9 @@ class InvestmentsPage(Page):
         if bench_id is not None:
             results.append(benchmark_return(benchmarks(ledger)[bench_id], start, end))
 
-        def pct(value: Decimal | None) -> str:
-            return "indisponível" if value is None else f"{format_decimal_br(value * 100, 2)}%"
-
         set_rows(
             self.returns_table,
-            [([r.method, pct(r.value), r.quality.value, "; ".join(r.notes)], None) for r in results],
+            [([r.method, percent_label(r.value), r.quality.value, "; ".join(r.notes)], None) for r in results],
         )
         self.returns_chart.show_chart(returns_chart(ledger, pos_id, start, end))
 
@@ -521,7 +579,7 @@ class InvestmentsPage(Page):
                 form.money("value"),
                 form.value("nature"),
                 source=form.value("source") or "manual",
-                quantity=quantity.replace(".", "").replace(",", ".") if quantity else None,
+                quantity=parse_quantity(quantity) if quantity else None,
                 unit_price=form.money("price", optional=True) if "price" in form.fields else None,
                 note=form.value("note") or None,
             )
@@ -699,23 +757,7 @@ class InvestmentsPage(Page):
         if sim is None:
             return
 
-        def pct(value: Decimal | None) -> str:
-            return "indisponível" if value is None else f"{format_decimal_br(value * 100, 2)}%"
-
-        lines = [
-            "SIMULAÇÃO — não registra operação",
-            f"Valor bruto: {fmt(sim.gross)}",
-            f"Custo atribuído: {fmt(sim.cost_attributed)} ({sim.cost_method})",
-            f"Ganho: {fmt(sim.gain)}",
-            f"Base do imposto: {fmt(sim.tax_base)}",
-            f"Regra: {sim.rule}",
-            f"Imposto (estimado): {fmt(sim.tax)}",
-            f"Taxas: {fmt(sim.fees)}",
-            f"Líquido estimado: {fmt(sim.net)}",
-            f"Retorno bruto: {pct(sim.gross_return)} · líquido: {pct(sim.net_return)} (sem anualização)",
-            "Campos estimados: " + ", ".join(sim.estimated_fields),
-        ]
-        QMessageBox.information(self, "Simulador de resgate", "\n".join(lines))
+        QMessageBox.information(self, "Simulador de resgate", simulation_summary(sim))
 
     def pay_tax(self) -> None:
         if self.session is None:
@@ -754,8 +796,7 @@ class InvestmentsPage(Page):
         ]
 
         def apply(form: Form) -> None:
-            rate_text = form.value("rate")
-            rate = Decimal(rate_text.replace(",", ".")) / 100 if rate_text else None
+            rate = parse_rate(form.value("rate"))
             if not form.value("name"):
                 raise DomainError("Informe o nome.")
             ledger.put(
@@ -774,11 +815,7 @@ class InvestmentsPage(Page):
     # ── phase 5: quantities ─────────────────────────
 
     def _quantity(self, form: Form, key: str) -> Decimal:
-        text = form.value(key)
-        try:
-            return Decimal(text.replace(".", "").replace(",", "."))
-        except Exception:
-            raise DomainError("Quantidade inválida.") from None
+        return parse_quantity(form.value(key))
 
     def buy(self) -> None:
         pos_id = self._need_position()

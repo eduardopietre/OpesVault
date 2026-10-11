@@ -316,6 +316,7 @@ class Ledger:
             raise DomainError("Conta inexistente.") from None
 
     def categories(self, account_type: AccountType) -> list[LedgerAccount]:
+        account_type = AccountType(account_type)
         return sorted(
             (a for a in self.accounts.values() if a.type is account_type and not a.archived),
             key=lambda a: a.name,

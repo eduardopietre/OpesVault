@@ -3,9 +3,10 @@
 from collections.abc import Callable, Iterable
 from datetime import date
 from decimal import Decimal
-from typing import Any
+from enum import Enum
+from typing import Any, overload
 
-from PySide6.QtCore import QDate, Qt
+from PySide6.QtCore import QDate, QSettings, Qt
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QComboBox,
@@ -22,6 +23,15 @@ from PySide6.QtWidgets import (
 
 from opesvault.domain.ledger import DomainError
 from opesvault.domain.money import MoneyError, format_brl, parse_brl
+
+
+def app_settings() -> QSettings:
+    """Computer-level preferences, outside the vault: never financial data.
+
+    The one place that names the store (the user's registry on Windows), so every
+    preference (window, recents, idle lock, hidden columns) can be redirected at once.
+    """
+    return QSettings("OpesVault", "OpesVault")
 
 
 def to_qdate(value: date) -> QDate:
@@ -88,7 +98,22 @@ def fill_combo(combo: QComboBox, items: Iterable[tuple[str, Any]], *, empty: str
 
 
 def combo_value(combo: QComboBox) -> Any:
+    """The current item's data as Qt hands it back (a StrEnum comes back as plain `str`)."""
     return combo.currentData()
+
+
+@overload
+def combo_enum[E: Enum](combo: QComboBox, kind: type[E]) -> E | None: ...
+@overload
+def combo_enum[E: Enum](combo: QComboBox, kind: type[E], default: E) -> E: ...
+def combo_enum[E: Enum](combo: QComboBox, kind: type[E], default: E | None = None) -> E | None:
+    """The current item's data as a member of `kind` (`default` for an empty choice).
+
+    Qt returns StrEnum data as plain text, and `model_copy` or identity checks (`is`)
+    would then carry a `str` where the domain expects the enum.
+    """
+    value = combo.currentData()
+    return default if value is None else kind(value)
 
 
 def select_combo(combo: QComboBox, value: Any) -> None:
@@ -262,20 +287,19 @@ def run_guarded(parent: QWidget, action: Callable[[], Any]) -> Any:
         return action()
     except DomainError as exc:
         QMessageBox.warning(parent, "OpesVault", str(exc))
-    except ValueError:
+    except (ValueError, ArithmeticError):  # ArithmeticError: decimal.InvalidOperation and friends
         QMessageBox.warning(parent, "OpesVault", "Dados inválidos. Revise os campos.")
     return None
 
 
 def install_column_chooser(view: QTableView, settings_key: str, required: set[int] | None = None) -> None:
     """Right-click on the header shows/hides columns; the choice is remembered per computer."""
-    from PySide6.QtCore import QSettings
     from PySide6.QtWidgets import QMenu
 
     header = view.horizontalHeader()
     model = view.model()
     required = required or {0}
-    settings = QSettings("OpesVault", "OpesVault")
+    settings = app_settings()
     stored = settings.value(f"{settings_key}/colunas_ocultas", [], type=list)
     hidden = [str(c) for c in stored] if isinstance(stored, list) else []
     for column in range(model.columnCount()):

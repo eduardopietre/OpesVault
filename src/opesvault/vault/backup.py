@@ -53,9 +53,10 @@ def create_backup(vault: Path, revision: int, dest_dir: Path, when: datetime | N
         after = vault.stat()
         if (before.st_mtime_ns, before.st_size) == (after.st_mtime_ns, after.st_size):
             with partial.open("rb") as fh:
-                if fh.read(len(PLAIN_SQLITE_HEADER)) == PLAIN_SQLITE_HEADER:
-                    partial.unlink()
-                    raise VaultError(ErrorCode.VERIFY_FAILED)
+                plain = fh.read(len(PLAIN_SQLITE_HEADER)) == PLAIN_SQLITE_HEADER
+            if plain:  # unlinked after closing: Windows cannot delete a file that is still open
+                partial.unlink()
+                raise VaultError(ErrorCode.VERIFY_FAILED)
             if partial.stat().st_size != after.st_size:
                 partial.unlink()
                 continue

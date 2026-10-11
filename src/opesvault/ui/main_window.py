@@ -31,6 +31,7 @@ from PySide6.QtWidgets import (
 
 from opesvault.domain.ledger import DomainError
 from opesvault.session import FrozenSnapshot, Session
+from opesvault.ui import common
 from opesvault.ui.common import run_guarded
 from opesvault.ui.components import confirm, decide
 from opesvault.ui.idle_lock import IdleWatcher, LockPanel, lock_minutes
@@ -105,6 +106,56 @@ class _Job(QRunnable):
 BADGE_ROLE = Qt.ItemDataRole.UserRole + 1
 
 
+def badge_text(count: int) -> str:
+    """The sidebar count as drawn: four digits would crowd the row."""
+    return str(count) if count < 1000 else "999+"
+
+
+def save_state_text(dirty: bool, revision: int | None) -> str:
+    """The toolbar's save state: unsaved edits first, then the saved revision."""
+    if dirty:
+        return "Alterações não salvas"
+    return f"Salvo · revisão {revision}" if revision is not None else "Novo cofre"
+
+
+def alerts_summary(found: list[Any]) -> str:
+    """Status line after opening: how many alerts, leading with the urgent ones."""
+    from opesvault.domain.alerts import Severity
+
+    urgent = sum(1 for a in found if a.severity is Severity.URGENT)
+    lead = f"{urgent} atrasado(s) ou estourado(s) · " if urgent else ""
+    return f"{lead}{len(found)} aviso(s) em Visão geral."
+
+
+def restore_destination(backup: Path) -> Path:
+    """Suggested name for a restored vault: the original stem, never the backup's own file."""
+    return backup.with_name(backup.stem.split(".rev")[0] + "-restaurado.opesvault")
+
+
+OverBudgetKey = tuple[int, int, object]  # (year, month, category id)
+
+
+def over_budget(ledger: Any) -> tuple[set[OverBudgetKey], dict[tuple[int, int], Any]]:
+    """Every (month, category) over its plan, and the months that have a budget."""
+    from opesvault.domain import budget
+
+    months = {(line.month.year, line.month.month): line.month for line in budget.lines(ledger).values()}
+    over: set[OverBudgetKey] = set()
+    for key, month in months.items():
+        over |= {(*key, row.category_id) for row in budget.status(ledger, month).over}
+    return over, months
+
+
+def overspend_message(ledger: Any, new: set[OverBudgetKey], months: dict[tuple[int, int], Any]) -> str:
+    """Names the first newly overspent category (stable order) and counts the others."""
+    from opesvault.ui.common import month_label
+
+    year, number, category_id = sorted(new, key=str)[0]
+    account = ledger.accounts.get(category_id)
+    extra = f" e mais {len(new) - 1}" if len(new) > 1 else ""
+    return f"Orçamento estourado: {account.name if account else '?'} em {month_label(months[(year, number)])}{extra}."
+
+
 class SidebarDelegate(QStyledItemDelegate):
     """Draws an attention count at the right edge of a sidebar row."""
 
@@ -117,7 +168,7 @@ class SidebarDelegate(QStyledItemDelegate):
 
         t = tokens()
         rect = option.rect.adjusted(0, 5, -10, -5)  # type: ignore[attr-defined]
-        label = str(count) if count < 1000 else "999+"
+        label = badge_text(count)
         width = max(22, option.fontMetrics.horizontalAdvance(label) + 12)  # type: ignore[attr-defined]
         badge = rect.adjusted(rect.width() - width, 0, 0, 0)
         selected = bool(option.state & QStyle.StateFlag.State_Selected)  # type: ignore[attr-defined]
@@ -509,7 +560,7 @@ class MainWindow(QMainWindow):
     @staticmethod
     def app_settings() -> QSettings:
         """Computer-level preferences, outside the vault: never financial data."""
-        return QSettings("OpesVault", "OpesVault")
+        return common.app_settings()
 
     def _fill_recents(self) -> None:
         self.recent_menu.clear()
@@ -591,7 +642,7 @@ class MainWindow(QMainWindow):
         """Offline app, no background notifications: opening is when it says what is due."""
         if self.session is None:
             return
-        from opesvault.domain.alerts import Severity, alerts
+        from opesvault.domain.alerts import alerts
 
         found = alerts(self.session.ledger)
         if not found:
@@ -600,9 +651,7 @@ class MainWindow(QMainWindow):
         overview = next((p for p in self.pages if isinstance(p, OverviewPage)), None)
         if overview is not None:
             overview.show_alerts()
-        urgent = sum(1 for a in found if a.severity is Severity.URGENT)
-        lead = f"{urgent} atrasado(s) ou estourado(s) · " if urgent else ""
-        self.notify(f"{lead}{len(found)} aviso(s) em Visão geral.")
+        self.notify(alerts_summary(found))
 
     def _after_save(self) -> None:
         from opesvault.domain.settings import get_settings
@@ -675,7 +724,7 @@ class MainWindow(QMainWindow):
                 "Escolha onde criar o cofre restaurado (um arquivo novo; nada é sobrescrito)."
             )
             QMessageBox.information(self, "Restaurar", text)
-            suggested = str(backup.with_name(backup.stem.split(".rev")[0] + "-restaurado.opesvault"))
+            suggested = str(restore_destination(backup))
             dest, _ = QFileDialog.getSaveFileName(self, "Cofre restaurado", suggested, VAULT_FILTER)
             if not dest:
                 return
@@ -905,25 +954,14 @@ class MainWindow(QMainWindow):
         """Says so the moment an edit pushes a category over its plan (alert on overspend)."""
         if self.session is None:
             return
-        from opesvault.domain import budget
-
         ledger = self.session.ledger
         baseline = self._budget_owner is not self.session  # a vault just opened: no news yet
         self._budget_owner = self.session
-        over: set[tuple[int, int, object]] = set()
-        months = {(line.month.year, line.month.month): line.month for line in budget.lines(ledger).values()}
-        for key, month in months.items():
-            over |= {(*key, row.category_id) for row in budget.status(ledger, month).over}
+        over, months = over_budget(ledger)
         new = over - self._over_budget
         self._over_budget = over
         if new and not baseline:
-            from opesvault.ui.common import month_label
-
-            year, number, category_id = sorted(new, key=str)[0]
-            account = ledger.accounts.get(category_id)  # type: ignore[arg-type]
-            extra = f" e mais {len(new) - 1}" if len(new) > 1 else ""
-            label = month_label(months[(year, number)])
-            self.notify(f"Orçamento estourado: {account.name if account else '?'} em {label}{extra}.")
+            self.notify(overspend_message(ledger, new, months))
 
     def _set_operator(self) -> None:
         if self.session is not None:
@@ -973,12 +1011,8 @@ class MainWindow(QMainWindow):
         self.file_label.setToolTip(str(self.session.path))
         if self._vault_busy:
             return
-        if dirty:
-            self.status.setText("Alterações não salvas")
-        elif self.session.revision is not None:
-            self.status.setText(f"Salvo · revisão {self.session.revision.revision}")
-        else:
-            self.status.setText("Novo cofre")
+        revision = self.session.revision
+        self.status.setText(save_state_text(dirty, revision.revision if revision is not None else None))
         self.save_dot.setProperty("state", "dirty" if dirty else "clean")
         self.save_dot.setToolTip("Há alterações só na memória" if dirty else "Tudo gravado no cofre")
         self.save_button.setProperty("role", "primary" if dirty else "")

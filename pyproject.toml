@@ -31,6 +31,7 @@ dev = [
     "pypdf>=6",
     "pyright>=1.1.414",
     "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
     "ruff>=0.16.10",
 ]
 
@@ -64,3 +65,9 @@ typeCheckingMode = "standard"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra"
+
+[tool.coverage.run]
+source = ["opesvault"]
+branch = true
+# The vault worker runs in its own process (tests start it through scripts/dev_worker.py).
+patch = ["subprocess"]

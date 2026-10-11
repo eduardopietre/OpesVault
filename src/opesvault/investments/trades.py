@@ -224,13 +224,10 @@ def sell(
     qty, price, fee, tax = to_decimal(quantity), to_decimal(unit_price), to_decimal(fees), to_decimal(tax_withheld)
     if qty <= 0 or price < 0 or fee < 0 or tax < 0:
         raise DomainError("Quantidade, preço ou custos inválidos.")
-    chosen = method or default_method(asset.asset_class)
+    chosen = CostMethod(method) if method is not None else default_method(asset.asset_class)
     gross = round_money(qty * price)
     net = gross - fee - tax
-    # Validate quantity before touching lots.
-    if qty > holding(ledger, position_id).quantity:
-        raise DomainError("Venda maior que a quantidade em carteira (venda a descoberto não suportada).")
-    cost = _consume(ledger, position_id, qty, chosen)
+    cost = _consume(ledger, position_id, qty, chosen)  # refuses short selling before touching any lot
     gain = gross - cost
     postings = [Posting(account_id=to_account, amount=net), Posting(account_id=pos.account_id, amount=-cost)]
     if gain > 0:

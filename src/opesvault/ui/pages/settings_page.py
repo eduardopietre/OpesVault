@@ -41,6 +41,7 @@ class SettingsPage(Page):
         self._pending.setSingleShot(True)
         self._pending.setInterval(600)
         self._pending.timeout.connect(self.flush)
+        self._loaded: dict[str, object] | None = None  # the form as last filled from the vault
 
         # Backup and saving (stored in the vault)
         self.backup_dir = QLineEdit()
@@ -162,7 +163,23 @@ class SettingsPage(Page):
         if self.session is None:
             return
         ledger = self.session.ledger
-        wanted = {
+        wanted = self._form()
+        if wanted == self._loaded:
+            # Nothing typed since the form was filled. The vault may have changed meanwhile
+            # (an undo made on another screen): the stale form must not overwrite it.
+            return
+        current = get_settings(ledger)
+        if all(getattr(current, key) == value for key, value in wanted.items()):
+            self._loaded = wanted
+            return
+        if run_guarded(self, lambda: update_settings(ledger, **wanted)):
+            self._loaded = wanted
+            self.notify("Configuração alterada no cofre. Salve (Ctrl+S) para gravar.")
+            self.changed()
+
+    def _form(self) -> dict[str, object]:
+        """The vault settings as the form shows them."""
+        return {
             "ai_enabled": self.ai_enabled.isChecked(),
             "ai_model": self.ai_model.currentText().strip() or None,
             "backup_dir": self.backup_dir.text().strip() or None,
@@ -170,12 +187,6 @@ class SettingsPage(Page):
             "auto_backup": self.auto_backup.isChecked(),
             "save_reminder_minutes": self.reminder.value(),
         }
-        current = get_settings(ledger)
-        if all(getattr(current, key) == value for key, value in wanted.items()):
-            return
-        if run_guarded(self, lambda: update_settings(ledger, **wanted)):
-            self.notify("Configuração alterada no cofre. Salve (Ctrl+S) para gravar.")
-            self.changed()
 
     def _show_ai_model(self, enabled: bool) -> None:
         for widget in (self.ai_model_label, self.ai_model_row, self.ai_status, self.ai_hint):
@@ -232,6 +243,7 @@ class SettingsPage(Page):
         self.reminder.setValue(settings.save_reminder_minutes)
         for widget in widgets:
             widget.blockSignals(False)
+        self._loaded = self._form()
         self._show_ai_model(settings.ai_enabled)
 
     def _choose_dir(self) -> None:

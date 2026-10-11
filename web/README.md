@@ -15,6 +15,7 @@ pnpm --filter @opesvault/app e2e:real   # the same build against the real server
 pnpm --filter @opesvault/app perf       # a generated 50 000-entry project: opening, memory, Livro (build/perf/results.json, ~6 min)
 pnpm --filter @opesvault/server build   # the server as one bundle (dist/server.mjs)
 docker compose up -d --build            # server + app behind Caddy (docs/20)
+docker compose -f docker-compose.local.yml up -d --build   # local testing: http://localhost:8080, data in a volume
 ```
 
 | Folder                  | What                                                                              |

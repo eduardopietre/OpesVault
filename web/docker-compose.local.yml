@@ -1,0 +1,35 @@
+# OpesVault for local testing: only the server (API + built app), straight on http://localhost:8080.
+#
+#   docker compose -f docker-compose.local.yml up -d --build
+#
+# No Caddy and no HTTPS: browsers treat localhost as a secure context, so WebCrypto and Secure
+# cookies work over plain http. Never publish this port beyond the loopback (docs/20 §4).
+# Data persists in the "opesvault-local_data" volume, apart from the production compose's volume;
+# "down" keeps it, "down -v" erases it.
+name: opesvault-local
+
+services:
+  server:
+    build:
+      context: .
+    image: opesvault-server:local
+    restart: unless-stopped
+    environment:
+      OPESVAULT_SECURE_COOKIES: "true"
+      OPESVAULT_TRUST_PROXY: "false"
+      # Empty: generated in the data volume on first start.
+      OPESVAULT_SECRET: ${OPESVAULT_SECRET:-}
+    volumes:
+      - data:/data
+    ports:
+      - "127.0.0.1:${OPESVAULT_LOCAL_PORT:-8080}:8080"
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  data:

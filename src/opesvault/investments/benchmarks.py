@@ -2,6 +2,7 @@
 
 import csv
 import io
+import re
 from datetime import date
 from decimal import Decimal
 from uuid import UUID
@@ -24,9 +25,25 @@ class Benchmark(_Entity):
 
 Ledger.register_kind("benchmark", Benchmark)
 
+THOUSANDS = re.compile(r"-?\d{1,3}(\.\d{3})+")
+
 
 def benchmarks(ledger: Ledger) -> dict[UUID, Benchmark]:
     return ledger.entities("benchmark")
+
+
+def _level(text: str) -> Decimal:
+    """An index level in Brazilian format: "1.234,56" and "1.234" (thousands) are 1234,56 and 1234.
+
+    A plain decimal point ("1234.56", "1.5") is still read as such: only dots in thousands
+    positions are taken as separators, so a file never mixes the two readings silently.
+    """
+    value = text.strip()
+    if "," in value:
+        return parse_brl(value)
+    if THOUSANDS.fullmatch(value):
+        return to_decimal(value.replace(".", ""))
+    return to_decimal(value)
 
 
 def import_benchmark_csv(ledger: Ledger, name: str, data: bytes, source: str) -> Benchmark:
@@ -41,7 +58,7 @@ def import_benchmark_csv(ledger: Ledger, name: str, data: bytes, source: str) ->
         if when is None:
             continue  # header or invalid line
         try:
-            level = parse_brl(row[1]) if "," in row[1] else to_decimal(row[1])
+            level = _level(row[1])
         except ValueError:
             raise DomainError(f"Valor inválido na linha de {row[0]}.") from None
         points[when] = level

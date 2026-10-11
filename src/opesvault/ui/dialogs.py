@@ -483,7 +483,8 @@ class OperationDialog(FormDialog):
             else:
                 self.ledger.record_card_purchase(source, target, value, on, description, **extra)
         elif self.kind == "card_payment":
-            self.ledger.record_card_payment(source, target, value, on)
+            # Without a typed description the payment names the card ("Pagamento de fatura — X").
+            self.ledger.record_card_payment(source, target, value, on, self.description.text().strip() or None)
 
 
 ROLE_LABELS: dict[MemberRole, str] = {MemberRole.HOLDER: "Titular", MemberRole.DEPENDENT: "Dependente"}

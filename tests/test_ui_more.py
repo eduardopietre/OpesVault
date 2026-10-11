@@ -488,27 +488,11 @@ def test_month_reveals_and_selection_after_a_refresh(
 # ── Contas e cartões ────────────────────────────────
 
 
-def test_page_tab_runs_dialogs_and_forwards_navigation(env: tuple[Session, Family]) -> None:
+def test_page_tab_forwards_navigation(env: tuple[Session, Family]) -> None:
     from opesvault.ui.pages.accounts import AccountsPage
 
     m = mount(AccountsPage, env)
     tab = m.page.accounts_tab
-
-    class Dialog:
-        def __init__(self, accepted: bool, fails: bool = False) -> None:
-            self.accepted, self.fails, self.applied = accepted, fails, 0
-
-        def exec(self) -> bool:
-            return self.accepted
-
-        def apply(self) -> None:
-            if self.fails:
-                raise DomainError("recusado")
-            self.applied += 1
-
-    assert not tab.run_dialog(Dialog(False))
-    assert tab.run_dialog(Dialog(True)) and not m.notices and len(m.steps) == 1
-    assert tab.run_dialog(Dialog(True), "Feito.") and m.notices == ["Feito."]
     tab.navigate("ledger", ("filter", None, None), act=True)
     assert m.navigations == [("ledger", ("filter", None, None), True)]
 

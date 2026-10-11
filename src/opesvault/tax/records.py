@@ -7,7 +7,7 @@ from uuid import UUID
 
 from opesvault.domain.ledger import DomainError, Ledger
 from opesvault.domain.model import AccountSubtype, AccountType, YearMonth
-from opesvault.domain.money import ZERO, is_cents, to_decimal
+from opesvault.domain.money import ZERO, MoneyError, is_cents, to_decimal
 from opesvault.investments.model import AssetClass
 from opesvault.tax import ids
 from opesvault.tax.model import (
@@ -40,12 +40,19 @@ def _all(ledger: Ledger, kind: str) -> dict[UUID, Any]:
     return ledger.entities(kind)
 
 
+def _number(value: object, label: str) -> Decimal:
+    try:
+        return to_decimal(value)
+    except MoneyError:
+        raise DomainError(f"{label[:1].upper()}{label[1:]}: valor inválido.") from None
+
+
 def _money(value: object, label: str, *, allow_none: bool = True) -> Decimal | None:
     if value is None or (isinstance(value, str) and not value.strip()):
         if allow_none:
             return None
         raise DomainError(f"Informe {label}.")
-    amount = value if isinstance(value, Decimal) else to_decimal(value)
+    amount = value if isinstance(value, Decimal) else _number(value, label)
     if amount < 0 or not is_cents(amount):
         raise DomainError(f"{label.capitalize()}: informe um valor positivo em reais e centavos.")
     return amount
@@ -54,7 +61,7 @@ def _money(value: object, label: str, *, allow_none: bool = True) -> Decimal | N
 def _rate(value: object, label: str) -> Decimal | None:
     if value is None or (isinstance(value, str) and not value.strip()):
         return None
-    rate = value if isinstance(value, Decimal) else to_decimal(value)
+    rate = value if isinstance(value, Decimal) else _number(value, label)
     if not ZERO <= rate <= 1:
         raise DomainError(f"{label}: informe uma alíquota entre 0% e 100%.")
     return rate

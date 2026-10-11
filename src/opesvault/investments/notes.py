@@ -14,13 +14,17 @@ from opesvault.investments.model import AssetClass, Position, TrackingMode
 from opesvault.investments.service import assets, positions
 from opesvault.investments.trades import buy, sell
 
+ETF_PATTERN = r"\bETF\b|\bISHARES\b|\bIT\s*NOW\b|\bTREND\b|\bHASHDEX\b"
+
 
 def guess_class(spec: str, ticker: str | None) -> AssetClass:
     upper = spec.upper()
+    # B3 notes mark both FII and ETF quotas as "CI" ("ER" only means ex-rendimento), so the
+    # ETF test comes first and relies on the word ETF or the issuers' brand names.
+    if re.search(ETF_PATTERN, upper):
+        return AssetClass.ETF
     if re.search(r"\bFII\b|\bCI\b", upper):
         return AssetClass.REIT
-    if re.search(r"\bETF\b|\bCI\s+ER\b", upper):
-        return AssetClass.ETF
     return AssetClass.STOCK if ticker else AssetClass.OTHER
 
 

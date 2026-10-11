@@ -728,6 +728,22 @@ def test_benchmark_csv_with_commas_and_bad_rows() -> None:
         import_benchmark_csv(f.ledger, "X", b"01/01/2026;100\n01/01/2026;101\n", "x")
 
 
+@pytest.mark.parametrize(
+    ("written", "level"),
+    [
+        ("1.234", D("1234")),  # Brazilian thousands, not 1.234
+        ("12.345.678", D("12345678")),
+        ("1.234,5", D("1234.5")),
+        ("1234.56", D("1234.56")),  # a decimal point outside thousands positions stays a decimal
+        ("1.5", D("1.5")),
+    ],
+)
+def test_benchmark_levels_follow_the_brazilian_format(written: str, level: Decimal) -> None:
+    f = funded()
+    bench = import_benchmark_csv(f.ledger, "X", f"01/01/2026;1\n01/02/2026;{written}\n".encode(), "x")
+    assert bench.points[1][1] == level
+
+
 def test_benchmark_with_non_positive_start_is_unavailable() -> None:
     f = funded()
     bench = import_benchmark_csv(f.ledger, "X", b"01/01/2026;0\n01/02/2026;1\n", "x")
@@ -742,8 +758,12 @@ def test_benchmark_with_non_positive_start_is_unavailable() -> None:
     [
         ("FII HGLG11 CI", "HGLG11", AssetClass.REIT),
         ("ETF ISHARES BOVA11", "BOVA11", AssetClass.ETF),
-        # "CI ER" matches the REIT pattern ("CI") first, so it never reaches the ETF rule.
-        ("ISHARES BOVA11 CI ER", "BOVA11", AssetClass.REIT),
+        # "CI" marks quotas of both kinds; the issuer's name tells an ETF apart.
+        ("ISHARES BOVA11 CI ER", "BOVA11", AssetClass.ETF),
+        ("IT NOW IMAB CI", "IMAB11", AssetClass.ETF),
+        ("TREND ACWI CI", "ACWI11", AssetClass.ETF),
+        ("FII XPML11 CI ER", "XPML11", AssetClass.REIT),
+        ("XPLOG CI", "XPLG11", AssetClass.REIT),
         ("PETROBRAS PN", "PETR4", AssetClass.STOCK),
         ("DEBENTURE XYZ", None, AssetClass.OTHER),
     ],

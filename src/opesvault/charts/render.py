@@ -314,7 +314,7 @@ class ChartWidget(QWidget):
         assert self.chart is not None
         when = point.x.strftime("%d/%m/%Y") if isinstance(point.x, date) else _month_tick(str(point.x))
         lines = [name, when, _label(point.y, self.chart.unit) + (" (BRL)" if self.chart.unit == "BRL" else "")]
-        if self.chart.regime:
+        if self.chart.regime and "regime" not in point.info:  # the point's own regime wins, said once
             lines.append(f"regime: {self.chart.regime}")
         lines += [f"{k}: {v}" for k, v in point.info.items() if not k.startswith("_")]  # "_": internal keys
         return "\n".join(lines)

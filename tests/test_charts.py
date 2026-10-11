@@ -289,7 +289,7 @@ def test_hover_shows_provenance_and_click_inspects_the_point(app: QApplication) 
     # Two bar series share each slot: "Entradas" sits left of the label, "Previsto" right.
     widget._on_move(_event_at(widget, -0.2, 50))
     assert annotation.get_visible()
-    assert annotation.get_text() == "Entradas\njan/26\nR$ 100,00 (BRL)\nregime: caixa\nregime: caixa"
+    assert annotation.get_text() == "Entradas\njan/26\nR$ 100,00 (BRL)\nregime: caixa"  # said once
     widget._on_move(_event_at(widget, 1, 320))  # the line marker of "Saldo" in February
     assert annotation.get_text().startswith("Saldo\nfev/26\nR$ 320,00 (BRL)")
     widget._on_move(_event_at(widget, 1.9, 250))  # empty area hides the tooltip

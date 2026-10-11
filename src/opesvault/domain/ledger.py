@@ -601,7 +601,13 @@ class Ledger:
         )
 
     def record_card_payment(
-        self, card_id: UUID, from_account_id: UUID, amount: object, on: date, **extra: Any
+        self,
+        card_id: UUID,
+        from_account_id: UUID,
+        amount: object,
+        on: date,
+        description: str | None = None,
+        **extra: Any,
     ) -> Operation:
         """Paying the bill settles the obligation; it is not a new expense (docs/00 §4.4)."""
         card = self.cards.get(card_id)
@@ -614,7 +620,7 @@ class Ledger:
         return self.add_operation(
             Operation(
                 kind=OperationKind.CARD_PAYMENT,
-                description=f"Pagamento de fatura — {card.name}",
+                description=description or f"Pagamento de fatura — {card.name}",
                 postings=(
                     Posting(account_id=card.liability_account_id, amount=value),
                     Posting(account_id=from_account_id, amount=-value),

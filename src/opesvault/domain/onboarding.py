@@ -79,7 +79,7 @@ def check_plan(ledger: Ledger, plan: SetupPlan) -> None:
         account_names.add(account.name.strip().casefold())
         if account.subtype not in ASSET_SUBTYPES | LIABILITY_SUBTYPES:
             raise DomainError("Tipo de conta inválido.")
-        if any(h.casefold() not in members for h in account.holders):
+        if any(h.strip().casefold() not in members for h in account.holders):
             raise DomainError(f"Titular desconhecido na conta {account.name.strip()}.")
         if account.opening_balance is not None and account.opening_date is None:
             raise DomainError(f"Informe a data do saldo de abertura de {account.name.strip()}.")
@@ -89,7 +89,7 @@ def check_plan(ledger: Ledger, plan: SetupPlan) -> None:
         if card.name.strip().casefold() in account_names:
             raise DomainError(f"Nome repetido: {card.name.strip()}.")
         account_names.add(card.name.strip().casefold())
-        if card.holder.casefold() not in members:
+        if card.holder.strip().casefold() not in members:
             raise DomainError(f"Escolha o portador do cartão {card.name.strip()}.")
         if len(card.last4) != 4 or not card.last4.isdigit():
             raise DomainError(f"Informe os 4 últimos dígitos do cartão {card.name.strip()}.")
@@ -121,7 +121,7 @@ def _apply(ledger: Ledger, plan: SetupPlan) -> SetupResult:
                 type=kind,
                 subtype=plan_account.subtype,
                 institution=(plan_account.institution or "").strip() or None,
-                holders=tuple(member_ids[h.casefold()] for h in plan_account.holders),
+                holders=tuple(member_ids[h.strip().casefold()] for h in plan_account.holders),
             )
         )
         account_ids[account.name.casefold()] = account.id
@@ -130,7 +130,7 @@ def _apply(ledger: Ledger, plan: SetupPlan) -> SetupResult:
             ledger.record_opening_balance(account.id, plan_account.opening_balance, plan_account.opening_date)
             balances += 1
     for plan_card in plan.cards:
-        holder = member_ids[plan_card.holder.casefold()]
+        holder = member_ids[plan_card.holder.strip().casefold()]
         liability = ledger.add_account(
             LedgerAccount(
                 name=plan_card.name.strip(),

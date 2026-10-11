@@ -1120,3 +1120,25 @@ def test_domain_entry_points_accept_plain_string_enums() -> None:
     assert plan.policy is CompetencePolicy.SPREAD and len(plan.operation_ids) == 3
     kid = f.ledger.add_member("Caio", "dependent")  # type: ignore[arg-type]
     assert kid.role is MemberRole.DEPENDENT
+
+
+def test_card_payment_keeps_a_typed_description_or_names_the_card() -> None:
+    f = family()
+    f.ledger.record_opening_balance(f.bank, "1000.00", date(2025, 12, 31))
+    named = f.ledger.record_card_payment(f.card, f.bank, "10.00", date(2026, 1, 5))
+    typed = f.ledger.record_card_payment(f.card, f.bank, "10.00", date(2026, 1, 6), "Fatura de dezembro")
+    assert named.description.startswith("Pagamento de fatura — ")
+    assert typed.description == "Fatura de dezembro"
+
+
+def test_setup_holders_typed_with_spaces_match_the_members() -> None:
+    f = family()
+    plan = SetupPlan(
+        accounts=(AccountPlan("Conjunta 2", AccountSubtype.CHECKING, holders=(" Ana ",)),),
+        cards=(CardPlan("Outro", "ana  ", "4321", 5, 12),),
+    )
+    check_plan(f.ledger, plan)
+    apply_setup(f.ledger, plan)
+    account = next(a for a in f.ledger.accounts.values() if a.name == "Conjunta 2")
+    card = next(c for c in f.ledger.cards.values() if c.name == "Outro")
+    assert account.holders == (f.ana,) and card.holder_id == f.ana

@@ -57,7 +57,7 @@ def _change_password(req: ChangePasswordRequest, provider: PasswordProvider) -> 
         if info.revision_id != req.base_revision_id:
             return WorkerResponse(error=ErrorCode.REVISION_MISMATCH)
         new = provider.ask("change_new", None)
-        if new is None:
+        if not new:  # an empty new password is never "keep the old one" in disguise
             return WorkerResponse(error=ErrorCode.CANCELLED)
         try:
             saved = sqlcipher_store.save(req.path, current, snapshot, info.revision_id, new_password=new)

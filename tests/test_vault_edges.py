@@ -97,6 +97,7 @@ def test_change_password_reencrypts_the_saved_revision(vault_path: Path) -> None
     [
         ([None], ErrorCode.CANCELLED),
         ([PASSWORD, None], ErrorCode.CANCELLED),
+        ([PASSWORD, ""], ErrorCode.CANCELLED),  # an empty new password never means "keep the old one"
         (["a", "b", "c"], ErrorCode.WRONG_PASSWORD),
         ([PASSWORD, "com\x00nulo"], ErrorCode.WRONG_PASSWORD),  # unusable new password
     ],
@@ -688,3 +689,12 @@ def test_framing_rejects_oversized_or_forged_messages(monkeypatch: pytest.Monkey
         framing.write_message(io.BytesIO(), WorkerResponse())
     with pytest.raises(VaultError):
         framing.read_message(_frame(header), WorkerResponse)
+
+
+def test_store_refuses_an_empty_new_password(vault_path: Path) -> None:
+    info = store.save(vault_path, PASSWORD, make_snapshot(), None)
+    before = vault_path.read_bytes()
+    with pytest.raises(VaultError) as exc:
+        store.save(vault_path, PASSWORD, make_snapshot(), info.revision_id, new_password="")
+    assert _code(exc) is ErrorCode.CANCELLED and vault_path.read_bytes() == before
+    _only_vault_left(vault_path)

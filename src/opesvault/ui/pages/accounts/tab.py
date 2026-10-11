@@ -1,10 +1,9 @@
 """A tab of the Contas e cartões page: it shares the page's session and hooks."""
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from PySide6.QtWidgets import QVBoxLayout, QWidget
 
-from opesvault.ui.common import run_guarded
 from opesvault.ui.theme import SPACE_L, SPACE_M
 
 if TYPE_CHECKING:
@@ -32,15 +31,6 @@ class PageTab(QWidget):
 
     def navigate(self, target: str, ref: object = None, *, act: bool = False) -> None:
         self.page.navigate(target, ref, act=act)
-
-    def run_dialog(self, dialog: Any, message: str | None = None) -> bool:
-        """Opens `dialog`; when confirmed and its `apply` succeeds, says `message` and records the change."""
-        if dialog.exec() and run_guarded(self, lambda: dialog.apply() or True):
-            if message:
-                self.notify(message)
-            self.changed()
-            return True
-        return False
 
     def column(self) -> QVBoxLayout:
         """The tab's layout, with the spacing every tab uses below the tab bar."""

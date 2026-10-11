@@ -15,11 +15,12 @@ import sqlite3
 import sys
 import tempfile
 import time
-import traceback
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
+
+from opesvault.diagnostics import code_locations
 
 MARKER = "OPESVAULT_SELFTEST_MARKER"
 
@@ -30,7 +31,10 @@ def _check(results: dict[str, Any], name: str, fn: Callable[[], Any]) -> None:
         detail = fn()
         results[name] = {"ok": True, "detail": detail}
     except Exception as exc:
-        results[name] = {"ok": False, "error": f"{type(exc).__name__}: {exc}", "trace": traceback.format_exc(limit=4)}
+        # Codes and code locations only, like the technical log: messages may quote data.
+        code = getattr(exc, "code", None)
+        error = type(exc).__name__ + (f" ({getattr(code, 'value', code)})" if code is not None else "")
+        results[name] = {"ok": False, "error": error, "where": code_locations(exc.__traceback__)}
     results[name]["seconds"] = round(time.perf_counter() - started, 3)
 
 

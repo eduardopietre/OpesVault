@@ -38,6 +38,12 @@ YEARS_SHOWN = 8
 SIDE_BY_SIDE = 1300  # width from which related sheets sit side by side
 
 
+def _clear_if_picked(picked: QTableWidget, other: QTableWidget) -> None:
+    if picked.selectedItems():
+        other.setCurrentCell(-1, -1)  # selected_id reads the current row
+        other.clearSelection()
+
+
 class TaxPage(TaxCommands, ReportCommands, Page):
     title = "Imposto de renda"
     section = "Acompanhamento"
@@ -116,6 +122,9 @@ class TaxPage(TaxCommands, ReportCommands, Page):
         self.other.setAccessibleName("Rendimentos isentos, exclusivos e do Carnê-Leão")
         stretch_column(self.other, 1)
         self.other.doubleClicked.connect(lambda _: self.edit_selected_nature())
+        # One income row is chosen at a time, so "Fonte pagadora…" acts on the row last picked.
+        self.taxable.itemSelectionChanged.connect(lambda: _clear_if_picked(self.taxable, self.other))
+        self.other.itemSelectionChanged.connect(lambda: _clear_if_picked(self.other, self.taxable))
         self.carne = summary_table(["Mês", "Integrante", "Recebido", "DARF pago", "Vence"], max_rows=12)
         self.carne.setAccessibleName("Carnê-Leão mês a mês")
         stretch_column(self.carne, 1)

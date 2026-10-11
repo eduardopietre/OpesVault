@@ -259,8 +259,22 @@ def test_selftest_check_records_failures_and_timing() -> None:
     selftest._check(results, "ok", lambda: "fine")
     selftest._check(results, "bad", fails)
     assert results["ok"]["ok"] is True and results["ok"]["detail"] == "fine"
-    assert results["bad"]["ok"] is False and results["bad"]["error"].startswith("AssertionError")
-    assert "seconds" in results["bad"] and "trace" in results["bad"]
+    assert results["bad"]["ok"] is False and results["bad"]["error"] == "AssertionError"
+    assert set(results["bad"]) == {"ok", "error", "where", "seconds"}
+    assert "marker" not in json.dumps(results)  # the message may quote data: never in the report
+    assert any(place.startswith("opesvault.selftest._check:") for place in results["bad"]["where"])
+
+
+def test_selftest_failure_names_the_vault_error_code() -> None:
+    from opesvault.vault.errors import ErrorCode, VaultError
+
+    results: dict[str, Any] = {}
+
+    def fails() -> None:
+        raise VaultError(ErrorCode.IO_ERROR)
+
+    selftest._check(results, "vault", fails)
+    assert results["vault"]["error"] == f"VaultError ({ErrorCode.IO_ERROR.value})"
 
 
 def test_selftest_temp_listing_tolerates_a_missing_temp_dir(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

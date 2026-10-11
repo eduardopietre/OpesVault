@@ -525,6 +525,19 @@ def test_the_payer_of_the_selected_income(rich: Rich, dialogs: Dialogs) -> None:
     assert rich.messages == ["CPF/CNPJ salvo."] and rich.steps == 1
 
 
+def test_the_payer_follows_the_row_picked_last(rich: Rich, dialogs: Dialogs) -> None:
+    page, f, ids = rich.page, rich.f, rich.ids
+    rich.select(page.taxable, 0, "Salário")
+    rich.select(page.other, 1, "Dividendos")  # picked later, in the other table
+    assert not page.taxable.selectedItems()
+    page.edit_payer()
+    assert dialogs.last("TaxIdDialog").ref == ids["dividends"]
+    rich.select(page.taxable, 0, "Salário")
+    assert not page.other.selectedItems()
+    page.edit_payer()
+    assert dialogs.last("TaxIdDialog").ref == f.salary
+
+
 def test_payslips_are_detailed_from_the_payer(rich: Rich, dialogs: Dialogs, warnings: list[str]) -> None:
     from opesvault.ui.tax_dialogs import IncomeDetailDialog
 

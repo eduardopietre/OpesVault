@@ -285,6 +285,7 @@ def test_investment_nature_comes_from_its_characteristics(
         ("-1.00", None, None, "O valor bruto: informe um valor positivo"),
         ("5000.001", None, None, "O valor bruto: informe um valor positivo"),
         (None, "-0.01", None, "O imposto retido: informe um valor positivo"),
+        ("mil reais", None, None, "O valor bruto: valor inválido."),  # a DomainError, not a bare MoneyError
         (None, None, "10.5", None),  # 10,50 is valid: no error
         ("3999.99", None, None, "menor que o valor recebido"),
     ],

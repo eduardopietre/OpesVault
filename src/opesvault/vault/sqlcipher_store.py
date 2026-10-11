@@ -261,6 +261,8 @@ def save(
     new revision is encrypted with the new one (password change, docs/03 §7).
     """
     hook = fault_hook or (lambda _stage: None)
+    if new_password is not None and not new_password:
+        raise VaultError(ErrorCode.CANCELLED)  # never encrypt with an empty key
     if not snapshot.check_consistency():
         raise VaultError(ErrorCode.VERIFY_FAILED)
 
@@ -288,7 +290,7 @@ def save(
     candidate = path.with_name(f"{path.name}{CANDIDATE_INFIX}{info.revision_id.hex}")
     replaced = False
     try:
-        candidate_password = new_password or password
+        candidate_password = password if new_password is None else new_password
         _write_candidate(candidate, candidate_password, snapshot, info)
         hook("candidate_written")
         _verify_candidate(candidate, candidate_password, snapshot, info)

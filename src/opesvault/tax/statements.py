@@ -26,8 +26,8 @@ LIMITATIONS = "Leitura genérica de informes; não validada com documentos reais
 MAX_LINES = 400
 
 _AMOUNT = re.compile(r"(-?\s*R?\$?\s*-?\d{1,3}(?:\.\d{3})*,\d{2})\s*$")
-_YEAR = re.compile(r"ANO[- ]CALENDARIO\s*(?:DE)?\s*:?\s*(\d{4})")
-_EXERCISE = re.compile(r"EXERCICIO\s*(?:DE)?\s*:?\s*(\d{4})")
+_YEAR = re.compile(r"ANO[- ]CALENDARIO\s*(?:DE)?\s*[:;,]?\s*(\d{4})")  # ";" or ",": a spreadsheet's cells
+_EXERCISE = re.compile(r"EXERCICIO\s*(?:DE)?\s*[:;,]?\s*(\d{4})")
 _BALANCE = re.compile(r"SALDO\s+(?:EM|DE|NO DIA|ATE)\s+31/12/(\d{4})")
 
 

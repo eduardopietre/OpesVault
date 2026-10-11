@@ -88,7 +88,7 @@ class GoalDialog(FormDialog):
         self.accounts.setEnabled(combo_value(self.kind) == GoalKind.ACCOUNTS)
 
     def build(self) -> Goal:
-        target = read_money(self.target)
+        target = read_money(self.target, allow_empty=True)  # empty: the message below names the field
         if target is None:
             raise DomainError("Informe o valor da meta.")
         chosen = tuple(

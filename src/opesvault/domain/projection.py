@@ -94,9 +94,7 @@ def events(ledger: Ledger, today: date, end: date) -> tuple[list[ProjectedEvent]
     for forecast in forecasts(ledger, since, end, today):
         if forecast.status not in (ForecastStatus.PENDING, ForecastStatus.LATE):
             continue
-        rule = rules(ledger).get(forecast.rule_id)
-        if rule is None:
-            continue
+        rule = rules(ledger)[forecast.rule_id]  # forecasts come from the rules
         account = ledger.accounts.get(rule.account_id)
         if account is None:
             continue

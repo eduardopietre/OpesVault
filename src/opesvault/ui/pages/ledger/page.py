@@ -190,10 +190,11 @@ class LedgerPage(OperationActions, Page):
         name, ok = QInputDialog.getText(self, "Salvar filtro", "Nome (ex.: Cartão da Ana este mês):")
         if not ok or not name.strip():
             return
-        flt = self.filters.snapshot(name)
         ledger = self.session.ledger
-        if run_guarded(self, lambda: save_filter(ledger, flt)):
-            self.notify(f"Filtro “{flt.name.strip()}” salvo no cofre.")
+        # The snapshot validates too (a name or search too long): refused with a message, never raised.
+        kept = run_guarded(self, lambda: save_filter(ledger, self.filters.snapshot(name)))
+        if kept:
+            self.notify(f"Filtro “{kept.name}” salvo no cofre.")
             self.changed()
 
     def apply_saved_filter(self, flt: Any) -> None:

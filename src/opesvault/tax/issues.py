@@ -160,12 +160,13 @@ def _issues(ledger: Ledger, year: int, declarant_id: UUID | None, today: date) -
     for report in records.reports_of(ledger, year):
         source = ledger.accounts.get(report.source_id)
         for diff in statements.differences(ledger, report):
+            recorded = diff.recorded if diff.recorded is not None else diff.informed  # never None here
             out.append(
                 Issue(
                     Severity.URGENT,
                     f"Informe diferente do registrado: {source.name if source else '?'}",
                     f"{FIELD_LABELS[diff.field]}: informe {format_brl(diff.informed)}, "
-                    f"registrado {format_brl(diff.recorded or diff.informed)}",
+                    f"registrado {format_brl(recorded)}",
                     "report",
                     report.id,
                 )

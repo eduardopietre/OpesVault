@@ -244,12 +244,11 @@ class ReportsPage(Page):
             self._inspected = None
             self.open_ledger.setEnabled(False)
             return
-        if chart is not None:
-            self.panel.show_chart(chart)
-            self.header.set_subtitle(self._subtitle())
-            self.point.setText(HINT)
-            self._inspected = None
-            self.open_ledger.setEnabled(False)
+        self.panel.show_chart(chart)
+        self.header.set_subtitle(self._subtitle())
+        self.point.setText(HINT)
+        self._inspected = None
+        self.open_ledger.setEnabled(False)
 
     def _subtitle(self) -> str:
         key = self._key()

@@ -578,4 +578,8 @@ def set_mark(ledger: Ledger, year: int, key: str, received: bool | None, note: s
     if current is None:
         ledger.put("tax_checklist_mark", ChecklistMark(year=year, key=key, received=received, note=text))
     elif current.received != received or current.note != text:
-        ledger.put("tax_checklist_mark", current.model_copy(update={"received": received, "note": text}))
+        ledger.put(
+            "tax_checklist_mark",
+            current.model_copy(update={"received": received, "note": text}),
+            reason="marca do documento alterada",
+        )

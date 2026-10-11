@@ -92,11 +92,16 @@ class ReportCommands(_Parts):
         session = self.session
 
         def save() -> object:
-            document = session.find_document_by_hash(hashlib.sha256(data).hexdigest()) or session.add_document(
-                name, data
-            )
-            dialog.document_id = document.meta.id
-            return dialog.apply()
+            # The informe first: when the domain refuses it (one per source and year), the file
+            # must not stay in the vault as an orphan nor as an edit outside any undo step.
+            existing = session.find_document_by_hash(hashlib.sha256(data).hexdigest())
+            dialog.document_id = existing.meta.id if existing is not None else None
+            report = dialog.apply()
+            if existing is None:
+                dialog.document_id = session.add_document(name, data).meta.id
+                dialog.report_id = report.id
+                report = dialog.apply()
+            return report
 
         if run_guarded(self, save):
             self.notify("Informe salvo e comparado com o registrado.")

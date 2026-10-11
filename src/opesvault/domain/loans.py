@@ -119,8 +119,7 @@ def due_date(first_due: date, number: int) -> date:
 
 
 def _price_payment(balance: Decimal, rate: Decimal, count: int) -> Decimal:
-    if count <= 0:
-        return balance
+    """The fixed installment that pays `balance` in `count` months (count >= 1)."""
     if rate == 0:
         return round_money(balance / count)
     factor = (1 + rate) ** count
@@ -149,11 +148,16 @@ def schedule(plan: LoanPlan, extra: list[tuple[int, Decimal, PrepaymentMode]] | 
     rate = plan.monthly_rate
     balance = plan.principal
     remaining = plan.term
-    for _after, amount, _mode in [e for e in pending if e[0] == 0]:
-        balance = max(balance - amount, ZERO)
-    pending = [e for e in pending if e[0] > 0]
     payment = _price_payment(balance, rate, remaining)
-    amortization = round_money(balance / remaining) if remaining else balance
+    amortization = round_money(balance / remaining)
+    # A prepayment before the first installment follows its mode like any other: reducing the
+    # term keeps the contract's installment, reducing the installment recomputes it.
+    for _after, amount, mode in [e for e in pending if e[0] == 0]:
+        balance = max(balance - amount, ZERO)
+        if balance > 0 and mode is PrepaymentMode.REDUCE_PAYMENT:
+            payment = _price_payment(balance, rate, remaining)
+            amortization = round_money(balance / remaining)
+    pending = [e for e in pending if e[0] > 0]
     out: list[Installment] = []
     number = 0
     while balance > 0 and number < MAX_TERM * 2:
@@ -175,9 +179,9 @@ def schedule(plan: LoanPlan, extra: list[tuple[int, Decimal, PrepaymentMode]] | 
             cut = min(amount, balance)
             balance -= cut
             prepaid += cut
-            if balance > 0 and mode is PrepaymentMode.REDUCE_PAYMENT:
+            if balance > 0 and mode is PrepaymentMode.REDUCE_PAYMENT:  # not the last: remaining >= 1
                 payment = _price_payment(balance, rate, remaining)
-                amortization = round_money(balance / remaining) if remaining else balance
+                amortization = round_money(balance / remaining)
         out.append(
             Installment(
                 number,
@@ -190,8 +194,6 @@ def schedule(plan: LoanPlan, extra: list[tuple[int, Decimal, PrepaymentMode]] | 
                 prepaid,
             )
         )
-        if balance > 0 and remaining <= 0:
-            remaining = 1  # reduce-term path never runs out; reduce-payment ends with the term
     return out
 
 

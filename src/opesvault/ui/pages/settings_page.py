@@ -41,7 +41,7 @@ class SettingsPage(Page):
         self._pending.setSingleShot(True)
         self._pending.setInterval(600)
         self._pending.timeout.connect(self.flush)
-        self._loaded: dict[str, object] | None = None  # the form as last filled from the vault
+        self._edits_pending = False  # only what was typed here is written; never a stale form
 
         # Backup and saving (stored in the vault)
         self.backup_dir = QLineEdit()
@@ -133,9 +133,9 @@ class SettingsPage(Page):
         self.ai_enabled.toggled.connect(self._show_ai_model)
 
         self.tabs = QTabWidget()
-        self.tabs.addTab(backup, "Backup e salvamento")
-        self.privacy_tab = self.tabs.addTab(privacy, "Privacidade deste computador")
-        self.tabs.addTab(ai, "IA local")
+        self.tabs.addTab(_readable(backup), "Backup e salvamento")
+        self.privacy_tab = self.tabs.addTab(_readable(privacy), "Privacidade deste computador")
+        self.tabs.addTab(_readable(ai), "IA local")
         layout = self.page_layout()
         layout.addWidget(self.tabs, 1)
         self.header.set_subtitle("Backup e IA ficam no cofre; privacidade vale para este computador")
@@ -155,31 +155,21 @@ class SettingsPage(Page):
 
     def _edited(self, *_: object) -> None:
         if self.session is not None:
+            self._edits_pending = True
             self._pending.start()
 
     def flush(self) -> None:
-        """Applies pending vault settings now (also called before saving or closing)."""
-        self._pending.stop()
-        if self.session is None:
-            return
-        ledger = self.session.ledger
-        wanted = self._form()
-        if wanted == self._loaded:
-            # Nothing typed since the form was filled. The vault may have changed meanwhile
-            # (an undo made on another screen): the stale form must not overwrite it.
-            return
-        current = get_settings(ledger)
-        if all(getattr(current, key) == value for key, value in wanted.items()):
-            self._loaded = wanted
-            return
-        if run_guarded(self, lambda: update_settings(ledger, **wanted)):
-            self._loaded = wanted
-            self.notify("Configuração alterada no cofre. Salve (Ctrl+S) para gravar.")
-            self.changed()
+        """Applies pending vault settings now (also called before saving or closing).
 
-    def _form(self) -> dict[str, object]:
-        """The vault settings as the form shows them."""
-        return {
+        Only edits made on this page are written: settings changed meanwhile by an undo or by
+        another part of the app are not overwritten with what the form showed before.
+        """
+        self._pending.stop()
+        if self.session is None or not self._edits_pending:
+            return
+        self._edits_pending = False
+        ledger = self.session.ledger
+        wanted = {
             "ai_enabled": self.ai_enabled.isChecked(),
             "ai_model": self.ai_model.currentText().strip() or None,
             "backup_dir": self.backup_dir.text().strip() or None,
@@ -187,6 +177,12 @@ class SettingsPage(Page):
             "auto_backup": self.auto_backup.isChecked(),
             "save_reminder_minutes": self.reminder.value(),
         }
+        current = get_settings(ledger)
+        if all(getattr(current, key) == value for key, value in wanted.items()):
+            return
+        if run_guarded(self, lambda: update_settings(ledger, **wanted)):
+            self.notify("Configuração alterada no cofre. Salve (Ctrl+S) para gravar.")
+            self.changed()
 
     def _show_ai_model(self, enabled: bool) -> None:
         for widget in (self.ai_model_label, self.ai_model_row, self.ai_status, self.ai_hint):
@@ -204,12 +200,9 @@ class SettingsPage(Page):
             idle.minutes = minutes
 
     def _toggle_recents(self, enabled: bool) -> None:
-        from opesvault.ui.main_window import MainWindow
+        from opesvault.ui import preferences
 
-        settings = MainWindow.app_settings()
-        settings.setValue("recentes/ativo", enabled)
-        if not enabled:
-            settings.remove("recentes/lista")
+        preferences.set_recents_enabled(enabled)
 
     def show_privacy(self) -> None:
         self.tabs.setCurrentIndex(self.privacy_tab)
@@ -219,18 +212,19 @@ class SettingsPage(Page):
     def refresh(self) -> None:
         for form in self._vault_forms:
             form.setEnabled(self.session is not None)
+        from opesvault.ui import preferences
         from opesvault.ui.idle_lock import lock_minutes
-        from opesvault.ui.main_window import MainWindow
 
         self.lock_minutes.blockSignals(True)
         self.lock_minutes.setValue(lock_minutes())
         self.lock_minutes.blockSignals(False)
         self.recents.blockSignals(True)
-        self.recents.setChecked(bool(MainWindow.app_settings().value("recentes/ativo", False, type=bool)))
+        self.recents.setChecked(preferences.recents_enabled())
         self.recents.blockSignals(False)
+        self._pending.stop()
+        self._edits_pending = False  # the form now shows the vault (or no vault): nothing to write
         if self.session is None:
             return
-        self._pending.stop()
         settings = get_settings(self.session.ledger)
         widgets = (self.ai_enabled, self.ai_model, self.backup_dir, self.backup_keep, self.auto_backup, self.reminder)
         for widget in widgets:
@@ -243,7 +237,6 @@ class SettingsPage(Page):
         self.reminder.setValue(settings.save_reminder_minutes)
         for widget in widgets:
             widget.blockSignals(False)
-        self._loaded = self._form()
         self._show_ai_model(settings.ai_enabled)
 
     def _choose_dir(self) -> None:
@@ -252,6 +245,7 @@ class SettingsPage(Page):
         folder = QFileDialog.getExistingDirectory(self, "Pasta de backups")
         if folder:
             self.backup_dir.setText(folder)
+            self._edits_pending = True
             self.flush()
 
     def _window_command(self, name: str) -> None:
@@ -263,7 +257,7 @@ class SettingsPage(Page):
     def test_ai(self) -> None:
         """Lists the installed models (off the UI thread) and says whether the chosen one is among them."""
         from opesvault.ai.ollama import AiUnavailable, OllamaClient
-        from opesvault.ui.background import BackgroundJob
+        from opesvault.ui.background import BackgroundJob, while_alive
 
         if self._ai_job is not None:
             return
@@ -284,7 +278,7 @@ class SettingsPage(Page):
         self._ai_job = job
         self.ai_check.setEnabled(False)
         self.ai_status.setText("Verificando o Ollama local…")
-        job.signals.done.connect(lambda result: self._ai_checked(chosen, result))
+        while_alive(job.signals.done, self, lambda result: self._ai_checked(chosen, result))
         job.start()
 
     def _ai_checked(self, chosen: str, info: object) -> None:
@@ -349,3 +343,19 @@ def _form() -> QFormLayout:
     form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
     form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.DontWrapRows)
     return form
+
+
+READABLE_WIDTH = 880  # px: forms and their notes keep a line length that reads well on 1920x1080
+
+
+def _readable(widget: QWidget) -> QWidget:
+    """The form at a comfortable width, aligned left, instead of fields as long as the screen."""
+    from PySide6.QtWidgets import QHBoxLayout
+
+    widget.setMaximumWidth(READABLE_WIDTH)
+    holder = QWidget()
+    row = QHBoxLayout(holder)
+    row.setContentsMargins(0, 0, 0, 0)
+    row.addWidget(widget, 1)
+    row.addStretch(0)
+    return holder

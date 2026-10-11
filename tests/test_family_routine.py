@@ -14,7 +14,7 @@ from opesvault.importing.pipeline import ImportRequest
 from opesvault.session import Session
 from opesvault.ui.main_window import MainWindow
 from opesvault.ui.pages.budget_page import BudgetPage
-from opesvault.ui.pages.import_page import ImportPage
+from opesvault.ui.pages.imports import ImportPage
 from opesvault.ui.pages.overview_page import OverviewPage
 
 from . import synthetic_docs as docs

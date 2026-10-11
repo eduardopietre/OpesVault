@@ -338,9 +338,11 @@ def test_tooltip_for_missing_values_and_charts_without_regime(app: QApplication)
 
 
 def test_draw_writes_the_notes_as_a_footer(app: QApplication) -> None:
+    from matplotlib.backends.backend_agg import FigureCanvasAgg
     from matplotlib.figure import Figure
 
     figure = Figure()
+    FigureCanvasAgg(figure)  # the footer is measured with the canvas renderer
     draw(figure, _categorical_chart())
     assert "Nota de rodapé" in [t.get_text() for t in figure.texts]
     draw(figure, Chart("Sem notas", "BRL", [Series("S", [Point("a", D("1"))])]))

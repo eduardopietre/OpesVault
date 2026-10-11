@@ -8,7 +8,6 @@ from PySide6.QtWidgets import (
     QComboBox,
     QInputDialog,
     QLineEdit,
-    QMessageBox,
     QSpinBox,
     QStackedWidget,
 )
@@ -41,12 +40,23 @@ from opesvault.ui.common import (
     money_edit,
     read_money,
     run_guarded,
+    select_id,
     selected_id,
     set_rows,
     stretch_column,
     summary_table,
 )
-from opesvault.ui.components import EmptyState, Section, button, confirm, menu_button, scroll_body, text
+from opesvault.ui.components import (
+    Collapsible,
+    EmptyState,
+    Section,
+    adaptive,
+    button,
+    confirm,
+    menu_button,
+    scroll_body,
+    text,
+)
 from opesvault.ui.dialogs import FormDialog, balance_accounts, category_items
 from opesvault.ui.pages.base import Page
 from opesvault.ui.theme import tokens
@@ -71,7 +81,7 @@ def distinct_labels(labels: list[str]) -> list[str]:
 
 
 class RuleDialog(FormDialog):
-    def __init__(self, parent, ledger: Ledger) -> None:  # type: ignore[no-untyped-def]
+    def __init__(self, parent, ledger: Ledger, suggestion=None) -> None:  # type: ignore[no-untyped-def]
         super().__init__(parent, "Nova recorrência", "Criar recorrência")
         self.description = QLineEdit()
         self.account = QComboBox()
@@ -103,6 +113,15 @@ class RuleDialog(FormDialog):
             ("Início:", self.start),
         ):
             self.form.addRow(label, widget)
+        if suggestion is not None:  # a charge that repeats (domain.subscriptions.candidates)
+            from opesvault.domain.money import format_brl
+            from opesvault.ui.common import select_combo
+
+            self.description.setText(suggestion.description)
+            select_combo(self.account, suggestion.account_id)
+            select_combo(self.counterpart, suggestion.category_id)
+            self.amount.setText(format_brl(suggestion.amount).replace("R$", "").strip())
+            self.day.setValue(suggestion.day)
         self.form.insertRow(
             5,
             "",
@@ -164,9 +183,39 @@ class RecurrencesPage(Page):
             ),
         )
         forecasts_section.add(self.forecast_table)
+        # Subscriptions and fixed bills: what they cost per year, and charges that look recurring.
+        self.commitments = summary_table(
+            ["Descrição", "Valor", "Frequência", "Por ano", "Última cobrança", "Situação"], max_rows=10
+        )
+        self.commitments.setAccessibleName("Assinaturas e contas fixas")
+        stretch_column(self.commitments, 0)
+        self.commitments_section = Collapsible(
+            "Assinaturas e contas fixas",
+            "recorrencias/assinaturas",
+            caption="Despesas recorrentes ativas, do maior custo anual para o menor. "
+            "A última cobrança vem do lançamento vinculado à previsão.",
+        )
+        self.commitments_total = text("", "strong")
+        self.commitments_section.add(self.commitments_total)
+        self.commitments_section.add(self.commitments)
+        self.candidates = summary_table(["Descrição", "Valor", "Dia", "Meses seguidos", "Última"], max_rows=8)
+        self.candidates.setAccessibleName("Cobranças que parecem recorrentes")
+        stretch_column(self.candidates, 0)
+        self.candidates.doubleClicked.connect(lambda _: self.create_from_candidate())
+        self._candidates: list = []
+        self.candidates_section = Collapsible(
+            "Parecem recorrentes",
+            "recorrencias/candidatas",
+            caption="Cobranças com a mesma descrição e valor parecido em meses seguidos, sem recorrência. "
+            "Nada é criado sozinho.",
+        )
+        self.candidates_section.add_actions(button("Criar recorrência…", self.create_from_candidate))
+        self.candidates_section.add(self.candidates)
         scroll, body = scroll_body()
-        body.addWidget(rules_section)
-        body.addWidget(forecasts_section)
+        # wide: the rules beside the forecasts they generate; narrow: one below the other
+        body.addWidget(adaptive(1300, (rules_section, 1), (forecasts_section, 1)))
+        # wide: what is already recurring beside what looks recurring but is not registered
+        body.addWidget(adaptive(1400, (self.commitments_section, 3), (self.candidates_section, 2)))
         body.addStretch(1)
         self.empty = EmptyState(
             "Nenhuma recorrência",
@@ -187,8 +236,9 @@ class RecurrencesPage(Page):
 
     def refresh(self) -> None:
         if self.session is None:
-            self.rules.setRowCount(0)
-            self.forecast_table.setRowCount(0)
+            for table in (self.rules, self.forecast_table, self.commitments, self.candidates):
+                table.setRowCount(0)
+            self._candidates = []
             return
         ledger = self.session.ledger
         all_rules = list(rules(ledger).values())
@@ -223,11 +273,73 @@ class RecurrencesPage(Page):
                 item.setForeground(QColor(tokens().warning))
         for table in (self.rules, self.forecast_table):
             fit_to_rows(table)
+        self._refresh_subscriptions()
+        # Charges that look recurring are worth showing even before the first rule exists.
+        self.views.setCurrentIndex(0 if all_rules or self._candidates else 1)
         active = sum(1 for r in all_rules if not r.paused)
         summary = [f"{active} regra(s) ativa(s)"] if all_rules else []
         if late:
             summary.append(f"{len(late)} previsão(ões) atrasada(s)")
         self.header.set_subtitle(" · ".join(summary))
+
+    def _refresh_subscriptions(self) -> None:
+        assert self.session is not None
+        from opesvault.domain.subscriptions import candidates as recurring_candidates
+        from opesvault.domain.subscriptions import commitments
+
+        ledger = self.session.ledger
+        found = commitments(ledger)
+        rows = []
+        for c in found:
+            if c.price_changed:
+                situation = "Valor mudou"
+            elif c.last_paid is None:
+                situation = "Sem cobrança vinculada"
+            else:
+                situation = "Como previsto"
+            last = f"{fmt(c.last_paid)} em {fmt_date(c.last_paid_on)}" if c.last_paid is not None else "—"
+            rows.append(
+                (
+                    [
+                        c.rule.description,
+                        fmt(c.rule.amount),
+                        FREQUENCY_LABELS[c.rule.frequency],
+                        fmt(c.per_year),
+                        last,
+                        situation,
+                    ],
+                    c.rule.id,
+                )
+            )
+        set_rows(self.commitments, rows)
+        for row, c in enumerate(found):
+            item = self.commitments.item(row, 5)
+            if item is not None and c.price_changed:
+                item.setForeground(QColor(tokens().warning))  # the words carry the state; color reinforces
+        fit_to_rows(self.commitments)
+        total = sum((c.per_year for c in found), ZERO)
+        self.commitments_total.setText(f"{len(found)} compromisso(s) · {fmt(total)} por ano")
+        self.commitments_section.setVisible(bool(found))
+        self._candidates = recurring_candidates(ledger)
+        set_rows(
+            self.candidates,
+            [
+                ([c.description, fmt(c.amount), str(c.day), str(c.months), fmt_date(c.last_on)], index)
+                for index, c in enumerate(self._candidates)
+            ],  # type: ignore[arg-type] - row key is the candidate index
+        )
+        fit_to_rows(self.candidates)
+        self.candidates_section.setVisible(bool(self._candidates))
+
+    def create_from_candidate(self) -> None:
+        index = selected_id(self.candidates)
+        if self.session is None or not isinstance(index, int) or index >= len(self._candidates):
+            return
+        ledger = self.session.ledger
+        dialog = RuleDialog(self, ledger, self._candidates[index])
+        if dialog.exec() and run_guarded(self, lambda: add_rule(ledger, dialog.build())):
+            self.notify("Recorrência criada a partir das cobranças repetidas.")
+            self.changed()
 
     def _selected_forecast(self) -> Forecast | None:
         index = selected_id(self.forecast_table)
@@ -259,7 +371,7 @@ class RecurrencesPage(Page):
         start, end = self._window()
         pairs = auto_suggestions(ledger, start, end)
         if not pairs:
-            QMessageBox.information(self, "Recorrências", "Nenhuma previsão com um único lançamento compatível.")
+            self.notify("Nenhuma previsão com um único lançamento compatível.")
             return
         summary = "\n".join(
             f"{fmt_date(f.due_on)} {f.description} ← {op.description} {fmt_date(op.cash_date)}" for f, op in pairs
@@ -274,7 +386,15 @@ class RecurrencesPage(Page):
             self.changed()
 
     def reveal(self, ref: object, *, act: bool = False) -> None:
-        """A forecast alert: select that forecast and, when it is late, open Vincular."""
+        """A forecast alert: select that forecast and, when it is late, open Vincular.
+
+        ("rule", id): a price change, shown in the subscriptions section.
+        """
+        if isinstance(ref, tuple) and len(ref) == 2 and ref[0] == "rule":
+            self.commitments_section.set_expanded(True)
+            for table in (self.rules, self.commitments):
+                select_id(table, ref[1])
+            return
         if not (isinstance(ref, tuple) and len(ref) == 2):
             return
         rule_id, due_on = ref
@@ -296,7 +416,7 @@ class RecurrencesPage(Page):
         ledger = self.session.ledger
         found = candidates(ledger, forecast)
         if not found:
-            QMessageBox.information(self, "Recorrências", "Nenhum lançamento compatível (conta, valor e data).")
+            self.notify("Nenhum lançamento compatível (conta, valor e data).")
             return
         labels = distinct_labels([f"{fmt_date(o.cash_date)} {o.description}" for o in found])
         choice, ok = QInputDialog.getItem(self, "Vincular", "Lançamento realizado:", labels, 0, False)

@@ -3,11 +3,12 @@ import/save race."""
 
 from datetime import date
 from decimal import Decimal
+from itertools import pairwise
 from pathlib import Path
 
 import pytest
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QWidget
 
 from opesvault.domain import queries
 from opesvault.domain.ledger import DomainError
@@ -16,7 +17,7 @@ from opesvault.domain.search import OperationFilter, StatusFilter, find_operatio
 from opesvault.session import Session
 from opesvault.ui.main_window import MainWindow
 from opesvault.ui.operation_edit import OperationEditDialog, build_postings, imbalance
-from opesvault.ui.pages.ledger_page import LedgerPage
+from opesvault.ui.pages.ledger import LedgerPage
 
 from .domain_fixtures import category, family
 
@@ -170,8 +171,8 @@ def test_virtual_table_sorts_selects_and_reclassifies(window: MainWindow) -> Non
     assert page.model.data(page.model.index(0, 3)) == "R$ 1,00"
     assert page.model.data(page.model.index(0, 3), Qt.ItemDataRole.TextAlignmentRole) is not None
 
-    page.filter_text.setText("Compra 1")
-    page._debounce.timeout.emit()
+    page.filters.search.setText("Compra 1")
+    page.filters.debounce.timeout.emit()
     assert page.model.rowCount() == 10  # 10..19
     page.table.selectAll()
     ids = page.selected_ids()
@@ -215,3 +216,44 @@ def test_import_blocks_saving_and_editing(window: MainWindow) -> None:
     page.set_busy(False)
     assert not window.busy and central.isEnabled()
     assert frozen_before is not None
+
+
+def test_choosing_a_filter_refreshes_the_table_once(window: MainWindow, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Each control of LedgerFilters reaches the page through one `changed` signal."""
+    from opesvault.ui.common import select_combo
+
+    assert window.session is not None
+    ledger = window.session.ledger
+    bank = next(a.id for a in ledger.accounts.values() if a.name == "Banco A")
+    groceries, leisure = category(ledger, "Alimentação"), category(ledger, "Lazer")
+    ledger.record_expense(bank, groceries, "10.00", date(2026, 1, 3), "Feira")
+    ledger.record_expense(bank, leisure, "80.00", date(2026, 1, 4), "Cinema")
+    page = ledger_page(window)
+    page.refresh()
+    refreshes: list[int] = []
+    original = page.refresh
+    monkeypatch.setattr(page, "refresh", lambda: (refreshes.append(1), original())[1])
+    page.filters.changed.disconnect()
+    page.filters.changed.connect(page.refresh)
+
+    select_combo(page.filters.account, leisure)  # as a person picks it: the signal is not blocked
+    assert len(refreshes) == 1 and page.model.rowCount() == 1
+    assert page.model.data(page.model.index(0, 1)) == "Cinema"
+    page.filters.reset()
+    assert len(refreshes) == 2 and page.model.rowCount() == 2
+    page.filters.show(ledger, groceries, None)
+    assert len(refreshes) == 3 and page.model.rowCount() == 1
+
+
+def test_filters_and_commands_share_lines_on_a_small_window(window: MainWindow) -> None:
+    """At 900 px the six filters and the row commands wrap together: no filter alone on a line."""
+    page = ledger_page(window)
+    window.resize(900, 640)
+    window.show()
+    QApplication.processEvents()
+    row = page.filters.row
+    controls = [w for w in row.findChildren(QWidget, options=Qt.FindChildOption.FindDirectChildrenOnly)]
+    centers = sorted(w.geometry().center().y() for w in controls if w.isVisible())
+    lines = 1 + sum(1 for above, below in pairwise(centers) if below - above > 12)
+    assert 1 < lines <= 3  # wrapped, three lines at most (were six)
+    assert page.saved_filters.parentWidget() is row and page.details_button.parentWidget() is row

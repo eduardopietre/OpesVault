@@ -671,7 +671,7 @@ def test_ai_suggestion_never_overrides_a_choice_made_meanwhile(tmp_path: Path) -
     assert pipeline.items(ledger)[chosen.id].target_account_id == leisure.id
 
 
-def test_ai_examples_skip_variants_of_what_is_asked(tmp_path: Path) -> None:
+def test_a_variant_learned_from_use_is_not_asked_to_the_ai(tmp_path: Path) -> None:
     session, first = _ai_session(tmp_path, "XKCD LOJA 01", "PADOCA DO ZE")
     ledger = session.ledger
     leisure = next(a for a in ledger.categories(AccountType.EXPENSE) if a.name == "Lazer")
@@ -681,10 +681,10 @@ def test_ai_examples_skip_variants_of_what_is_asked(tmp_path: Path) -> None:
     bank = next(a for a in ledger.accounts.values() if a.name == "Banco")
     data = _csv("01/03/2026,-5.00,t1,Compra XKCD LOJA 02")
     second = import_document(session, ImportRequest("y.csv", data, account_id=bank.id))
-    (request,) = plan_requests(ledger, second.id)
-    assert request.descriptions == ("Compra XKCD LOJA 02",)
-    # "XKCD LOJA 01" differs only in numbers: it is the same question, not an example of the criteria.
-    assert request.examples == (("Compra PADOCA DO ZE", "Lazer"),)
+    # "XKCD LOJA 01" differs only in numbers: what the family chose is learned, so the model is not asked.
+    (item,) = pipeline.items_of(ledger, second.id)
+    assert item.target_account_id == leisure.id and (item.suggestion_source or "").startswith("learned:")
+    assert plan_requests(ledger, second.id) == []
 
 
 def test_release_models_unloads_from_the_server_that_was_used(ollama: str) -> None:

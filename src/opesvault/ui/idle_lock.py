@@ -10,7 +10,7 @@ import time
 from PySide6.QtCore import QEvent, QObject, Qt, QTimer, Signal
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
-from opesvault.ui import common
+from opesvault.ui import preferences
 
 DEFAULT_MINUTES = 10
 SETTINGS_KEY = "ui/lock_minutes"
@@ -27,7 +27,7 @@ INPUT_EVENTS = frozenset(
 
 def lock_minutes() -> int:
     """Per computer, outside the vault (like the recent files list). 0 disables."""
-    value = common.app_settings().value(SETTINGS_KEY, DEFAULT_MINUTES)
+    value = preferences.app_settings().value(SETTINGS_KEY, DEFAULT_MINUTES)
     try:
         return max(0, min(240, int(value)))  # type: ignore[arg-type]
     except (TypeError, ValueError):
@@ -35,7 +35,7 @@ def lock_minutes() -> int:
 
 
 def set_lock_minutes(minutes: int) -> None:
-    common.app_settings().setValue(SETTINGS_KEY, max(0, min(240, minutes)))
+    preferences.app_settings().setValue(SETTINGS_KEY, max(0, min(240, minutes)))
 
 
 class IdleWatcher(QObject):

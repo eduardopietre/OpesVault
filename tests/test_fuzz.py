@@ -213,3 +213,17 @@ def test_corrupt_pdf_bytes_are_classified(name: str, tmp_path: Path) -> None:
 )
 def test_degenerate_inputs(data: bytes, tmp_path: Path) -> None:
     _import(Session.new(tmp_path / "f.opesvault"), "x", data)
+
+
+def test_informe_reader_survives_mutated_text() -> None:
+    """The informe reader (tax.statements) treats text as data: hostile lines never raise."""
+    from opesvault.tax import statements
+
+    from .synthetic_docs import bank_income_report_pdf
+
+    rng = random.Random("informe-text")  # noqa: S311 - reproducible fuzzing, not crypto
+    base = load_source("informe.pdf", bank_income_report_pdf()).text
+    for _ in range(ITERATIONS):
+        parsed = statements.parse(_mutate_text(rng, base).splitlines())
+        assert all(line.amount >= 0 for line in parsed.lines)
+        assert parsed.year is None or 1990 <= parsed.year <= 2999

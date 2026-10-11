@@ -60,7 +60,7 @@ def pending_items(ledger: Ledger, month: YearMonth) -> list[str]:
     """Relevant pending matters shown before closing (docs/01 §3 revisão mensal)."""
     from opesvault.domain.recurrence import ForecastStatus, forecasts
     from opesvault.importing.model import ItemStatus
-    from opesvault.importing.pipeline import items
+    from opesvault.importing.store import items
 
     notes = []
     open_items = [

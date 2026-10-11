@@ -24,8 +24,8 @@ from opesvault.domain.ledger import Ledger
 from opesvault.domain.model import AccountType
 from opesvault.domain.settings import get_settings
 from opesvault.importing.model import ExtractedItem, ItemKind, ItemStatus
-from opesvault.importing.pipeline import items, items_of
 from opesvault.importing.rules import normalize
+from opesvault.importing.store import items, items_of
 
 SPENDING = (ItemKind.PURCHASE, ItemKind.DEBIT, ItemKind.CARD_CHARGE)
 INCOME = (ItemKind.CREDIT,)

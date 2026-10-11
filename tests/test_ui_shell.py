@@ -2,8 +2,11 @@
 
 Modal dialogs are never shown: file pickers, input boxes, message boxes, `decide`/`confirm`
 and each dialog's `exec` are replaced per test. Vault operations go through the real
-worker protocol with the development worker (password from the environment), and every
-computer preference goes to a temporary file instead of the Windows registry.
+worker protocol with the development worker (password from the environment); computer
+preferences go to a temporary file (the autouse `settings_file` fixture).
+
+The Cofre menu basics live in test_vault_commands.py and the ledger's row commands in
+test_ledger_commands.py; this file covers what those leave out.
 """
 
 import time
@@ -11,56 +14,42 @@ from collections.abc import Callable, Iterator
 from datetime import date, timedelta
 from decimal import Decimal
 from pathlib import Path
-from types import SimpleNamespace
 from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
-from PySide6.QtCore import QMimeData, QPoint, QPointF, QSettings, QSize, Qt, QThreadPool, QUrl
+from PySide6.QtCore import QMimeData, QPoint, QPointF, QSize, Qt, QThreadPool, QUrl
 from PySide6.QtGui import QCloseEvent, QDragEnterEvent, QDropEvent, QResizeEvent
-from PySide6.QtWidgets import QApplication, QComboBox, QFileDialog, QInputDialog, QMessageBox
+from PySide6.QtWidgets import QApplication, QComboBox, QFileDialog, QInputDialog, QMenu, QMessageBox
 
 from opesvault.domain import budget, queries
-from opesvault.domain.alerts import Severity, Target, alerts
+from opesvault.domain.alerts import Target, alerts
 from opesvault.domain.cards import bills, plans
 from opesvault.domain.ledger import DomainError, Ledger
 from opesvault.domain.model import AccountSubtype, AccountType, OriginKind, YearMonth
 from opesvault.domain.search import StatusFilter
 from opesvault.domain.settings import get_settings, update_settings
 from opesvault.exports import ledger_csv
-from opesvault.importing import pipeline, rules
-from opesvault.importing.model import BatchStatus, ExtractedItem, ItemKind, ItemStatus, Reconciliation
+from opesvault.importing import pipeline
+from opesvault.importing.model import BatchStatus, ExtractedItem, ItemKind, ItemStatus
 from opesvault.importing.pipeline import ImportRequest
 from opesvault.importing.source import SourceError, SourceProblem
 from opesvault.session import Session
-from opesvault.ui import common, theme
+from opesvault.ui import preferences, theme
 from opesvault.ui.common import month_label, select_combo
 from opesvault.ui.dialogs import BillPaymentDialog, CardDialog, CategoryDialog, OperationDialog, ask_reason
-from opesvault.ui.main_window import (
-    BADGE_ROLE,
-    ERROR_MESSAGES,
-    MainWindow,
-    OverBudgetKey,
-    _Job,
-    alerts_summary,
-    badge_text,
-    overspend_message,
-    restore_destination,
-    save_state_text,
-)
+from opesvault.ui.main_window import MainWindow
 from opesvault.ui.pages.base import Page
-from opesvault.ui.pages.import_page import (
-    ImportPage,
-    ItemDialog,
-    _ImportJob,
-    item_notes,
-    reconciliation_check,
-    target_options,
-)
-from opesvault.ui.pages.ledger_page import LedgerPage, ReclassifyDialog, history_text
+from opesvault.ui.pages.imports import ImportPage
+from opesvault.ui.pages.imports.labels import item_notes
+from opesvault.ui.pages.imports.queue import ImportJob
+from opesvault.ui.pages.imports.review import ItemDialog
+from opesvault.ui.pages.ledger import LedgerPage
 from opesvault.ui.pages.overview_page import OverviewPage
 from opesvault.ui.pages.settings_page import SettingsPage
-from opesvault.vault import sqlcipher_store as store
+from opesvault.ui.shell.errors import ERROR_MESSAGES
+from opesvault.ui.shell.jobs import VaultJob
+from opesvault.ui.shell.sidebar import BADGE_ROLE, _badge_text
 from opesvault.vault.backup import create_backup, list_backups
 from opesvault.vault.client import VaultClient
 from opesvault.vault.errors import ErrorCode, VaultError
@@ -68,7 +57,7 @@ from opesvault.vault.lock import VaultLock, lock_path_for
 from opesvault.vault.sqlcipher_store import CANDIDATE_INFIX
 
 from . import synthetic_docs as docs
-from .conftest import PASSWORD, dev_worker_command
+from .conftest import dev_worker_command
 from .domain_fixtures import Family, category, family
 from .test_ai import _statement
 from .test_pdf_password import PASSWORD as PDF_PASSWORD
@@ -86,14 +75,6 @@ def app() -> QApplication:
     app = instance if isinstance(instance, QApplication) else QApplication([])
     theme.apply_theme(app, dark=False)
     return app
-
-
-@pytest.fixture
-def prefs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """Every computer preference (window, recents, idle lock, columns) goes to a temporary file."""
-    path = tmp_path / "prefs.ini"
-    monkeypatch.setattr(common, "app_settings", lambda: QSettings(str(path), QSettings.Format.IniFormat))
-    return path
 
 
 @pytest.fixture
@@ -130,27 +111,25 @@ class Answers:
 @pytest.fixture
 def decisions(monkeypatch: pytest.MonkeyPatch) -> Answers:
     answers = Answers("cancel")
-    monkeypatch.setattr("opesvault.ui.main_window.decide", answers)
+    monkeypatch.setattr("opesvault.ui.shell.vault.decide", answers)
     return answers
 
 
 @pytest.fixture
 def confirms(monkeypatch: pytest.MonkeyPatch) -> Answers:
     answers = Answers(False)
-    monkeypatch.setattr("opesvault.ui.main_window.confirm", answers)
+    monkeypatch.setattr("opesvault.ui.shell.vault.confirm", answers)
     return answers
 
 
 @pytest.fixture
 def window(
     app: QApplication,
-    prefs: Path,
     boxes: list[Box],
     decisions: Answers,
     confirms: Answers,
-    monkeypatch: pytest.MonkeyPatch,
+    dev_worker_env: None,
 ) -> Iterator[MainWindow]:
-    monkeypatch.setenv("OPV_DEV_PASSWORD", PASSWORD)
     win = MainWindow()
     win.client = VaultClient(dev_worker_command())
     yield win
@@ -166,7 +145,7 @@ def wait(window: MainWindow) -> None:
             QApplication.processEvents()
 
 
-def saved_vault(path: Path, family_name: str = "Família Lima") -> Session:
+def saved_vault(path: Path, family_name: str = "Projeto Lima") -> Session:
     client = VaultClient(dev_worker_command())
     session = Session.new(path, family_name)
     frozen = session.freeze()
@@ -204,31 +183,11 @@ def undo_steps(window: MainWindow) -> int:
     return len(window.session.undo_stack().undo_steps)
 
 
-# ── pure helpers of the shell ────────────────────────────
+# ── small parts of the shell ─────────────────────────────
 
 
-def test_shell_texts() -> None:
-    assert [badge_text(n) for n in (1, 999, 1000, 25000)] == ["1", "999", "999+", "999+"]
-    assert save_state_text(True, 4) == "Alterações não salvas"
-    assert save_state_text(False, 4) == "Salvo · revisão 4"
-    assert save_state_text(False, None) == "Novo cofre"
-    urgent, info = SimpleNamespace(severity=Severity.URGENT), SimpleNamespace(severity=Severity.INFO)
-    assert alerts_summary([urgent, info, urgent]) == "2 atrasado(s) ou estourado(s) · 3 aviso(s) em Visão geral."
-    assert alerts_summary([info]) == "1 aviso(s) em Visão geral."
-    backup = Path("c:/copias/lima.rev00012.20261011-101010.opesvault")
-    assert restore_destination(backup) == Path("c:/copias/lima-restaurado.opesvault")
-
-
-def test_overspend_message_names_the_first_category_and_counts_the_rest() -> None:
-    f = family()
-    transport = category(f.ledger, "Transporte")
-    march = YearMonth(year=2026, month=3)
-    months = {(2026, 3): march}
-    one: set[OverBudgetKey] = {(2026, 3, f.groceries)}
-    assert overspend_message(f.ledger, one, months) == "Orçamento estourado: Alimentação em março de 2026."
-    both: set[OverBudgetKey] = {(2026, 3, f.groceries), (2026, 3, transport)}
-    assert overspend_message(f.ledger, both, months).endswith("em março de 2026 e mais 1.")
-    assert overspend_message(f.ledger, {(2026, 3, uuid4())}, months).startswith("Orçamento estourado: ? em")
+def test_sidebar_badge_text_caps_at_999() -> None:
+    assert [_badge_text(n) for n in (1, 999, 1000, 25000)] == ["1", "999", "999+", "999+"]
 
 
 def test_job_reports_vault_errors_and_hides_unexpected_ones(app: QApplication, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -238,7 +197,7 @@ def test_job_reports_vault_errors_and_hides_unexpected_ones(app: QApplication, m
     def run(fn: Callable[[], object]) -> tuple[list[object], list[object]]:
         done: list[object] = []
         failed: list[object] = []
-        job = _Job(fn)
+        job = VaultJob(fn)
         job.signals.done.connect(done.append)
         job.signals.failed.connect(failed.append)
         job.run()  # same thread: the signals arrive at once
@@ -266,7 +225,7 @@ def test_new_vault_creates_saves_and_holds_the_lock(
 
     offered: list[object] = []
     monkeypatch.setattr(QFileDialog, "getSaveFileName", lambda *_a, **_k: (str(tmp_path / "lima"), ""))
-    monkeypatch.setattr(QInputDialog, "getText", lambda *_a, **_k: ("  Família Lima  ", True))
+    monkeypatch.setattr(QInputDialog, "getText", lambda *_a, **_k: ("  Projeto Lima  ", True))
     monkeypatch.setattr(SetupWizard, "exec", lambda wizard: offered.append(wizard) or 0)
     window.new_vault()
     assert offered, "the first-use wizard is offered"
@@ -278,7 +237,7 @@ def test_new_vault_creates_saves_and_holds_the_lock(
     assert session is not None and session.path == path and path.is_file()
     assert session.revision is not None and session.revision.revision == 1 and not session.dirty
     assert not window.busy and window.status.text() == "Salvo · revisão 1"
-    assert window.windowTitle() == "Família Lima — OpesVault"
+    assert window.windowTitle() == "Projeto Lima — OpesVault"
     assert window.lock is not None and window.lock.held
     with pytest.raises(VaultError) as exc:
         VaultLock(path).acquire()  # a second window cannot edit the same vault
@@ -313,14 +272,14 @@ def test_open_then_close_hands_the_vault_to_another_window(
 ) -> None:
     path = tmp_path / "lima.opesvault"
     saved_vault(path)
-    common.app_settings().setValue("recentes/ativo", True)
+    preferences.set_recents_enabled(True)
     monkeypatch.setattr(QFileDialog, "getOpenFileName", lambda *_a, **_k: (str(path), ""))
     window.open_vault()
     wait(window)
-    assert window.session is not None and window.session.ledger.meta.family_name == "Família Lima"
+    assert window.session is not None and window.session.ledger.meta.family_name == "Projeto Lima"
     assert window.shell.currentWidget() is window.content
     assert window.status.text() == "Salvo · revisão 1"
-    assert window._recent_paths() == [str(path)]  # remembered: consent was given
+    assert preferences.recent_paths() == [str(path)]  # remembered: consent was given
 
     other = MainWindow()
     other.client = window.client
@@ -331,7 +290,7 @@ def test_open_then_close_hands_the_vault_to_another_window(
     window.close_vault()
     assert window.session is None and window.lock is None
     assert window.shell.currentWidget() is window.welcome
-    assert window.recent_list.count() == 1 and window.windowTitle() == "OpesVault"
+    assert window.welcome.recent_list.count() == 1 and window.windowTitle() == "OpesVault"
     other.open_path(path)
     wait(other)
     assert other.session is not None
@@ -418,7 +377,7 @@ def test_closing_the_window_respects_busy_work_and_unsaved_changes(
     event = QCloseEvent()
     window.closeEvent(event)
     assert event.isAccepted() and window.session is None
-    settings = common.app_settings()
+    settings = preferences.app_settings()
     assert settings.value("janela/geometria") is not None
     assert settings.value("janela/lateral_visivel", type=bool) is True
 
@@ -440,22 +399,13 @@ def test_leftovers_of_an_interrupted_save_are_removed_only_when_confirmed(
     assert not leftover.exists() and path.exists()
 
 
-# ── backups, restore, password and export ────────────────
+# ── backups, restore and export ──────────────────────────
 
 
-def test_backup_now_copies_the_saved_revision(
+def test_backup_now_warns_about_unsaved_work_and_reports_a_failure(
     window: MainWindow, boxes: list[Box], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     session = open_saved(window, tmp_path / "lima.opesvault")
-    folder = tmp_path / "copias"
-    asked: list[str] = []
-    monkeypatch.setattr(QFileDialog, "getExistingDirectory", lambda *_a, **_k: asked.append("pasta") or str(folder))
-    window.backup_now()
-    [backup] = list_backups(folder, "lima")
-    assert asked == ["pasta"] and backup.revision == 1
-    assert boxes == [("information", "Backup", f"Backup da revisão 1 criado:\n{backup.path}")]
-
-    boxes.clear()
     session.ledger.add_member("Carla")
     window.on_changed()
     monkeypatch.setattr(QFileDialog, "getExistingDirectory", lambda *_a, **_k: "")
@@ -478,6 +428,7 @@ def test_automatic_backup_follows_each_save_and_reports_its_failure(window: Main
     window.show_page(window.pages.index(settings_page))
     settings_page.auto_backup.setChecked(True)
     settings_page.backup_dir.setText(str(tmp_path / "auto"))
+    settings_page.backup_dir.textEdited.emit(settings_page.backup_dir.text())  # what typing emits
     window.save_vault()  # the setting being typed enters the session first
     wait(window)
     assert get_settings(session.ledger).auto_backup and not session.dirty
@@ -487,13 +438,14 @@ def test_automatic_backup_follows_each_save_and_reports_its_failure(window: Main
     blocker = tmp_path / "um-arquivo"
     blocker.write_bytes(b"")
     settings_page.backup_dir.setText(str(blocker))
+    settings_page.backup_dir.textEdited.emit(settings_page.backup_dir.text())
     window.save_vault()
     wait(window)
     assert session.revision is not None and session.revision.revision == 3
     assert message(window) == "Salvo, mas o backup automático falhou. Verifique a pasta de backups."
 
 
-def test_restore_creates_a_new_vault_and_never_overwrites(
+def test_restore_suggests_a_name_and_never_overwrites(
     window: MainWindow, boxes: list[Box], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     path = tmp_path / "lima.opesvault"
@@ -522,29 +474,6 @@ def test_restore_creates_a_new_vault_and_never_overwrites(
     wait(window)
     assert boxes[-1] == ("warning", "OpesVault", ERROR_MESSAGES[ErrorCode.ALREADY_EXISTS])
     assert window.session is None
-
-
-def test_password_change_needs_a_saved_vault(
-    window: MainWindow, boxes: list[Box], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    path = tmp_path / "lima.opesvault"
-    session = open_saved(window, path)
-    session.ledger.add_member("Carla")
-    window.on_changed()
-    window.change_password()
-    assert boxes == [("information", "Trocar senha", "Salve as alterações antes de trocar a senha.")]
-    assert not window._jobs
-
-    window.save_vault()
-    wait(window)
-    monkeypatch.setenv("OPV_DEV_NEW_PASSWORD", "nova senha da família")
-    window.change_password()
-    wait(window)
-    assert session.revision is not None and session.revision.revision == 3
-    assert boxes[-1][2].startswith("Senha trocada.")
-    store.load(path, "nova senha da família")
-    with pytest.raises(VaultError):
-        store.load(path, PASSWORD)
 
 
 def test_export_is_confirmed_and_written_where_chosen(
@@ -597,7 +526,6 @@ def test_undo_and_redo_move_through_unsaved_edits(window: MainWindow, tmp_path: 
     window.undo()
     window.undo()
     assert message(window) == "Nada a desfazer desde o último salvamento."
-
     window.lock_screen()
     window.redo()  # locked: the content (and its history) is out of reach
     assert carla.id not in f.ledger.members
@@ -623,6 +551,13 @@ def test_the_month_going_over_budget_is_announced_once(window: MainWindow, tmp_p
     window.on_changed()
     assert message(window) == ""  # still over, not news
 
+    leisure, health = category(f.ledger, "Lazer"), category(f.ledger, "Saúde")
+    for cat in (leisure, health):
+        budget.set_budget(f.ledger, cat, month, "10.00")
+        f.ledger.record_expense(f.bank, cat, "20.00", date.today(), "Passeio")
+    window.on_changed()  # two at once: the first is named, the other counted
+    assert message(window).startswith("Orçamento estourado: ") and message(window).endswith(" e mais 1.")
+
 
 def test_alerts_on_open_lead_to_the_overview(window: MainWindow, tmp_path: Path) -> None:
     f = with_family(window, tmp_path)
@@ -630,7 +565,8 @@ def test_alerts_on_open_lead_to_the_overview(window: MainWindow, tmp_path: Path)
     window.show_page(2)
     window.show_alerts_on_open()
     assert window.stack.currentWidget() is page_of(window, OverviewPage)
-    assert message(window) == alerts_summary(alerts(f.ledger)) and "atrasado" in message(window)
+    count = len(alerts(f.ledger))
+    assert message(window).endswith(f" · {count} aviso(s) em Visão geral.") and "atrasado" in message(window)
 
 
 def test_sidebar_counts_what_needs_attention(window: MainWindow, tmp_path: Path) -> None:
@@ -638,8 +574,7 @@ def test_sidebar_counts_what_needs_attention(window: MainWindow, tmp_path: Path)
     assert window.session is not None
     pipeline.import_document(window.session, ImportRequest("x.csv", _statement("LOJA A", "LOJA B"), account_id=f.bank))
     window._refresh()
-    index = window.pages.index(page_of(window, ImportPage))
-    item = window._nav_lists[index].item(window._nav_rows[index])
+    item = window.sidebar.item(window.pages.index(page_of(window, ImportPage)))
     assert item.data(BADGE_ROLE) == 2
     assert item.data(Qt.ItemDataRole.AccessibleTextRole) == "Importar e revisar, 2 itens pedem atenção"
     window.nav.resize(220, 600)
@@ -652,8 +587,7 @@ def test_help_about_and_lock_settings(window: MainWindow, boxes: list[Box]) -> N
     from opesvault import __version__
     from opesvault.ui.help import help_for
 
-    ledger_index = window.pages.index(page_of(window, LedgerPage))
-    window._show_page(ledger_index)
+    window._show_page(window.pages.index(page_of(window, LedgerPage)))
     window.show_help()
     assert boxes[-1] == ("exec", "Ajuda", help_for("Livro financeiro"))
     window.lock_screen()
@@ -673,8 +607,7 @@ def test_search_shortcut_says_when_the_screen_has_none(window: MainWindow, tmp_p
     window._show_page(window.pages.index(page_of(window, SettingsPage)))
     window.focus_search()
     assert message(window) == "Esta tela não tem busca."
-    ledger_page = page_of(window, LedgerPage)
-    window._show_page(window.pages.index(ledger_page))
+    window._show_page(window.pages.index(page_of(window, LedgerPage)))
     window.notify("")
     window.focus_search()
     assert message(window) == ""
@@ -687,29 +620,29 @@ def test_recent_vaults_need_consent_and_stay_short(
     [disabled] = window.recent_menu.actions()
     assert disabled.text() == "Desativado (Configurações)" and not disabled.isEnabled()
     window._remember(tmp_path / "a.opesvault")
-    assert window._recent_paths() == []  # nothing is remembered without consent
+    assert preferences.recent_paths() == []  # nothing is remembered without consent
 
-    window.remember_recents.setChecked(True)
-    assert common.app_settings().value("recentes/ativo", type=bool) is True
+    window.welcome.remember_recents.setChecked(True)
+    assert preferences.recents_enabled()
     assert message(window) == "Os próximos cofres abertos aparecerão aqui. Para desligar, use Configurações."
     vaults = [tmp_path / f"v{n}.opesvault" for n in range(10)]
     for vault in vaults:
         window._remember(vault)
     window._remember(vaults[3])
-    assert window._recent_paths() == [str(p) for p in (vaults[3], vaults[9], vaults[8], *vaults[7:3:-1], vaults[2])]
+    assert preferences.recent_paths() == [str(p) for p in (vaults[3], vaults[9], vaults[8], *vaults[7:3:-1], vaults[2])]
 
     opened: list[Path] = []
     monkeypatch.setattr(window, "open_path", opened.append)
     window._fill_recents()
     actions = window.recent_menu.actions()
-    assert len(actions) == 8
+    assert len(actions) == preferences.MAX_RECENTS
     actions[0].trigger()
     assert opened == [vaults[3]]
 
     window._refresh_welcome()  # none of them exists: listed, but not openable
-    item = window.recent_list.item(0)
+    item = window.welcome.recent_list.item(0)
     assert item.text().endswith("(não encontrado)")
-    window._open_recent_item(item)
+    window.welcome._choose(item)
     assert opened == [vaults[3]]
 
 
@@ -733,28 +666,14 @@ def test_save_reminder_waits_for_the_configured_minutes(
     assert window._dirty_since is None
 
 
-def test_idle_lock_minutes_are_a_computer_preference(window: MainWindow, prefs: Path) -> None:
-    from opesvault.ui.idle_lock import lock_minutes, set_lock_minutes
+def test_idle_lock_minutes_are_a_computer_preference(settings_file: Path) -> None:
+    from opesvault.ui.idle_lock import SETTINGS_KEY, lock_minutes, set_lock_minutes
 
     set_lock_minutes(500)
     assert lock_minutes() == 240  # clamped
-    assert "lock_minutes=240" in prefs.read_text()
-    common.app_settings().setValue("ui/lock_minutes", "abc")
+    assert "240" in settings_file.read_text()
+    preferences.app_settings().setValue(SETTINGS_KEY, "abc")
     assert lock_minutes() == 10  # unreadable: the default
-
-
-def test_settings_undone_elsewhere_are_not_reapplied_on_save(window: MainWindow, tmp_path: Path) -> None:
-    f = with_family(window, tmp_path)
-    settings_page = page_of(window, SettingsPage)
-    window.show_page(window.pages.index(settings_page))
-    settings_page.backup_keep.setValue(9)
-    settings_page.flush()
-    assert get_settings(f.ledger).backup_keep == 9
-    window.show_page(window.pages.index(page_of(window, LedgerPage)))
-    window.undo()  # from another screen
-    assert get_settings(f.ledger).backup_keep != 9
-    window._flush_pages()  # what saving and closing do first
-    assert get_settings(f.ledger).backup_keep != 9, "an undone setting must stay undone"
 
 
 def test_settings_page_preferences_and_vault_commands(
@@ -768,11 +687,10 @@ def test_settings_page_preferences_and_vault_commands(
     page.lock_minutes.setValue(25)  # a computer preference: written at once, and the watcher follows
     assert lock_minutes() == 25 and window.idle.minutes == 25
 
-    settings = common.app_settings()
     page.recents.setChecked(True)
-    settings.setValue("recentes/lista", [str(tmp_path / "a.opesvault")])
+    preferences.app_settings().setValue(preferences.RECENTS_LIST, [str(tmp_path / "a.opesvault")])
     page.recents.setChecked(False)  # turning it off also forgets the list
-    assert settings.value("recentes/ativo", type=bool) is False and settings.value("recentes/lista") is None
+    assert not preferences.recents_enabled() and preferences.recent_paths() == []
 
     monkeypatch.setattr(QFileDialog, "getExistingDirectory", lambda *_a, **_k: str(tmp_path / "copias"))
     page._choose_dir()
@@ -966,6 +884,7 @@ def test_combo_enum_gives_back_the_enum_qt_flattened(app: QApplication) -> None:
     combo = QComboBox()
     fill_combo(combo, [("Só ativos", StatusFilter.ACTIVE)], empty="Todos")
     assert combo_enum(combo, StatusFilter) is None  # the empty choice
+    assert combo_enum(combo, StatusFilter, StatusFilter.ALL) is StatusFilter.ALL
     combo.setCurrentIndex(1)
     assert type(combo_value(combo)) is str  # what Qt hands back
     assert combo_enum(combo, StatusFilter) is StatusFilter.ACTIVE
@@ -985,21 +904,8 @@ def _item(**fields: Any) -> ExtractedItem:
     return ExtractedItem(**{**base, **fields})
 
 
-def test_review_texts_for_documents_and_items() -> None:
-    def rec(ok: bool | None) -> Reconciliation:
-        return Reconciliation(label="Total", expected=Decimal("1"), computed=Decimal("1"), ok=ok)
-
-    batch = SimpleNamespace(reconciliations=())
-    assert reconciliation_check(batch) == "—"  # type: ignore[arg-type]
-    for checks, verdict in (
-        ((rec(True), rec(True)), "ok"),
-        ((rec(True), rec(False)), "divergente"),
-        ((rec(True), rec(None)), "não comparável"),
-    ):
-        batch.reconciliations = checks
-        assert reconciliation_check(batch) == verdict  # type: ignore[arg-type]
-
-    assert item_notes(_item()) == []
+def test_item_notes_say_what_the_fields_do_not() -> None:
+    assert item_notes(_item()) == ""
     item = _item(
         warnings=("data estimada",),
         installment=(2, 10),
@@ -1009,7 +915,7 @@ def test_review_texts_for_documents_and_items() -> None:
         suggestion_source="user_rule:abc",
         status=ItemStatus.DUPLICATE,
     )
-    assert item_notes(item) == [
+    assert item_notes(item).split("; ") == [
         "data estimada",
         "parcela 2/10",
         "USD 10.50",
@@ -1018,14 +924,6 @@ def test_review_texts_for_documents_and_items() -> None:
         "já existe no livro: aprovar só vincula a evidência",
     ]
 
-    expense, income, balance = [("Mercado", uuid4())], [("Salário", uuid4())], [("↔ Banco", uuid4())]
-    assert target_options(ItemKind.TRADE, expense, income, balance) is None
-    assert target_options(ItemKind.FEE, expense, income, balance) is None
-    assert target_options(ItemKind.CREDIT, expense, income, balance) == income + balance
-    assert target_options(ItemKind.DEBIT, expense, income, balance) == expense + balance
-    assert target_options(ItemKind.CARD_PAYMENT, expense, income, balance) == balance
-    assert target_options(ItemKind.PURCHASE, expense, income, balance) == expense
-
 
 def test_import_job_reports_every_failure_as_a_result(app: QApplication, monkeypatch: pytest.MonkeyPatch) -> None:
     recorded: list[str] = []
@@ -1033,7 +931,7 @@ def test_import_job_reports_every_failure_as_a_result(app: QApplication, monkeyp
     results: list[object] = []
 
     def run(fn: Callable[[], object]) -> object:
-        job = _ImportJob(fn)
+        job = ImportJob(fn)
         job.signals.done.connect(results.append)
         job.run()
         return results[-1]
@@ -1078,23 +976,18 @@ def test_choosing_the_document_account_is_one_undo_step(window: MainWindow, tmp_
     f = with_family(window, tmp_path)
     page, batch_id = _review(window, f, "LOJA A")
     steps = undo_steps(window)
-    index = next(i for i in range(page.target.count()) if page.target.itemData(i) == ("account", f.joint))
-    page.target.setCurrentIndex(index)
+    select_combo(page.target, ("account", f.joint))
     page._change_target()
     assert window.session is not None
     assert pipeline.batches(window.session.ledger)[batch_id].account_id == f.joint
     assert undo_steps(window) == steps + 1
 
 
-def test_picking_a_category_offers_a_rule(
-    window: MainWindow, boxes: list[Box], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    from opesvault.ui.rule_dialog import RuleDialog
-
+def test_picking_a_category_in_the_row_offers_a_rule(window: MainWindow, tmp_path: Path) -> None:
     f = with_family(window, tmp_path)
     page, batch_id = _review(window, f, "PADARIA DOCE LAR")
     page.create_rule()  # nothing selected yet
-    assert boxes == [("information", "Regra", "Selecione um item para criar a regra a partir dele.")]
+    assert message(window) == "Selecione um item para criar a regra a partir dele."
 
     combo = page.items.cellWidget(0, 5)
     assert isinstance(combo, QComboBox)
@@ -1103,21 +996,15 @@ def test_picking_a_category_offers_a_rule(
     combo = page.items.cellWidget(0, 5)  # rebuilt by the refresh
     assert isinstance(combo, QComboBox)
     select_combo(combo, f.groceries)
-    ledger = f.ledger
-    [item] = pipeline.items_of(ledger, batch_id)
+    [item] = pipeline.items_of(f.ledger, batch_id)
     assert item.target_account_id == f.groceries
     assert not page.rule_offer.isHidden() and "Alimentação" in page.rule_offer_text.text()
-
-    monkeypatch.setattr(RuleDialog, "exec", lambda _dialog: 1)
-    page._accept_rule_offer()
+    page._dismiss_rule_offer()
     assert page.rule_offer.isHidden()
-    [rule] = rules.rules(ledger).values()
-    assert rule.target_account_id == f.groceries and rule.account_id is None
-    assert message(window).startswith("Regra criada.")
 
 
 def test_approving_a_divergent_bill_needs_a_documented_reason(
-    window: MainWindow, boxes: list[Box], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    window: MainWindow, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     f = with_family(window, tmp_path)
     assert window.session is not None
@@ -1125,22 +1012,23 @@ def test_approving_a_divergent_bill_needs_a_documented_reason(
         window.session, ImportRequest("fatura.pdf", docs.nubank_card_pdf(total="9.999,00"))
     )
     pipeline.set_batch_target(f.ledger, batch.id, None, f.card)
-    assert reconciliation_check(pipeline.batches(f.ledger)[batch.id]) == "divergente"
     page = page_of(window, ImportPage)
     window.navigate("import")
     page.batch_id = batch.id
     page.refresh()
+    cell = page.batches.item(0, 1)
+    assert cell is not None and cell.text().endswith(" · total divergente")
     reasons: list[str | None] = [None, "conferido no app do banco"]
     asked: list[str] = []
     monkeypatch.setattr(
-        "opesvault.ui.pages.import_page.ask_reason", lambda _p, title: asked.append(title) or reasons.pop(0)
+        "opesvault.ui.pages.imports.review.ask_reason", lambda _p, title: asked.append(title) or reasons.pop(0)
     )
     page.approve_all()
     assert all(i.status is not ItemStatus.APPROVED for i in pipeline.items_of(f.ledger, batch.id))
     page.approve_all()
     assert asked == ["Total divergente — aceitar como pendência documentada"] * 2
     approved = [i for i in pipeline.items_of(f.ledger, batch.id) if i.status is ItemStatus.APPROVED]
-    assert approved and boxes[-1][1] == "Aprovação" and boxes[-1][2].startswith(f"{len(approved)} operação(ões)")
+    assert approved and message(window).startswith(f"{len(approved)} operação(ões)")
 
 
 def test_keyboard_review_acts_on_the_item_and_moves_to_the_next(
@@ -1149,7 +1037,7 @@ def test_keyboard_review_acts_on_the_item_and_moves_to_the_next(
     f = with_family(window, tmp_path)
     page, batch_id = _review(window, f, "LOJA A", "LOJA B", "LOJA C")
     reasons: list[str | None] = ["só esta compra", None, "não é nossa"]
-    monkeypatch.setattr("opesvault.ui.pages.import_page.ask_reason", lambda _p, _t: reasons.pop(0))
+    monkeypatch.setattr("opesvault.ui.pages.imports.review.ask_reason", lambda _p, _t: reasons.pop(0))
 
     def item_at(row: int) -> UUID:
         cell = page.items.item(row, 0)
@@ -1213,8 +1101,7 @@ def test_a_protected_pdf_asks_for_its_password_once(
     prompts: list[str] = []
     answers = iter([(PDF_PASSWORD, True), ("", False)])
     monkeypatch.setattr(QInputDialog, "getText", lambda *a, **_k: prompts.append(a[2]) or next(answers))
-    page._queue.extend([first, second])
-    page._next_import()
+    page.import_paths([first, second])
     assert window.busy and not page.isEnabled()
     wait(window)
     assert not window.busy and page.isEnabled()
@@ -1233,8 +1120,7 @@ def test_import_failures_are_reported_per_file(
     page = page_of(window, ImportPage)
     again = tmp_path / "extrato.csv"
     again.write_bytes(_statement("LOJA A"))
-    page._queue.append(again)
-    page._next_import()
+    page.import_paths([again])
     wait(window)
     assert boxes[-1][0] == "information" and boxes[-1][2].startswith("extrato.csv: Este arquivo já foi importado")
 
@@ -1246,8 +1132,7 @@ def test_import_failures_are_reported_per_file(
     monkeypatch.setattr(pipeline, "import_document", broken)
     other = tmp_path / "novo.csv"
     other.write_bytes(_statement("LOJA Z"))
-    page._queue.append(other)
-    page._next_import()
+    page.import_paths([other])
     wait(window)
     assert boxes[-1] == ("warning", "Importação", "novo.csv: falha ao processar o arquivo.")
 
@@ -1308,9 +1193,7 @@ def test_local_ai_explains_when_it_cannot_help(
     f = with_family(window, tmp_path)
     page, batch_id = _review(window, f, "LOJA A")
     page.suggest_ai()
-    assert boxes == [
-        ("information", "IA local", "A assistência por IA está desligada ou sem modelo escolhido (Configurações).")
-    ]
+    assert message(window) == "A assistência por IA está desligada ou sem modelo escolhido (Configurações)."
 
     update_settings(f.ledger, ai_enabled=True, ai_model="modelo-ausente:1b")
     monkeypatch.setattr(
@@ -1343,13 +1226,13 @@ def test_import_page_opens_alerts_coverage_and_evidence(
     page, first = _review(window, f, "LOJA A")
     _, second = _review(window, f, "LOJA B")
     page.reveal(first)
-    assert page.batch_id == first
+    assert page.batch_id == first and second != first
     page.items.selectRow(0)
     assert page.viewer.image.text().startswith("Linha ")  # a structured file shows its source line
     shown: list[object] = []
     monkeypatch.setattr(CoverageDialog, "exec", lambda dialog: shown.append(dialog) or 0)
     page.show_coverage()
-    assert len(shown) == 1 and second != first
+    assert len(shown) == 1
 
 
 # ── ledger ───────────────────────────────────────────────
@@ -1362,15 +1245,6 @@ def _ledger_page(window: MainWindow) -> LedgerPage:
     return page
 
 
-def _select(page: LedgerPage, *operation_ids: UUID) -> None:
-    selection = page.table.selectionModel()
-    selection.clear()
-    for row, op in enumerate(page.model.ops):
-        if op.id in operation_ids:
-            flags = selection.SelectionFlag.Select | selection.SelectionFlag.Rows
-            selection.setCurrentIndex(page.model.index(row, 0), flags)
-
-
 def test_status_and_origin_filters_narrow_the_list(window: MainWindow, tmp_path: Path) -> None:
     f = with_family(window, tmp_path)
     kept = f.ledger.record_expense(f.bank, f.groceries, "10.00", date(2026, 1, 3), "Feira")
@@ -1378,140 +1252,20 @@ def test_status_and_origin_filters_narrow_the_list(window: MainWindow, tmp_path:
     f.ledger.cancel_operation(gone.id, "lançada duas vezes")
     page = _ledger_page(window)
     assert {op.id for op in page.model.ops} == {kept.id, gone.id}
-    select_combo(page.filter_status, StatusFilter.ACTIVE)
+    select_combo(page.filters.status, StatusFilter.ACTIVE)
     assert [op.id for op in page.model.ops] == [kept.id]
-    select_combo(page.filter_status, StatusFilter.CANCELLED)
+    select_combo(page.filters.status, StatusFilter.CANCELLED)
     assert [op.id for op in page.model.ops] == [gone.id]
     page.reset_filters()
-    select_combo(page.filter_origin, OriginKind.MANUAL)
+    select_combo(page.filters.origin, OriginKind.MANUAL)
     assert {op.id for op in page.model.ops} == {kept.id, gone.id}
-    select_combo(page.filter_origin, OriginKind.IMPORT)
+    select_combo(page.filters.origin, OriginKind.IMPORT)
     assert page.model.ops == [] and page.views.currentWidget() is page.empty
     assert page.empty.title.text() == "Nenhum lançamento com estes filtros"
 
-
-def test_new_operation_and_simple_correction(
-    window: MainWindow, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    from opesvault.ui.operation_edit import OperationEditDialog, SimpleEditDialog
-
-    f = with_family(window, tmp_path)
-    page = _ledger_page(window)
-
-    def fill_new(dialog: OperationDialog) -> int:
-        dialog.description.setText("Cinema")
-        dialog.amount.setText("45,00")
-        select_combo(dialog.source, f.bank)
-        select_combo(dialog.target, f.groceries)
-        return 1
-
-    monkeypatch.setattr(OperationDialog, "exec", fill_new)
-    page.new_operation("expense")
-    [op] = [o for o in f.ledger.operations.values() if o.description == "Cinema"]
-    assert message(window) == "Despesa: lançamento registrado."
-
-    def fix_amount(dialog: SimpleEditDialog) -> int:
-        dialog.amount.setText("60,00")
-        dialog.reason.setText("valor da nota")
-        return 1
-
-    monkeypatch.setattr(SimpleEditDialog, "exec", fix_amount)
-    _select(page, op.id)
-    page.edit()
-    assert queries.balance(f.ledger, f.bank) == Decimal("-60.00")
-    assert message(window) == "Lançamento corrigido. A versão anterior ficou no histórico."
-
-    def open_full(dialog: SimpleEditDialog) -> int:
-        dialog._open_full()
-        return 0
-
-    def rename(dialog: OperationEditDialog) -> int:
-        dialog.description.setText("Cinema com a família")
-        dialog.reason.setText("descrição")
-        return 1
-
-    monkeypatch.setattr(SimpleEditDialog, "exec", open_full)
-    monkeypatch.setattr(OperationEditDialog, "exec", rename)
-    _select(page, op.id)
-    page.edit()  # "Corrigir partidas…" moves on to the full editor
-    assert f.ledger.operations[op.id].description == "Cinema com a família"
-    assert "motivo: descrição" in history_text(f.ledger, op.id)
-
-
-def test_cancelled_operations_cannot_be_corrected(
-    window: MainWindow, boxes: list[Box], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    f = with_family(window, tmp_path)
-    op = f.ledger.record_expense(f.bank, f.groceries, "10.00", date(2026, 1, 3), "Feira")
-    page = _ledger_page(window)
-    page.edit()  # nothing selected
-    assert boxes == []
-    reasons: list[str | None] = [None, "lançada em dobro"]
-    monkeypatch.setattr("opesvault.ui.pages.ledger_page.ask_reason", lambda _p, _t: reasons.pop(0))
-    _select(page, op.id)
-    page.cancel()
-    assert f.ledger.operations[op.id].active
-    page.cancel()
-    assert not f.ledger.operations[op.id].active
-    assert message(window) == "Lançamento cancelado. Ele continua visível em “Só cancelados”."
-    _select(page, op.id)
-    page.edit()
-    page.edit_postings()
-    assert boxes == [("information", "Corrigir", "Lançamento cancelado não pode ser corrigido.")] * 2
-    page.show_history()
-    assert boxes[-1] == ("information", "Histórico", history_text(f.ledger, op.id))
-    assert "motivo: lançada em dobro" in boxes[-1][2]
-
-
-def test_reversal_keeps_the_original(window: MainWindow, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    f = with_family(window, tmp_path)
-    op = f.ledger.record_expense(f.bank, f.groceries, "10.00", date(2026, 1, 3), "Feira")
-    page = _ledger_page(window)
-    monkeypatch.setattr("opesvault.ui.pages.ledger_page.ask_reason", lambda _p, _t: "cobrança indevida")
-    _select(page, op.id)
-    page.reverse()
-    assert f.ledger.operations[op.id].active and queries.balance(f.ledger, f.bank) == Decimal("0.00")
-    assert len(f.ledger.operations) == 2
-    assert message(window) == "Estorno registrado como nova operação; o original foi mantido."
-
-
-def test_reclassify_moves_the_selected_operations(
-    window: MainWindow, boxes: list[Box], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    from opesvault.domain.periods import close_month
-
-    f = with_family(window, tmp_path)
-    transport = category(f.ledger, "Transporte")
-    first = f.ledger.record_expense(f.bank, f.groceries, "10.00", date(2026, 3, 3), "Ônibus")
-    second = f.ledger.record_expense(f.bank, f.groceries, "12.00", date(2026, 3, 4), "Metrô")
-    page = _ledger_page(window)
-
-    dialog = ReclassifyDialog(None, f.ledger, 2)
-    select_combo(dialog.target, transport)
-    with pytest.raises(DomainError, match="motivo"):
-        dialog.validate()
-
-    def choose(dialog: ReclassifyDialog) -> int:
-        select_combo(dialog.target, transport)
-        dialog.reason.setText("eram transporte")
-        return 1
-
-    monkeypatch.setattr(ReclassifyDialog, "exec", choose)
-    _select(page, first.id, second.id)
-    assert page.selected_ids() and len(page.selected_ids()) == 2
-    page.reclassify_selected()
-    assert message(window) == "2 reclassificado(s), 0 mantido(s)."
-    for op_id in (first.id, second.id):
-        assert transport in {p.account_id for p in f.ledger.operations[op_id].postings}
-
-    close_month(f.ledger, YearMonth(year=2026, month=3))
-    monkeypatch.setattr(
-        ReclassifyDialog, "exec", lambda d: select_combo(d.target, f.groceries) or d.reason.setText("volta") or 1
-    )
-    page.refresh()
-    _select(page, first.id)
-    page.reclassify_selected()
-    assert boxes[-1][1] == "Reclassificação" and boxes[-1][2].startswith("0 reclassificado(s), 1 mantido(s).")
+    select_combo(page.filters.status, StatusFilter.CANCELLED)  # kept with the vault as enum values
+    saved = page.filters.snapshot("Cancelados importados")
+    assert (saved.status, saved.origin) == ("cancelled", "import")
 
 
 def test_row_menu_and_inspector_toggle(window: MainWindow, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1521,10 +1275,17 @@ def test_row_menu_and_inspector_toggle(window: MainWindow, tmp_path: Path, monke
     page = _ledger_page(window)
     page.table.resize(800, 400)
     menus: list[list[str]] = []
-    monkeypatch.setattr(page, "_popup", lambda menu, _at: menus.append([a.text() for a in menu.actions()]))
+
+    class RecordedMenu(QMenu):
+        """Records the commands instead of showing a modal menu."""
+
+        def exec(self, *_args: object) -> None:  # type: ignore[override]
+            menus.append([a.text() for a in self.actions()])
+
+    monkeypatch.setattr("opesvault.ui.pages.ledger.page.QMenu", RecordedMenu)
     page._context_menu(page.table.visualRect(page.model.index(1, 0)).center())
     assert page.selected_ids() == [page.model.ops[1].id]  # right click selects the row it is on
-    assert menus and menus[0][0] == "Corrigir…" and "Cancelar lançamento…" in menus[0]
+    assert menus and menus[0][0].startswith("Corrigir…") and any(t.startswith("Cancelar lançamento") for t in menus[0])
     page._context_menu(QPoint(5, 390))  # below the rows: no menu
     assert len(menus) == 1
 

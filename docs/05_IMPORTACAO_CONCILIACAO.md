@@ -30,6 +30,7 @@ Informações acessórias, como avisos e tabelas de encargos, devem ser preserva
 5. Executar parser específico e registrar versão. Normalizar datas e números brasileiros com evidência.
 6. Validar cada campo e conciliar totais. Relatar linhas ignoradas, sinais ambíguos e seções não mapeadas.
 7. Comparar com histórico e previsões. Sugerir relações sem descartar linhas automaticamente.
+8. Sugerir a categoria, nesta ordem de confiança: a escolha feita à mão (nunca sobrescrita) > uma regra do usuário > o que foi **aprendido com o uso** > as regras padrão por palavra-chave > a IA local (§5), só para o que ficou sem categoria. O aprendizado (`importing/learning.py`) lê a categoria que cada lançamento ativo tem hoje, inclusive depois de correções e reclassificações, pela chave do estabelecimento (sem números, parcelas e cartão): as escolhas recentes decidem, as da mesma conta vêm primeiro e uma compra parcelada conta uma vez. Nada novo é gravado no cofre. A revisão diz de onde veio cada sugestão ("aprendida: 3 escolha(s) iguais").
 8. Exibir revisão lado a lado. Usuário corrige, aprova ou rejeita.
 9. Incorporar itens aprovados ao registro da sessão. Solicitar senha somente quando o usuário salvar.
 

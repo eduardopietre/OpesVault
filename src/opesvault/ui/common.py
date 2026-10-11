@@ -1,18 +1,19 @@
 """Small shared UI helpers. No financial logic lives here."""
 
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Sequence
 from datetime import date
 from decimal import Decimal
 from enum import Enum
 from typing import Any, overload
 
-from PySide6.QtCore import QDate, QSettings, Qt
+from PySide6.QtCore import QDate, QEvent, QObject, Qt
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QComboBox,
     QDateEdit,
     QHeaderView,
     QLineEdit,
+    QListWidget,
     QMessageBox,
     QSizePolicy,
     QTableView,
@@ -23,15 +24,6 @@ from PySide6.QtWidgets import (
 
 from opesvault.domain.ledger import DomainError
 from opesvault.domain.money import MoneyError, format_brl, parse_brl
-
-
-def app_settings() -> QSettings:
-    """Computer-level preferences, outside the vault: never financial data.
-
-    The one place that names the store (the user's registry on Windows), so every
-    preference (window, recents, idle lock, hidden columns) can be redirected at once.
-    """
-    return QSettings("OpesVault", "OpesVault")
 
 
 def to_qdate(value: date) -> QDate:
@@ -98,7 +90,6 @@ def fill_combo(combo: QComboBox, items: Iterable[tuple[str, Any]], *, empty: str
 
 
 def combo_value(combo: QComboBox) -> Any:
-    """The current item's data as Qt hands it back (a StrEnum comes back as plain `str`)."""
     return combo.currentData()
 
 
@@ -116,12 +107,17 @@ def combo_enum[E: Enum](combo: QComboBox, kind: type[E], default: E | None = Non
     return default if value is None else kind(value)
 
 
-def select_combo(combo: QComboBox, value: Any) -> None:
-    # Compare values: findData compares wrapped Python objects by identity.
+def select_combo(combo: QComboBox, value: Any) -> bool:
+    """Selects the option whose data equals `value`; False (selection unchanged) when none does.
+
+    Never `QComboBox.findData`: it compares wrapped Python objects by identity, so an equal
+    UUID or tuple read back from the vault is not found.
+    """
     for index in range(combo.count()):
         if combo.itemData(index) == value:
             combo.setCurrentIndex(index)
-            return
+            return True
+    return False
 
 
 MONTHS = (
@@ -187,6 +183,61 @@ def style_table(table: QAbstractItemView) -> None:
         header.setHighlightSections(False)
 
 
+class _WidthShare(QObject):
+    """Keeps a work table's columns at their base widths and gives the rest to the text columns."""
+
+    def __init__(self, view: QTableView, base: Sequence[int], grow: dict[int, int]) -> None:
+        super().__init__(view)
+        self._view = view
+        self._base = list(base)
+        self._grow = grow
+        self._applying = False
+        self.manual = False  # once the user drags a column, the widths are theirs
+        view.viewport().installEventFilter(self)
+        view.horizontalHeader().sectionResized.connect(self._resized)
+        view.horizontalHeader().geometriesChanged.connect(self.apply)  # a column shown or hidden
+        self.apply()
+
+    def _resized(self, column: int, old: int, new: int) -> None:
+        header = self._view.horizontalHeader()
+        last = header.logicalIndex(header.count() - 1)
+        hiding = old == 0 or new == 0
+        if not (self._applying or hiding) and column != last and self._view.isVisible():
+            self.manual = True
+
+    def eventFilter(self, watched: QObject, event: QEvent) -> bool:  # noqa: N802 - Qt override
+        if event.type() == QEvent.Type.Resize:
+            self.apply()
+        return False
+
+    def apply(self) -> None:
+        if self.manual or self._applying:
+            return
+        header = self._view.horizontalHeader()
+        shown = [c for c in range(len(self._base)) if not header.isSectionHidden(c)]
+        growing = [c for c in self._grow if c in shown]
+        extra = self._view.viewport().width() - sum(self._base[c] for c in shown)
+        total = sum(self._grow[c] for c in growing)
+        self._applying = True
+        try:
+            for column in shown:
+                width = self._base[column]
+                if extra > 0 and total and column in growing:
+                    width += extra * self._grow[column] // total
+                if header.sectionSize(column) != width:
+                    header.resizeSection(column, width)
+        finally:
+            self._applying = False
+
+
+def share_width(view: QTableView, base: Sequence[int], grow: dict[int, int]) -> None:
+    """Work tables (Livro, Importar): base widths for every column; on a wide window the slack
+    goes to the text columns in `grow` ({column: share}) instead of leaving a blank band or
+    stretching the last column away from the rest. A column dragged by hand stops the sharing."""
+    view.horizontalHeader().setStretchLastSection(True)
+    _WidthShare(view, base, grow)
+
+
 def stretch_column(table: QTableView, column: int = 0) -> None:
     """For short summary tables: the name column takes the slack, figures stay next to it."""
     header = table.horizontalHeader()
@@ -199,7 +250,11 @@ def make_table(headers: list[str]) -> QTableWidget:
     table.setHorizontalHeaderLabels(headers)
     style_table(table)
     table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+    # Rows keep the order the page gave them (dates, severity, largest first) until the user
+    # clicks a header; Qt's default indicator would sort by the first column, descending.
+    table.horizontalHeader().setSortIndicator(-1, Qt.SortOrder.AscendingOrder)
     table.setSortingEnabled(True)
+    table.horizontalHeader().sortIndicatorChanged.connect(lambda column, _order: _room_for_arrow(table, column))
     return table
 
 
@@ -235,7 +290,13 @@ def fit_to_rows(table: QTableWidget) -> None:
     limit = table.property("maxRows") or 8
     rows = min(max(table.rowCount(), 1), int(limit))
     header = table.horizontalHeader().sizeHint().height()
-    table.setFixedHeight(header + rows * table.verticalHeader().defaultSectionSize() + 2 * table.frameWidth())
+    # A table that may scroll sideways (many columns, narrow window) keeps room for its scroll bar.
+    sideways = 0
+    if table.horizontalScrollBarPolicy() != Qt.ScrollBarPolicy.ScrollBarAlwaysOff:
+        sideways = table.horizontalScrollBar().sizeHint().height()
+    table.setFixedHeight(
+        header + rows * table.verticalHeader().defaultSectionSize() + 2 * table.frameWidth() + sideways
+    )
 
 
 def set_rows(table: QTableWidget, rows: list[tuple[list[Any], Any]]) -> None:
@@ -265,12 +326,66 @@ def set_rows(table: QTableWidget, rows: list[tuple[list[Any], Any]]) -> None:
     table.setSortingEnabled(sortable)
     header = table.horizontalHeader()
     stretched = [c for c in range(table.columnCount()) if header.sectionResizeMode(c) == QHeaderView.ResizeMode.Stretch]
-    table.resizeColumnsToContents()
+    fit_columns(table)
     for column in stretched:  # resizing to contents leaves a Stretch column at its content width
         header.setSectionResizeMode(column, QHeaderView.ResizeMode.Stretch)
     if header.stretchLastSection():  # same for the last section, until the flag is set again
         header.setStretchLastSection(False)
         header.setStretchLastSection(True)
+
+
+def select_id(view: QTableWidget | QListWidget, value: object) -> bool:
+    """Selects and shows the row whose id is `value`: a table row (id stored by `set_rows` in
+    column 0) or a list item (id in its UserRole). Compared by value, never by identity.
+
+    False when there is no such row, so a caller can fall back to the first one.
+    """
+    if value is None:
+        return False
+    if isinstance(view, QListWidget):
+        for row in range(view.count()):
+            entry = view.item(row)
+            if entry is not None and entry.data(Qt.ItemDataRole.UserRole) == value:
+                view.setCurrentRow(row)
+                view.scrollToItem(entry)
+                return True
+        return False
+    for row in range(view.rowCount()):
+        item = view.item(row, 0)
+        if item is not None and item.data(Qt.ItemDataRole.UserRole) == value:
+            view.selectRow(row)
+            view.scrollToItem(item)
+            return True
+    return False
+
+
+def fit_columns(table: QTableView) -> None:
+    """Columns as wide as their contents, like `resizeColumnsToContents`.
+
+    A sortable header asks for the sort arrow's room on every column, about 22 px each, which
+    pushed a ten-column table past the window; here only the sorted column keeps that room.
+    """
+    table.resizeColumnsToContents()
+    header = table.horizontalHeader()
+    if not header.isSortIndicatorShown():
+        return
+    with_arrow = [header.sectionSizeHint(c) for c in range(header.count())]
+    header.setSortIndicatorShown(False)
+    without_arrow = [header.sectionSizeHint(c) for c in range(header.count())]
+    header.setSortIndicatorShown(True)
+    sorted_column = header.sortIndicatorSection()
+    for column in range(header.count()):
+        if header.isSectionHidden(column) or column == sorted_column:
+            continue
+        if with_arrow[column] > without_arrow[column] and header.sectionSize(column) == with_arrow[column]:
+            table.setColumnWidth(column, max(without_arrow[column], table.sizeHintForColumn(column)))
+
+
+def _room_for_arrow(table: QTableView, column: int) -> None:
+    """The column the user just sorted gets the arrow's room back."""
+    header = table.horizontalHeader()
+    if 0 <= column < header.count() and header.sectionResizeMode(column) == QHeaderView.ResizeMode.Interactive:
+        table.setColumnWidth(column, max(header.sectionSize(column), header.sectionSizeHint(column)))
 
 
 def selected_id(table: QTableWidget) -> Any:
@@ -296,10 +411,12 @@ def install_column_chooser(view: QTableView, settings_key: str, required: set[in
     """Right-click on the header shows/hides columns; the choice is remembered per computer."""
     from PySide6.QtWidgets import QMenu
 
+    from opesvault.ui import preferences
+
     header = view.horizontalHeader()
     model = view.model()
     required = required or {0}
-    settings = app_settings()
+    settings = preferences.app_settings()
     stored = settings.value(f"{settings_key}/colunas_ocultas", [], type=list)
     hidden = [str(c) for c in stored] if isinstance(stored, list) else []
     for column in range(model.columnCount()):

@@ -232,6 +232,14 @@ QListWidget::item:selected {{ background: {t.selection_inactive}; color: {t.text
 QListWidget::item:selected:active {{ background: {t.selection}; color: {t.accent_text}; }}
 /* Selection already shows where focus is; the dotted current-cell box only adds noise. */
 QTableView, QTableWidget {{ outline: 0; }}
+/* Thin, quiet scroll bars with the theme's colors (tables without a frame had black Fusion bars). */
+QScrollBar:vertical {{ background: transparent; width: 12px; margin: 0; border: none; }}
+QScrollBar:horizontal {{ background: transparent; height: 12px; margin: 0; border: none; }}
+QScrollBar::handle:vertical {{ background: {t.tertiary}; min-height: 28px; border-radius: 4px; margin: 2px 3px; }}
+QScrollBar::handle:horizontal {{ background: {t.tertiary}; min-width: 28px; border-radius: 4px; margin: 3px 2px; }}
+QScrollBar::handle:hover {{ background: {t.secondary}; }}
+QScrollBar::add-line, QScrollBar::sub-line {{ width: 0; height: 0; border: none; background: none; }}
+QScrollBar::add-page, QScrollBar::sub-page {{ background: none; }}
 /* A quiet source list (Relatórios): like the sidebar, neutral selection and stronger text. */
 QListWidget[variant="plain"] {{ border: none; background: transparent; outline: 0; }}
 QListWidget[variant="plain"]::item {{ min-height: {NAV_ROW_HEIGHT}px; border-radius: {RADIUS}px; }}
@@ -282,6 +290,13 @@ QToolButton#Stepper:hover {{ background: {t.hover}; }}
 QToolButton#Stepper:pressed {{ background: {t.selection_inactive}; }}
 QToolButton#Stepper:focus {{ border: 2px solid {t.accent}; }}
 QToolButton#Stepper:disabled {{ color: {t.tertiary}; }}
+/* A collapsible section's heading: the title itself is the toggle, with an arrow before it. */
+QToolButton#SectionToggle {{
+    background: transparent; border: none; color: {t.text}; font-size: {HEADLINE_PX}px; font-weight: 600;
+    padding: 2px {SPACE_XS}px 2px 0;
+}}
+QToolButton#SectionToggle:hover {{ color: {t.accent}; }}
+QToolButton#SectionToggle:focus {{ color: {t.accent}; }}
 QFrame#FilterChip {{ background: {t.hover}; border-radius: {RADIUS}px; }}
 QLabel#SaveDot[state="dirty"] {{ color: {t.warning}; }}
 QLabel#SaveDot[state="clean"] {{ color: {t.positive}; }}

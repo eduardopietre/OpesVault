@@ -45,7 +45,7 @@ class Session:
     force_full_save: bool = False
 
     @classmethod
-    def new(cls, path: Path, family_name: str = "Família") -> "Session":
+    def new(cls, path: Path, family_name: str = "Projeto") -> "Session":
         # A never-saved vault starts dirty: creating the chart of accounts counts as edits.
         return cls(path=path, vault_id=uuid4(), ledger=Ledger.new(family_name))
 

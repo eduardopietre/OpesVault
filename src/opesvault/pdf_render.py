@@ -51,3 +51,12 @@ def render_page(data: bytes, index: int = 0, scale: float = 1.5, password: str |
         return render_document(pdf, index, scale)
     finally:
         pdf.close()
+
+
+def page_width(pdf: pdfium.PdfDocument, index: int = 0) -> float:
+    """Width of a page in PDF points (1/72 in), to fit it to the viewer."""
+    page = pdf[index]
+    try:
+        return float(page.get_width())
+    finally:
+        page.close()

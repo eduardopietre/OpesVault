@@ -168,7 +168,7 @@ def column(table: QTableWidget, index: int) -> list[str]:
 @pytest.fixture
 def forms(monkeypatch: pytest.MonkeyPatch) -> Iterator[list[dict[str, object] | None]]:
     """Answers investment forms in order: a dict fills fields by key, None cancels."""
-    from opesvault.ui.pages.investments_page import Form
+    from opesvault.ui.pages.investments.forms import Form
 
     queue: list[dict[str, object] | None] = []
 
@@ -199,33 +199,33 @@ def _value_position(m: Mounted[Any], name: str = "CDB Banco", cost: str = "1000.
     return pos.id
 
 
-def test_investment_parsers_read_the_brazilian_format() -> None:
-    from opesvault.ui.pages.investments_page import parse_quantity, parse_rate, percent_label
+def test_investment_form_reads_the_brazilian_format(app: QApplication) -> None:
+    from PySide6.QtWidgets import QWidget
 
-    assert parse_quantity(" 1.234,5 ") == Decimal("1234.5")
-    assert parse_rate("22,5") == Decimal("0.225") and parse_rate("  ") is None
-    assert percent_label(None) == "indisponível" and percent_label(Decimal("0.1234")) == "12,34%"
-    for bad, parse in (("dez", parse_quantity), ("15%", parse_rate)):
-        with pytest.raises(DomainError):
-            parse(bad)
+    from opesvault.ui.pages.investments.forms import Form, percent
 
-
-def test_value_combo_keeps_the_enum_qt_would_flatten(app: QApplication) -> None:
-    from opesvault.investments.model import TrackingMode
-    from opesvault.ui.pages.investments_page import ValueCombo
-
-    combo = ValueCombo([("Valor", TrackingMode.VALUE), ("Quantidade", TrackingMode.QUANTITY)], empty="(nenhum)")
-    assert combo.value() is None
-    combo.setCurrentIndex(2)
-    assert type(combo.currentData()) is str  # what Qt itself hands back
-    assert combo.value() is TrackingMode.QUANTITY
+    parent = QWidget()
+    form = Form(parent, "Teste", [("qty", "Quantidade:", QLineEdit()), ("rate", "Alíquota:", QLineEdit())])
+    set_field(form.fields["qty"], " 1.234,5 ")
+    set_field(form.fields["rate"], "22,5")
+    assert form.quantity("qty") == Decimal("1234.5") and form.rate("rate") == Decimal("0.225")
+    set_field(form.fields["rate"], "  ")
+    assert form.rate("rate") is None
+    assert percent(None) == "indisponível" and percent(Decimal("0.1234")) == "12,34%"
+    set_field(form.fields["qty"], "dez")
+    set_field(form.fields["rate"], "15%")
+    with pytest.raises(DomainError, match="Quantidade inválida"):
+        form.quantity("qty")
+    with pytest.raises(DomainError, match="Alíquota inválida"):
+        form.rate("rate")
+    parent.deleteLater()
 
 
 def test_new_value_position_takes_money_from_the_account(
     env: tuple[Session, Family], forms: list[dict[str, object] | None]
 ) -> None:
     from opesvault.investments import service as inv
-    from opesvault.ui.pages.investments_page import InvestmentsPage
+    from opesvault.ui.pages.investments import InvestmentsPage
 
     m = mount(InvestmentsPage, env)
     assert m.page.views.currentIndex() == 1  # empty state
@@ -239,7 +239,7 @@ def test_new_value_position_takes_money_from_the_account(
     assert queries.balance(m.ledger, m.family.bank) == Decimal("-1500.00")
     assert len(m.sealed()) == 1 and m.page.views.currentIndex() == 0
     assert m.page.header.subtitle.text() == "1 em carteira"
-    assert m.page.detail_title.text() == "CDB Banco"  # the first row is selected by itself
+    assert m.page.detail.title.text() == "CDB Banco"  # the first row is selected by itself
     m.session.undo_stack().undo()
     assert not inv.positions(m.ledger) and queries.balance(m.ledger, m.family.bank) == Decimal("0")
 
@@ -247,7 +247,8 @@ def test_new_value_position_takes_money_from_the_account(
 def test_new_position_form_requires_name_and_cost_or_reference(
     env: tuple[Session, Family], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from opesvault.ui.pages.investments_page import Form, InvestmentsPage
+    from opesvault.ui.pages.investments import InvestmentsPage
+    from opesvault.ui.pages.investments.forms import Form
 
     m = mount(InvestmentsPage, env)
     errors: list[str] = []
@@ -272,7 +273,7 @@ def test_quantity_position_from_the_form_is_tracked_by_quantity(
     """The mode reaches the service as the enum: a quantity position starts empty with known cost."""
     from opesvault.investments import service as inv
     from opesvault.investments.model import AssetClass, TrackingMode
-    from opesvault.ui.pages.investments_page import InvestmentsPage
+    from opesvault.ui.pages.investments import InvestmentsPage
 
     m = mount(InvestmentsPage, env)
     forms.append({"name": "PETR4", "class": AssetClass.STOCK, "mode": TrackingMode.QUANTITY, "reference": "2.000,00"})
@@ -287,15 +288,15 @@ def test_quantity_position_from_the_form_is_tracked_by_quantity(
 
 
 def test_position_actions_need_a_selected_investment(env: tuple[Session, Family], boxes: list[tuple[str, str]]) -> None:
-    from opesvault.ui.pages.investments_page import InvestmentsPage
+    from opesvault.ui.pages.investments import InvestmentsPage
 
     m = mount(InvestmentsPage, env)
     assert not any(action.isEnabled() for action in m.page.position_actions)
     for action in (m.page.contribution, m.page.buy, m.page.simulate, m.page.new_valuation):
         action()
-    assert boxes == [("Investimentos", "Selecione um investimento.")] * 4
+    assert m.notices == ["Selecione um investimento."] * 4 and not boxes
     m.page.complete()  # needs the incomplete redemption in Movimentos
-    assert boxes[-1] == ("Investimentos", "Selecione o resgate incompleto na aba Movimentos.")
+    assert m.notices[-1] == "Selecione o resgate incompleto em Movimentos."
     m.page.use_valuation()
     m.page.fix_valuation()  # no valuation selected: silently nothing
     assert not m.steps
@@ -304,7 +305,7 @@ def test_position_actions_need_a_selected_investment(env: tuple[Session, Family]
 def test_cash_events_of_a_value_position(env: tuple[Session, Family], forms: list[dict[str, object] | None]) -> None:
     from opesvault.investments import service as inv
     from opesvault.investments.model import EventKind, EventQuality
-    from opesvault.ui.pages.investments_page import InvestmentsPage
+    from opesvault.ui.pages.investments import InvestmentsPage
 
     m = mount(InvestmentsPage, env)
     pos_id = _value_position(m)
@@ -321,15 +322,15 @@ def test_cash_events_of_a_value_position(env: tuple[Session, Family], forms: lis
     assert kinds.count(EventKind.CONTRIBUTION) == 2 and EventKind.DISTRIBUTION in kinds
     assert queries.balance(m.ledger, bank) == Decimal("-1000") - 500 + 85 + Decimal("292.50") + 200
     assert len(m.sealed()) == 4  # one undo step per registered event
-    assert "a discriminar" in column(m.page.events, 4)
+    assert "a discriminar" in column(m.page.detail.events, 4)
 
     incomplete = next(e for e in inv.events_of(m.ledger, pos_id) if e.quality is EventQuality.INCOMPLETE)
-    select_row(m.page.events, incomplete.id)
+    select_row(m.page.detail.events, incomplete.id)
     forms.append({"gross": "210,00", "cost": "150,00", "withheld": "10,00"})
     m.page.complete()
     done = inv.events(m.ledger)[incomplete.id]
     assert done.quality is EventQuality.COMPLETE and done.gross == Decimal("210.00")
-    assert "a discriminar" not in column(m.page.events, 4)
+    assert "a discriminar" not in column(m.page.detail.events, 4)
 
 
 def test_valuations_are_added_chosen_and_corrected(
@@ -337,7 +338,7 @@ def test_valuations_are_added_chosen_and_corrected(
 ) -> None:
     from opesvault.investments import service as inv
     from opesvault.investments.model import ValueNature
-    from opesvault.ui.pages.investments_page import InvestmentsPage
+    from opesvault.ui.pages.investments import InvestmentsPage
 
     m = mount(InvestmentsPage, env)
     pos_id = _value_position(m)
@@ -348,16 +349,16 @@ def test_valuations_are_added_chosen_and_corrected(
     m.page.new_valuation()
     second = next(v for v in inv.valuations_of(m.ledger, pos_id) if v.source == "app")
     assert second.nature is ValueNature.NET_INFORMED and not second.selected  # the first of a date is used
-    select_row(m.page.valuations, second.id)
+    select_row(m.page.detail.valuations, second.id)
     m.page.use_valuation()
     assert inv.valuations(m.ledger)[second.id].selected
-    select_row(m.page.valuations, second.id)
+    select_row(m.page.detail.valuations, second.id)
     forms.append({"value": "1.090,00", "reason": "valor do informe"})
     m.page.fix_valuation()
     assert inv.valuations(m.ledger)[second.id].value == Decimal("1090.00")
     assert len(m.sealed()) == 4
     # Two selected dates make a period: the returns table computes it.
-    assert m.page.period_start.count() == 2 and m.page.returns_table.rowCount() > 0
+    assert m.page.detail.period_start.count() == 2 and m.page.detail.returns_table.rowCount() > 0
 
 
 def test_returns_compare_with_an_imported_benchmark(
@@ -369,7 +370,7 @@ def test_returns_compare_with_an_imported_benchmark(
     from opesvault.investments import service as inv
     from opesvault.investments.benchmarks import benchmarks
     from opesvault.investments.model import ValueNature
-    from opesvault.ui.pages.investments_page import InvestmentsPage
+    from opesvault.ui.pages.investments import InvestmentsPage
 
     m = mount(InvestmentsPage, env)
     pos_id = _value_position(m)
@@ -392,16 +393,16 @@ def test_returns_compare_with_an_imported_benchmark(
     assert bench.name == "IPCA" and bench.source == "arquivo indice.csv" and len(m.sealed()) == 1
 
     page = m.page
-    rows_without = page.returns_table.rowCount()
-    select_combo(page.benchmark, bench.id)
-    page._show_returns()
-    assert page.returns_table.rowCount() == rows_without + 1
-    results = dict(zip(column(page.returns_table, 0), column(page.returns_table, 1), strict=True))
+    rows_without = page.detail.returns_table.rowCount()
+    select_combo(page.detail.benchmark, bench.id)
+    page.detail.show_returns()
+    assert page.detail.returns_table.rowCount() == rows_without + 1
+    results = dict(zip(column(page.detail.returns_table, 0), column(page.detail.returns_table, 1), strict=True))
     assert results["variação do índice IPCA (arquivo indice.csv)"] == "5,00%"
     assert results["retorno simples do período"] == "10,00%"
-    page.period_end.setCurrentIndex(0)  # an empty period computes nothing
-    page._show_returns()
-    assert page.returns_table.rowCount() == 0
+    page.detail.period_end.setCurrentIndex(0)  # an empty period computes nothing
+    page.detail.show_returns()
+    assert page.detail.returns_table.rowCount() == 0
     csv.write_text("data;valor\n02/01/2026;100,00\n", encoding="utf-8")
     names.append(("CDI", True))
     page.import_benchmark()
@@ -413,13 +414,13 @@ def test_tax_rule_and_redemption_simulator(
 ) -> None:
     from opesvault.investments import service as inv
     from opesvault.investments.model import TaxRuleKind, ValueNature
-    from opesvault.ui.pages.investments_page import InvestmentsPage
+    from opesvault.ui.pages.investments import InvestmentsPage
 
     m = mount(InvestmentsPage, env)
     pos_id = _value_position(m)
     inv.add_valuation(m.ledger, pos_id, date(2026, 6, 30), "1200.00", ValueNature.GROSS, source="extrato")
     m.page.simulate()
-    assert boxes[-1][0] == "Simulador" and not m.steps  # no rule yet
+    assert m.notices[-1].startswith("Cadastre antes uma regra") and not boxes and not m.steps  # no rule yet
     forms.append({"name": "IR 15%", "kind": TaxRuleKind.RATE_ON_POSITIVE_GAIN, "rate": "quinze"})
     m.page.new_rule()
     assert boxes[-1] == ("OpesVault", "Alíquota inválida.") and not m.ledger.entities("tax_rule")
@@ -443,7 +444,7 @@ def test_tax_rule_and_redemption_simulator(
 
 
 def test_tax_payment_leaves_cash_when_paid(env: tuple[Session, Family], forms: list[dict[str, object] | None]) -> None:
-    from opesvault.ui.pages.investments_page import InvestmentsPage
+    from opesvault.ui.pages.investments import InvestmentsPage
 
     m = mount(InvestmentsPage, env)
     forms.append({"on": date(2026, 4, 30), "value": "45,00", "from": m.family.bank})
@@ -458,7 +459,7 @@ def test_trades_by_quantity_honour_the_chosen_cost_method(
     from opesvault.investments import service as inv
     from opesvault.investments.model import AssetClass, EventKind, TrackingMode
     from opesvault.investments.trades import CostMethod, holding, lots_of
-    from opesvault.ui.pages.investments_page import InvestmentsPage
+    from opesvault.ui.pages.investments import InvestmentsPage
 
     m = mount(InvestmentsPage, env)
     pos = inv.create_position(
@@ -485,7 +486,7 @@ def test_trades_by_quantity_honour_the_chosen_cost_method(
     forms.append({"on": date(2026, 3, 2), "qty": "1", "cost": ""})
     m.page.bonus()
     assert holding(m.ledger, pos.id).quantity == (10 + 4) * 2 + 1
-    assert len(m.sealed()) == 6 and m.page.lots.rowCount() == len(lots_of(m.ledger, pos.id))
+    assert len(m.sealed()) == 6 and m.page.detail.lots.rowCount() == len(lots_of(m.ledger, pos.id))
 
 
 # ── Contas e cartões ────────────────────────────────
@@ -496,7 +497,7 @@ def test_members_accounts_cards_and_categories_are_registered(
 ) -> None:
     from opesvault.domain.model import AccountSubtype, AccountType
     from opesvault.ui.dialogs import AccountDialog, CardDialog, CategoryDialog, MemberDialog
-    from opesvault.ui.pages.accounts_page import AccountsPage
+    from opesvault.ui.pages.accounts import AccountsPage
 
     m = mount(AccountsPage, env)
     ledger = m.ledger
@@ -515,12 +516,12 @@ def test_members_accounts_cards_and_categories_are_registered(
         d.opening_date.setDate(to_qdate(date(2026, 1, 1)))
 
     answer_dialog(monkeypatch, AccountDialog, new_account)
-    m.page.add_account()
+    m.page.accounts_tab.add()
     broker = next(a for a in ledger.accounts.values() if a.name == "Corretora")
     assert queries.balance(ledger, broker.id) == Decimal("250.00")
-    select_row(m.page.accounts, broker.id)
+    select_row(m.page.accounts_tab.table, broker.id)
     answer_dialog(monkeypatch, AccountDialog, lambda d: d.institution.setText("XP"))
-    m.page.edit_account()
+    m.page.accounts_tab.edit()
     assert ledger.accounts[broker.id].institution == "XP"
 
     def new_card(d: CardDialog) -> None:
@@ -542,22 +543,24 @@ def test_members_accounts_cards_and_categories_are_registered(
     pets = next(a for a in ledger.categories(AccountType.EXPENSE) if a.name == "Pets")
     assert "Pets" in column(m.page.categories, 0) and pets.parent_id is None
     assert len(m.sealed()) == 7  # each saved dialog is one undo step
-    assert m.page.bill_card.findText("Cartão Lia") >= 0  # the bills tab lists the new card
+    assert m.page.bills_tab.card.findText("Cartão Lia") >= 0  # the bills tab lists the new card
 
 
 def test_cancelled_dialogs_change_nothing(env: tuple[Session, Family], monkeypatch: pytest.MonkeyPatch) -> None:
     from opesvault.ui.dialogs import AccountDialog, CardDialog, CategoryDialog, MemberDialog
-    from opesvault.ui.pages.accounts_page import AccountsPage
+    from opesvault.ui.pages.accounts import AccountsPage
     from opesvault.ui.rule_dialog import RuleDialog
 
     m = mount(AccountsPage, env)
     for cls in (AccountDialog, CardDialog, CategoryDialog, MemberDialog, RuleDialog):
         answer_dialog(monkeypatch, cls, None)
-    for action in (m.page.add_member, m.page.add_account, m.page.add_card, m.page.add_category, m.page.add_rule):
+    page = m.page
+    for action in (page.add_member, page.accounts_tab.add, page.add_card, page.add_category, page.rules_tab.add):
         action()
-    for action in (m.page.edit_member, m.page.edit_account, m.page.edit_card, m.page.edit_rule, m.page.toggle_rule):
+    assert not m.notices
+    for action in (page.edit_member, page.edit_card, page.rules_tab.edit, page.rules_tab.toggle):
         action()  # nothing selected
-    assert not m.steps and not m.notices
+    assert not m.steps and m.notices == ["Escolha uma regra."] * 2
 
 
 def _overdue_bill(m: Mounted[Any]) -> YearMonth:
@@ -574,26 +577,26 @@ def test_bill_is_revealed_and_paid_from_the_bills_tab(
     env: tuple[Session, Family], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     from opesvault.ui.dialogs import BillPaymentDialog
-    from opesvault.ui.pages.accounts_page import AccountsPage
+    from opesvault.ui.pages.accounts import AccountsPage
 
     m = mount(AccountsPage, env)
     month = _overdue_bill(m)
     m.page.refresh()
     m.page.reveal("not a bill")
-    assert m.page.tabs.currentIndex() != m.page.bills_tab
+    assert m.page.tabs.currentWidget() is not m.page.bills_tab
     m.page.reveal((m.family.card, month))  # without act: only shows it
-    assert m.page.tabs.currentIndex() == m.page.bills_tab and m.page._selected_bill() is not None
-    assert m.page.pay_button.isEnabled() and column(m.page.bills, 9) == ["Vencida"]
+    assert m.page.tabs.currentWidget() is m.page.bills_tab and m.page.bills_tab._selected() is not None
+    assert m.page.bills_tab.pay_button.isEnabled() and column(m.page.bills_tab.table, 9) == ["Vencida"]
     opened = answer_dialog(monkeypatch, BillPaymentDialog, None)
-    m.page.pay_bill()
+    m.page.bills_tab.pay()
     assert len(opened) == 1 and not m.steps  # cancelled
     answer_dialog(monkeypatch, BillPaymentDialog, lambda d: None)  # the remaining amount comes filled in
     m.page.reveal((m.family.card, month), act=True)
     assert m.notices == ["Pagamento da fatura de Cartão X registrado."] and len(m.sealed()) == 1
     assert queries.balance(m.ledger, m.family.card_account) == Decimal("0")
-    select_row(m.page.bills, month)
-    assert column(m.page.bills, 9) == ["Paga"] and not m.page.pay_button.isEnabled()
-    m.page.pay_bill()  # a paid bill has nothing left to pay
+    select_row(m.page.bills_tab.table, month)
+    assert column(m.page.bills_tab.table, 9) == ["Paga"] and not m.page.bills_tab.pay_button.isEnabled()
+    m.page.bills_tab.pay()  # a paid bill has nothing left to pay
     assert len(m.sealed()) == 1
 
 
@@ -601,7 +604,7 @@ def test_category_rules_are_created_edited_and_switched(
     env: tuple[Session, Family], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     from opesvault.importing import rules
-    from opesvault.ui.pages.accounts_page import AccountsPage
+    from opesvault.ui.pages.accounts import AccountsPage
     from opesvault.ui.rule_dialog import RuleDialog
 
     m = mount(AccountsPage, env)
@@ -612,43 +615,43 @@ def test_category_rules_are_created_edited_and_switched(
         select_combo(d.target, groceries)
 
     answer_dialog(monkeypatch, RuleDialog, create)
-    m.page.add_rule()
+    m.page.rules_tab.add()
     (rule,) = rules.rules(m.ledger).values()
     assert rule.pattern == "SUPERMERCADO" and rule.target_account_id == groceries
     assert m.notices[-1] == "Regra criada. 0 item(ns) pendente(s) recategorizado(s)."
-    assert column(m.page.rules, 2) == ["Qualquer conta"] and column(m.page.rules, 4) == ["Ativa"]
+    assert column(m.page.rules_tab.table, 2) == ["Qualquer conta"] and column(m.page.rules_tab.table, 4) == ["Ativa"]
 
-    select_row(m.page.rules, rule.id)
+    select_row(m.page.rules_tab.table, rule.id)
 
     def edit(d: RuleDialog) -> None:
         d.pattern.setText("MERCADO")
         d.reason.setText("pega mais lojas")
 
     answer_dialog(monkeypatch, RuleDialog, edit)
-    m.page.edit_rule()
+    m.page.rules_tab.edit()
     assert rules.rules(m.ledger)[rule.id].pattern == "MERCADO" and m.notices[-1] == "Regra alterada."
 
     reasons: list[str | None] = [None, "não uso mais"]
     monkeypatch.setattr("opesvault.ui.dialogs.ask_reason", lambda *_a: reasons.pop(0))
-    select_row(m.page.rules, rule.id)
-    m.page.toggle_rule()  # reason refused: nothing changes
+    select_row(m.page.rules_tab.table, rule.id)
+    m.page.rules_tab.toggle()  # reason refused: nothing changes
     assert rules.rules(m.ledger)[rule.id].active
-    m.page.toggle_rule()
+    m.page.rules_tab.toggle()
     assert not rules.rules(m.ledger)[rule.id].active
     assert m.notices[-1] == "Regra desativada. 0 item(ns) pendente(s) revisto(s)."
-    assert column(m.page.rules, 4) == ["Desativada"] and len(m.sealed()) == 3
+    assert column(m.page.rules_tab.table, 4) == ["Desativada"] and len(m.sealed()) == 3
 
 
 def test_accounts_page_without_session_is_empty(env: tuple[Session, Family]) -> None:
-    from opesvault.ui.pages.accounts_page import AccountsPage
+    from opesvault.ui.pages.accounts import AccountsPage
 
     m = mount(AccountsPage, env)
-    assert m.page.accounts.rowCount() > 0
+    assert m.page.accounts_tab.table.rowCount() > 0
     m.page.set_session(None)
-    assert all(t.rowCount() == 0 for t in (m.page.members, m.page.accounts, m.page.cards, m.page.categories))
-    m.page._refresh_rules()
-    m.page._refresh_bills()
-    assert m.page.rules.rowCount() == 0 and m.page.bills.rowCount() == 0 and not m.page.pay_button.isEnabled()
+    page = m.page
+    assert all(t.rowCount() == 0 for t in (page.members, page.accounts_tab.table, page.cards, page.categories))
+    assert page.rules_tab.table.rowCount() == 0 and page.bills_tab.table.rowCount() == 0
+    assert not page.bills_tab.pay_button.isEnabled() and page.header.subtitle.text() == ""
 
 
 # ── Recorrências ────────────────────────────────────
@@ -737,7 +740,7 @@ def test_forecast_alert_links_the_realized_operation(
     rule = _rent_rule(m)
     late = next(f for f in m.page._forecasts if f.status is ForecastStatus.LATE)
     m.page.reveal((rule.id, late.due_on), act=True)  # no matching operation yet
-    assert boxes[-1] == ("Recorrências", "Nenhum lançamento compatível (conta, valor e data).")
+    assert m.notices[-1] == "Nenhum lançamento compatível (conta, valor e data)."
     op = m.ledger.record_expense(m.family.bank, m.family.groceries, "1500.00", late.due_on, "Aluguel março")
     m.session.undo_stack().seal()
     m.page.refresh()
@@ -767,7 +770,7 @@ def test_unique_suggestions_are_linked_after_confirmation(
 
     m = mount(RecurrencesPage, env)
     m.page.link_suggestions()
-    assert boxes[-1] == ("Recorrências", "Nenhuma previsão com um único lançamento compatível.")
+    assert m.notices[-1] == "Nenhuma previsão com um único lançamento compatível."
     _rent_rule(m)
     late = [f for f in m.page._forecasts if f.status is ForecastStatus.LATE]
     for forecast in late:
@@ -889,7 +892,7 @@ def test_month_grid_and_copy_from_the_previous_month(
     month = m.page.month.current()
     groceries = m.family.groceries
     m.page.copy_previous()
-    assert boxes[-1][0] == "Orçamento" and boxes[-1][1].startswith("Nada a copiar") and not m.steps
+    assert m.notices[-1].startswith("Nada a copiar") and not boxes and not m.steps
     budget.set_budget(m.ledger, groceries, month.add(-1), "400.00")
     m.session.undo_stack().seal()
     m.page.copy_previous()
@@ -982,7 +985,7 @@ def test_result_report_filters_by_member_and_position_charts_have_no_ledger(env:
     page = m.page
     page.reveal("result")
     labels = [page.scope.itemText(i) for i in range(page.scope.count())]
-    assert labels == ["Família inteira", "Ana", "Bruno"]
+    assert labels == ["Projeto inteiro", "Ana", "Bruno"]
     select_combo(page.scope, m.family.bruno)
     page.inspect("Resultado", Point("2026-02", Decimal("10")))
     assert page._ledger_ref() == ("filter", None, YearMonth(year=2026, month=2), m.family.bruno)

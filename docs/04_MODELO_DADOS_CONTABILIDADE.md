@@ -31,6 +31,43 @@ Um cofre tem identificador, versão de formato, revisão e moeda de apresentaç�
 | Imposto/taxa | Evento, natureza, base, valor, data e estado real/simulado |
 | Regra tributária | Nome, versão, vigência, fonte e parâmetros manuais |
 | Histórico | Entidade, versões, operador declarado, motivo e instante |
+| Financiamento | Contrato (saldo devedor, taxa mensal, prazo, SAC ou Price, primeiro vencimento, seguros por parcela), conta de dívida, conta de pagamento e categorias de juros e encargos. O cronograma é calculado, nunca guardado |
+| Pagamento de parcela / amortização antecipada | Financiamento, número da parcela (ou "depois da parcela n"), operação, data e efeito (reduzir prazo ou parcela) |
+| Marcadores | Operação e lista de marcadores ("Viagem 2026"). Classificação, não fato financeiro: fica ao lado da operação e pode mudar em mês fechado |
+| Reembolso | Despesa original, quem reembolsa, valor esperado, recebimentos (estornos) e negativa |
+| Acerto entre integrantes | Quem pagou, para quem, valor e data; não movimenta dinheiro |
+| Conferência de saldo | Conta, data e saldo informado pelo banco; a diferença é calculada na hora |
+| Categoria dedutível | Categoria de despesa e tipo de dedução (saúde, educação, PGBL, pensão, doações, outras) |
+| Comprovante | Operação e documento do cofre (PDF ou imagem) |
+| Filtro salvo | Nome e filtros do Livro (período nomeado, conta, integrante, texto, situação, origem, marcador) |
+| Estabelecimento | Chave (descrição limpa e normalizada) e nome aprovado |
+| Suspeita conferida | Operação e tipo (duplicidade, valor fora do comum) marcados como "está certo" |
+| Meta | Nome, patrimônio líquido ou contas escolhidas, valor-alvo, prazo opcional, criação e arquivamento |
+| Conta bancária (`bank_account`) | Nome, banco (código COMPE da lista embutida, ou outra instituição pelo nome), agência e número (letras, números e símbolos, sem espaços), titular e, se conjunta, segundo titular; conta corrente e poupança (contas do livro) |
+| Características do investimento (`investment_profile`) | Posição, conta bancária onde está, tipo pelo grupo e código de Bens e Direitos do IRPF, emissor e CNPJ, indexador e taxa, aplicação, vencimento, liquidez, tributação (descrição, sem alíquota), código do rendimento no IRPF e cobertura do FGC |
+| CPF/CNPJ (`tax_identity`) | Estabelecimento (chave da descrição), conta (instituição) ou categoria de receita (fonte pagadora), número validado pelos dígitos e nome na declaração |
+| Dados fiscais do integrante (`member_tax_info`) | CPF, nascimento, quem o declara (dependente) e relação |
+| Natureza do rendimento (`income_classification`) | Categoria de receita ou investimento → tributável de PJ, Carnê-Leão, isento, exclusivo ou "não declarar" |
+| Detalhe do rendimento (`income_detail`) | Operação de receita, tipo (salário, 13º, outro), bruto, IR retido e INSS (cada um pode ficar desconhecido) |
+| Bem declarado (`asset_filing`, `declared_asset`) | Grupo, código e discriminação de conta ou investimento; bens que não são contas (imóvel, veículo) pelo custo, com aquisição e venda |
+| Informe (`income_report`) | Ano, fonte (conta ou categoria), CNPJ, documento original e linhas (campo, valor, texto lido) |
+| Parâmetros fiscais (`tax_parameters`, `variable_income_rules`) | Tabela anual, desconto simplificado, limites; alíquotas e limite de isenção da renda variável, com vigência e fonte. Sempre informados pelo usuário |
+| DARF pago (`tax_payment`) | Renda variável ou Carnê-Leão, mês de apuração, valor, data e operação de despesa |
+| Documento do ano (`tax_checklist_mark`) | Ano, chave do documento esperado e marcação manual de recebido |
+
+Os tipos da revisão de 03/10/2026 são novos tipos persistidos, sem mudar os existentes: o esquema do domínio continua 2, e versões anteriores do aplicativo recusam o cofre com a mensagem de versão mais nova.
+
+### 1.1 Regras das funcionalidades de 03/10/2026
+
+- **Parcela de financiamento**: uma operação com a amortização a débito da dívida, os juros e os seguros a débito das categorias e o total a crédito da conta de pagamento. Pagar mais que a parcela (multa, juros de atraso) soma a diferença aos juros; pagar menos não é registrado como parcela. Juros de cada parcela = saldo × taxa, arredondado em centavos com empate para longe de zero; a última parcela leva o resíduo.
+- **Amortização antecipada**: o valor inteiro abate a dívida, sem juros, depois da última parcela paga. Reduzir o prazo mantém a parcela (Price) ou a amortização (SAC); reduzir a parcela recalcula com as parcelas restantes.
+- **Reembolso recebido**: estorno (`REFUND`) das categorias da despesa original, em proporção, no mês do recebimento. Nunca é receita.
+- **Quem pagou** (acertos): o único titular da conta de onde saiu o dinheiro, ou o titular do cartão. Conta conjunta pagou por todos e não cria dívida entre integrantes. A parte de cada um vem do rateio da partida ou, sem rateio, do integrante da operação.
+- **Dedutíveis**: por ano de pagamento (ou da compra no cartão), por pessoa, líquidos de estornos e reembolsos. Material de apoio, sem limites legais.
+- **Conta bancária**: agrupa o que fica na mesma agência e número; o dinheiro continua nas contas do livro e nas posições, então saldos, relatórios e fichas não mudam de regra. Um titular, ou conjunta com primeiro e segundo titular; a ordem fica em `holders` das contas do livro (o primeiro é o principal), e os investimentos ali ficam no nome do primeiro titular. Cada conta do livro pertence a no máximo uma conta bancária.
+- **Valor numa data**: o saldo que o banco mostra vira conferência (`balance_check`); com "ajustar", a diferença para o saldo do aplicativo no fim daquele dia é lançada contra o patrimônio de abertura (tipo saldo de abertura, sem afetar receitas e despesas), e o saldo do aplicativo passa a ser o do banco dali em diante. Investimentos recebem uma avaliação daquela data (fonte "valor informado"; informar de novo no mesmo dia corrige). Por padrão, só ajusta contas sem lançamentos além de saldos de abertura e ajustes.
+- **Imposto de renda (apoio)**: regime de caixa (data do dinheiro). Cada item pertence ao integrante do rateio, ao da operação ou ao único titular da conta; um declarante vê os próprios itens e os dos dependentes. Rendimento de investimento (provento, ganho em resgate) segue a natureza do investimento; vendas de ações, ETF e FII ficam na renda variável. Sem contracheque, o depósito conta pelo líquido e a ficha avisa. Pagamentos efetuados: pago, parcela não dedutível (o reembolso recebido) e dedutível, por quem recebeu e beneficiário. Bens pelo custo do que ainda é seu (saldo da conta de custo do investimento; investimento sem custo conhecido fica desconhecido), nunca pelo valor de mercado. Dívidas: financiamentos e outras dívidas, sem faturas de cartão.
+- **Renda variável**: resultado de cada venda = bruto − custo − custos da venda; day trade = compra e venda da mesma posição no mesmo dia, pelo preço médio das compras do dia (marcado como aproximado); prejuízo compensado nos meses seguintes dentro do mesmo tipo (comuns, day trade, FII); isenção de ganhos em ações quando as vendas de ações do mês não passam do limite informado; imposto = base × alíquota informada, menos o IR na fonte; sem alíquota, desconhecido. Vencimento: último dia útil do mês seguinte, sem feriados.
 
 ## 2. Invariantes
 

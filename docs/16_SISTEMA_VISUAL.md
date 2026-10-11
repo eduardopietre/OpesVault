@@ -1,6 +1,6 @@
 # Sistema visual e de interação
 
-Versão 1.2 • 02/10/2026. Complementa o `07` (telas e gráficos) com as regras de interface adotadas na revisão orientada pelos princípios de interação de desktop da Apple (HIG): hierarquia clara, conteúdo acima de cromo, teclado como recurso de primeira classe e consistência entre telas. A meta não é imitar a aparência do macOS: o alvo continua sendo Windows, com Qt Widgets.
+Versão 1.4 • 03/10/2026. Complementa o `07` (telas e gráficos) com as regras de interface adotadas na revisão orientada pelos princípios de interação de desktop da Apple (HIG): hierarquia clara, conteúdo acima de cromo, teclado como recurso de primeira classe e consistência entre telas. A meta não é imitar a aparência do macOS: o alvo continua sendo Windows, com Qt Widgets.
 
 ## 1. Arquitetura da janela
 
@@ -29,6 +29,13 @@ Configurações (rodapé)
 - **Atenção:** ao abrir o cofre, a Visão geral mostra o que vence, atrasou, estourou ou aguarda revisão. Cada aviso tem um botão para a tela onde se resolve, e o painel some até a próxima abertura se o usuário ocultá-lo.
 - **Sem cofre aberto:** a janela mostra um estado vazio com Novo cofre e Abrir cofre.
 
+- **Organização do código da janela** (revisão de 03/10/2026):
+  - `ui/main_window.py` monta a janela, os menus e a barra e cuida da navegação e do estado de salvamento;
+  - `ui/shell/` tem as partes: `Sidebar` e `WelcomePanel` são widgets; os comandos do cofre (`vault`), backups (`backups`), bloqueio visual (`screen_lock`) e cofres recentes (`recents`) são grupos de comandos tipados contra `shell/contract.py`;
+  - páginas grandes são pacotes com um módulo por responsabilidade: `pages/ledger/` (página, `LedgerFilters`, modelo da tabela, inspetor, comandos de linha), `pages/investments/` (página, `InvestmentDetail`, formulário, eventos, negociações), `pages/tax/` (página, `rows.py` sem Qt, comandos, informes), `pages/imports/` (página, fila, revisão, IA local, rótulos) e `pages/accounts/` (página e abas sobre `PageTab`: contas bancárias, todas as contas, faturas, financiamentos, regras).
+
+- **Termo na interface:** o cofre pertence a um **Projeto**. A interface diz "Projeto inteiro", "(projeto)" e "Nome do projeto", nunca "Família". Estes documentos continuam usando "família" para o mesmo conceito.
+
 ## 2. Fundamentos (`src/opesvault/ui/theme.py`)
 
 - **Cores semânticas** (`Tokens`), em versões clara e escura:
@@ -52,11 +59,14 @@ Configurações (rodapé)
 - **Estilo Qt:** Fusion, para métricas iguais em todos os sistemas. Combos e campos de número mantêm o desenho nativo do Fusion, para não perder as setas.
 - **Tradução:** os textos do próprio Qt (botões padrão, diálogos de arquivo) usam `qtbase_pt_BR`.
 
-## 3. Componentes (`src/opesvault/ui/components.py`)
+## 3. Componentes (`src/opesvault/ui/components/`)
+
+Importados de `opesvault.ui.components`; cada tipo de peça tem seu módulo: `basics` (texto, botões, menus, separadores, linhas), `layout` (`FlowLayout`, `flow_row`, `Adaptive`, `scroll_body`), `header` (`PageHeader`), `sections` (`EmptyState`, `Figures`, `Section`, `Collapsible`), `month` (`MonthPicker`) e `decisions` (`decide`, `confirm`).
 
 | Componente | Uso |
 |---|---|
-| `PageHeader` | Título, contexto e ações de cada página |
+| `PageHeader` | Título, contexto e ações de cada página. As ações ficam numa linha ao lado do título quando cabem; sem largura, descem para baixo dele e quebram linha (`FlowLayout`), e a largura mínima é a da maior ação |
+| `ElidedLabel` | Uma linha com nome do usuário (projeto, arquivo, documento, investimento): corta com "…" e mostra o texto inteiro na dica; `text()` devolve o texto inteiro. Nunca alarga a janela |
 | `EmptyState` | O que é a área, por que está vazia e o que fazer |
 | `Figures` / `Section` | Números-chave e grupos titulados, sem caixas. Grupos lado a lado usam uma grade de colunas iguais, com título, descrição e números nas mesmas linhas |
 | `summary_table` / `fit_to_rows` | Tabelas curtas de resumo (Visão geral, Orçamento, Recorrências, carteira de Investimentos): sem moldura nem zebra, divisórias entre linhas, altura igual ao conteúdo até um limite (depois rola). A coluna do nome ocupa a sobra; colunas numéricas à direita, cabeçalho incluído |
@@ -67,10 +77,21 @@ Configurações (rodapé)
 | `menu_button` | Agrupa comandos secundários sem escondê-los |
 | `button(role=…)` | Hierarquia: `primary`, padrão, `plain`, `destructive` |
 | `flow_row` / `FlowLayout` | Filtros e ações quebram linha em janelas estreitas |
+| `Adaptive` / `adaptive` | Partes relacionadas lado a lado quando há largura e uma abaixo da outra quando não há. A largura mínima é sempre a da forma empilhada, para que o arranjo largo nunca obrigue a janela a ficar larga. Usa folga de 32 px para não alternar com a barra de rolagem. `first_right` põe a primeira parte em cima quando empilhado e à direita quando largo (coluna lateral) |
+| `ui/catalog_widgets.py` | Listas com busca (digitar código ou parte do nome): bancos pelo COMPE, grupos e códigos de Bens e Direitos, tipos de investimento |
+| `pages/accounts/bank.py`, `ui/bank_dialogs.py` | Aba Contas bancárias e diálogos de conta bancária, valores em uma data (tabela por item, com "Ajustar o saldo") e investimento (novo ou características) |
+| `ui/tax_dialogs/` | Diálogos do Imposto de renda, um módulo por ficha (`people`, `income`, `assets`, `reports`, `year`, com os campos comuns em `fields`): CPF/CNPJ, declarantes, natureza dos rendimentos (grade), contracheque, comprovantes, bem, informe (revisão linha a linha), tabela do ano, regras de renda variável, DARF |
+| `select_id`, `select_combo`, `fit_columns` (`ui/common.py`) | Selecionar a linha de uma tabela ou lista, ou a opção de um combo, pelo id, comparando valores (`reveal`, manter a seleção ao atualizar). Nunca `QComboBox.findData`, que compara objetos Python por identidade e não acha um id lido de volta do cofre. Colunas do tamanho do conteúdo sem reservar a seta de ordenação em todas (só na ordenada) |
+| `share_width` (`ui/common.py`) | Tabelas de trabalho (Livro): larguras base para todas as colunas; numa janela larga a sobra vai para as colunas de texto, em vez de virar uma faixa vazia. Uma coluna arrastada pelo usuário encerra a divisão automática |
+| `PageTab` (`pages/accounts/tab.py`) | Aba com estado próprio: lê a sessão da página e avisa por ela (`changed`, `notify`, `navigate`), então uma alteração na aba é um passo de desfazer como outro qualquer |
+| `while_alive` (`ui/background.py`) | Liga a resposta de um trabalho em segundo plano a uma página só enquanto ela existir; a resposta que chega depois de a janela fechar é descartada |
+| `ui/preferences.py` | Único ponto que cria `QSettings` (preferências deste computador); os testes o desviam para um arquivo temporário |
 | `MonthPicker` | Mês por extenso, com botões ‹ › do mesmo tamanho e moldura do seletor, e Alt+← / Alt+→ |
 | `style_table`, `install_column_chooser` | Tabelas sem grade, zebradas, colunas escolhidas pelo botão direito e lembradas |
+| `Collapsible` | Seção que se recolhe: o título é o botão (seta ▸/▾), as ações ficam na linha do título e somem quando recolhida. Com uma chave, a escolha do usuário (só o clique, não a mudança feita pelo código) fica neste computador |
+| `ChartPanel` (`ui/chart_panel.py`) | Gráfico e tabela de valores do mesmo `Chart`, cada um num `Collapsible`. Clicar numa linha aponta o valor no gráfico; clicar no gráfico seleciona a linha. Fluxos mensais ganham linhas "Total" e "Média"; posições (saldos) não somam. "Exportar valores…" grava CSV com o aviso de arquivo sem cifra. `clear()` ao fechar o cofre |
 
-Formulários (`FormDialog`) usam rótulos alinhados e um botão com verbo ("Registrar", "Salvar correção"). O erro aparece **dentro** do formulário, sem segundo diálogo. A senha é conferida enquanto o usuário digita: o botão só se habilita quando as senhas coincidem.
+Formulários (`FormDialog`) usam rótulos alinhados e um botão com verbo ("Registrar", "Salvar correção"). O formulário rola dentro do diálogo, que nunca passa de 85% da altura da tela; listas que se editam ali mesmo (pessoas, operações) têm só "Fechar" (`close_only`). O erro aparece **dentro** do formulário, sem segundo diálogo. A senha é conferida enquanto o usuário digita: o botão só se habilita quando as senhas coincidem.
 
 ## 4. Regras
 
@@ -78,7 +99,19 @@ Formulários (`FormDialog`) usam rótulos alinhados e um botão com verbo ("Regi
 2. Cada ação mostra o que fez, de forma breve na barra de status ("Lançamento corrigido. A versão anterior ficou no histórico."). Diálogo só quando há decisão.
 3. Estados vazios explicam a área e oferecem o próximo passo; filtros ativos sempre mostram "Limpar filtros".
 4. Cor nunca é o único sinal: o cancelado tem texto "Cancelado", o saldo negativo tem sinal e o estado de salvamento tem texto.
-5. A janela funciona a partir de ~900 × 640: filtros e grupos quebram linha, painéis laterais podem ser recolhidos e o inspetor se oculta sozinho.
+5. A janela funciona a partir de ~900 × 640: filtros, grupos e as ações do cabeçalho quebram linha, painéis laterais podem ser recolhidos e o inspetor se oculta sozinho. O alvo do produto, porém, é **1920 × 1080**, e ali uma coluna única deixa metade da tela vazia. Por isso, a partir de certa largura do conteúdo, as partes relacionadas ficam lado a lado (`Adaptive`):
+
+   | Tela | Lado a lado quando largo | A partir de |
+   |---|---|---|
+   | Todas com `ChartPanel` (Orçamento, Contas, Relatórios, Metas, Visão geral) | gráfico (3/5) e tabela de valores (2/5); o gráfico fica 40% mais alto | 1000 px do painel |
+   | Visão geral | o mês à esquerda; Atenção e "Antes de fechar o mês" numa coluna à direita (2/7), que some quando está vazia. Estreita: em cima, como antes | 1300 px |
+   | Orçamento | categorias do mês e, ao lado, o histórico da categoria selecionada | 1200 px |
+   | Calendário | o calendário e a lista de vencimentos | 1200 px |
+   | Investimentos | Evolução e Avaliações; Resultado acumulado e Movimentos; Rentabilidade e Lotes | 1200 px |
+   | Recorrências | Assinaturas e contas fixas e "Parecem recorrentes" | 1400 px |
+   | Reembolsos e acertos | Acertos entre integrantes e Acertos registrados | 1300 px |
+
+   Nas áreas de trabalho com divisória, a sobra se reparte: no Livro, 3:1 entre a tabela e o inspetor, e as colunas Descrição, De → Para e Tipo crescem (`share_width`); em Importar, 1:4:3 entre documentos, revisão e original. O PDF original se ajusta à largura do visualizador (escala de 0,75 a 2,5) e é desenhado de novo quando a largura muda. Os gráficos refazem as margens ao mudar de tamanho, para os rótulos do eixo não serem cortados. Uma tabela de muitas colunas não vira coluna estreita: a lista de contas continua com a largura toda, e o gráfico de saldo abaixo dela é que fica ao lado dos valores.
 6. Teclado:
    - Ctrl+S, Ctrl+W, Ctrl+F, Ctrl+1…9, F1, Ctrl+L;
    - Ctrl+Z e Ctrl+Shift+Z (ou Ctrl+Y) desfazem e refazem o que ainda não foi salvo; o menu Editar diz o que será desfeito ("Desfazer lançamento");
@@ -86,12 +119,21 @@ Formulários (`FormDialog`) usam rótulos alinhados e um botão com verbo ("Regi
    - na revisão de importação: Ctrl+Enter, Ctrl+Shift+Enter, F2, Ctrl+M, Delete, Ctrl+K e Ctrl+R (criar regra);
    - botão direito oferece os mesmos comandos de linha.
 7. Gráficos usam a fonte da interface, uma paleta dessaturada e as cores do tema, sem moldura, e mantêm só a navegação (início, mover, zoom). Datas no eixo seguem o uso brasileiro ("mar/26", "01/03/26"). O nome do gráfico aparece no próprio gráfico; o subtítulo da página diz o período. A inspeção de um ponto aparece ao lado do gráfico, sem diálogo. Não se acrescenta gráfico para preencher espaço: na Visão geral, a distribuição por categoria só ganha barras neutras a partir de três categorias.
-8. Preferências deste computador ficam fora do cofre, em `QSettings`, e nunca guardam dados financeiros. São elas:
+8. Preferências deste computador ficam fora do cofre, em `QSettings` (sempre por `ui/preferences.py`), e nunca guardam dados financeiros. São elas:
+   - seções recolhidas ou abertas (`secoes/…`);
    - geometria da janela;
    - largura e visibilidade da barra lateral;
    - colunas visíveis;
    - bloqueio por inatividade;
    - cofres recentes.
+
+9. **Gráfico e tabela juntos, abas só para objetos diferentes** (revisão de 03/10/2026). Os números de um gráfico ao longo do tempo aparecem na mesma tela, logo abaixo, numa tabela que pode ser recolhida (`ChartPanel`); nunca numa aba separada. Abas separam coisas diferentes (Contas, Cartões, Faturas, Financiamentos, Categorias; as seções de Configurações). Investimentos trocou as seis abas (Evolução, Resultado, Avaliações, Movimentos, Lotes, Rentabilidade) por seções recolhíveis numa página só.
+10. Toda tabela ou gráfico novo é limpo quando o cofre fecha (TA-31): `ChartPanel.clear()`, `ChartWidget.clear()` e `setRowCount(0)` no ramo sem sessão de `refresh`.
+11. Largura mínima (revisão de 03/10/2026): nenhuma página pode exigir mais que ~630 px de conteúdo, para caber em 900 px com a barra lateral. Barras de ação de abas usam `flow_row`, nunca `hbox`; a barra lateral se mede pelo nome mais longo em negrito, com o contador, sem cortar nomes. Conferir com `minimumSizeHint` da janela, não só pela captura.
+12. Tabelas que ordenam começam na ordem em que os dados chegam (sem indicador de ordenação), não na primeira coluna de trás para frente. Barras de rolagem são finas e seguem o tema. Listas com um item a examinar (documentos, faturas, investimentos) já abrem com um selecionado: a fatura em aberto mais antiga, o primeiro documento.
+13. Gráficos: a legenda fica na linha do título, à direita, e desce para uma linha própria quando os dois não cabem; as notas abaixo quebram linha conforme a largura. Rótulos de mês ficam na horizontal até 8 meses. Uma série de outra ordem de grandeza (juros e amortização da parcela ao lado do saldo devedor) usa a escala da direita (`Series.axis = "right"`), e a nota diz qual escala é qual.
+14. Orientação curta ("Selecione um investimento.", "Nada a copiar…", o resultado de uma aprovação) vai para a barra de status com `Page.notify`; `QMessageBox` fica para erros e relatórios que precisam ser lidos.
+15. Regras que aprendem: a aba Contas e cartões › Regras mostra as regras do usuário (com "contrariada N de M vezes" quando a família escolhe outra categoria para o que a regra pega) e, abaixo, as **sugeridas pelo uso**: descrições categorizadas do mesmo jeito ao menos três vezes, que viram regra só com "Criar regra…". No lançamento manual, a descrição sugere a categoria de costume até a pessoa escolher outra, com uma linha dizendo que a sugestão veio do uso.
 
 ## 5. Fluxos: ver, ir ao ponto e concluir
 
@@ -107,6 +149,15 @@ Regra: quem vê um problema chega ao objeto e ao comando que o resolve, sem proc
 | Documento | A revisão do lote ligado a ele (**Abrir na revisão**) | `DocumentsPage` |
 | Ponto de um gráfico mensal em Relatórios | Livro filtrado no mês do ponto, com a conta, a categoria ou o integrante do filtro (**Ver lançamentos**) | `ReportsPage._ledger_ref` |
 | Composição da carteira (Investimentos › Mais) e Projeção de compromissos (Recorrências › Mais) | O gráfico correspondente em Relatórios | `ReportsPage.reveal` |
+| Aviso de parcela de financiamento | Contas e cartões › Financiamentos, com a parcela selecionada e **Pagar…** aberto | `Alert.ref` = ("loan", plano, nº); `AccountsPage.reveal` |
+| Aviso de saldo previsto negativo | Relatórios › Saldo projetado | `ReportsPage.reveal("projected_balance")` |
+| Aviso de saldo diferente do banco | Contas e cartões › Contas, com a conta e as conferências abertas | `Alert.ref` = ("check", conta) |
+| Aviso de valor de assinatura que mudou | Recorrências › Assinaturas e contas fixas, com a regra selecionada | `Alert.ref` = ("rule", regra) |
+| Vencimento no Calendário | A fatura, a parcela ou a previsão, com a ação aberta quando pendente | `AgendaPage.open_selected` |
+| Marcador em Relatórios | Livro filtrado pelo marcador | `LedgerPage.reveal(("tag", nome))` |
+| Aviso de possível duplicidade ou valor fora do comum | Livro filtrado na conta e nos dias do aviso; **Ações › Está certo** silencia | `Alert.ref` = ("filter", conta, (de, até)) |
+| Aviso de backup antigo ou ausente | Configurações | `MainWindow.backup_alerts` (lê a pasta; o domínio não lê disco) |
+| Comprovante no inspetor do Livro | Documentos, com o arquivo selecionado (PDF ou imagem) | `DocumentsPage.reveal(documento)` |
 
 - **Pagar fatura:** a aba Faturas tem **Pagar…** (também duplo clique na fatura). O formulário já traz a conta, o valor restante e a data de hoje. Pagamento depois do vencimento quita primeiro a fatura vencida (`04` §5, `domain.cards.bills`); o formulário diz isso quando a data passa do vencimento.
 - **Mês compartilhado:** o mês escolhido na Visão geral vale no Orçamento e é a segunda opção de período do Livro, que abre em "Todo o período" para não esconder lançamentos de quem chega pela barra lateral. Ao abrir o cofre, a Visão geral escolhe o último mês com movimento e os outros a seguem.
@@ -123,15 +174,21 @@ Regra: quem vê um problema chega ao objeto e ao comando que o resolve, sem proc
 
 ## 6. Verificação
 
-- `uv run python scripts/capturar_telas.py [--dark] [--size 900x640]` renderiza cada tela com dados sintéticos em `build/telas/`. Use antes e depois de mudar a interface.
+- `uv run python scripts/capturar_telas.py [--dark] [--size 900x640]` renderiza cada tela com dados sintéticos em `build/telas/`. Use antes e depois de mudar a interface, em 1920x1080 (o alvo), 1280x800 e 900x640.
 - `tests/test_ui_design.py` cobre:
   - estado sem cofre;
   - estado de salvamento;
   - grupos e contador da barra lateral;
-  - largura mínima com dados (≤ 1000 px);
+  - largura mínima com e sem cofre (≤ 1000 px; ~880 px no Linux);
+  - arranjo largo e estreito: `Adaptive`, gráfico ao lado dos valores, coluna de Atenção, colunas do Livro, ações do cabeçalho e PDF ajustado à largura;
   - limpar filtros;
   - erro inline;
   - temas claro e escuro.
+- `tests/test_every_screen.py` vale para todas as telas de uma vez, com o cofre de demonstração (`tests/demo_vault.py`):
+  - fechar o cofre não deixa nome nem valor do cofre em nenhuma página, aba, combo, lista, dica ou tabela (TA-31);
+  - cada botão e cada item de menu de cada página e aba é acionado, sem e com a primeira linha selecionada, e num cofre novo e vazio, com todos os diálogos cancelados: nenhum erro escapa, e um clique que altera o livro fecha o próprio passo de desfazer;
+  - cada página e aba cabe em 900 px com dados;
+  - nenhum widget fixa cor ou fonte, só `ui/preferences.py` cria `QSettings` e nada usa `findData`.
 - `tests/test_flows.py` cobre os fluxos do §5: aviso de fatura até o pagamento, aviso de orçamento, mês compartilhado e linha da Visão geral abrindo o Livro, Configurações sem Aplicar, salvar e seguir, correção pelo formulário simples, recentes só com consentimento e operador oculto com um integrante. As preferências do computador vão para um arquivo temporário, nunca para o perfil do usuário.
 
 ## 7. Fora do alcance desta revisão

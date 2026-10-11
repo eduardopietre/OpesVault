@@ -24,6 +24,9 @@ def test_suggest_pattern_drops_numbers_and_installments() -> None:
     assert rules.suggest_pattern("Uber *Trip 8812") == "UBER *TRIP"
     assert rules.suggest_pattern("Loja Eletro - Parcela 2/10") == "LOJA ELETRO"
     assert rules.suggest_pattern("Farmácia São João") == "FARMACIA SAO JOAO"
+    assert rules.suggest_pattern("LOJA TV (6x)") == "LOJA TV"
+    assert rules.suggest_pattern("Curso Online 10X") == "CURSO ONLINE"
+    assert rules.suggest_pattern("Posto 24 - 123") == "POSTO"
 
 
 def test_user_rule_wins_over_builtin_and_history(tmp_path: Path) -> None:

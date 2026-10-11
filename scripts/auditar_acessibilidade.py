@@ -105,10 +105,9 @@ def _where(widget: QWidget, problem: str) -> str:
 
 
 def main() -> None:
-    import capturar_telas as screens
-
     from opesvault.ui.main_window import MainWindow
     from opesvault.ui.theme import apply_theme
+    from tests.demo_vault import demo_session
 
     app = QApplication(sys.argv)
     apply_theme(app, dark=False)
@@ -116,7 +115,7 @@ def main() -> None:
         print("auditando telas…", flush=True)
         window = MainWindow()
         problems = [f"Sem cofre › {p.split(': ', 1)[-1]}" for p in unnamed(window.welcome)]
-        window.session = screens.demo_session(Path(tmp) / "demo.opesvault")
+        window.session = demo_session(Path(tmp) / "demo.opesvault")
         window._refresh()
         for page in window.pages:
             problems += [f"{page.title} › {p}" for p in unnamed(page)]

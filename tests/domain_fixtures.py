@@ -27,7 +27,7 @@ def category(ledger: Ledger, name: str, kind: AccountType = AccountType.EXPENSE)
 
 
 def family() -> Family:
-    ledger = Ledger.new("Família Teste")
+    ledger = Ledger.new("Projeto Teste")
     ana = ledger.add_member("Ana").id
     bruno = ledger.add_member("Bruno").id
     bank = ledger.add_account(

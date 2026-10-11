@@ -11,7 +11,6 @@ from PySide6.QtWidgets import (
     QDialogButtonBox,
     QHBoxLayout,
     QLineEdit,
-    QMessageBox,
     QStackedWidget,
     QTableWidget,
     QTableWidgetItem,
@@ -25,6 +24,7 @@ from opesvault.domain.ledger import DomainError, Ledger
 from opesvault.domain.model import AccountType, YearMonth
 from opesvault.ui.common import (
     fill_combo,
+    fit_columns,
     fit_to_rows,
     fmt,
     money_edit,
@@ -32,11 +32,12 @@ from opesvault.ui.common import (
     read_money,
     run_guarded,
     select_combo,
+    select_id,
     stretch_column,
     style_table,
     summary_table,
 )
-from opesvault.ui.components import EmptyState, Figures, MonthPicker, button, menu_button
+from opesvault.ui.components import EmptyState, Figures, MonthPicker, adaptive, button, menu_button, scroll_body
 from opesvault.ui.dialogs import FormDialog, category_items
 from opesvault.ui.pages.base import Page
 from opesvault.ui.theme import SPACE_L, SPACE_S, SPACE_XL, tokens
@@ -96,7 +97,7 @@ class BudgetGridDialog(QDialog):
             header = self.table.horizontalHeaderItem(column)
             if header is not None:
                 header.setTextAlignment(right)
-        self.table.resizeColumnsToContents()
+        fit_columns(self.table)
         self.table.setColumnWidth(1, 140)
         stretch_column(self.table)
         self.error = text("", wrap=True)
@@ -200,6 +201,9 @@ class BudgetDialog(FormDialog):
             raise DomainError("Informe um valor positivo.")
 
 
+HISTORY_MONTHS = 6
+
+
 class BudgetPage(Page):
     title = "Orçamento"
     section = "Dia a dia"
@@ -236,12 +240,24 @@ class BudgetPage(Page):
         self.views = QStackedWidget()
         self.views.addWidget(self.table)
         self.views.addWidget(self.empty)
+        # The plan over time sits below the month: the selected category, or the whole budget.
+        from opesvault.ui.chart_panel import ChartPanel
+
+        self.history = ChartPanel(
+            "orcamento/historico",
+            chart_title="Planejado e realizado mês a mês",
+            table_title="Valores mês a mês",
+            chart_height=240,
+        )
+        self.table.itemSelectionChanged.connect(self._refresh_history)
+        scroll, content = scroll_body()
+        content.setSpacing(SPACE_L)
+        content.addWidget(self.figures)
+        # wide: the categories beside the history of the selected one; narrow: one below the other
+        content.addWidget(adaptive(1200, self.views, self.history))
+        content.addStretch(1)
         layout = self.page_layout()
-        layout.addSpacing(SPACE_S)
-        layout.addWidget(self.figures)
-        layout.addSpacing(SPACE_L)
-        layout.addWidget(self.views)
-        layout.addStretch(1)
+        layout.addWidget(scroll, 1)
 
     def _month_changed(self) -> None:
         self.refresh()
@@ -261,11 +277,7 @@ class BudgetPage(Page):
             return
         category_id, month = ref
         self.month.set_month(month)
-        for row in range(self.table.rowCount()):
-            item = self.table.item(row, 0)
-            if item is not None and item.data(Qt.ItemDataRole.UserRole) == category_id:
-                self.table.selectRow(row)
-                return
+        select_id(self.table, category_id)
 
     def _selected_category(self) -> UUID | None:
         row = self.table.currentRow()
@@ -276,6 +288,7 @@ class BudgetPage(Page):
     def refresh(self) -> None:
         if self.session is None:
             self.table.setRowCount(0)
+            self.history.clear()
             return
         ledger = self.session.ledger
         month: YearMonth = self.month.current()
@@ -319,6 +332,20 @@ class BudgetPage(Page):
         for column in range(1, self.table.columnCount()):  # figures at their width; the name takes the rest
             self.table.resizeColumnToContents(column)
         fit_to_rows(self.table)
+        # The stack is as tall as what it shows, so the history below sits right under the month.
+        shown = self.views.currentWidget()
+        if shown is not None:
+            self.views.setFixedHeight(shown.sizeHint().height() if shown is self.empty else self.table.maximumHeight())
+        self._refresh_history()
+
+    def _refresh_history(self) -> None:
+        if self.session is None:
+            return
+        from opesvault.charts.data import budget_history
+
+        month: YearMonth = self.month.current()
+        category = self._selected_category()
+        self.history.show_chart(budget_history(self.session.ledger, month.add(-(HISTORY_MONTHS - 1)), month, category))
 
     # ── actions ─────────────────────────────────────
 
@@ -374,9 +401,7 @@ class BudgetPage(Page):
             self.notify(f"{copied} categoria(s) copiada(s) de {month_label(month.add(-1))}.")
             self.changed()
         elif copied == 0:
-            QMessageBox.information(
-                self,
-                "Orçamento",
+            self.notify(
                 f"Nada a copiar: {month_label(month.add(-1))} não tem orçamento, "
-                "ou estas categorias já estão definidas neste mês.",
+                "ou estas categorias já estão definidas neste mês."
             )

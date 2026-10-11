@@ -83,7 +83,7 @@ def disk(args: argparse.Namespace) -> dict[str, Any]:
     lock = VaultLock(vault)
     lock.acquire()
     client = _client()
-    session = Session.new(vault, "Família Teste")
+    session = Session.new(vault, "Projeto Teste")
     plain = docs.nubank_card_pdf()
     pipeline.import_document(session, ImportRequest("fatura.pdf", plain))
     protected = _protected(plain)
@@ -149,7 +149,7 @@ def antivirus(args: argparse.Namespace) -> dict[str, Any]:
     folder.mkdir(parents=True)
     client = _client()
     vault = folder / "grande.opesvault"
-    session = Session.new(vault, "Família Teste")
+    session = Session.new(vault, "Projeto Teste")
     for i in range(max(1, args.mib // 2)):
         session.add_document(f"extrato-{i:04d}.pdf", make_pdf([f"Documento {i}"], padding_bytes=2 * 2**20))
     ledger = session.ledger

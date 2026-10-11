@@ -35,7 +35,7 @@ Os caminhos são relativos a `tests/`.
 | TA-28 | automatizado | `test_investments::test_tax_due_later_reduces_cash_only_when_paid_ta28` | — |
 | TA-29 | automatizado | `test_acceptance_gaps::test_ta29_ai_enabled_but_failing_does_not_block_review_or_save`, `test_ai::test_offline_is_unavailable` | — |
 | TA-30 | automatizado | `test_acceptance_gaps::test_ta30_every_page_renders_with_external_network_blocked`, `test_journey::test_family_journey` | — |
-| TA-31 | automatizado | `test_acceptance_gaps::test_ta31_switching_family_shows_nothing_from_the_previous` | — |
+| TA-31 | automatizado | `test_acceptance_gaps::test_ta31_switching_family_shows_nothing_from_the_previous`, `test_every_screen::test_closing_the_vault_leaves_no_data_on_any_screen` (todas as páginas, abas, combos, listas e dicas) | — |
 | TA-32 | automatizado | `test_domain_ledger::test_allocate_is_exact`, `test_domain_ledger::test_rounding_is_half_away_from_zero` | — |
 | TA-33 | automatizado | `test_acceptance_gaps::test_ta33_migrated_vault_is_backed_up_before_any_write`, `test_store::test_newer_format_is_refused` | — |
 | TA-34 | automatizado | `test_acceptance_gaps::test_ta34_export_is_explicit_and_leaves_the_vault_alone`, `test_exports::*` | — |

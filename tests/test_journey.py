@@ -52,7 +52,7 @@ def test_family_journey(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, offline
     path = tmp_path / "silva.opesvault"
 
     # 1. First use: family, accounts, opening balances.
-    session = Session.new(path, "Família Silva")
+    session = Session.new(path, "Projeto Silva")
     ledger = session.ledger
     ana = ledger.add_member("Ana").id
     bank = ledger.add_account(

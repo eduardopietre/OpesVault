@@ -6,18 +6,18 @@ from decimal import Decimal
 from pathlib import Path
 
 import pytest
-from PySide6.QtCore import QDate, QSettings
+from PySide6.QtCore import QDate
 from PySide6.QtWidgets import QApplication
 
 from opesvault.domain.alerts import Target, alerts
 from opesvault.domain.model import YearMonth
 from opesvault.session import Session
-from opesvault.ui import theme
+from opesvault.ui import preferences, theme
 from opesvault.ui.main_window import MainWindow
-from opesvault.ui.pages.accounts_page import AccountsPage
+from opesvault.ui.pages.accounts import AccountsPage
 from opesvault.ui.pages.base import Page
 from opesvault.ui.pages.budget_page import BudgetPage
-from opesvault.ui.pages.ledger_page import LedgerPage
+from opesvault.ui.pages.ledger import LedgerPage
 from opesvault.ui.pages.overview_page import OverviewPage
 from opesvault.ui.pages.settings_page import SettingsPage
 
@@ -32,16 +32,6 @@ def app() -> QApplication:
     app = instance if isinstance(instance, QApplication) else QApplication([])
     theme.apply_theme(app, dark=False)
     return app
-
-
-@pytest.fixture
-def settings_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """Computer preferences go to a temporary file, never to the real user profile."""
-    path = tmp_path / "prefs.ini"
-    monkeypatch.setattr(
-        MainWindow, "app_settings", staticmethod(lambda: QSettings(str(path), QSettings.Format.IniFormat))
-    )
-    return path
 
 
 @pytest.fixture
@@ -90,7 +80,7 @@ def test_bill_alert_opens_the_bill_and_pays_it(
     window.navigate("accounts", bill_alerts[0].ref, act=True)
     page = page_of(window, AccountsPage)
     assert window.stack.currentWidget() is page
-    assert page.tabs.currentIndex() == page.bills_tab
+    assert page.tabs.currentWidget() is page.bills_tab
     assert opened, "the alert's action opens the payment directly"
     assert not [a for a in alerts(ledger) if a.target is Target.ACCOUNTS and a.ref == bill_alerts[0].ref]
 
@@ -121,7 +111,7 @@ def test_overview_month_is_shared_and_lines_open_the_ledger(setup: tuple[MainWin
     march = YearMonth(year=2026, month=3)
     overview.month.set_month(march)
     assert budget_page.month.current() == march  # the Budget follows the Overview
-    assert "março de 2026" in ledger.period.itemText(1).lower()
+    assert "março de 2026" in ledger.filters.period.itemText(1).lower()
 
     names = [
         item.text() if (item := overview.categories.item(r, 0)) else "" for r in range(overview.categories.rowCount())
@@ -129,7 +119,7 @@ def test_overview_month_is_shared_and_lines_open_the_ledger(setup: tuple[MainWin
     row = names.index("Alimentação")
     overview._open_row(overview.categories, row)
     assert window.stack.currentWidget() is ledger
-    assert ledger.period.currentData() == "month" and ledger.filter_account.currentData() == f.groceries
+    assert ledger.filters.period.currentData() == "month" and ledger.filters.account.currentData() == f.groceries
     assert [op.description for op in ledger.model.ops] == ["Padaria"]
 
 
@@ -152,7 +142,7 @@ def test_save_choice_resumes_the_interrupted_action(
     window, _ = setup
     assert window.session is not None and window.session.dirty
     resumed: list[Callable[[], object] | None] = []
-    monkeypatch.setattr("opesvault.ui.main_window.decide", lambda *_a: "save")
+    monkeypatch.setattr("opesvault.ui.shell.vault.decide", lambda *_a: "save")
     monkeypatch.setattr(window, "save_vault", lambda then=None: resumed.append(then))
     assert not window._confirm_discard("fechar o cofre", window.close_vault)
     assert resumed == [window.close_vault]
@@ -183,13 +173,13 @@ def test_welcome_lists_recent_vaults_only_with_consent(app: QApplication, tmp_pa
     vault.write_bytes(b"")
     window = MainWindow()
     assert window.shell.currentWidget() is window.welcome
-    assert window.recent_list.isHidden() and not window.remember_recents.isHidden()
-    settings = MainWindow.app_settings()
+    assert window.welcome.recent_list.isHidden() and not window.welcome.remember_recents.isHidden()
+    settings = preferences.app_settings()
     settings.setValue("recentes/ativo", True)
     settings.setValue("recentes/lista", [str(vault)])
     window._refresh()
-    assert window.recent_list.count() == 1 and window.remember_recents.isHidden()
-    assert window.welcome_restore.text() == "Restaurar backup…"
+    assert window.welcome.recent_list.count() == 1 and window.welcome.remember_recents.isHidden()
+    assert window.welcome.restore_button.text() == "Restaurar backup…"
 
 
 def test_operator_shows_only_with_several_members(setup: tuple[MainWindow, Family]) -> None:
@@ -242,7 +232,7 @@ def test_reports_filter_by_account_and_open_the_ledger(setup: tuple[MainWindow, 
     reports._open_ledger()
     ledger = page_of(window, LedgerPage)
     assert window.stack.currentWidget() is ledger
-    assert ledger.filter_account.currentData() == f.bank and ledger.period.currentData() == "month"
+    assert ledger.filters.account.currentData() == f.bank and ledger.filters.period.currentData() == "month"
     assert [op.description for op in ledger.model.ops] == ["Feira"]
 
     window.navigate("reports", "composition")
@@ -272,7 +262,7 @@ def _local_ai(window: MainWindow, f: Family, url: str, monkeypatch: pytest.Monke
 
     from opesvault.ai.ollama import OllamaClient
     from opesvault.domain.settings import update_settings
-    from opesvault.ui.pages.import_page import ImportPage
+    from opesvault.ui.pages.imports import ImportPage
 
     update_settings(f.ledger, ai_enabled=True, ai_model="gemma4:12b")
     monkeypatch.setattr(
@@ -296,7 +286,7 @@ def test_local_ai_suggests_while_the_review_stays_open(
 ) -> None:
     from opesvault.importing import pipeline
     from opesvault.importing.pipeline import ImportRequest, import_document
-    from opesvault.ui.pages.import_page import source_label
+    from opesvault.ui.pages.imports.labels import source_label
 
     window, f = setup
     page = _local_ai(window, f, ollama, monkeypatch)
@@ -323,7 +313,7 @@ def test_local_ai_runs_by_itself_after_an_import(
     page = _local_ai(window, f, ollama, monkeypatch)
     path = tmp_path / "extrato.csv"
     path.write_bytes(_statement("QWERTY LOJA"))
-    monkeypatch.setattr("opesvault.ui.pages.import_page.QMessageBox.information", lambda *a, **k: None)
+    monkeypatch.setattr("opesvault.ui.pages.imports.review.QMessageBox.information", lambda *a, **k: None)
     page._queue.append(path)
     page._next_import()
     _wait(window)

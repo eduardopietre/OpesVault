@@ -301,7 +301,7 @@ def test_suggestion_learns_from_history(session: Session) -> None:
     data = docs.ofx_bank("J").replace(b"20260110", b"20260210").replace(b"20260105", b"20260205")
     again = import_document(session, ImportRequest("b.ofx", data, account_id=bank.id))
     rent2 = next(i for i in pipeline.items_of(session.ledger, again.id) if "ALUGUEL" in i.description)
-    assert rent2.target_account_id == housing.id and rent2.suggestion_source == "history"
+    assert rent2.target_account_id == housing.id and rent2.suggestion_source == "learned:1/1"
 
 
 def test_unknown_layout_and_scanned_are_kept_as_pending(session: Session) -> None:

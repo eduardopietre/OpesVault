@@ -65,6 +65,7 @@ O `scripts/build.py` copia os dois para a pasta do executável (`THIRD_PARTY_LIC
 - **PDFium (pypdfium2):** BSD-3-Clause/Apache-2.0, com os avisos das bibliotecas embutidas (FreeType, libjpeg-turbo, OpenJPEG, LittleCMS, zlib, ICU).
 - **OpenSSL:** embutido no `sqlcipher3` e no `cryptography`. Ver §4.
 - **numpy:** o runtime do gfortran tem a GCC Runtime Library Exception, que permite a distribuição.
+- **Lista de bancos** (`catalogs/banks.py`): gerada de `data/bancos.json` do projeto github.com/guibranco/BancosBrasileiros, em domínio público (Unlicense), compilado das listas de participantes do Banco Central. Sem obrigação; a origem fica no cabeçalho do arquivo e em `scripts/atualizar_bancos.py`.
 
 ## 4. Acompanhamento do OpenSSL e revisão de segurança
 

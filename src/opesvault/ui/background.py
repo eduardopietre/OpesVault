@@ -1,8 +1,24 @@
 """Work that must not run on the UI thread (network, model calls), with progress back on it."""
 
 from collections.abc import Callable
+from typing import Any
 
-from PySide6.QtCore import QObject, QRunnable, QThreadPool, Signal
+import shiboken6
+from PySide6.QtCore import QObject, QRunnable, QThreadPool, Signal, SignalInstance
+
+
+def while_alive(signal: SignalInstance, owner: QObject, slot: Callable[..., Any]) -> None:
+    """Connects `signal` to `slot` only for as long as `owner` exists.
+
+    A worker's answer can arrive after the page that asked was destroyed (the window closed,
+    the app exiting); a plain lambda would then touch deleted widgets.
+    """
+
+    def deliver(*args: Any) -> None:
+        if shiboken6.isValid(owner):
+            slot(*args)
+
+    signal.connect(deliver)
 
 
 class _Signals(QObject):

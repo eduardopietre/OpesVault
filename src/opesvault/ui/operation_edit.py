@@ -138,7 +138,7 @@ class OperationEditDialog(FormDialog):
         self.due = OptionalDate(op.due_on)
         self.competence = CompetenceCombo(op.accrual_month, op.occurred_on or op.cash_date)
         self.member = QComboBox()
-        fill_combo(self.member, self._members, empty="(família)")
+        fill_combo(self.member, self._members, empty="(projeto)")
         select_combo(self.member, op.member_id)
         self.notes = QLineEdit(op.notes or "")
         self.postings = QTableWidget(0, len(self.COLUMNS))
@@ -318,7 +318,7 @@ class SimpleEditDialog(FormDialog):
         self.competence = CompetenceCombo(op.accrual_month, op.occurred_on or op.cash_date)
         self.member = QComboBox()
         members = [(m.name, m.id) for m in ledger.members.values() if m.active or m.id == op.member_id]
-        fill_combo(self.member, members, empty="(família)")
+        fill_combo(self.member, members, empty="(projeto)")
         select_combo(self.member, op.member_id)
         self.notes = QLineEdit(op.notes or "")
         self.reason = QLineEdit()

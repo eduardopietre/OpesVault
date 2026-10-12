@@ -29,6 +29,12 @@ export function benchmarks(ledger: Ledger) {
   return ledger.entities<Benchmark>("benchmark");
 }
 
+/**
+ * Characters a series may take in its record. A record is stored whole, and the server takes at most 1 MiB of
+ * ciphertext (base64url, a third larger than the text); this leaves room for the rest of the record.
+ */
+export const MAX_BENCHMARK_CHARS = 600_000;
+
 /** Python's `UnicodeDecodeError` for bytes that are not UTF-8. */
 export class UnicodeDecodeError extends Error {
   override name = "UnicodeDecodeError";
@@ -66,6 +72,13 @@ export function importBenchmarkCsv(ledger: Ledger, name: string, data: Uint8Arra
   }
   if (points.size < 2) throw new DomainError("O arquivo precisa de ao menos duas datas com valores.");
   const sorted = [...points].sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
+  // ["aaaa-mm-dd","valor"], with quotes, brackets and commas: 8 characters besides the date and the value.
+  const chars = sorted.reduce((sum, [when, level]) => sum + when.length + level.toString().length + 8, 0);
+  if (chars > MAX_BENCHMARK_CHARS) {
+    throw new DomainError(
+      `A série tem ${points.size} datas e passa do tamanho que o projeto guarda. Use um período mais curto ou valores mensais.`,
+    );
+  }
   return ledger.put("benchmark", BenchmarkSchema.parse({ name, points: sorted, source }));
 }
 

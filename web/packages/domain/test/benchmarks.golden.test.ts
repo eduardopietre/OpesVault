@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import { DomainError, Ledger } from "../src/domain/ledger.ts";
 import { dump } from "../src/domain/model.ts";
 import type { IsoDate } from "../src/lib/dates.ts";
-import { benchmarkReturn, benchmarks, importBenchmarkCsv } from "../src/investments/benchmarks.ts";
+import { benchmarkReturn, benchmarks, importBenchmarkCsv, MAX_BENCHMARK_CHARS } from "../src/investments/benchmarks.ts";
 import { golden, j } from "./golden.ts";
 import { bytesOf } from "./importing_helpers.ts";
 
@@ -51,4 +51,31 @@ describe("benchmarks replayed from the desktop", () => {
       expect(actual).toEqual(c.returns);
     });
   }
+});
+
+describe("benchmark size", () => {
+  /** `days` daily points from 01/01/1900, each level with `digits` digits after the comma. */
+  const series = (days: number, digits: number): Uint8Array => {
+    const lines = ["data;valor"];
+    const day = new Date(Date.UTC(1900, 0, 1));
+    for (let i = 0; i < days; i++) {
+      const d = new Date(day.getTime() + i * 86_400_000);
+      const dmy = `${String(d.getUTCDate()).padStart(2, "0")}/${String(d.getUTCMonth() + 1).padStart(2, "0")}/${d.getUTCFullYear()}`;
+      lines.push(`${dmy};1234,${"5".repeat(digits)}`);
+    }
+    return new TextEncoder().encode(lines.join("\n"));
+  };
+
+  it("keeps a long daily series (40 years) and refuses one past what a record can hold", () => {
+    const ledger = Ledger.new("Projeto");
+    expect(importBenchmarkCsv(ledger, "CDI", series(40 * 365, 8), "teste").points).toHaveLength(40 * 365);
+    expect(() => importBenchmarkCsv(ledger, "Grande", series(30_000, 8), "teste")).toThrow(DomainError);
+    expect(benchmarks(ledger).size).toBe(1);
+  });
+
+  it("stays within the server's record limit", () => {
+    // The largest accepted series, sealed, must fit LIMITS.maxRecordCiphertext (1 MiB of base64url).
+    const json = MAX_BENCHMARK_CHARS + 1000;
+    expect(Math.ceil(((1 + 12 + Math.ceil((json + 1) / 64) * 64 + 16) * 4) / 3)).toBeLessThan(1_048_576);
+  });
 });

@@ -16,6 +16,7 @@ import {
   importAesKey,
   importHkdfKey,
   KEY_BYTES,
+  NONCE_BYTES,
   open,
   seal,
   TAG_BYTES,
@@ -68,6 +69,18 @@ function padded(text: string): Bytes {
   out.set(raw);
   wipe(raw);
   return out;
+}
+
+/**
+ * Base64url characters of `sealRecord`'s ciphertext for `record`, without sealing it: lets a caller refuse a record
+ * the server would refuse (`LIMITS.maxRecordCiphertext`) before queueing it.
+ */
+export function sealedRecordLength(record: PlainRecord): number {
+  const text = JSON.stringify({ kind: record.kind, id: record.id, payload: record.payload });
+  if (text === undefined) throw new TypeError("record is not JSON");
+  const bytes = utf8(text).length;
+  const plaintext = Math.ceil((bytes + 1) / RECORD_PADDING) * RECORD_PADDING;
+  return Math.ceil(((1 + NONCE_BYTES + plaintext + TAG_BYTES) * 4) / 3);
 }
 
 /** Chunk nonces are counters: every blob has its own random key, so a counter never repeats under a key. */

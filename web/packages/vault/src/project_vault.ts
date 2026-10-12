@@ -29,6 +29,7 @@ import {
   openWithRecoveryKey,
   randomId,
   regenerateEnvelopeRecoveryKey,
+  sealedRecordLength,
   systemRandom,
   utf8,
   wipe,
@@ -67,7 +68,9 @@ export type VaultErrorCode =
   | "empty_password"
   | "offline"
   | "conflict"
-  | "no_lease";
+  | "no_lease"
+  /** A record larger than the server accepts (`LIMITS.maxRecordCiphertext`); nothing was staged. */
+  | "too_large";
 
 /** Errors of the vault's own state. Network failures surface as `BackendError`. */
 export class VaultError extends Error {
@@ -1057,6 +1060,10 @@ export class ProjectVault {
    */
   stage(upserts: readonly PlainRecord[], deletes: readonly RecordRef[] = []): Promise<void> {
     const keys = this.#requireEditable();
+    // Refused before anything changes: queued, a record the server refuses would block every change after it.
+    if (upserts.some((record) => sealedRecordLength(record) > LIMITS.maxRecordCiphertext)) {
+      throw new VaultError("too_large");
+    }
     const generation = this.#generation;
     for (const record of upserts) this.#plain.set(recordKey(record.kind, record.id), record);
     for (const ref of deletes) this.#plain.delete(recordKey(ref.kind, ref.id));

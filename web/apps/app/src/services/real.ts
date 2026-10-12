@@ -91,6 +91,8 @@ export function serviceError(error: unknown): ServiceError {
         return new ServiceError("read-only", "Outra aba ou aparelho está editando este projeto.");
       case "offline":
         return new ServiceError("offline", "Sem conexão com o servidor. Tente de novo quando a conexão voltar.");
+      case "too_large":
+        return new ServiceError("too-large", "Este item é grande demais para ser guardado no servidor.");
       default:
         return new ServiceError(error.code, "Não foi possível concluir. Tente de novo.");
     }

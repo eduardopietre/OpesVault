@@ -1,5 +1,15 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { CryptoError, fromB64, fromUtf8, ProjectKeys, RECORD_PADDING, toB64, type PlainRecord } from "../src/index.ts";
+import * as fc from "fast-check";
+import {
+  CryptoError,
+  fromB64,
+  fromUtf8,
+  ProjectKeys,
+  RECORD_PADDING,
+  sealedRecordLength,
+  toB64,
+  type PlainRecord,
+} from "../src/index.ts";
 import { counterRandom, flipBit } from "./helpers.ts";
 
 const PROJECT = "0123456789abcdef0123456789abcdef";
@@ -162,5 +172,17 @@ describe("blobs", () => {
     sizeChanged[7] = 0xe7;
     await expect(keys.openBlob(BLOB, sizeChanged)).rejects.toBeInstanceOf(CryptoError);
     await expect(keys.openBlob(BLOB, new Uint8Array(10))).rejects.toEqual(new CryptoError("invalid_format"));
+  });
+});
+
+describe("sealed record length", () => {
+  it("is the length of the ciphertext sealRecord gives, without sealing", async () => {
+    await fc.assert(
+      fc.asyncProperty(fc.string({ minLength: 1 }), fc.jsonValue(), async (id, payload) => {
+        const sealed = await keys.sealRecord({ kind: "operation", id, payload });
+        expect(sealedRecordLength({ kind: "operation", id, payload })).toBe(sealed.ciphertext.length);
+      }),
+      { numRuns: 200 },
+    );
   });
 });

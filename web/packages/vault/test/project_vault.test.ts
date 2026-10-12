@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   BackendError,
+  LIMITS,
   MemoryServer,
   recordKey,
   VaultError,
@@ -51,6 +52,21 @@ describe("creating and opening a project", () => {
     expect(vault.get("operation", "1")?.payload).toEqual({ description: "Mercado", amount: "10.00" });
     await staged;
     expect(vault.getSnapshot()).toMatchObject({ status: "pending", pending: 2 });
+    await vault.syncNow();
+    expect(vault.getSnapshot()).toMatchObject({ status: "synced", pending: 0, revision: 1 });
+  });
+
+  it("refuses a record the server would refuse, before changing anything, so later changes still sync", async () => {
+    const { vault } = await owner();
+    const huge: PlainRecord = {
+      kind: "benchmark",
+      id: "b",
+      payload: { points: "9".repeat(LIMITS.maxRecordCiphertext) },
+    };
+    expect(() => vault.stage([op("1", "Mercado"), huge])).toThrow(new VaultError("too_large"));
+    expect(vault.get("operation", "1")).toBeUndefined();
+    expect(vault.getSnapshot()).toMatchObject({ pending: 0 });
+    await vault.stage([op("2", "Farmácia")]);
     await vault.syncNow();
     expect(vault.getSnapshot()).toMatchObject({ status: "synced", pending: 0, revision: 1 });
   });

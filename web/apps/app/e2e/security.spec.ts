@@ -71,8 +71,10 @@ test.describe("the built page", () => {
 
   test("the service worker precaches the shell (pwa.spec.ts runs it with the integrity hashes in place)", () => {
     const worker = readFileSync(resolve(dist, "sw.js"), "utf8");
-    expect(worker).toContain("precacheAndRoute");
-    expect(worker).toMatch(/index\.html/);
+    expect(worker).toMatch(/url:"index\.html",revision:"[0-9a-f]+"/);
+    expect(worker).toContain("SKIP_WAITING");
+    // The server's Trusted Types also apply to sw.js: a separate runtime loaded by importScripts() never runs.
+    expect(worker).not.toContain("importScripts");
   });
 });
 

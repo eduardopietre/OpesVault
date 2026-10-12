@@ -99,6 +99,10 @@ export default defineConfig({
         runtimeCaching: [],
         cleanupOutdatedCaches: true,
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
+        // One file: the server sends sw.js with the page's CSP, whose Trusted Types block the importScripts() that
+        // loads a separate Workbox runtime. The worker then installed but never ran (no precache, no SKIP_WAITING),
+        // so "Atualizar" did nothing and the notice came back on every load.
+        inlineWorkboxRuntime: true,
       },
       devOptions: { enabled: false },
     }),

@@ -105,6 +105,25 @@ describe("Novo investimento", () => {
 });
 
 describe("Avaliações", () => {
+  it("a value before the start makes that date the initial contribution, and the old start an update", async () => {
+    const { user, ledger, workspace } = await openInvestimentos();
+    const id = cdbOf(ledger);
+    const start = service.position(ledger, id).opened_on;
+    const before = snapshot(ledger);
+    await menu(user, "Registrar", "Atualizar valor…");
+    const box = await dialog(/Atualizar valor — CDB Banco X 2028/);
+    await fill(user, box, "Data", "15/12/2025");
+    await fill(user, box, "Valor", "4.800,00");
+    expect(flat(box.textContent)).toContain("passa a ser a aplicação inicial");
+    await submit(user, box, "Registrar");
+    await closed(/Atualizar valor/);
+    expect(service.position(ledger, id).opened_on).toBe("2025-12-15");
+    expect(service.remainingCost(ledger, id).eq(Dec.from(4800))).toBe(true);
+    expect(service.valuationsOf(ledger, id).some((v) => v.on === start)).toBe(true);
+    undoOnce(workspace);
+    expect(snapshot(ledger)).toBe(before);
+  });
+
   it("registers a valuation, one undo step; the same source on the same date is refused with the way out", async () => {
     const { user, ledger, workspace } = await openInvestimentos();
     const id = cdbOf(ledger);

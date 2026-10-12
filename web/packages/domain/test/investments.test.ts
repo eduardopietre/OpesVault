@@ -297,3 +297,50 @@ describe("removing an investment entered by mistake", () => {
     expect(() => inv.removePosition(f.ledger, "nao-existe" as never)).toThrow(DomainError);
   });
 });
+
+describe("a value before the start of an investment", () => {
+  function started(fromBank: boolean) {
+    const f = family();
+    f.ledger.recordOpeningBalance(f.bank, "100000.00", d("2025-12-31"));
+    const bankBefore = queries.balance(f.ledger, f.bank);
+    const pos = inv.createPosition(f.ledger, "CDB Banco X", AssetClass.FIXED_INCOME, d("2026-03-01"), {
+      initial_cost: "10000.00",
+      from_account: fromBank ? f.bank : null,
+    });
+    return { f, pos, bankBefore };
+  }
+
+  it("makes that date the start: the initial contribution moves there with that value, the old start is an update", () => {
+    const { f, pos, bankBefore } = started(true);
+    inv.addValuation(f.ledger, pos.id, d("2026-01-15"), "9500.00", ValueNature.GROSS);
+    expect(inv.position(f.ledger, pos.id).opened_on).toBe("2026-01-15");
+    expect(inv.remainingCost(f.ledger, pos.id).eq("9500")).toBe(true);
+    // the money out of the account follows: 9.500 on 15/01, not 10.000 on 01/03
+    expect(queries.balance(f.ledger, f.bank).eq(bankBefore.sub("9500"))).toBe(true);
+    const initial = inv.eventsOf(f.ledger, pos.id).find((e) => e.kind === "contribution")!;
+    expect(initial.on).toBe("2026-01-15");
+    expect(selectedSeries(f.ledger, pos.id).map((v) => [v.on, v.value.toString(), v.source])).toEqual([
+      ["2026-01-15", "9500.00", "manual"],
+      ["2026-03-01", "10000.00", "manual"],
+    ]);
+    // the earlier value is the reference and the later one the update: 500 of income, nothing vanished
+    expect(eq(periodResult(f.ledger, pos.id, d("2026-01-15"), d("2026-03-01")).value, "500")).toBe(true);
+    expect(eq(unrealized(f.ledger, pos.id, d("2026-03-01")).value, "500")).toBe(true);
+  });
+
+  it("works the same for an investment whose initial cost came from no account", () => {
+    const { f, pos, bankBefore } = started(false);
+    inv.addValuation(f.ledger, pos.id, d("2026-01-15"), "9500.00", ValueNature.GROSS);
+    expect(inv.remainingCost(f.ledger, pos.id).eq("9500")).toBe(true);
+    expect(queries.balance(f.ledger, pos.account_id).eq("9500")).toBe(true);
+    expect(queries.balance(f.ledger, f.bank).eq(bankBefore)).toBe(true);
+    expect(eq(periodResult(f.ledger, pos.id, d("2026-01-15"), d("2026-03-01")).value, "500")).toBe(true);
+  });
+
+  it("leaves the start alone for a value after it", () => {
+    const { f, pos } = started(true);
+    inv.addValuation(f.ledger, pos.id, d("2026-04-01"), "10100.00", ValueNature.GROSS);
+    expect(inv.position(f.ledger, pos.id).opened_on).toBe("2026-03-01");
+    expect(inv.remainingCost(f.ledger, pos.id).eq("10000")).toBe(true);
+  });
+});

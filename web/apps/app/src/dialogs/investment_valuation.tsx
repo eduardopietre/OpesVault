@@ -41,7 +41,8 @@ export function InvestmentValuationDialog({
   const workspace = useWorkspace();
   const ledger = workspace.ledger;
   const act = useFormAct();
-  const byQuantity = service.position(ledger, positionId).mode === model.TrackingMode.QUANTITY;
+  const current = service.position(ledger, positionId);
+  const byQuantity = current.mode === model.TrackingMode.QUANTITY;
   const [when, setWhen] = useState(dateText(on ?? workspace.today()));
   const [value, setValue] = useState("");
   const [nature, setNature] = useState<string>(model.ValueNature.GROSS);
@@ -54,6 +55,11 @@ export function InvestmentValuationDialog({
   const sameDay = iso ? service.valuationsOf(ledger, positionId).filter((v) => v.on === iso) : [];
   const sameSource = sameDay.find((v) => v.source === (source.trim() || "manual")) ?? null;
   const flows = iso ? service.eventsOf(ledger, positionId).filter((e) => e.on === iso) : [];
+  // A gross value before the start moves the start there (domain `addValuation`); the person is told so.
+  const fromAccount = service
+    .eventsOf(ledger, positionId)
+    .some((e) => e.kind === "contribution" && e.on === current.opened_on && e.cash_account_id !== null);
+  const beforeStart = iso !== null && iso < current.opened_on && !byQuantity && nature === model.ValueNature.GROSS;
 
   const confirm = () => {
     const on_ = readDate(when, "A data");
@@ -112,6 +118,13 @@ export function InvestmentValuationDialog({
         <FullRow>
           <TextField label="Observação" value={note} onChange={setNote} maxLength={500} autoComplete="off" />
         </FullRow>
+        {beforeStart ? (
+          <FullRow>
+            <Caption>
+              {`Esta data é anterior à aplicação (${formatDateBr(current.opened_on)}): ela passa a ser a aplicação inicial, com este valor${fromAccount ? ", inclusive na conta de onde o dinheiro saiu" : ""}, e o valor de ${formatDateBr(current.opened_on)} vira uma atualização.`}
+            </Caption>
+          </FullRow>
+        ) : null}
         {sameDay.length > 0 ? (
           <FullRow>
             <Caption>

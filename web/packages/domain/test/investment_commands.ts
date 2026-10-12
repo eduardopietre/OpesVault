@@ -15,7 +15,11 @@ export const INVESTMENT_COMMANDS: CommandTable = {
   create_position: (l, [name, cls, on], o) =>
     service.createPosition(l, s(name), cls as AssetClass, asDate(on), o as service.CreatePositionOptions),
   add_valuation: (l, [pos, on, value, nature], o) =>
-    service.addValuation(l, s(pos), asDate(on), value, nature as ValueNature, o as service.ValuationOptions),
+    // The parity files predate the start moving back to an earlier value (docs/18 §10): keep the old behavior.
+    service.addValuation(l, s(pos), asDate(on), value, nature as ValueNature, {
+      ...(o as service.ValuationOptions),
+      keep_start: true,
+    }),
   correct_valuation: (l, [val, value, reason, nature]) =>
     service.correctValuation(l, s(val), value, s(reason), (nature as ValueNature | undefined) || null),
   select_valuation: (l, [val]) => service.selectValuation(l, s(val)),

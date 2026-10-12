@@ -19,7 +19,7 @@ import {
 } from "../domain/model.ts";
 import { roundMoney, toDecimal } from "../domain/money.ts";
 import { balance } from "../domain/queries.ts";
-import type { IsoDate } from "../lib/dates.ts";
+import { type IsoDate, ymOf } from "../lib/dates.ts";
 import type { Dec } from "../lib/dec.ts";
 import type { Id } from "../lib/ids.ts";
 import { sortedGroupsBy } from "../lib/collections.ts";
@@ -270,9 +270,61 @@ export interface ValuationOptions {
   readonly quantity?: unknown;
   readonly unit_price?: unknown;
   readonly note?: string | null;
+  /**
+   * Keeps the start where it is even for a value before it: the Python behavior, which the frozen parity files
+   * (golden/investments.json) record. Only their replay sets it (docs/18 §10).
+   */
+  readonly keep_start?: boolean;
 }
 
-/** A new date adds a point; another source on the same date is kept apart (never averaged). */
+/**
+ * A gross value informed before the position's start (`on` < opened_on) makes that date the start: the initial
+ * contribution moves to it with that value (and so does the money out of its account, if it came from one),
+ * and the old start keeps its value as a later observation. Without this, the earlier value and the initial
+ * contribution would both count, and the return would say the earlier value vanished.
+ */
+function moveStart(ledger: Ledger, pos: Position, on: IsoDate, value: Dec): void {
+  const reason = "aplicação inicial antecipada";
+  const initial = eventsOf(ledger, pos.id).find(
+    (e) => e.kind === EventKind.CONTRIBUTION && e.on === pos.opened_on && e.quality === EventQuality.COMPLETE,
+  );
+  if (initial !== undefined && pos.cost_known) {
+    for (const opId of initial.operation_ids) {
+      const op = ledger.operations.get(opId);
+      if (op === undefined || !isActive(op)) continue;
+      ledger.updateOperation(
+        {
+          ...op,
+          postings: op.postings.map((p) => ({ ...p, amount: p.amount.isNegative() ? value.negate() : value })),
+          occurred_on: on,
+          settled_on: op.settled_on === null ? null : on,
+          booked_on: op.booked_on === null ? null : on,
+          accrual_month: op.accrual_month === null ? null : ymOf(on),
+        },
+        reason,
+      );
+    }
+    ledger.put("investment_event", { ...initial, on, gross: value, net: value }, { reason });
+  }
+  const profiles = ledger.entities<{ id: Id; position_id: Id; applied_on: IsoDate | null }>("investment_profile");
+  for (const profile of profiles.values()) {
+    if (profile.position_id === pos.id && profile.applied_on === pos.opened_on) {
+      ledger.put("investment_profile", { ...profile, applied_on: on }, { reason });
+    }
+  }
+  // The value recorded with the initial cost is now a later observation, no longer the cost.
+  const sameDay = valuationsOf(ledger, pos.id).filter((v) => v.on === pos.opened_on);
+  const first = sameDay.find((v) => v.source === "custo inicial");
+  if (first !== undefined && !sameDay.some((v) => v.source === "manual")) {
+    ledger.put("valuation", { ...first, source: "manual" }, { reason });
+  }
+  ledger.put("position", { ...pos, opened_on: on }, { reason });
+}
+
+/**
+ * A new date adds a point; another source on the same date is kept apart (never averaged). A gross value before
+ * the start of a position tracked by value moves its start there (`moveStart`).
+ */
 export function addValuation(
   ledger: Ledger,
   positionId: Id,
@@ -282,9 +334,13 @@ export function addValuation(
   options: ValuationOptions = {},
 ): Valuation {
   const source = options.source ?? "manual";
-  position(ledger, positionId);
+  const pos = position(ledger, positionId);
   const amount = toDecimal(value);
   if (amount.isNegative()) throw new DomainError("Valor de avaliação não pode ser negativo.");
+  const moves = on < pos.opened_on && pos.mode === TrackingMode.VALUE && nature === ValueNature.GROSS;
+  if (moves && amount.isPositive() && options.keep_start !== true) {
+    moveStart(ledger, pos, on, amount);
+  }
   const sameDay = valuationsOf(ledger, positionId).filter((v) => v.on === on);
   if (sameDay.some((v) => v.source === source)) {
     throw new DomainError("Já existe avaliação desta fonte nesta data: use 'corrigir observação'.");

@@ -35,7 +35,7 @@ Nada caseiro (`03` §2): WebCrypto para HKDF, AES-GCM e HMAC; `hash-wasm` (imple
 | Id opaco de registro              | HMAC-SHA256                   | Truncado a 128 bits (32 hexadecimais)                                                                                                         |
 | Aleatoriedade                     | `crypto.getRandomValues`      | —                                                                                                                                             |
 
-- Os parâmetros do Argon2id viajam com cada envelope, então podem subir depois sem quebrar envelopes antigos. Ao abrir, o app só aceita parâmetros entre 8 MiB e 1 GiB, 1 a 16 passadas e 1 a 4 vias; fora disso recusa antes de derivar (um envelope hostil não esgota a memória da aba).
+- Os parâmetros do Argon2id viajam com cada envelope e cada backup, então podem subir depois sem quebrar envelopes antigos. O **segredo de login é a exceção**: o servidor não guarda com que parâmetros cada conta entrou, então os do login ficam fixos em `LOGIN_KDF` (`opesvault/login/v1`, os mesmos valores da tabela), separados do `DEFAULT_KDF`; subir os do login exige uma versão nova do segredo, com os parâmetros guardados por conta e migração ao entrar (§5). Ao abrir, o app só aceita parâmetros entre 8 MiB e 1 GiB, 1 a 16 passadas e 1 a 4 vias; fora disso recusa antes de derivar (um envelope hostil não esgota a memória da aba).
 - Senhas são normalizadas em Unicode NFC antes de virar bytes, para que a mesma senha digitada em sistemas diferentes abra o projeto. Senha nova vazia é recusada.
 - Vetores conhecidos (`web/packages/crypto/test`): RFC 5869 caso 1, RFC 4231 caso 2, GCM caso 16, vetor de referência do Argon2id e comparação com uma segunda implementação (`@noble/hashes`). Os formatos do OpesVault têm vetores próprios com aleatoriedade fixa, injetada **só nos testes**.
 
@@ -66,6 +66,7 @@ senha da conta ──Argon2id(sal de login do servidor)──HKDF "opesvault/log
 - Cada pessoa tem sua conta no servidor (e-mail e senha da conta). A senha da conta **não é** a senha do projeto: uma abre a conta, a outra abre os dados. O dono adiciona integrantes pelo e-mail da conta.
 - O navegador pede ao servidor o **sal de login** do e-mail (no corpo de um POST, para o e-mail nunca aparecer numa URL ou em log de proxy), deriva o segredo de login (§4) e envia só ele. A senha da conta não sai do navegador.
 - O sal de login é `HMAC-SHA256(segredo do servidor, e-mail normalizado)`, os 16 primeiros bytes. É estável e existe também para e-mails sem conta, para que pedir o sal não revele quem tem conta. Consequência: o **segredo do servidor precisa ser preservado** (está no volume de dados, `20`); trocá-lo invalida todos os logins.
+- O Argon2id do login usa parâmetros fixos (`LOGIN_KDF`, §3); um vetor conhecido, calculado à parte, impede que mudem sem querer.
 - O servidor guarda só `scrypt(segredo de login, sal aleatório por conta)` e compara em tempo constante. Mesmo com o banco vazado, cada tentativa contra a senha da conta custa um Argon2id mais um scrypt.
 - E-mails são normalizados (NFC, sem espaços nas pontas, minúsculas) dos dois lados.
 - Sessão: token aleatório de 256 bits em cookie `HttpOnly`, `Secure`, `SameSite=Strict`; o servidor guarda só o SHA-256 do token. Tentativas de entrar têm limite por IP e por e-mail (§12).

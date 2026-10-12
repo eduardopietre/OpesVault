@@ -48,7 +48,7 @@ Variáveis que o `server` lê (o `docker-compose.yml` já define as de produçã
 | -------------------------------------------- | --------------------------- | ------------------------------------------------------------------ |
 | `PORT`                                       | `8080`                      | Porta interna                                                      |
 | `OPESVAULT_DATA_DIR`                         | `/data` na imagem           | Banco, anexos e segredo                                            |
-| `OPESVAULT_SECRET` / `OPESVAULT_SECRET_FILE` | —                           | Valor, caminho de arquivo, ou arquivo (segredos do Docker)         |
+| `OPESVAULT_SECRET` / `OPESVAULT_SECRET_FILE` | —                           | Valor, caminho de arquivo, ou arquivo (segredos do Docker); um caminho para arquivo que não existe impede o servidor de iniciar |
 | `OPESVAULT_SECURE_COOKIES`                   | `true`                      | Só `false` em desenvolvimento por HTTP sem `localhost`             |
 | `OPESVAULT_TRUST_PROXY`                      | `false` (`true` no compose) | Usa o IP do cliente informado pelo Caddy nos limites de tentativas |
 | `OPESVAULT_STATIC_DIR`                       | `/app/public` na imagem     | Aplicativo web servido junto com a API                             |

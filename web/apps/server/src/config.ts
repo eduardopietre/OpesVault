@@ -50,7 +50,10 @@ export function loadSecret(env: NodeJS.ProcessEnv, dataDir: string): Buffer {
   else if (env.OPESVAULT_SECRET) {
     const value = env.OPESVAULT_SECRET;
     const looksLikePath = isAbsolute(value) || value.startsWith("./") || value.startsWith("../");
-    secret = looksLikePath && existsSync(value) ? fromFile(value) : Buffer.from(value, "utf8");
+    // A path to a file that is not there (a secret not mounted yet) must not become the secret itself: the login
+    // salts would silently change, and change again once the file appears.
+    if (looksLikePath && !existsSync(value)) throw new Error("OPESVAULT_SECRET names a file that does not exist");
+    secret = looksLikePath ? fromFile(value) : Buffer.from(value, "utf8");
   } else {
     const path = join(dataDir, "secret");
     if (!existsSync(path)) writeFileSync(path, randomBytes(48).toString("base64url"), { mode: 0o600, flag: "wx" });

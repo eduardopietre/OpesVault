@@ -283,6 +283,7 @@ describe("configuration", () => {
     expect(loadSecret({ OPESVAULT_SECRET: file }, dir).toString()).toBe("f".repeat(40));
     expect(loadSecret({ OPESVAULT_SECRET_FILE: file }, dir).toString()).toBe("f".repeat(40));
     expect(() => loadSecret({ OPESVAULT_SECRET: "curto" }, dir)).toThrow(/at least/);
+    expect(() => loadSecret({ OPESVAULT_SECRET: join(dir, "missing-secret-file") }, dir)).toThrow(/does not exist/);
     rmSync(dir, { recursive: true, force: true });
   });
 

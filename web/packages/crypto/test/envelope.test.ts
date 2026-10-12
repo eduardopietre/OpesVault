@@ -1,9 +1,13 @@
+import { hkdfSync } from "node:crypto";
+import { argon2id as wasmArgon2id } from "hash-wasm";
 import { describe, expect, it } from "vitest";
 import {
   changeEnvelopePassword,
   createProjectSecrets,
   CryptoError,
+  DEFAULT_KDF,
   deriveLoginSecret,
+  LOGIN_KDF,
   fromB64,
   normalizeEmail,
   openWithPassword,
@@ -185,6 +189,23 @@ describe("login secret", () => {
     expect(await deriveLoginSecret("senha da conta!", salt, TEST_KDF)).not.toBe(one);
     expect(await deriveLoginSecret("senha da conta", toB64(new Uint8Array(16).fill(4)), TEST_KDF)).not.toBe(one);
     expect(one).not.toContain("senha");
+  });
+
+  it("uses the fixed v1 parameters, apart from DEFAULT_KDF, so that existing accounts keep signing in", async () => {
+    expect(LOGIN_KDF).toEqual({ algorithm: "argon2id", memoryKiB: 65536, iterations: 3, parallelism: 1 });
+    expect(LOGIN_KDF).not.toBe(DEFAULT_KDF);
+    // An independent computation: hash-wasm directly and Node's HKDF, with the v1 parameters written out.
+    const stretched = await wasmArgon2id({
+      password: "senha da conta",
+      salt: new Uint8Array(16).fill(3),
+      iterations: 3,
+      parallelism: 1,
+      memorySize: 65536,
+      hashLength: 32,
+      outputType: "binary",
+    });
+    const expected = Buffer.from(hkdfSync("sha256", stretched, new Uint8Array(0), "opesvault/login/v1", 32));
+    expect(await deriveLoginSecret("senha da conta", salt)).toBe(expected.toString("base64url"));
   });
 
   it("normalizes emails", () => {

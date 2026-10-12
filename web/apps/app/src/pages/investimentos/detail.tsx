@@ -103,7 +103,16 @@ function FigureCard({
   );
 }
 
-export function Detail({
+/**
+ * The selected investment's detail. Nothing once the position is gone: after Excluir investimento (or an undo
+ * of its creation) the old detail stays mounted for its exit animation while the ledger no longer has it.
+ */
+export function Detail(props: DetailProps) {
+  const exists = useLedger((l) => service.positions(l).has(props.positionId), props.positionId);
+  return exists ? <PositionDetail {...props} /> : null;
+}
+
+function PositionDetail({
   positionId,
   today,
   valuation,

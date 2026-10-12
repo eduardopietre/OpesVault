@@ -61,6 +61,9 @@ describe("Novo investimento", () => {
     expect(await screen.findByText(/Investimento criado/)).toBeTruthy();
     undoOnce(workspace);
     expect(snapshot(ledger)).toBe(before);
+    // the detail of the investment the undo removed goes away instead of breaking the page
+    await waitFor(() => expect(screen.queryByText(/Something went wrong/)).toBeNull());
+    expect(await screen.findByRole("heading", { level: 2, name: "CDB Banco X 2028" })).toBeTruthy();
   });
 
   it("with only a reference value the cost stays unknown and the gain is unavailable with its reason", async () => {
@@ -218,6 +221,7 @@ describe("Excluir investimento", () => {
     await waitFor(() => expect(service.positions(ledger).has(id)).toBe(false));
     expect(await screen.findByText("Investimento excluído.")).toBeTruthy();
     expect(await screen.findByText("0 em carteira")).toBeTruthy();
+    expect(screen.queryByText(/Something went wrong/)).toBeNull();
     await user.click(screen.getByRole("button", { name: "Desfazer" }));
     expect(snapshot(ledger)).toBe(before);
   });

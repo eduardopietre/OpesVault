@@ -19,7 +19,8 @@ export interface ShortcutHandlers {
   lock(): void;
 }
 
-export type ShortcutId = keyof ShortcutHandlers | "month" | "livro-search" | "livro-mark" | "import" | "approve";
+export type ShortcutId =
+  keyof ShortcutHandlers | "month" | "row-menu" | "livro-search" | "livro-mark" | "import" | "approve";
 
 export interface Shortcut {
   id: ShortcutId;
@@ -69,6 +70,12 @@ export const SHORTCUTS: readonly Shortcut[] = [
     id: "month",
     keys: ["Alt+←", "Alt+→"],
     what: "Mês anterior ou próximo, no seletor de mês",
+    where: "geral",
+  },
+  {
+    id: "row-menu",
+    keys: ["Botão direito", "Shift+F10", "Tecla Menu"],
+    what: "Ações da linha de uma tabela (no celular, toque longo na linha)",
     where: "geral",
   },
   { id: "help", keys: ["F1"], aria: "F1", what: "Ajuda desta tela", where: "geral" },

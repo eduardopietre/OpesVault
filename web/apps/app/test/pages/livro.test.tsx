@@ -20,7 +20,7 @@ import {
   selectOperation,
 } from "./livro_harness.tsx";
 import { accountNamed, categoryNamed, memberNamed } from "../lookup.ts";
-import { choose, dialog, menu, submit, type User } from "../dom.ts";
+import { choose, dialog, fromRowMenu, menu, rowMenu, rowOf, submit, type User } from "../dom.ts";
 
 afterEach(() => setAiTransport(null));
 
@@ -710,5 +710,66 @@ describe("Livro: filtros", () => {
     expect(o.preferences.get("livro/colunas-ocultas")).toBe("origem");
     await menu(o.user, "Colunas", "Mostrar Origem");
     expect(await within(grid()).findByRole("columnheader", { name: "Origem" })).toBeTruthy();
+  });
+});
+
+describe("Livro: menu de contexto", () => {
+  it("opens the operation's commands on a right click, Estornar and Cancelar last and in red", async () => {
+    const o = await openLivro();
+    const row = rowOf(grid(), "Aluguel");
+    const opened = await rowMenu(o.user, grid(), "Aluguel");
+    expect(opened.getAttribute("aria-label")).toBe("Ações de Aluguel");
+    expect(row.getAttribute("aria-selected")).toBe("true");
+    const items = within(opened).getAllByRole("menuitem");
+    // the label, without the "Enter" shortcut beside Corrigir…
+    expect(items.map((item) => item.querySelector("span")?.textContent)).toEqual([
+      "Corrigir…",
+      "Corrigir partidas…",
+      "Reclassificar…",
+      "Marcadores…",
+      "Comprovante",
+      "Mais ações",
+      "IA local",
+      "Histórico",
+      "Marcar este lançamento",
+      "Estornar…",
+      "Cancelar lançamento…",
+    ]);
+    expect(items.at(-1)?.className).toContain("text-negative");
+    expect(within(opened).getByRole("menuitem", { name: "Estornar…" }).className).toContain("text-negative");
+    await o.user.click(within(opened).getByRole("menuitem", { name: /^Corrigir…/ }));
+    expect(await dialog("Corrigir lançamento")).toBeTruthy();
+  });
+
+  it("reaches the rarer commands through a cascade, on the row clicked", async () => {
+    const o = await openLivro();
+    await fromRowMenu(o.user, grid(), "Padaria Real", "Nomear estabelecimento…", "Mais ações");
+    const d = await dialog("Nomear estabelecimento");
+    await typeInto(o.user, d, "Nome do estabelecimento", "Padaria da Rua");
+    await submit(o.user, d, "Salvar nome");
+    await waitFor(() => expect(dom.merchants.merchantOf(o.workspace.ledger, "Padaria Real")).toBe("Padaria da Rua"));
+  });
+
+  it("cancels from the menu only through the same dialog, with its reason", async () => {
+    const o = await openLivro();
+    const id = rowOf(grid(), "Aluguel").getAttribute("data-row-id") as string;
+    await fromRowMenu(o.user, grid(), "Aluguel", "Cancelar lançamento…");
+    const d = await dialog("Cancelar lançamento");
+    expect(isActive(byId(o, id))).toBe(true);
+    await typeInto(o.user, d, /Motivo/, "Lançado em duplicidade");
+    await submit(o.user, d, "Cancelar lançamento");
+    await waitFor(() => expect(isActive(byId(o, id))).toBe(false));
+  });
+
+  it("offers a cancelled operation only what reads it", async () => {
+    const o = await openLivro();
+    const id = rowOf(grid(), "Aluguel").getAttribute("data-row-id") as string;
+    o.workspace.act((l) => l.cancelOperation(id, "teste"));
+    const opened = await rowMenu(o.user, grid(), "Aluguel");
+    expect(
+      within(opened)
+        .getAllByRole("menuitem")
+        .map((item) => item.textContent),
+    ).toEqual(["Histórico", "Marcar este lançamento"]);
   });
 });

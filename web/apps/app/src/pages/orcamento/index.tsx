@@ -17,6 +17,7 @@ import {
 import {
   Button,
   ChartPanel,
+  confirm,
   DURATION,
   DataTable,
   EASE,
@@ -33,6 +34,7 @@ import {
   notify,
   useMotionPreset,
   type DataColumn,
+  type MenuEntry,
   fitHeight,
   usePhone,
 } from "@opesvault/ui";
@@ -56,7 +58,7 @@ import { useUndo } from "../../shell/undo.tsx";
 import { toChartData } from "../../data/chart_data.ts";
 import { STATE_LABELS, categoryRef, parseCategoryRef, summaryLine, usedPercent } from "./rows.ts";
 import { EditButton, usePick } from "../../components/list_parts.tsx";
-import { useLock } from "../../data/read_only.ts";
+import { lockEntries, useLock } from "../../data/read_only.ts";
 import { useDialog } from "../../data/dialog.ts";
 import { cents } from "../../data/money.ts";
 import { editableMoney } from "../../dialogs/form_readers.ts";
@@ -260,18 +262,46 @@ export function Page() {
     if (id) define(id);
   };
 
-  const removeSelected = () => {
-    const id = needsSelection();
-    if (!id) return;
+  /** A destructive action, so it asks first (the entries stay in Livro; Desfazer brings the line back). */
+  const remove = async (id: string) => {
+    const name = status.rows.find((r) => r.categoryId === id)?.name ?? "esta categoria";
+    const ok = await confirm({
+      title: `Remover “${name}” do orçamento?`,
+      text: `O valor planejado de ${lower(month)} sai do orçamento; os lançamentos continuam no Livro. Dá para desfazer logo em seguida.`,
+      confirmLabel: "Remover",
+      danger: true,
+    });
+    if (!ok) return;
     act((ledger) => dom.budget.removeBudget(ledger, id, month), { label: "remover categoria do orçamento" });
     notify("Categoria removida do orçamento.", { action: { label: "Desfazer", run: undo } });
     setPick(null);
   };
 
+  const removeSelected = () => {
+    const id = needsSelection();
+    if (id) void remove(id);
+  };
+
+  const entriesOf = (id: string) => goTo("livro", { ref: categoryRef(id, month) });
+
   const seeEntries = () => {
     const id = needsSelection();
-    if (id) goTo("livro", { ref: categoryRef(id, month) });
+    if (id) entriesOf(id);
   };
+
+  /** A category's context menu: change its value, see its entries, and Remover apart and in red. */
+  const rowMenu = (row: Row): MenuEntry[] =>
+    lockEntries(
+      [
+        { id: "edit", label: "Alterar valor…", onSelect: () => define(row.categoryId) },
+        { kind: "separator", id: "s1" },
+        { id: "entries", label: "Ver lançamentos", onSelect: () => entriesOf(row.categoryId) },
+        { kind: "separator", id: "s2" },
+        { id: "remove", label: "Remover do orçamento", danger: true, onSelect: () => void remove(row.categoryId) },
+      ],
+      locked,
+      ["entries"],
+    );
 
   const copyPrevious = () => {
     const copied = act((ledger) => dom.budget.copyMonth(ledger, previous, month), {
@@ -369,6 +399,8 @@ export function Page() {
               getRowId={(row) => row.categoryId}
               selectedId={selected?.categoryId ?? null}
               onSelect={setPick}
+              rowMenu={rowMenu}
+              rowMenuLabel={(row) => `Ações de ${row.name}`}
               onActivate={(id) => {
                 setPick(id);
                 if (!locked) define(id);

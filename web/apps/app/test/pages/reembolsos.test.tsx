@@ -3,7 +3,7 @@ import { act as reactAct, screen, waitFor, within } from "@testing-library/react
 import { describe, expect, it } from "vitest";
 import { findReimbursement, sharingView, summaryLine } from "../../src/pages/reembolsos/rows.ts";
 import { openAt, shareExpenses } from "./sharing_docs_harness.tsx";
-import { flat, clickInTable, table, undoOnce } from "../dom.ts";
+import { flat, clickInTable, fromRowMenu, rowMenu, table, undoOnce } from "../dom.ts";
 import { type MountOptions } from "../mount.tsx";
 import { addressSettles, navigations, wentTo } from "../navigations.ts";
 
@@ -223,6 +223,77 @@ describe("Reembolsos e acertos", () => {
     const bar = (await screen.findByText("Selecionado:")).closest("div")!.parentElement!;
     const went = navigations(router);
     await user.click(within(bar).getByRole("button", { name: "Ver lançamento" }));
+    const operation = [...ledger.operations.values()].find((o) => o.description === "Material escolar")!;
+    await wentTo(went, "/livro", { ref: operation.id });
+  });
+
+  it("opens a reimbursement's commands on a right click, Negado apart and in red, through the reason", async () => {
+    const { ledger, user } = await open();
+    const item = only(sharing.reimbursements(ledger).values());
+    const opened = await rowMenu(user, await table("Reembolsos"), "Consulta pediatra");
+    expect(opened.getAttribute("aria-label")).toBe("Ações de Consulta pediatra");
+    expect(
+      within(opened)
+        .getAllByRole("menuitem")
+        .map((entry) => entry.textContent),
+    ).toEqual(["Registrar recebimento…", "Ver lançamento", "Negado…"]);
+    expect(within(opened).getByRole("menuitem", { name: "Negado…" }).className).toContain("text-negative");
+    await user.click(within(opened).getByRole("menuitem", { name: "Registrar recebimento…" }));
+    const receive = await screen.findByRole("dialog", { name: "Reembolso recebido" });
+    await user.click(within(receive).getByRole("button", { name: "Cancelar" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+    await fromRowMenu(user, await table("Reembolsos"), "Consulta pediatra", "Negado…");
+    const dialog = await screen.findByRole("dialog", { name: "Reembolso negado" });
+    await user.click(within(dialog).getByRole("button", { name: "Marcar como negado" }));
+    expect(within(dialog).getByText("O motivo é obrigatório.")).toBeTruthy();
+    expect(sharing.reimbursements(ledger).get(item.id)!.denied).toBe(false);
+  });
+
+  it("offers a reimbursement no longer waiting for money only its operation", async () => {
+    const { ledger, workspace, user } = await open();
+    const item = only(sharing.reimbursements(ledger).values());
+    reactAct(() => void workspace.act((l) => sharing.deny(l, item.id, "plano recusou")));
+    const opened = await rowMenu(user, await table("Reembolsos"), "Consulta pediatra");
+    expect(
+      within(opened)
+        .getAllByRole("menuitem")
+        .map((entry) => entry.textContent),
+    ).toEqual(["Ver lançamento"]);
+  });
+
+  it("keeps Ver lançamento in the reimbursement's menu while read only", async () => {
+    const { ledger, router, workspace, user } = await open();
+    const item = only(sharing.reimbursements(ledger).values());
+    reactAct(() => workspace.setReadOnly(true));
+    const opened = await rowMenu(user, await table("Reembolsos"), "Consulta pediatra");
+    for (const name of ["Registrar recebimento…", "Negado…"]) {
+      expect(within(opened).getByRole("menuitem", { name }).getAttribute("aria-disabled"), name).toBe("true");
+    }
+    const went = navigations(router);
+    await user.click(within(opened).getByRole("menuitem", { name: "Ver lançamento" }));
+    await wentTo(went, "/livro", { ref: item.operation_id });
+  });
+
+  it("settles a balance and opens a share's operation from their context menus", async () => {
+    const { ledger, router, user } = await open();
+    const balance = only(sharing.balances(ledger));
+    const members = names(ledger);
+    await fromRowMenu(
+      user,
+      await table("Saldos entre integrantes"),
+      members.get(balance.debtorId)!,
+      "Registrar acerto…",
+    );
+    const dialog = await screen.findByRole("dialog", { name: "Registrar acerto" });
+    expect(within(dialog).getByRole("combobox", { name: "Quem pagou" }).textContent).toContain(
+      members.get(balance.debtorId)!,
+    );
+    await user.click(within(dialog).getByRole("button", { name: "Cancelar" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+    const went = navigations(router);
+    await fromRowMenu(user, await table("Despesas que formam o saldo"), "Material escolar", "Ver lançamento");
     const operation = [...ledger.operations.values()].find((o) => o.description === "Material escolar")!;
     await wentTo(went, "/livro", { ref: operation.id });
   });

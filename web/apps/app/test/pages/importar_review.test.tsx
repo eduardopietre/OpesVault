@@ -21,7 +21,7 @@ import {
   rowWith,
   type Opened,
 } from "./importar_harness.tsx";
-import { type User, choose, dialog, menu } from "../dom.ts";
+import { type User, choose, dialog, fromRowMenu, menu, rowMenu } from "../dom.ts";
 import { fakePdfRender } from "./importar_pdf_mock.ts";
 import { categoryNamed, accountNamed } from "../lookup.ts";
 
@@ -303,6 +303,64 @@ describe("Importar e revisar: corrigir e rejeitar", () => {
     expect(rowWith(await itemsTable(), "Amazon.com").textContent).toContain("Rejeitado");
     o.workspace.undo();
     expect(item(o, "Amazon.com").status).toBe(ItemStatus.READY);
+  });
+});
+
+describe("Importar e revisar: menu de contexto dos itens", () => {
+  const names = (opened: HTMLElement) =>
+    within(opened)
+      .getAllByRole("menuitem")
+      .map((entry) => entry.textContent ?? "");
+
+  it("opens the review's commands on an item, Rejeitar apart and in red, through the same reason", async () => {
+    const o = await openImport();
+    const opened = await rowMenu(o.user, await itemsTable(), "Amazon.com");
+    expect(opened.getAttribute("aria-label")).toBe("Ações de Amazon.com");
+    expect(names(opened)).toEqual([
+      expect.stringMatching(/^Aprovar/),
+      expect.stringMatching(/^Corrigir…/),
+      expect.stringMatching(/^Criar regra a partir do item…/),
+      expect.stringMatching(/^Rejeitar item…/),
+    ]);
+    expect(within(opened).getByRole("menuitem", { name: /^Rejeitar item…/ }).className).toContain("text-negative");
+    await o.user.click(within(opened).getByRole("menuitem", { name: /^Corrigir…/ }));
+    const fix = await dialog("Corrigir item");
+    await o.user.click(within(fix).getByRole("button", { name: "Cancelar" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Corrigir item" })).toBeNull());
+
+    await fromRowMenu(o.user, await itemsTable(), "Amazon.com", /^Rejeitar item…/);
+    const ask = await dialog("Rejeitar item");
+    await o.user.click(within(ask).getByRole("button", { name: "Rejeitar" }));
+    expect(await within(ask).findByText("O motivo é obrigatório.")).toBeTruthy();
+    expect(item(o, "Amazon.com").status).toBe(ItemStatus.READY);
+  });
+
+  it("approves the item the menu was opened on, with the same partial reason", async () => {
+    const o = await openImport();
+    await fromRowMenu(o.user, await itemsTable(), "Loja Eletro", /^Aprovar/);
+    expect(await dialog("Aprovação parcial")).toBeTruthy();
+  });
+
+  it("offers an approved item only a rule and its operation in the Livro", async () => {
+    const o = await openImport();
+    await o.user.click(button("Aprovar prontos"));
+    await waitFor(() => expect(button("Aprovar prontos").disabled).toBe(true));
+    const opened = await rowMenu(o.user, await itemsTable(), "Padaria");
+    expect(names(opened)).toEqual([expect.stringMatching(/^Criar regra a partir do item…/), "Ver no Livro"]);
+    await o.user.click(within(opened).getByRole("menuitem", { name: "Ver no Livro" }));
+    expect(await screen.findByRole("heading", { level: 1, name: "Livro financeiro" })).toBeTruthy();
+  });
+
+  it("offers 'Manter separado' for a repeated item", async () => {
+    const o = await openImport();
+    await importFiles(o, [file(BANK_OFX, "extrato.ofx")]);
+    await choose(o.user, /^Conta ou cartão/, "Banco A");
+    await o.user.click(button("Aprovar prontos"));
+    await waitFor(() => expect(button("Aprovar prontos").disabled).toBe(true));
+    await importFiles(o, [file(new Uint8Array([...BANK_OFX, ...bytes("\n")]), "extrato-de-novo.ofx")]);
+    await choose(o.user, /^Conta ou cartão/, "Banco A");
+    await fromRowMenu(o.user, await itemsTable(), "PIX ALUGUEL", /^Manter separado…/);
+    expect(await dialog("Manter como lançamento separado")).toBeTruthy();
   });
 });
 

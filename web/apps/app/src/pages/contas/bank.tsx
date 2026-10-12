@@ -3,9 +3,10 @@
  * savings) and the investments held there; the composition of the selected one, values on a date and the
  * investments' characteristics. One holder or two (a joint account), kept through `dom.banking`.
  */
-import { confirm, Collapsible, MenuButton, notify } from "@opesvault/ui";
-import { dom, type Id } from "@opesvault/domain";
+import { confirm, Collapsible, MenuButton, notify, type MenuEntry } from "@opesvault/ui";
+import { dom, investments, type Id } from "@opesvault/domain";
 import { useState } from "react";
+import { useGoTo } from "../../data/navigation.ts";
 import { useAct, useLedger, useWorkspace } from "../../data/react.tsx";
 import { BankAccountDialog } from "../../dialogs/bank_account.tsx";
 import { InvestmentDialog } from "../../dialogs/bank_investment.tsx";
@@ -18,7 +19,8 @@ import { type TabReveal, EditButton, Empty, ListTable, Toolbar, useTabReveal } f
 import type { TierColumn } from "../../components/tier_columns.ts";
 import { bankRows, partRows, whereLine, type BankRow, type PartRow } from "./rows.ts";
 import { useDialog } from "../../data/dialog.ts";
-import { useLock } from "../../data/read_only.ts";
+import { lockEntries, useLock } from "../../data/read_only.ts";
+import { accountRef } from "../livro/rows.ts";
 
 const { banking } = dom;
 
@@ -87,6 +89,7 @@ export function BankTab({ reveal }: { reveal?: TabReveal<BankReveal> | null }) {
   const { undo } = useUndo();
   const { locked } = useLock();
   const act = useAct();
+  const go = useGoTo();
   const rows = useLedger((l) => bankRows(l, today), today);
   const [pick, setPick] = useState<Id | null>(null);
   const [part, setPart] = useState<Id | null>(null);
@@ -130,16 +133,16 @@ export function BankTab({ reveal }: { reveal?: TabReveal<BankReveal> | null }) {
     }
     dialog.show({ kind: "bank", id });
   };
-  const recordValues = () => {
-    if (!item) {
+  const recordValues = (id: Id | null = item?.id ?? null) => {
+    if (id === null) {
       notify("Escolha a conta bancária.");
       return;
     }
-    if (banking.valuesAt(ledger, item.id, today).length === 0) {
+    if (banking.valuesAt(ledger, id, today).length === 0) {
       notify("Esta conta não tem corrente, poupança nem investimentos ainda.");
       return;
     }
-    dialog.show({ kind: "values", id: item.id });
+    dialog.show({ kind: "values", id });
   };
   const chosenInvestment = (): PartRow | null => {
     if (chosenPart?.kind === "investment") return chosenPart;
@@ -160,17 +163,20 @@ export function BankTab({ reveal }: { reveal?: TabReveal<BankReveal> | null }) {
     if (found) dialog.show({ kind: "valuation", positionId: found.id, name: found.label });
   };
   const removeInvestment = useRemoveInvestment();
+  const removeAt = async (found: PartRow) => {
+    if (await removeInvestment(found.id, found.label)) setPart(null);
+  };
   const remove = async () => {
     const found = chosenInvestment();
-    if (found && (await removeInvestment(found.id, found.label))) setPart(null);
+    if (found) await removeAt(found);
   };
   /** More money into one investment, out of a cash account. */
   const contribute = () => {
     const found = chosenInvestment();
     if (found) dialog.show({ kind: "contribution", positionId: found.id, name: found.label });
   };
-  const archive = async () => {
-    if (!item) {
+  const archive = async (id: Id | null = item?.id ?? null) => {
+    if (id === null) {
       notify("Selecione uma conta bancária.");
       return;
     }
@@ -181,9 +187,69 @@ export function BankTab({ reveal }: { reveal?: TabReveal<BankReveal> | null }) {
       danger: true,
     });
     if (!ok) return;
-    act((l) => banking.archive(l, item.id), { label: "encerrar conta bancária" });
+    act((l) => banking.archive(l, id), { label: "encerrar conta bancária" });
     setPick(null);
     notify("Conta bancária encerrada.", { action: { label: "Desfazer", run: undo } });
+  };
+
+  /** A bank account's context menu: the toolbar's commands on that account, Encerrar apart and in red. */
+  const bankMenu = (row: BankRow): MenuEntry[] =>
+    lockEntries(
+      [
+        { id: "edit", label: "Editar…", onSelect: () => edit(row.id) },
+        { id: "values", label: "Valores em uma data…", onSelect: () => recordValues(row.id) },
+        {
+          id: "investment",
+          label: "Novo investimento…",
+          onSelect: () => dialog.show({ kind: "investment", bankId: row.id, positionId: null }),
+        },
+        { kind: "separator", id: "s1" },
+        { id: "archive", label: "Encerrar conta bancária…", danger: true, onSelect: () => void archive(row.id) },
+      ],
+      locked,
+    );
+  /**
+   * A part's context menu: an investment gets the composition's commands (Excluir apart and in red); the
+   * checking and the savings account, the values on a date and their entries.
+   */
+  const partMenu = (row: PartRow): MenuEntry[] => {
+    if (row.kind !== "investment") {
+      return lockEntries(
+        [
+          ...(item ? [{ id: "values", label: "Valores em uma data…", onSelect: () => recordValues(item.id) }] : []),
+          { kind: "separator", id: "s1" },
+          { id: "entries", label: "Ver lançamentos", onSelect: () => go("livro", { ref: accountRef(row.id) }) },
+        ],
+        locked,
+        ["entries"],
+      );
+    }
+    const name = row.label;
+    return lockEntries(
+      [
+        {
+          id: "valuation",
+          label: "Atualizar valor…",
+          onSelect: () => dialog.show({ kind: "valuation", positionId: row.id, name }),
+        },
+        {
+          id: "contribution",
+          label: "Aporte…",
+          onSelect: () => dialog.show({ kind: "contribution", positionId: row.id, name }),
+        },
+        { kind: "separator", id: "s1" },
+        { id: "profile", label: "Características…", onSelect: () => editInvestment(row.id) },
+        {
+          id: "entries",
+          label: "Ver lançamentos",
+          onSelect: () => go("livro", { ref: accountRef(investments.service.position(ledger, row.id).account_id) }),
+        },
+        { kind: "separator", id: "s2" },
+        { id: "remove", label: "Excluir investimento…", danger: true, onSelect: () => void removeAt(row) },
+      ],
+      locked,
+      ["entries"],
+    );
   };
 
   return (
@@ -193,7 +259,7 @@ export function BankTab({ reveal }: { reveal?: TabReveal<BankReveal> | null }) {
           Nova conta bancária…
         </EditButton>
         <EditButton onClick={() => edit()}>Editar…</EditButton>
-        <EditButton onClick={recordValues}>Valores em uma data…</EditButton>
+        <EditButton onClick={() => recordValues()}>Valores em uma data…</EditButton>
         <EditButton onClick={() => dialog.show({ kind: "investment", bankId: item?.id ?? null, positionId: null })}>
           Novo investimento…
         </EditButton>
@@ -218,6 +284,7 @@ export function BankTab({ reveal }: { reveal?: TabReveal<BankReveal> | null }) {
               setPart(null);
             }}
             onActivate={(id) => edit(id)}
+            rowMenu={bankMenu}
           />
           {item ? (
             <Collapsible
@@ -250,6 +317,7 @@ export function BankTab({ reveal }: { reveal?: TabReveal<BankReveal> | null }) {
                   selectedId={chosenPart?.id ?? null}
                   onSelect={setPart}
                   onActivate={(id) => editInvestment(id)}
+                  rowMenu={partMenu}
                   max={12}
                 />
               ) : (

@@ -12,6 +12,7 @@ import {
   flat,
   goTab,
   clickRow,
+  rowMenu,
   rowOf,
   submit,
   table,
@@ -419,3 +420,41 @@ describe("Links into Contas e cartões", () => {
 });
 
 export type { Id };
+
+describe("Menus de contexto das regras", () => {
+  const names = (menu: HTMLElement) =>
+    within(menu)
+      .getAllByRole("menuitem")
+      .map((item) => item.textContent);
+
+  it("edits a rule or turns it off, with the reason, from its row", async () => {
+    const { ledger, user, grid } = await openRules();
+    const rule = rulesOf(ledger)[0]!;
+    let opened = await rowMenu(user, grid, rule.pattern);
+    expect(names(opened)).toEqual(["Editar…", "Desativar…"]);
+    await user.click(within(opened).getByRole("menuitem", { name: "Editar…" }));
+    await submit(user, await dialog("Regra de categoria"), "Cancelar");
+    await closed("Regra de categoria");
+    opened = await rowMenu(user, await table("Regras de categoria"), rule.pattern);
+    await user.click(within(opened).getByRole("menuitem", { name: "Desativar…" }));
+    const box = await dialog("Desativar regra");
+    await fill(user, box, "Motivo", "não vale mais");
+    await submit(user, box, "Desativar");
+    await closed("Desativar regra");
+    expect(rules.rules(ledger).get(rule.id)!.active).toBe(false);
+    opened = await rowMenu(user, await table("Regras de categoria"), rule.pattern);
+    expect(names(opened)).toEqual(["Editar…", "Ativar…"]);
+  });
+
+  it("turns a suggested rule into a rule from its row", async () => {
+    const { ledger, workspace, user } = await openContas();
+    learnFrom(ledger, workspace, "Farmácia Saúde Viva", "Saúde");
+    await goTab(user, "Regras");
+    const grid = await screen.findByRole("grid", { name: "Regras sugeridas pelo uso" });
+    const opened = await rowMenu(user, grid, "FARMACIA SAUDE VIVA");
+    expect(names(opened)).toEqual(["Criar regra…"]);
+    await user.click(within(opened).getByRole("menuitem", { name: "Criar regra…" }));
+    const box = await dialog("Regra de categoria");
+    expect((within(box).getByLabelText(/^A descrição contém/) as HTMLInputElement).value).toBe("FARMACIA SAUDE VIVA");
+  });
+});

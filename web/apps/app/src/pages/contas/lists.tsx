@@ -3,7 +3,7 @@
  * Integrantes. Each is a table with its commands above; a double click or Enter edits the row.
  */
 import { AccountType, type Id } from "@opesvault/domain";
-import { Button, notify } from "@opesvault/ui";
+import { Button, notify, type MenuEntry } from "@opesvault/ui";
 import { useState } from "react";
 import { useLedger, useWorkspace } from "../../data/react.tsx";
 import { CardDialog } from "../../dialogs/accounts_card.tsx";
@@ -17,6 +17,7 @@ import type { TierColumn } from "../../components/tier_columns.ts";
 import { useDialog } from "../../data/dialog.ts";
 import { cents, moneyOr } from "../../data/money.ts";
 import { accountRef } from "../livro/rows.ts";
+import { lockEntries, useLock } from "../../data/read_only.ts";
 
 // ── cards ────────────────────────────────────────
 
@@ -56,6 +57,7 @@ const CARD_COLUMNS: TierColumn<CardRow>[] = [
 export function CardsTab({ reveal }: { reveal?: TabReveal<Id> | null }) {
   const ledger = useWorkspace().ledger;
   const go = useGoTo();
+  const { locked } = useLock();
   const rows = useLedger(cardRows);
   const [pick, setPick] = useState<Id | null>(null);
   const dialog = useDialog<{ id: Id | null }>();
@@ -69,6 +71,21 @@ export function CardsTab({ reveal }: { reveal?: TabReveal<Id> | null }) {
     }
     dialog.show({ id });
   };
+  /** A card's context menu: editing it and its entries. */
+  const rowMenu = (row: CardRow): MenuEntry[] =>
+    lockEntries(
+      [
+        { id: "edit", label: "Editar…", onSelect: () => edit(row.id) },
+        { kind: "separator", id: "s1" },
+        {
+          id: "entries",
+          label: "Ver lançamentos",
+          onSelect: () => go("livro", { ref: accountRef(ledger.cards.get(row.id)?.liability_account_id ?? "") }),
+        },
+      ],
+      locked,
+      ["entries"],
+    );
 
   return (
     <div className="flex flex-col gap-4">
@@ -95,6 +112,7 @@ export function CardsTab({ reveal }: { reveal?: TabReveal<Id> | null }) {
           selectedId={selected?.id ?? null}
           onSelect={setPick}
           onActivate={(id) => edit(id)}
+          rowMenu={rowMenu}
         />
       ) : (
         <Empty title="Nenhum cartão">
@@ -145,6 +163,7 @@ const CATEGORY_COLUMNS: TierColumn<CategoryRow>[] = [
 
 export function CategoriesTab() {
   const ledger = useWorkspace().ledger;
+  const { locked } = useLock();
   const rows = useLedger(categoryRows);
   const [pick, setPick] = useState<Id | null>(null);
   const dialog = useDialog<{ kind: "new" } | { kind: "deductible"; id: Id }>();
@@ -161,6 +180,11 @@ export function CategoriesTab() {
     }
     dialog.show({ kind: "deductible", id });
   };
+  /** A category's context menu: only an expense category can be deductible; an income one has no command. */
+  const rowMenu = (row: CategoryRow): MenuEntry[] =>
+    ledger.accounts.get(row.id)?.type === AccountType.EXPENSE
+      ? lockEntries([{ id: "deductible", label: "Dedutível no IR…", onSelect: () => markDeductible(row.id) }], locked)
+      : [];
 
   return (
     <div className="flex flex-col gap-4">
@@ -179,6 +203,7 @@ export function CategoriesTab() {
           selectedId={selected?.id ?? null}
           onSelect={setPick}
           onActivate={(id) => markDeductible(id)}
+          rowMenu={rowMenu}
           max={14}
         />
       ) : (
@@ -218,6 +243,7 @@ const MEMBER_COLUMNS: TierColumn<MemberRow>[] = [
 
 export function MembersTab() {
   const ledger = useWorkspace().ledger;
+  const { locked } = useLock();
   const rows = useLedger(memberRows);
   const [pick, setPick] = useState<Id | null>(null);
   const dialog = useDialog<{ id: Id | null }>();
@@ -230,6 +256,9 @@ export function MembersTab() {
     }
     dialog.show({ id });
   };
+  /** A member's context menu: editing them. */
+  const rowMenu = (row: MemberRow): MenuEntry[] =>
+    lockEntries([{ id: "edit", label: "Editar…", onSelect: () => edit(row.id) }], locked);
 
   return (
     <div className="flex flex-col gap-4">
@@ -248,6 +277,7 @@ export function MembersTab() {
           selectedId={selected?.id ?? null}
           onSelect={setPick}
           onActivate={(id) => edit(id)}
+          rowMenu={rowMenu}
         />
       ) : (
         <Empty title="Nenhum integrante">

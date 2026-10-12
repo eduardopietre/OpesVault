@@ -65,6 +65,7 @@ for (const size of TEST_SIZES) {
 
         // Pausar / Retomar
         await page.getByRole("button", { name: "Pausar", exact: true }).click();
+        await page.getByRole("alertdialog").getByRole("button", { name: "Pausar", exact: true }).click();
         await expect(rules.getByText("Pausada").first()).toBeVisible();
         // the paused rule leaves the forecasts: the late ones were its own
         await expect(forecasts.getByText("Atrasada")).toHaveCount(0);

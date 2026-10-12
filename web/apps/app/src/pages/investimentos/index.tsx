@@ -5,7 +5,7 @@
  * the reference indices. One scrolling page. A link from another screen selects the position (a maturity
  * notice) and may start an action: "avaliar" opens the new valuation, "simular" the simulator.
  */
-import { investments, type Id } from "@opesvault/domain";
+import { dom, investments, type Id } from "@opesvault/domain";
 import {
   Button,
   EmptyState,
@@ -43,9 +43,18 @@ import { Empty, EditButton, ListTable, Toolbar, usePick } from "../../components
 import { NOTE_COLUMNS, PORTFOLIO_COLUMNS } from "./columns.tsx";
 import { Detail } from "./detail.tsx";
 import { SavingsPanel } from "./savings_panel.tsx";
-import { eventRows, noteRows, parseReveal, portfolioRows, summaryLine, valuationRows, type NoteRow } from "./rows.ts";
+import {
+  eventRows,
+  noteRows,
+  parseReveal,
+  portfolioRows,
+  summaryLine,
+  valuationRows,
+  type NoteRow,
+  type PortfolioRow,
+} from "./rows.ts";
 import { useDialog } from "../../data/dialog.ts";
-import { useLock } from "../../data/read_only.ts";
+import { lockEntries, useLock } from "../../data/read_only.ts";
 import { accountRef } from "../livro/rows.ts";
 
 const { service, model } = investments;
@@ -161,9 +170,98 @@ export function Page() {
   const profile = withPosition((positionId) => ({ kind: "profile", positionId }));
 
   const removeInvestment = useRemoveInvestment();
+  const removeAt = async (id: Id) => {
+    if (await removeInvestment(id, nameOf(id))) setPick(null);
+  };
   const remove = async () => {
     const id = need();
-    if (id && (await removeInvestment(id, nameOf(id)))) setPick(null);
+    if (id) await removeAt(id);
+  };
+
+  /** The bank account where a position (its characteristics) or a savings account is held. */
+  const bankOf = (row: PortfolioRow): Id | null =>
+    row.savings
+      ? ([...dom.banking.bankAccounts(ledger).values()].find((b) => b.savings_id === row.id)?.id ?? null)
+      : (investments.profile.profileOf(ledger, row.id)?.bank_account_id ?? null);
+
+  /**
+   * A row's context menu: the commands of that investment, the rarer ones in cascades, and Excluir apart and in
+   * red. A savings account only leads to its entries and its bank account (it follows Livro).
+   */
+  const rowMenu = (row: PortfolioRow): MenuEntry[] => {
+    const bankId = bankOf(row);
+    const seeBank: MenuEntry[] = bankId
+      ? [{ id: "bank", label: "Ver conta bancária", onSelect: () => goTo("contas", { ref: `banco:${bankId}` }) }]
+      : [];
+    if (row.savings) {
+      return [
+        { id: "entries", label: "Ver lançamentos", onSelect: () => goTo("livro", { ref: accountRef(row.id) }) },
+        ...seeBank,
+      ];
+    }
+    const id = row.id;
+    const show = (spec: Spec) => () => dialog.show(spec);
+    const byQuantity = service.position(ledger, id).mode === model.TrackingMode.QUANTITY;
+    const trading: MenuEntry[] = byQuantity
+      ? [
+          {
+            kind: "submenu",
+            id: "trade",
+            label: "Negociação",
+            items: [
+              { id: "buy", label: "Compra…", onSelect: show({ kind: "trade", trade: "buy", positionId: id }) },
+              { id: "sell", label: "Venda…", onSelect: show({ kind: "trade", trade: "sell", positionId: id }) },
+              {
+                id: "opening",
+                label: "Posição inicial…",
+                onSelect: show({ kind: "trade", trade: "opening", positionId: id }),
+              },
+              { kind: "separator", id: "t1" },
+              {
+                id: "split",
+                label: "Desdobramento ou grupamento…",
+                onSelect: show({ kind: "trade", trade: "split", positionId: id }),
+              },
+              { id: "bonus", label: "Bonificação…", onSelect: show({ kind: "trade", trade: "bonus", positionId: id }) },
+            ],
+          },
+        ]
+      : [];
+    return lockEntries(
+      [
+        { id: "valuation", label: "Atualizar valor…", onSelect: show({ kind: "valuation", positionId: id }) },
+        { id: "contribution", label: "Aporte…", onSelect: show({ kind: "contribution", positionId: id }) },
+        {
+          kind: "submenu",
+          id: "register",
+          label: "Registrar",
+          items: [
+            { id: "distribution", label: "Provento…", onSelect: show({ kind: "distribution", positionId: id }) },
+            { id: "redeem", label: "Resgate…", onSelect: show({ kind: "redeem", positionId: id, prefill: null }) },
+            {
+              id: "netonly",
+              label: "Resgate só com o líquido…",
+              onSelect: show({ kind: "netonly", positionId: id }),
+            },
+            { kind: "separator", id: "r1" },
+            { id: "simulate", label: "Simular resgate (não grava)…", onSelect: () => simulate(id) },
+          ],
+        },
+        ...trading,
+        { kind: "separator", id: "s1" },
+        { id: "profile", label: "Características…", onSelect: show({ kind: "profile", positionId: id }) },
+        {
+          id: "entries",
+          label: "Ver lançamentos",
+          onSelect: () => goTo("livro", { ref: accountRef(service.position(ledger, id).account_id) }),
+        },
+        ...seeBank,
+        { kind: "separator", id: "s2" },
+        { id: "remove", label: "Excluir investimento…", danger: true, onSelect: () => void removeAt(id) },
+      ],
+      locked,
+      ["entries", "bank", "simulate"],
+    );
   };
 
   // A maturity notice or a link: select the position; "avaliar" and "simular" start the action.
@@ -176,12 +274,7 @@ export function Page() {
   });
 
   /** Commands that change the project are disabled while another tab or device is editing it. */
-  const lock = (items: MenuEntry[], free: readonly string[] = []): MenuEntry[] =>
-    items.map((item) =>
-      item.kind === "separator" || item.kind === "label" || item.kind === "radio" || free.includes(item.id)
-        ? item
-        : { ...item, disabled: item.disabled || locked },
-    );
+  const lock = (items: MenuEntry[], free: readonly string[] = []): MenuEntry[] => lockEntries(items, locked, free);
 
   const header = (
     <PageHeader
@@ -304,6 +397,8 @@ export function Page() {
               getRowId={(r) => r.id}
               selectedId={selected?.id ?? null}
               onSelect={setPick}
+              rowMenu={rowMenu}
+              rowMenuLabel={(r) => `Ações de ${r.name}`}
               onActivate={(id) => {
                 setPick(id);
                 if (rows.find((r) => r.id === id)?.savings) goTo("livro", { ref: accountRef(id) });

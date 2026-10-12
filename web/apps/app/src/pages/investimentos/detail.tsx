@@ -41,7 +41,7 @@ import {
 import { EditButton, Empty, ListTable } from "../../components/list_parts.tsx";
 import { finishXirr } from "./xirr.ts";
 import { solveXirr } from "./xirr_client.ts";
-import { useLock } from "../../data/read_only.ts";
+import { lockEntries, useLock } from "../../data/read_only.ts";
 
 const { service, model, benchmarks } = investments;
 const { banking } = dom;
@@ -264,6 +264,16 @@ function PositionDetail({
                 onValuation(id);
                 if (!locked) onFix(id);
               }}
+              rowMenu={(r) =>
+                lockEntries(
+                  [
+                    { id: "use", label: "Usar esta observação", onSelect: onUse, disabled: r.used },
+                    { id: "fix", label: "Corrigir observação…", onSelect: () => onFix(r.id) },
+                  ],
+                  locked,
+                )
+              }
+              rowMenuLabel={(r) => `Avaliação de ${r.date}`}
               max={8}
             />
           ) : (
@@ -288,6 +298,11 @@ function PositionDetail({
               getRowId={(r) => r.id}
               selectedId={event}
               onSelect={onEvent}
+              rowMenu={(r) =>
+                r.incomplete
+                  ? lockEntries([{ id: "complete", label: "Completar resgate…", onSelect: onComplete }], locked)
+                  : []
+              }
               max={8}
             />
           ) : (

@@ -7,7 +7,7 @@ import { saveFile, formatBytes as fileSize } from "@opesvault/ui";
 import { documentRows, summaryLine, usedBy } from "../../src/pages/documentos/rows.ts";
 import { DocumentUnavailable } from "../../src/data/workspace.ts";
 import { openAt } from "./sharing_docs_harness.tsx";
-import { flat, type User, undoOnce } from "../dom.ts";
+import { flat, fromRowMenu, rowMenu, type User, undoOnce } from "../dom.ts";
 import { addressSettles, navigations, wentTo } from "../navigations.ts";
 import { type MountOptions } from "../mount.tsx";
 
@@ -288,6 +288,80 @@ describe("Documentos", () => {
     expect(new TextDecoder().decode(data as Uint8Array)).toContain("LIVRE");
     expect(type).toBe("application/pdf");
     expect(await screen.findByText(/Arquivo salvo/)).toBeTruthy();
+  });
+
+  it("opens a free document's commands on a right click, Remover apart and in red, still confirming", async () => {
+    const { workspace, user } = await open();
+    const before = documents(workspace);
+    const opened = await rowMenu(user, await list(), "livre.pdf");
+    expect(opened.getAttribute("aria-label")).toBe("Ações de livre.pdf");
+    expect(
+      within(opened)
+        .getAllByRole("menuitem")
+        .map((item) => item.textContent),
+    ).toEqual(["Salvar o original…", "Remover…"]);
+    expect(within(opened).getByRole("menuitem", { name: "Remover…" }).className).toContain("text-negative");
+    await user.click(within(opened).getByRole("menuitem", { name: "Remover…" }));
+    const confirmation = await screen.findByRole("alertdialog", { name: "Remover o documento?" });
+    await user.click(within(confirmation).getByRole("button", { name: "Cancelar" }));
+    expect(documents(workspace)).toEqual(before);
+  });
+
+  it("saves the original from the menu after the same warning", async () => {
+    const { user } = await open();
+    await fromRowMenu(user, await list(), "livre.pdf", "Salvar o original…");
+    const confirmation = await screen.findByRole("alertdialog", { name: "Salvar o original sem criptografia?" });
+    await user.click(within(confirmation).getByRole("button", { name: "Salvar o original" }));
+    await waitFor(() => expect(saveFile).toHaveBeenCalledTimes(1));
+    const [name, , type] = vi.mocked(saveFile).mock.calls[0]!;
+    expect(name).toBe("livre.pdf");
+    expect(type).toBe("application/pdf");
+  });
+
+  it("offers what uses a receipt: each operation and Desvincular in a cascade, with the confirmation", async () => {
+    const { ledger, workspace, user } = await open();
+    const opened = await rowMenu(user, await list(), "nota-dividida.pdf");
+    expect(
+      within(opened)
+        .getAllByRole("menuitem")
+        .map((item) => item.textContent),
+    ).toEqual(["Salvar o original…", "Ver lançamento", "Desvincular"]);
+    await user.keyboard("{Escape}");
+    const before = documents(workspace);
+    await fromRowMenu(user, await list(), "nota-dividida.pdf", "Mercado do mês…", "Desvincular");
+    const confirmation = await screen.findByRole("alertdialog", { name: "Desvincular o comprovante?" });
+    expect(within(confirmation).getByText(/O arquivo continua no projeto/)).toBeTruthy();
+    await user.click(within(confirmation).getByRole("button", { name: "Cancelar" }));
+    expect(documents(workspace)).toEqual(before);
+    expect(
+      dom.attachments.ofDocument(
+        ledger,
+        workspace.session.documents.find((d) => d.meta.original_name === "nota-dividida.pdf")!.meta.id,
+      ),
+    ).toHaveLength(2);
+  });
+
+  it("opens one of a receipt's operations from the menu's cascade", async () => {
+    const { ledger, router, user } = await open();
+    const went = navigations(router);
+    await fromRowMenu(user, await list(), "nota-dividida.pdf", "Mercado do mês", "Ver lançamento");
+    await wentTo(went, "/livro", { ref: op(ledger, "Mercado do mês").id });
+  });
+
+  it("keeps the commands that only read while another tab edits", async () => {
+    const { router, workspace, user } = await open();
+    reactAct(() => workspace.setReadOnly(true));
+    const opened = await rowMenu(user, await list(), "recibo-posto.png");
+    const state = (name: string) =>
+      within(opened).getByRole("menuitem", { name }).getAttribute("aria-disabled") === "true";
+    expect(state("Salvar o original…")).toBe(false);
+    expect(state("Ver lançamento")).toBe(false);
+    expect(state("Desvincular…")).toBe(true);
+    await user.keyboard("{Escape}");
+    const went = navigations(router);
+    const batch = [...importing.importStore.batches(workspace.ledger).values()][0]!;
+    await fromRowMenu(user, await list(), "fatura-nubank-03.pdf", "Ver importação");
+    await wentTo(went, "/importar", { ref: batch.id });
   });
 
   it("fetches a document only when it is chosen, and offers another try when it has not been downloaded", async () => {

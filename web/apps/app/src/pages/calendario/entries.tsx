@@ -3,7 +3,15 @@
  * layouts and the list of days of the phone's.
  */
 import { dom, formatBrl, formatDateBr, type IsoDate } from "@opesvault/domain";
-import { Badge, Button, DataTable, useMotionPreset, type BadgeTone, type DataColumn } from "@opesvault/ui";
+import {
+  Badge,
+  Button,
+  DataTable,
+  useMotionPreset,
+  type BadgeTone,
+  type DataColumn,
+  type MenuEntry,
+} from "@opesvault/ui";
 import { AnimatePresence, motion } from "motion/react";
 import type { Link } from "../../data/links.ts";
 import { eventLink } from "../../data/links.ts";
@@ -56,7 +64,7 @@ export interface EntriesTableProps {
   onOpen: (link: Link) => void;
 }
 
-/** "Vencimentos do mês": date, description, kind, amount and state; Enter or double click opens it. */
+/** "Vencimentos do mês": date, description, kind, amount and state; Enter, double click or its menu opens it. */
 export function EntriesTable({ rows, selectedId, onSelect, onOpen }: EntriesTableProps) {
   const columns: DataColumn<EntryRow>[] = [
     { id: "data", header: "Data", cell: (r) => formatDateBr(r.event.on), sortValue: (r) => r.event.on, width: 112 },
@@ -107,6 +115,8 @@ export function EntriesTable({ rows, selectedId, onSelect, onOpen }: EntriesTabl
       getRowId={(row) => row.id}
       selectedId={selectedId}
       onSelect={onSelect}
+      rowMenu={(row): MenuEntry[] => [{ id: "open", label: row.link.label, onSelect: () => onOpen(row.link) }]}
+      rowMenuLabel={(row) => `Ações de ${row.event.title}`}
       onActivate={(id) => {
         const row = rows.find((r) => r.id === id);
         if (row) onOpen(row.link);

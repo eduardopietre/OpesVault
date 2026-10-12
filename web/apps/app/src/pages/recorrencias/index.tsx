@@ -13,6 +13,7 @@ import {
   MenuButton,
   PageHeader,
   Section,
+  type MenuEntry,
   confirm,
   notify,
   useMotionPreset,
@@ -31,7 +32,7 @@ import { useUndo } from "../../shell/undo.tsx";
 import { FORECAST_LABELS, candidateKey, forecastId, forecastWindow, parseRecurrenceRef, summaryLine } from "./rows.ts";
 import { CANDIDATE_COLUMNS, COMMITMENT_COLUMNS, FORECAST_COLUMNS, RULE_COLUMNS } from "./tables.tsx";
 import { EditButton, usePick } from "../../components/list_parts.tsx";
-import { useLock } from "../../data/read_only.ts";
+import { lockEntries, useLock } from "../../data/read_only.ts";
 import { useDialog } from "../../data/dialog.ts";
 
 type Rule = dom.recurrence.RecurrenceRule;
@@ -99,14 +100,49 @@ export function Page() {
     openRuleDialog(rule);
   };
 
-  const toggle = () => {
-    const rule = rulePick.need("Selecione uma regra.");
-    if (!rule) return;
+  /** Pausing stops a rule's forecasts, so it asks first; resuming does not. */
+  const toggleRule = async (rule: Rule) => {
+    if (!rule.paused) {
+      const ok = await confirm({
+        title: `Pausar “${rule.description}”?`,
+        text: "As próximas previsões dela deixam de aparecer até você retomar. Dá para desfazer logo em seguida.",
+        confirmLabel: "Pausar",
+        danger: true,
+      });
+      if (!ok) return;
+    }
     act((ledger) => dom.recurrence.updateRule(ledger, { ...rule, paused: !rule.paused }, "pausar/retomar"), {
       done: rule.paused ? `Recorrência “${rule.description}” retomada.` : `Recorrência “${rule.description}” pausada.`,
       label: rule.paused ? "retomar recorrência" : "pausar recorrência",
     });
   };
+
+  const toggle = () => {
+    const rule = rulePick.need("Selecione uma regra.");
+    if (rule) void toggleRule(rule);
+  };
+
+  /** A rule's context menu (Regras and Assinaturas e contas fixas): edit it, pause or resume it. */
+  const ruleMenu = (rule: Rule): MenuEntry[] =>
+    lockEntries(
+      [
+        { id: "edit", label: "Editar…", onSelect: () => openRuleDialog(rule) },
+        ...(rule.paused
+          ? [{ id: "toggle", label: "Retomar", onSelect: () => void toggleRule(rule) }]
+          : [
+              { kind: "separator" as const, id: "s1" },
+              { id: "toggle", label: "Pausar…", danger: true, onSelect: () => void toggleRule(rule) },
+            ]),
+      ],
+      locked,
+    );
+
+  /** A charge that looks recurring: the rule it may become. */
+  const candidateMenu = (candidate: Candidate): MenuEntry[] =>
+    lockEntries(
+      [{ id: "create", label: "Criar recorrência…", onSelect: () => openRuleDialog(null, candidate) }],
+      locked,
+    );
 
   const createFromCandidate = (key: string | null = pickCandidate) => {
     const found = candidates.find((c) => candidateKey(c) === key);
@@ -137,9 +173,7 @@ export function Page() {
     if (forecast) startLink(forecast);
   };
 
-  const skipSelected = () => {
-    const forecast = forecastPick.need("Selecione uma previsão.");
-    if (!forecast) return;
+  const skip = (forecast: Forecast) => {
     if (forecast.status === "realized" || forecast.status === "skipped") {
       notify("Esta previsão já foi resolvida.");
       return;
@@ -150,6 +184,23 @@ export function Page() {
     if (skipped === undefined) return;
     notify(`Previsão de ${formatDateBr(forecast.dueOn)} pulada.`, { action: { label: "Desfazer", run: undo } });
   };
+
+  const skipSelected = () => {
+    const forecast = forecastPick.need("Selecione uma previsão.");
+    if (forecast) skip(forecast);
+  };
+
+  /** A forecast still open: link it to the operation that realized it, or skip it; a resolved one has none. */
+  const forecastMenu = (forecast: Forecast): MenuEntry[] =>
+    forecast.status === "realized" || forecast.status === "skipped"
+      ? []
+      : lockEntries(
+          [
+            { id: "link", label: "Vincular realizado…", onSelect: () => startLink(forecast) },
+            { id: "skip", label: "Pular previsão", onSelect: () => skip(forecast) },
+          ],
+          locked,
+        );
 
   const linkSuggestions = async () => {
     const pairs = dom.recurrence.autoSuggestions(workspace.ledger, start, end, today);
@@ -249,6 +300,8 @@ export function Page() {
           getRowId={(c) => c.rule.id}
           selectedId={selectedRule?.id ?? null}
           onSelect={setPickRule}
+          rowMenu={(c) => ruleMenu(c.rule)}
+          rowMenuLabel={(c) => `Ações de ${c.rule.description}`}
           onActivate={(id) => {
             setPickRule(id);
             if (!locked) edit(id);
@@ -277,6 +330,8 @@ export function Page() {
           getRowId={candidateKey}
           selectedId={selectedCandidate ? candidateKey(selectedCandidate) : null}
           onSelect={setPickCandidate}
+          rowMenu={candidateMenu}
+          rowMenuLabel={(c) => `Ações de ${c.description}`}
           onActivate={(id) => {
             setPickCandidate(id);
             if (!locked) createFromCandidate(id);
@@ -323,6 +378,8 @@ export function Page() {
                 getRowId={(r) => r.id}
                 selectedId={selectedRule?.id ?? null}
                 onSelect={setPickRule}
+                rowMenu={ruleMenu}
+                rowMenuLabel={(r) => `Ações de ${r.description}`}
                 onActivate={(id) => {
                   setPickRule(id);
                   if (!locked) edit(id);
@@ -368,6 +425,8 @@ export function Page() {
                   getRowId={(f) => forecastId(f.ruleId, f.dueOn)}
                   selectedId={selectedForecast ? forecastId(selectedForecast.ruleId, selectedForecast.dueOn) : null}
                   onSelect={setPickForecast}
+                  rowMenu={forecastMenu}
+                  rowMenuLabel={(f) => `Ações de ${f.description} em ${formatDateBr(f.dueOn)}`}
                   onActivate={(id) => {
                     setPickForecast(id);
                     const forecast = forecasts.find((f) => forecastId(f.ruleId, f.dueOn) === id);

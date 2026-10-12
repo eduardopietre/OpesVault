@@ -4,7 +4,17 @@
  * without a click; a payment after the due date settles the overdue bill first.
  */
 import { charts, dom, ymStr, type Id, type YearMonth } from "@opesvault/domain";
-import { Badge, type BadgeTone, Button, ChartView, Collapsible, Select, formatBrDate, notify } from "@opesvault/ui";
+import {
+  Badge,
+  type BadgeTone,
+  Button,
+  ChartView,
+  Collapsible,
+  type MenuEntry,
+  Select,
+  formatBrDate,
+  notify,
+} from "@opesvault/ui";
 import { useState } from "react";
 import { useLedger, useWorkspace } from "../../data/react.tsx";
 import { cardItems } from "../../dialogs/account_choices.ts";
@@ -14,7 +24,7 @@ import { type TabReveal, Empty, ListTable, Toolbar, useTabReveal } from "../../c
 import type { TierColumn } from "../../components/tier_columns.ts";
 import { billRows, defaultBill, type BillRow } from "./rows.ts";
 import { useDialog } from "../../data/dialog.ts";
-import { useLock } from "../../data/read_only.ts";
+import { lockEntries, useLock } from "../../data/read_only.ts";
 import { cents, moneyOr } from "../../data/money.ts";
 
 const { cards } = dom;
@@ -177,6 +187,20 @@ export function BillsTab({ reveal }: { reveal?: TabReveal<BillReveal> | null }) 
     dialog.show({ cardId: card.id, summary: bill });
   };
 
+  /** A bill's context menu: paying it (a bill already paid shows the command disabled). */
+  const rowMenu = (row: BillRow): MenuEntry[] =>
+    lockEntries(
+      [
+        {
+          id: "pay",
+          label: "Pagar…",
+          disabled: !row.remaining.isPositive(),
+          onSelect: () => pay({ due: row.due, total: row.total, payments: row.paid, remaining: row.remaining }),
+        },
+      ],
+      locked,
+    );
+
   useTabReveal(reveal, (value) => {
     if (!ledger.cards.has(value.cardId)) return;
     setCardPick(value.cardId);
@@ -246,6 +270,8 @@ export function BillsTab({ reveal }: { reveal?: TabReveal<BillReveal> | null }) 
             }}
             max={13}
             cardTitle={(r) => `Vence em ${formatBrDate(r.due)}`}
+            rowMenu={rowMenu}
+            rowMenuLabel={(r) => `Fatura que vence em ${formatBrDate(r.due)}`}
           />
         </>
       ) : (

@@ -3,7 +3,20 @@ import { AccountSubtype, AccountType, Dec, MemberRole, dom, formatBrl, queries }
 import { screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { openContas, snapshot } from "./contas_harness.tsx";
-import { choose, closed, dialog, fill, flat, goTab, clickRow, rowOf, submit, table, undoOnce } from "../dom.ts";
+import {
+  choose,
+  closed,
+  dialog,
+  fill,
+  flat,
+  goTab,
+  clickRow,
+  rowMenu,
+  rowOf,
+  submit,
+  table,
+  undoOnce,
+} from "../dom.ts";
 import { navigations, wentTo } from "../navigations.ts";
 import { accountNamed, memberNamed, categoryNamed } from "../lookup.ts";
 
@@ -477,5 +490,72 @@ describe("Todas as contas", () => {
     const went = navigations(router);
     await user.click(screen.getByRole("button", { name: "Ver lançamentos" }));
     await wentTo(went, "/livro", { ref: `conta:${accountNamed(ledger, "Conjunta").id}` });
+  });
+});
+
+describe("Menus de contexto das listas", () => {
+  const names = (menu: HTMLElement) =>
+    within(menu)
+      .getAllByRole("menuitem")
+      .map((item) => item.textContent);
+
+  it("Integrantes: edits the member of the row", async () => {
+    const { user } = await openContas();
+    await goTab(user, "Integrantes");
+    const opened = await rowMenu(user, await table("Integrantes"), "Bruno");
+    expect(names(opened)).toEqual(["Editar…"]);
+    await user.click(within(opened).getByRole("menuitem", { name: "Editar…" }));
+    const box = await dialog("Editar integrante");
+    expect((within(box).getByLabelText(/^Nome/) as HTMLInputElement).value).toBe("Bruno");
+  });
+
+  it("Cartões: edits the card or opens its entries in the Livro", async () => {
+    const { ledger, router, user } = await openContas();
+    const card = [...ledger.cards.values()][0]!;
+    await goTab(user, "Cartões");
+    const opened = await rowMenu(user, await table("Cartões"), card.name);
+    expect(names(opened)).toEqual(["Editar…", "Ver lançamentos"]);
+    const went = navigations(router);
+    await user.click(within(opened).getByRole("menuitem", { name: "Ver lançamentos" }));
+    await wentTo(went, "/livro", { ref: `conta:${card.liability_account_id}` });
+  });
+
+  it("Categorias: an expense category can be marked deductible; an income one keeps the browser's menu", async () => {
+    const { user } = await openContas();
+    await goTab(user, "Categorias");
+    const grid = await table("Categorias");
+    const opened = await rowMenu(user, grid, "Lazer");
+    expect(names(opened)).toEqual(["Dedutível no IR…"]);
+    await user.click(within(opened).getByRole("menuitem", { name: "Dedutível no IR…" }));
+    const box = await dialog(/Despesa dedutível — Lazer/);
+    await user.click(within(box).getByRole("button", { name: "Cancelar" }));
+    await closed(/Despesa dedutível/);
+    await user.pointer({ keys: "[MouseRight]", target: rowOf(await table("Categorias"), "Salário") });
+    expect(screen.queryByRole("menu")).toBeNull();
+  });
+
+  it("Todas as contas: the account's commands, then a new check from the checks table", async () => {
+    const { user } = await openContas();
+    await goTab(user, "Todas as contas");
+    const opened = await rowMenu(user, await table("Contas"), "Conjunta");
+    expect(names(opened)).toEqual(["Editar…", "Conferir saldo…", "Ver lançamentos"]);
+    await user.click(within(opened).getByRole("menuitem", { name: "Conferir saldo…" }));
+    const box = await dialog(/Conferir saldo — Conjunta/);
+    await fill(user, box, "Saldo no banco", "2.300,00");
+    await submit(user, box, "Conferir");
+    await closed(/Conferir saldo/);
+    const checks = await table("Conferências com o banco");
+    const again = await rowMenu(user, checks, "confere");
+    expect(names(again)).toEqual(["Conferir saldo…"]);
+    await user.click(within(again).getByRole("menuitem", { name: "Conferir saldo…" }));
+    expect(await dialog(/Conferir saldo — Conjunta/)).toBeTruthy();
+  });
+
+  it("disables the editing commands in a read-only project, but not Ver lançamentos", async () => {
+    const { user } = await openContas("/contas", { readOnly: true });
+    await goTab(user, "Todas as contas");
+    const opened = await rowMenu(user, await table("Contas"), "Conjunta");
+    expect(within(opened).getByRole("menuitem", { name: "Editar…" }).getAttribute("aria-disabled")).toBe("true");
+    expect(within(opened).getByRole("menuitem", { name: "Ver lançamentos" }).hasAttribute("aria-disabled")).toBe(false);
   });
 });

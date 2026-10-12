@@ -258,6 +258,145 @@ describe("DataTable", () => {
   });
 });
 
+describe("DataTable row context menu", () => {
+  type Row = ReturnType<typeof make>[number];
+  function Harness({
+    onEdit,
+    onRemove,
+    onMove,
+  }: {
+    onEdit: (id: string) => void;
+    onRemove: (id: string) => void;
+    onMove: (id: string, to: string) => void;
+  }) {
+    const [selected, setSelected] = useState<string | null>(null);
+    const menu = (row: Row) => [
+      { id: "edit", label: "Editar…", onSelect: () => onEdit(row.id) },
+      {
+        kind: "submenu" as const,
+        id: "move",
+        label: "Mover para",
+        items: [
+          { id: "a", label: "Conta A", onSelect: () => onMove(row.id, "A") },
+          { id: "b", label: "Conta B", onSelect: () => onMove(row.id, "B") },
+        ],
+      },
+      { kind: "separator" as const, id: "s" },
+      { id: "remove", label: "Excluir…", danger: true, onSelect: () => onRemove(row.id) },
+    ];
+    return (
+      <>
+        <span data-testid="selected">{selected ?? ""}</span>
+        <DataTable
+          label="Lançamentos"
+          rows={make()}
+          columns={columns}
+          getRowId={(row) => row.id}
+          selectedId={selected}
+          onSelect={setSelected}
+          rowMenu={menu}
+          layout="table"
+        />
+      </>
+    );
+  }
+
+  it("opens on a right click, selects the row, runs a command and gives the focus back to the table", async () => {
+    const user = userEvent.setup();
+    const onEdit = vi.fn();
+    render(<Harness onEdit={onEdit} onRemove={vi.fn()} onMove={vi.fn()} />);
+    const grid = screen.getByRole("grid", { name: "Lançamentos" });
+    await user.pointer({ keys: "[MouseRight]", target: screen.getByText("Aluguel") });
+    const menu = await screen.findByRole("menu", { name: "Ações de Aluguel" });
+    expect(screen.getByTestId("selected").textContent).toBe("b2");
+    // the destructive command is there, apart, in red
+    const remove = within(menu).getByRole("menuitem", { name: "Excluir…" });
+    expect(remove.className).toContain("text-negative");
+    // never the normal text color as well, which would win in the generated CSS
+    expect(remove.className.split(" ")).not.toContain("text-text");
+    await user.click(within(menu).getByRole("menuitem", { name: "Editar…" }));
+    expect(onEdit).toHaveBeenCalledWith("b2");
+    await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+    expect(document.activeElement).toBe(grid);
+  });
+
+  it("opens a cascade of options and runs the one chosen inside it", async () => {
+    const user = userEvent.setup();
+    const onMove = vi.fn();
+    render(<Harness onEdit={vi.fn()} onRemove={vi.fn()} onMove={onMove} />);
+    await user.pointer({ keys: "[MouseRight]", target: screen.getByText("Farmácia") });
+    const menu = await screen.findByRole("menu", { name: "Ações de Farmácia" });
+    expect(within(menu).getByRole("menuitem", { name: "Mover para" }).getAttribute("aria-haspopup")).toBe("menu");
+    // by the keyboard: down to the cascade, right into it, down to the second option
+    await user.keyboard("{ArrowDown}{ArrowDown}{ArrowRight}");
+    expect(await screen.findByRole("menuitem", { name: "Conta A" })).toBeTruthy();
+    await user.keyboard("{ArrowDown}{Enter}");
+    expect(onMove).toHaveBeenCalledWith("c3", "B");
+  });
+
+  it("opens from the keyboard on the selected row (Shift+F10) and closes with Escape", async () => {
+    const user = userEvent.setup();
+    const onRemove = vi.fn();
+    render(<Harness onEdit={vi.fn()} onRemove={onRemove} onMove={vi.fn()} />);
+    const grid = screen.getByRole("grid", { name: "Lançamentos" });
+    grid.focus();
+    await user.keyboard("{ArrowDown}{Shift>}{F10}{/Shift}");
+    expect(await screen.findByRole("menu", { name: "Ações de Mercado" })).toBeTruthy();
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+    expect(onRemove).not.toHaveBeenCalled();
+  });
+
+  it("opens on a long press with a finger, and the click of lifting it is not a tap", async () => {
+    const selections: [string, string | undefined][] = [];
+    render(
+      <DataTable
+        label="Lançamentos"
+        rows={make()}
+        columns={columns}
+        getRowId={(row) => row.id}
+        onSelect={(id, via) => selections.push([id, via])}
+        rowMenu={() => [{ id: "edit", label: "Editar…", onSelect: () => undefined }]}
+        layout="cards"
+      />,
+    );
+    const card = screen.getByText("Aluguel");
+    fireEvent.pointerDown(card, { pointerType: "touch", clientX: 10, clientY: 10 });
+    expect(await screen.findByRole("menu", {}, { timeout: 2000 })).toBeTruthy();
+    fireEvent.pointerUp(card, { pointerType: "touch" });
+    fireEvent.click(card);
+    // selected once, to open the menu, and told so (a page may skip opening a sheet then)
+    expect(selections).toEqual([["b2", "menu"]]);
+  });
+
+  it("does not open when the finger moves (a scroll)", async () => {
+    render(
+      <DataTable
+        label="Lançamentos"
+        rows={make()}
+        columns={columns}
+        getRowId={(row) => row.id}
+        rowMenu={() => [{ id: "edit", label: "Editar…", onSelect: () => undefined }]}
+        layout="cards"
+      />,
+    );
+    const card = screen.getByText("Aluguel");
+    fireEvent.pointerDown(card, { pointerType: "touch", clientX: 10, clientY: 10 });
+    fireEvent.pointerMove(card, { pointerType: "touch", clientX: 10, clientY: 60 });
+    await new Promise((resolve) => setTimeout(resolve, 700));
+    expect(screen.queryByRole("menu")).toBeNull();
+  });
+
+  it("leaves the browser's own menu outside the rows", () => {
+    render(<Harness onEdit={vi.fn()} onRemove={vi.fn()} onMove={vi.fn()} />);
+    const header = screen.getByRole("columnheader", { name: /Descrição/ });
+    const event = new MouseEvent("contextmenu", { bubbles: true, cancelable: true });
+    header.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(false);
+    expect(screen.queryByRole("menu")).toBeNull();
+  });
+});
+
 describe("Select", () => {
   it("chooses by id, and finds the option for an id read back as a new string", async () => {
     const user = userEvent.setup();

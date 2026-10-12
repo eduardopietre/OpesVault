@@ -12,6 +12,7 @@ import {
   Figure,
   MenuButton,
   PageHeader,
+  type MenuEntry,
   notify,
   useElementWidth,
   useMotionPreset,
@@ -29,7 +30,7 @@ import { ReasonDialog } from "../../dialogs/livro_prompts.tsx";
 import { goalColumns } from "./columns.tsx";
 import { goalExample, goalRows, reachedLabel, summaryLine, type GoalExample } from "./rows.ts";
 import { EditButton, usePick } from "../../components/list_parts.tsx";
-import { useLock } from "../../data/read_only.ts";
+import { lockEntries, useLock } from "../../data/read_only.ts";
 import { useDialog } from "../../data/dialog.ts";
 import { moneyOr, dateOr } from "../../data/money.ts";
 
@@ -79,6 +80,19 @@ export function Page() {
     const row = need("Selecione uma meta.");
     if (row) archiveDialog.show(row.goal);
   };
+
+  /** A goal's context menu: edit it; archiving (or reactivating) apart, through the same reason dialog. */
+  const rowMenu = (row: (typeof rows)[number]): MenuEntry[] =>
+    lockEntries(
+      [
+        { id: "edit", label: "Editar meta…", onSelect: () => openEdit(row.goal) },
+        { kind: "separator", id: "s1" },
+        row.goal.archived
+          ? { id: "archive", label: "Reativar…", onSelect: () => archiveDialog.show(row.goal) }
+          : { id: "archive", label: "Arquivar…", danger: true, onSelect: () => archiveDialog.show(row.goal) },
+      ],
+      locked,
+    );
 
   // A link from another page: the goal opens, selected, with its chart; "editar" also opens the form.
   useReveal((ref, action) => {
@@ -151,6 +165,8 @@ export function Page() {
               getRowId={(row) => row.id}
               selectedId={selected?.id ?? null}
               onSelect={setPick}
+              rowMenu={rowMenu}
+              rowMenuLabel={(row) => `Ações de ${row.goal.name}`}
               onActivate={(id) => {
                 setPick(id);
                 const row = rows.find((r) => r.id === id);

@@ -5,7 +5,7 @@ import { pinToday } from "../clock.ts";
 import { nameOf, reachedLabel, shareLabel, summaryLine } from "../../src/pages/metas/rows.ts";
 import { openPage } from "./recorrencias_harness.tsx";
 import { accountNamed } from "../lookup.ts";
-import { flat, rowById, undoOnce } from "../dom.ts";
+import { flat, fromRowMenu, rowById, rowMenu, undoOnce } from "../dom.ts";
 import { addressSettles } from "../navigations.ts";
 import { DASH as NONE, dateOr as dateOrNone, moneyOr as moneyOrNone } from "../../src/data/money.ts";
 
@@ -186,6 +186,38 @@ describe("Metas", () => {
     expect(goals(ledger)[0]!.archived).toBe(true);
     undoOnce(workspace);
     expect(goals(ledger)[0]!.archived).toBe(false);
+  });
+
+  it("opens a goal's commands on a right click: Editar first, Arquivar apart and in red, through the reason", async () => {
+    const { ledger, user } = await open();
+    const grid = await screen.findByRole("grid", { name: "Metas" });
+    const opened = await rowMenu(user, grid, "Reserva de emergência");
+    expect(opened.getAttribute("aria-label")).toBe("Ações de Reserva de emergência");
+    expect(
+      within(opened)
+        .getAllByRole("menuitem")
+        .map((item) => item.textContent),
+    ).toEqual(["Editar meta…", "Arquivar…"]);
+    expect(within(opened).getByRole("menuitem", { name: "Arquivar…" }).className).toContain("text-negative");
+    await user.click(within(opened).getByRole("menuitem", { name: "Editar meta…" }));
+    const dialog = await screen.findByRole("dialog", { name: "Editar meta" });
+    expect((within(dialog).getByLabelText("Nome") as HTMLInputElement).value).toBe("Reserva de emergência");
+    await user.click(within(dialog).getByRole("button", { name: "Cancelar" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Editar meta" })).toBeNull());
+
+    await fromRowMenu(user, grid, "Reserva de emergência", "Arquivar…");
+    const archive = await screen.findByRole("dialog", { name: "Arquivar meta" });
+    await user.click(within(archive).getByRole("button", { name: "Arquivar" }));
+    expect(within(archive).getByText("O motivo é obrigatório.")).toBeTruthy();
+    expect(goals(ledger)[0]!.archived).toBe(false);
+  });
+
+  it("disables the goal's context menu while read only", async () => {
+    const { user } = await open({ readOnly: true });
+    const opened = await rowMenu(user, await screen.findByRole("grid", { name: "Metas" }), "Reserva de emergência");
+    for (const item of within(opened).getAllByRole("menuitem")) {
+      expect(item.getAttribute("aria-disabled")).toBe("true");
+    }
   });
 
   it("follows the selection: another goal shows its own details and chart, archived goals last", async () => {

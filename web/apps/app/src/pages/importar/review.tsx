@@ -44,7 +44,7 @@ import {
   verdicts,
   type ItemRow,
 } from "./rows.ts";
-import { READ_ONLY_TIP } from "../../data/read_only.ts";
+import { READ_ONLY_TIP, lockEntries } from "../../data/read_only.ts";
 import { moneyOr, dateOr } from "../../data/money.ts";
 
 const { BatchStatus, ItemKind, ItemStatus } = importing.importModel;
@@ -227,10 +227,14 @@ export function Review({ batchId, selected, onSelect, queue, ai }: ReviewProps) 
     void approve(null);
   };
 
+  const approveRow = async (row: ItemRow) => {
+    if (await approve([row.id])) advance(row.id);
+  };
+
   const approveSelected = async () => {
     if (readOnly) return;
     if (!current) return notify(NO_SELECTION);
-    if (await approve([current.id])) advance(current.id);
+    await approveRow(current);
   };
 
   const correct = () => {
@@ -242,7 +246,11 @@ export function Review({ batchId, selected, onSelect, queue, ai }: ReviewProps) 
   const keepSeparate = async () => {
     if (readOnly) return;
     if (!current) return notify(NO_SELECTION);
-    const id = current.id;
+    await keepRowSeparate(current);
+  };
+
+  const keepRowSeparate = async (row: ItemRow) => {
+    const id = row.id;
     const reason = await prompts.ask({
       title: "Manter como lançamento separado",
       confirmLabel: "Manter separado",
@@ -263,7 +271,11 @@ export function Review({ batchId, selected, onSelect, queue, ai }: ReviewProps) 
   const reject = async () => {
     if (readOnly) return;
     if (!current) return notify(NO_SELECTION);
-    const id = current.id;
+    await rejectRow(current);
+  };
+
+  const rejectRow = async (row: ItemRow) => {
+    const id = row.id;
     const reason = await prompts.ask({
       title: "Rejeitar item",
       confirmLabel: "Rejeitar",
@@ -287,9 +299,52 @@ export function Review({ batchId, selected, onSelect, queue, ai }: ReviewProps) 
     setRuling(row);
   };
 
-  const seeInBook = () => {
-    const id = current?.item.operation_id ?? current?.item.duplicate_of ?? null;
+  /** The operation an item became, or the one it repeats. */
+  const bookOf = (row: ItemRow | null): Id | null => row?.item.operation_id ?? row?.item.duplicate_of ?? null;
+
+  const seeInBook = (row: ItemRow | null = current) => {
+    const id = bookOf(row);
     if (id) goTo("livro", { ref: id });
+  };
+
+  /**
+   * An item's context menu: the review's commands on that item (with their shortcuts), the operation in the
+   * Livro, and Rejeitar apart and in red, through the same reason. An approved item only creates a rule or
+   * opens its operation.
+   */
+  const rowMenu = (row: ItemRow): MenuEntry[] => {
+    const pending = isOpen(row.item);
+    const approved = row.item.status === ItemStatus.APPROVED;
+    const book = bookOf(row);
+    const entries: MenuEntry[] = [
+      ...(pending && approvable
+        ? [{ id: "approve", label: "Aprovar", shortcut: "Ctrl+Enter", onSelect: () => void approveRow(row) }]
+        : []),
+      ...(!approved ? [{ id: "correct", label: "Corrigir…", shortcut: "F2", onSelect: () => setEditing(row) }] : []),
+      ...(row.item.status === ItemStatus.DUPLICATE
+        ? [{ id: "keep-separate", label: "Manter separado…", shortcut: "M", onSelect: () => void keepRowSeparate(row) }]
+        : []),
+      { id: "create-rule", label: "Criar regra a partir do item…", shortcut: "R", onSelect: () => setRuling(row) },
+      ...(book
+        ? [
+            { kind: "separator", id: "s1" } as const,
+            { id: "book", label: "Ver no Livro", onSelect: () => seeInBook(row) },
+          ]
+        : []),
+      ...(pending
+        ? [
+            { kind: "separator", id: "s2" } as const,
+            {
+              id: "reject",
+              label: "Rejeitar item…",
+              shortcut: "Del",
+              danger: true,
+              onSelect: () => void rejectRow(row),
+            },
+          ]
+        : []),
+    ];
+    return lockEntries(entries, readOnly, ["book"]);
   };
 
   const focusCategory = () => {
@@ -529,7 +584,7 @@ export function Review({ batchId, selected, onSelect, queue, ai }: ReviewProps) 
           </Button>
         ) : null}
         {linkTo ? (
-          <Button variant="ghost" icon={<ExternalLink />} onClick={seeInBook}>
+          <Button variant="ghost" icon={<ExternalLink />} onClick={() => seeInBook()}>
             Ver no Livro
           </Button>
         ) : null}
@@ -602,6 +657,8 @@ export function Review({ batchId, selected, onSelect, queue, ai }: ReviewProps) 
           getRowId={(row) => row.id}
           selectedId={current?.id ?? null}
           onSelect={onSelect}
+          rowMenu={rowMenu}
+          rowMenuLabel={(row) => `Ações de ${row.description}`}
           onActivate={() => correct()}
           rowHeight={48}
           height="max(22rem, calc(100dvh - 24rem))"

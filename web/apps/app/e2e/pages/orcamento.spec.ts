@@ -56,6 +56,7 @@ for (const size of TEST_SIZES) {
 
         // Remover do orçamento, then Desfazer in the notice
         await page.getByRole("button", { name: "Remover do orçamento" }).click();
+        await page.getByRole("alertdialog").getByRole("button", { name: "Remover", exact: true }).click();
         await expect(table.getByText("Alimentação")).toHaveCount(0);
         await page.getByRole("button", { name: "Desfazer", exact: true }).click();
         await expect(table.getByText("Alimentação").first()).toBeVisible();
@@ -101,6 +102,7 @@ for (const size of TEST_SIZES) {
         await table.getByText("Moradia").first().click();
         await page.getByRole("button", { name: "Mais", exact: true }).click();
         await page.getByRole("menuitem", { name: "Remover do orçamento" }).click();
+        await page.getByRole("alertdialog").getByRole("button", { name: "Remover", exact: true }).click();
         await page.getByRole("button", { name: "Desfazer", exact: true }).click();
 
         // the whole month in the grid, copying from the previous month, then saving

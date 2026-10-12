@@ -75,6 +75,7 @@ import { operationsCsv } from "./export.ts";
 import { FilterBar, activeFilterCount, useFilterChoices } from "./filters.tsx";
 import { LedgerDialogs, type DialogSpec } from "./host.tsx";
 import { useDialog } from "../../data/dialog.ts";
+import { lockEntries } from "../../data/read_only.ts";
 import { OperationDetails, SelectionNote } from "./inspector.tsx";
 import {
   EMPTY_FILTERS,
@@ -173,9 +174,10 @@ export function Page() {
   const detailsOpen = details?.band === band ? details.open : band === "wide";
   const setDetailsOpen = useCallback((open: boolean) => setDetails({ band, open }), [band]);
 
-  const select = (id: string) => {
+  const select = (id: string, via?: "menu") => {
     setCurrent(id);
-    if (band === "phone") setDetailsOpen(true); // there is no other way to see an operation on a phone
+    // there is no other way to see an operation on a phone; a long press opens its menu instead
+    if (band === "phone" && via !== "menu") setDetailsOpen(true);
   };
 
   // ── commands ───────────────────────────────────
@@ -217,14 +219,23 @@ export function Page() {
   const tag = () => {
     if (targets.length) show({ kind: "tags", ids: targets });
   };
+  /** The entry the file picker attaches to: chosen before the picker opens, read when a file comes back. */
+  const attachTarget = useRef<Id | null>(null);
+  const attachTo = (op: Operation) => {
+    attachTarget.current = op.id;
+    receiptInput.current?.click();
+  };
   const attach = () => {
-    if (needOne()) receiptInput.current?.click();
+    const op = needOne();
+    if (op) attachTo(op);
   };
   const attachChosen = async (file: File | undefined) => {
-    const op = single;
-    if (!file || op === null) return;
+    // the entry chosen when the picker opened; a file put in the field another way goes to the selected entry
+    const id = attachTarget.current ?? single?.id ?? null;
+    attachTarget.current = null;
+    if (!file || id === null || !ledger.operations.has(id)) return;
     const bytes = new Uint8Array(await file.arrayBuffer());
-    act((_ledger, session) => dom.attachments.attach(session, op.id, file.name, bytes), {
+    act((_ledger, session) => dom.attachments.attach(session, id, file.name, bytes), {
       done: "Comprovante anexado e guardado cifrado no projeto.",
       label: "anexar comprovante",
     });
@@ -232,7 +243,9 @@ export function Page() {
   /** Takes a receipt off the selected entry (one act); a file nothing else uses leaves the project with it. */
   const detachReceipt = async () => {
     const op = needOne();
-    if (op === null) return;
+    if (op) await detachReceiptOf(op);
+  };
+  const detachReceiptOf = async (op: Operation) => {
     const receipts = dom.attachments.ofOperation(ledger, op.id);
     if (!receipts.length) {
       notify("Este lançamento não tem comprovante.");
@@ -279,7 +292,9 @@ export function Page() {
   };
   const detailIncome = () => {
     const op = needOne();
-    if (op === null) return;
+    if (op) detailIncomeOf(op);
+  };
+  const detailIncomeOf = (op: Operation) => {
     if (!isActive(op) || !tax.records.receivedAmount(ledger, op.id).isPositive()) {
       notify("Só receitas têm detalhamento de rendimento.");
       return;
@@ -290,11 +305,12 @@ export function Page() {
     const op = needOne();
     if (op) show({ kind: "merchant", id: op.id });
   };
-  const markReviewed = () => {
-    if (!targets.length) return;
-    act((l) => targets.reduce((n, id) => n + dom.anomalies.markReviewed(l, id), 0), {
-      done: `${targets.length} lançamento(s) conferido(s); avisos de duplicidade ou valor silenciados.`,
-      label: actionName("conferir", targets.length, "lançamento", "lançamentos"),
+  const markReviewed = () => markReviewedIds(targets);
+  const markReviewedIds = (ids: readonly Id[]) => {
+    if (!ids.length) return;
+    act((l) => ids.reduce((n, id) => n + dom.anomalies.markReviewed(l, id), 0), {
+      done: `${ids.length} lançamento(s) conferido(s); avisos de duplicidade ou valor silenciados.`,
+      label: actionName("conferir", ids.length, "lançamento", "lançamentos"),
     });
   };
   const reimbursement = () => {
@@ -313,8 +329,8 @@ export function Page() {
     const op = needOne();
     if (op) show({ kind: "cancel", id: op.id });
   };
-  const checkBalance = () => {
-    const op = single;
+  const checkBalance = () => checkBalanceOf(single);
+  const checkBalanceOf = (op: Operation | null) => {
     const accounts = (op ? op.postings.map((p) => p.account_id) : []).filter((id) => {
       const type = ledger.accounts.get(id)?.type;
       return type === AccountType.ASSET || type === AccountType.LIABILITY;
@@ -336,7 +352,9 @@ export function Page() {
   };
   const deductible = () => {
     const op = needOne();
-    if (op === null) return;
+    if (op) deductibleOf(op);
+  };
+  const deductibleOf = (op: Operation) => {
     const category = op.postings.find((p) => {
       const account = ledger.accounts.get(p.account_id);
       return account?.type === AccountType.EXPENSE && p.amount.isPositive();
@@ -416,8 +434,11 @@ export function Page() {
   ];
 
   // ── the local AI: the ticked operations (two or more), or everything the filters show ──
+  /** A row's context menu asks the AI about that row only (set just while the command reads its scope). */
+  const aiRow = useRef<Id | null>(null);
   const ai = useLedgerAi(
     () => {
+      if (aiRow.current !== null) return { ids: [aiRow.current], label: "1 lançamento selecionado" };
       if (checked.size >= 2) {
         return { ids: [...checked], label: `${checked.size} lançamentos selecionados` };
       }
@@ -438,6 +459,125 @@ export function Page() {
       disabled: readOnly,
     },
   ];
+
+  /**
+   * A row's context menu: the "Ações" commands on that one operation (the right click selected it, and the ticked
+   * ones are left alone), the rarer ones in cascades, Estornar and Cancelar apart and in red. Computed only when the
+   * menu opens, so nothing here runs per row of a long book.
+   */
+  const rowMenu = (op: Operation): MenuEntry[] => {
+    const receipts = dom.attachments.ofOperation(ledger, op.id);
+    const openReceipts: MenuEntry[] = receipts.map((receipt, index) => ({
+      id: `receipt-${receipt.id}`,
+      label: receipts.length > 1 ? `Abrir comprovante ${index + 1}` : "Abrir comprovante",
+      onSelect: () => show({ kind: "receipt", documentId: receipt.document_id }),
+    }));
+    const reading: MenuEntry[] = [
+      { id: "history", label: "Histórico", onSelect: () => show({ kind: "history", id: op.id }) },
+      {
+        id: "toggle-mark",
+        label: checked.has(op.id) ? "Desmarcar este lançamento" : "Marcar este lançamento",
+        onSelect: () => check(op.id, !checked.has(op.id)),
+      },
+    ];
+    const free = ["history", "toggle-mark", ...openReceipts.map((entry) => entry.id)];
+    if (!isActive(op)) {
+      // A cancelled entry is not corrected: what it had and what happened to it.
+      return [
+        ...(openReceipts.length
+          ? [{ kind: "submenu", id: "receipts", label: "Comprovante", items: openReceipts } satisfies MenuEntry]
+          : []),
+        ...reading,
+      ];
+    }
+    const income = tax.records.receivedAmount(ledger, op.id).isPositive();
+    const expense = op.postings.some(
+      (p) => ledger.accounts.get(p.account_id)?.type === AccountType.EXPENSE && p.amount.isPositive(),
+    );
+    const onRow = (command: () => void) => () => {
+      aiRow.current = op.id;
+      try {
+        command();
+      } finally {
+        aiRow.current = null;
+      }
+    };
+    return lockEntries(
+      [
+        {
+          id: "edit",
+          label: "Corrigir…",
+          shortcut: "Enter",
+          onSelect: () => show({ kind: isSimple(ledger, op) ? "simple" : "postings", id: op.id }),
+        },
+        { id: "postings", label: "Corrigir partidas…", onSelect: () => show({ kind: "postings", id: op.id }) },
+        { id: "reclassify", label: "Reclassificar…", onSelect: () => show({ kind: "reclassify", ids: [op.id] }) },
+        { id: "tags", label: "Marcadores…", onSelect: () => show({ kind: "tags", ids: [op.id] }) },
+        {
+          kind: "submenu",
+          id: "receipts",
+          label: "Comprovante",
+          items: [
+            ...openReceipts,
+            { id: "attach", label: "Anexar comprovante…", onSelect: () => attachTo(op) },
+            ...(receipts.length
+              ? ([
+                  { kind: "separator", id: "c1" },
+                  { id: "detach", label: "Desvincular comprovante…", onSelect: () => void detachReceiptOf(op) },
+                ] satisfies MenuEntry[])
+              : []),
+          ],
+        },
+        {
+          kind: "submenu",
+          id: "more",
+          label: "Mais ações",
+          items: [
+            { id: "merchant", label: "Nomear estabelecimento…", onSelect: () => show({ kind: "merchant", id: op.id }) },
+            {
+              id: "reimbursement",
+              label: "Reembolso a receber…",
+              onSelect: () => show({ kind: "reimbursement", id: op.id }),
+            },
+            { id: "reviewed", label: "Está certo (silenciar aviso)", onSelect: () => markReviewedIds([op.id]) },
+            { id: "balance", label: "Conferir saldo da conta…", onSelect: () => checkBalanceOf(op) },
+            ...(income || expense ? [{ kind: "separator", id: "m1" } satisfies MenuEntry] : []),
+            ...(income
+              ? [{ id: "income", label: "Detalhar rendimento (IR)…", onSelect: () => detailIncomeOf(op) }]
+              : []),
+            ...(expense
+              ? [{ id: "deductible", label: "Marcar categoria como dedutível…", onSelect: () => deductibleOf(op) }]
+              : []),
+          ],
+        },
+        ...(ai.client !== null
+          ? [
+              {
+                kind: "submenu",
+                id: "ai",
+                label: "IA local",
+                items: [
+                  { id: "ai-categories", label: "Sugerir categoria…", onSelect: onRow(ai.suggestCategories) },
+                  { id: "ai-names", label: "Sugerir nome do estabelecimento…", onSelect: onRow(ai.suggestNames) },
+                ],
+              } satisfies MenuEntry,
+            ]
+          : []),
+        { kind: "separator", id: "s1" },
+        ...reading,
+        { kind: "separator", id: "s2" },
+        { id: "reverse", label: "Estornar…", danger: true, onSelect: () => show({ kind: "reverse", id: op.id }) },
+        {
+          id: "cancel",
+          label: "Cancelar lançamento…",
+          danger: true,
+          onSelect: () => show({ kind: "cancel", id: op.id }),
+        },
+      ],
+      readOnly,
+      free,
+    );
+  };
 
   // ── filters saved in the project ───────────────
 
@@ -849,6 +989,8 @@ export function Page() {
             selectedId={current}
             onSelect={select}
             onActivate={(id) => openEdit(operationOf(id))}
+            rowMenu={rowMenu}
+            rowMenuLabel={(op) => `Ações de ${op.description}`}
             height="max(22rem, calc(100dvh - 20rem))"
             renderCard={(op) => <LedgerCard ledger={ledger} op={op} />}
             cardHeight={66}

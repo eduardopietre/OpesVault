@@ -17,6 +17,7 @@ import {
   notify,
   useMotionPreset,
   type DataColumn,
+  type MenuEntry,
 } from "@opesvault/ui";
 import { Ban, CircleCheck, Clock, Hourglass } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
@@ -38,7 +39,7 @@ import {
   type ShareRow,
 } from "./rows.ts";
 import { EditButton, usePick } from "../../components/list_parts.tsx";
-import { useLock } from "../../data/read_only.ts";
+import { lockEntries, useLock } from "../../data/read_only.ts";
 import { useDialog } from "../../data/dialog.ts";
 import { cents, dateOr } from "../../data/money.ts";
 
@@ -233,8 +234,7 @@ export function Page() {
     receiveSlot.show({ id: row.id });
   };
 
-  const openDeny = () => {
-    const row = needsReimbursement();
+  const openDeny = (row: ReimbursementRow | null = needsReimbursement()) => {
     if (!row) return;
     denySlot.show({ id: row.id });
   };
@@ -259,6 +259,33 @@ export function Page() {
       amount: from?.amount ?? null,
     });
   };
+
+  const seeOperationEntry = (id: Id): MenuEntry => ({
+    id: "operation",
+    label: "Ver lançamento",
+    onSelect: () => seeOperation(id),
+  });
+
+  /** A reimbursement's context menu: receive it, see its expense, and Negado apart and in red. */
+  // Only a reimbursement still waiting for money (pending or partial) can be received or denied.
+  const reimbursementMenu = (row: ReimbursementRow): MenuEntry[] =>
+    lockEntries(
+      row.open
+        ? [
+            { id: "receive", label: "Registrar recebimento…", onSelect: () => openReceive(row) },
+            { kind: "separator", id: "s1" },
+            seeOperationEntry(row.operationId),
+            { kind: "separator", id: "s2" },
+            { id: "deny", label: "Negado…", danger: true, onSelect: () => openDeny(row) },
+          ]
+        : [seeOperationEntry(row.operationId)],
+      locked,
+      ["operation"],
+    );
+
+  /** A balance between members: settle it, prefilled with its pair and amount. */
+  const balanceMenu = (row: BalanceRow): MenuEntry[] =>
+    lockEntries([{ id: "settle", label: "Registrar acerto…", onSelect: () => openSettle(row) }], locked);
 
   // Another screen names a reimbursement (or the expense it refunds); "receber" starts the receipt.
   useReveal((ref, action) => {
@@ -313,7 +340,7 @@ export function Page() {
                     <EditButton variant="primary" onClick={() => openReceive()}>
                       Registrar recebimento…
                     </EditButton>
-                    <EditButton onClick={openDeny}>Negado…</EditButton>
+                    <EditButton onClick={() => openDeny()}>Negado…</EditButton>
                     <Button onClick={() => seeOperation(needsReimbursement()?.operationId)}>Ver lançamento</Button>
                   </>
                 }
@@ -327,6 +354,8 @@ export function Page() {
                       getRowId={(r) => r.id}
                       selectedId={reimbursement?.id ?? null}
                       onSelect={setPickedReimbursement}
+                      rowMenu={reimbursementMenu}
+                      rowMenuLabel={(r) => `Ações de ${r.description}`}
                       onActivate={(id) => {
                         setPickedReimbursement(id);
                         if (!locked) openReceive(view.reimbursements.find((r) => r.id === id) ?? null);
@@ -360,6 +389,8 @@ export function Page() {
                         setPickedBalance(id);
                         setPickedShare(null);
                       }}
+                      rowMenu={balanceMenu}
+                      rowMenuLabel={(r) => `Ações de ${r.debtor} deve a ${r.creditor}`}
                       onActivate={(id) => {
                         setPickedBalance(id);
                         if (!locked) openSettle(view.balances.find((b) => b.id === id) ?? null);
@@ -387,6 +418,8 @@ export function Page() {
                           getRowId={(r) => r.id}
                           selectedId={share?.id ?? null}
                           onSelect={setPickedShare}
+                          rowMenu={(r) => [seeOperationEntry(r.id)]}
+                          rowMenuLabel={(r) => `Ações de ${r.description}`}
                           onActivate={seeOperation}
                           cardTitle={(r) => text(r.description)}
                           height={height}

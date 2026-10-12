@@ -3,7 +3,7 @@
  * payments. The schedule is computed from the contract; the ledger's balance is the reference.
  */
 import { charts, dom, type Id } from "@opesvault/domain";
-import { ChartView, Collapsible, MenuButton, notify } from "@opesvault/ui";
+import { ChartView, Collapsible, MenuButton, notify, type MenuEntry } from "@opesvault/ui";
 import { useState } from "react";
 import { useGoTo } from "../../data/navigation.ts";
 import { useLedger, useWorkspace } from "../../data/react.tsx";
@@ -16,7 +16,7 @@ import { type TabReveal, EditButton, Empty, ListTable, Toolbar, useTabReveal } f
 import type { TierColumn } from "../../components/tier_columns.ts";
 import { installmentRows, loanRows, nextInstallment, type InstallmentRow, type LoanRow } from "./rows.ts";
 import { useDialog } from "../../data/dialog.ts";
-import { useLock } from "../../data/read_only.ts";
+import { lockEntries, useLock } from "../../data/read_only.ts";
 import { cents, moneyOr, dateOr } from "../../data/money.ts";
 import { accountRef } from "../livro/rows.ts";
 
@@ -164,6 +164,52 @@ export function LoansTab({ reveal }: { reveal?: TabReveal<LoanReveal> | null }) 
     if (value.pay) pay(target?.number ?? null, value.planId);
   });
 
+  /** A contract's context menu: paying its next installment, the early payment and its entries. */
+  const planMenu = (row: LoanRow): MenuEntry[] => {
+    const next = nextInstallment(installmentRows(ledger, row.id, today));
+    const found = loans.plans(ledger).get(row.id);
+    return lockEntries(
+      [
+        {
+          id: "pay",
+          label: "Pagar parcela…",
+          disabled: next === null,
+          onSelect: () => pay(next?.number ?? null, row.id),
+        },
+        {
+          id: "prepay",
+          label: "Simular ou registrar amortização antecipada…",
+          onSelect: () => dialog.show({ kind: "prepay", planId: row.id }),
+        },
+        ...(found
+          ? ([
+              { kind: "separator", id: "s1" },
+              {
+                id: "ledger",
+                label: "Ver lançamentos do financiamento",
+                onSelect: () => go("livro", { ref: accountRef(found.liability_account_id) }),
+              },
+            ] satisfies MenuEntry[])
+          : []),
+      ],
+      locked,
+      ["ledger"],
+    );
+  };
+  /** An installment's context menu: paying it (one already paid shows the command disabled). */
+  const installmentMenu = (row: InstallmentRow): MenuEntry[] =>
+    lockEntries(
+      [
+        {
+          id: "pay",
+          label: "Pagar parcela…",
+          disabled: row.state === loans.InstallmentState.PAID,
+          onSelect: () => pay(row.number),
+        },
+      ],
+      locked,
+    );
+
   const paying = dialog.spec?.kind === "pay" ? dialog.spec : null;
   const selectedPlan = planId ? loans.plans(ledger).get(planId) : undefined;
 
@@ -207,6 +253,7 @@ export function LoansTab({ reveal }: { reveal?: TabReveal<LoanReveal> | null }) 
             setPlanPick(id);
             setNumberPick(null);
           }}
+          rowMenu={planMenu}
           max={6}
         />
       ) : (
@@ -253,6 +300,8 @@ export function LoansTab({ reveal }: { reveal?: TabReveal<LoanReveal> | null }) 
               }}
               max={14}
               cardTitle={(r) => `Parcela ${r.number} · ${r.due}`}
+              rowMenu={installmentMenu}
+              rowMenuLabel={(r) => `Parcela ${r.number}`}
             />
           </Collapsible>
         </>

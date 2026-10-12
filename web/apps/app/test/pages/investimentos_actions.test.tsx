@@ -3,7 +3,20 @@ import { Dec, formatBrl, investments, makeDate, queries, type Id, type Ledger } 
 import { screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { cashOf, cdbOf, openInvestimentos, snapshot } from "./investimentos_harness.tsx";
-import { choose, closed, dialog, fill, flat, menu, rowOf, submit, table, undoOnce } from "../dom.ts";
+import {
+  choose,
+  closed,
+  dialog,
+  fill,
+  flat,
+  fromRowMenu,
+  menu,
+  rowMenu,
+  rowOf,
+  submit,
+  table,
+  undoOnce,
+} from "../dom.ts";
 
 const { service, trades, performance, model } = investments;
 
@@ -225,6 +238,55 @@ describe("Avaliações", () => {
     await user.click(await screen.findByRole("button", { name: "Corrigir observação…" }));
     expect(await screen.findByText("Selecione uma observação na tabela Avaliações.")).toBeTruthy();
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+});
+
+describe("Menu de contexto da carteira", () => {
+  it("opens the investment's commands on a right click, Excluir apart and in red", async () => {
+    const { user } = await openInvestimentos();
+    const grid = await table("Investimentos");
+    const opened = await rowMenu(user, grid, "CDB Banco X 2028");
+    expect(opened.getAttribute("aria-label")).toBe("Ações de CDB Banco X 2028");
+    const names = within(opened)
+      .getAllByRole("menuitem")
+      .map((item) => item.textContent);
+    expect(names).toEqual([
+      "Atualizar valor…",
+      "Aporte…",
+      "Registrar",
+      "Características…",
+      "Ver lançamentos",
+      "Ver conta bancária",
+      "Excluir investimento…",
+    ]);
+    // by value: no trading cascade; Excluir in red
+    expect(within(opened).getByRole("menuitem", { name: "Excluir investimento…" }).className).toContain(
+      "text-negative",
+    );
+    await user.click(within(opened).getByRole("menuitem", { name: "Atualizar valor…" }));
+    expect(await dialog(/Atualizar valor — CDB Banco X 2028/)).toBeTruthy();
+  });
+
+  it("reaches the rarer commands through a cascade", async () => {
+    const { user } = await openInvestimentos();
+    await fromRowMenu(user, await table("Investimentos"), "CDB Banco X 2028", "Resgate…", "Registrar");
+    expect(await dialog(/Resgate — CDB Banco X 2028/)).toBeTruthy();
+  });
+
+  it("removes from the menu after the same confirmation", async () => {
+    const { user } = await openInvestimentos();
+    await fromRowMenu(user, await table("Investimentos"), "CDB Banco X 2028", "Excluir investimento…");
+    expect(await screen.findByRole("alertdialog", { name: "Excluir “CDB Banco X 2028”?" })).toBeTruthy();
+  });
+
+  it("offers a savings account only what reads it", async () => {
+    const { user } = await openInvestimentos();
+    const opened = await rowMenu(user, await table("Investimentos"), "Poupança (Itaú da Ana)");
+    expect(
+      within(opened)
+        .getAllByRole("menuitem")
+        .map((item) => item.textContent),
+    ).toEqual(["Ver lançamentos", "Ver conta bancária"]);
   });
 });
 

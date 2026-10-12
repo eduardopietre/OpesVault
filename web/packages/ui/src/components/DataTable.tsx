@@ -4,7 +4,8 @@
  * would otherwise cost an object per row before the first frame. The header stays on top while rows scroll; columns
  * have a priority, and lower priorities hide when the container is narrow; under 640 px of container the
  * rows become a list of cards. Selection is by row id (a string), never by object identity, so a row read
- * back from the project keeps its selection. Keyboard: arrows, Home/End, Page Up/Down and Enter.
+ * back from the project keeps its selection. Keyboard: arrows, Home/End, Page Up/Down and Enter; the Menu key or
+ * Shift+F10 opens the selected row's context menu (`rowMenu`), as a right click or a long press does.
  *
  * Tables start in the order the data arrives, without a sort indicator (docs/16 §4 rule 12).
  */
@@ -19,12 +20,16 @@ import {
   useRef,
   useState,
   type KeyboardEvent,
+  type MouseEvent,
+  type PointerEvent,
   type ReactNode,
 } from "react";
 import { cn } from "../cn.ts";
 import { compareLabels } from "../format.ts";
 import { useElementWidth } from "../hooks.ts";
 import { BAND } from "../tokens.ts";
+import { ContextMenuAt, type MenuEntry } from "./Menu.tsx";
+import { usePortalContainer } from "./portal.ts";
 
 export type SortValue = string | number | bigint | null | undefined;
 
@@ -66,7 +71,8 @@ export interface DataTableProps<T> {
   columns: readonly DataColumn<T>[];
   getRowId: (row: T) => string;
   selectedId?: string | null;
-  onSelect?: (id: string) => void;
+  /** `via` is "menu" when the row is selected to open its context menu (a page may then skip opening a sheet). */
+  onSelect?: (id: string, via?: "menu") => void;
   /** Enter or double click: open or edit. */
   onActivate?: (id: string) => void;
   /** Shown when there are no rows. */
@@ -86,7 +92,31 @@ export interface DataTableProps<T> {
   className?: string | undefined;
   /** Forces the card layout (tests and catalog); otherwise it follows the container width. */
   layout?: "auto" | "table" | "cards";
+  /**
+   * The commands of one row, for its context menu: right click, the Menu key or Shift+F10 on the selected row,
+   * or a long press on a phone. Asked only when the menu opens; the row is selected first. Without it (or with
+   * no entries) the browser's own menu shows.
+   */
+  rowMenu?: (row: T) => readonly MenuEntry[];
+  /** The context menu's accessible name for a row ("Ações de …"); the row's first column by default. */
+  rowMenuLabel?: (row: T) => string;
 }
+
+/** The text of a cell, for the menu's name; an element (a badge, a warning) gives none. */
+function textOf(node: ReactNode): string {
+  return typeof node === "string" || typeof node === "number" ? String(node) : "";
+}
+
+/** A context menu waiting to show: which row, and where. */
+interface RowMenuAt {
+  readonly id: string;
+  readonly x: number;
+  readonly y: number;
+}
+
+/** How long a finger rests on a row before its menu opens, and how far it may drift meanwhile. */
+const LONG_PRESS_MS = 500;
+const LONG_PRESS_SLOP = 10;
 
 /** The column the rows are sorted by; none keeps the order the data arrives in. */
 interface Sorting {
@@ -185,8 +215,20 @@ export function DataTable<T extends object>({
   cardHeight = 96,
   className,
   layout = "auto",
+  rowMenu,
+  rowMenuLabel,
 }: DataTableProps<T>) {
   const [measure, width] = useElementWidth<HTMLDivElement>();
+  const [portalAnchor, portalContainer] = usePortalContainer();
+  const [menuAt, setMenuAt] = useState<RowMenuAt | null>(null);
+  const press = useRef<{ x: number; y: number; timer: ReturnType<typeof setTimeout> } | null>(null);
+  const pressedAt = useRef(0);
+  useEffect(
+    () => () => {
+      if (press.current) clearTimeout(press.current.timer);
+    },
+    [],
+  );
   const cards = layout === "cards" || (layout === "auto" && width > 0 && width < CARDS_BELOW);
   const [sorting, setSorting] = useState<Sorting | null>(null);
   const gridId = useId();
@@ -262,7 +304,78 @@ export function DataTable<T extends object>({
     if (id !== undefined) onSelect?.(id);
   };
 
+  /** Opens the row's menu at a point, after selecting the row (the commands act on the selection). */
+  const openMenu = (id: string, x: number, y: number) => {
+    onSelect?.(id, "menu");
+    setMenuAt({ id, x, y });
+  };
+
+  /** The row under a pointer event, inside this table. */
+  const rowAt = (target: EventTarget | null): string | null => {
+    const found = target instanceof Element ? target.closest<HTMLElement>("[data-row-id]") : null;
+    return found && scroller.current?.contains(found) ? (found.dataset["rowId"] ?? null) : null;
+  };
+
+  const onContextMenu = (event: MouseEvent<HTMLDivElement>) => {
+    if (!rowMenu) return;
+    cancelPress();
+    // A long press already opened it (Android also sends contextmenu then).
+    if (Date.now() - pressedAt.current < 1000) {
+      event.preventDefault();
+      return;
+    }
+    const id = rowAt(event.target);
+    if (id === null) return;
+    event.preventDefault();
+    openMenu(id, event.clientX, event.clientY);
+  };
+
+  const cancelPress = () => {
+    if (press.current) clearTimeout(press.current.timer);
+    press.current = null;
+  };
+
+  const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    if (!rowMenu || event.pointerType !== "touch") return;
+    const id = rowAt(event.target);
+    if (id === null) return;
+    const { clientX: x, clientY: y } = event;
+    cancelPress();
+    press.current = {
+      x,
+      y,
+      timer: setTimeout(() => {
+        press.current = null;
+        pressedAt.current = Date.now();
+        openMenu(id, x, y);
+      }, LONG_PRESS_MS),
+    };
+  };
+
+  /** The click that some browsers send when the finger lifts after a long press: the menu is open, not a tap. */
+  const onClickCapture = (event: MouseEvent<HTMLDivElement>) => {
+    if (Date.now() - pressedAt.current < 1000) {
+      pressedAt.current = 0;
+      event.stopPropagation();
+      event.preventDefault();
+    }
+  };
+
+  const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    const start = press.current;
+    if (start && Math.hypot(event.clientX - start.x, event.clientY - start.y) > LONG_PRESS_SLOP) cancelPress();
+  };
+
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    // The Menu key or Shift+F10: the selected row's menu, under the row.
+    if (rowMenu && (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10"))) {
+      event.preventDefault();
+      if (selectedId === null || selectedIndex < 0) return;
+      const rect = document.getElementById(rowDomId(selectedIndex))?.getBoundingClientRect();
+      const box = rect ?? scroller.current?.getBoundingClientRect();
+      if (box) openMenu(selectedId, box.left + 24, box.top + Math.min(box.height, rowHeight));
+      return;
+    }
     // Ctrl/Alt/Cmd + a key belongs to the page (Ctrl+Enter approves, Alt+number changes section), not to the grid:
     // Ctrl+Enter used to open the row's correction as well as approve it.
     if (!ids.length || event.ctrlKey || event.metaKey || event.altKey) return;
@@ -290,6 +403,18 @@ export function DataTable<T extends object>({
   };
 
   const rowDomId = (index: number) => `${gridId}-r${index}`;
+  const menuIndex = menuAt === null ? -1 : ids.indexOf(menuAt.id);
+  const menuRow = menuIndex < 0 ? undefined : sortedRows[menuIndex];
+  // Computed only while open, from the latest props: the commands see the row just selected.
+  const menuItems = menuRow !== undefined && rowMenu ? rowMenu(menuRow) : [];
+  const menuLabel =
+    menuRow === undefined
+      ? label
+      : (rowMenuLabel?.(menuRow) ?? `Ações de ${textOf(visible[0]?.cell(menuRow)) || label}`);
+  const closeMenu = () => {
+    setMenuAt(null);
+    scroller.current?.focus({ preventScroll: true });
+  };
   const activeDescendant = selectedIndex >= 0 ? rowDomId(selectedIndex) : undefined;
 
   if (rows.length === 0 && empty) {
@@ -301,7 +426,24 @@ export function DataTable<T extends object>({
   }
 
   return (
-    <div ref={measure} className={cn("min-w-0", className)}>
+    <div
+      ref={(element) => {
+        measure(element);
+        portalAnchor(element);
+      }}
+      className={cn("min-w-0", className)}
+    >
+      {menuAt !== null && menuItems.length > 0 ? (
+        <ContextMenuAt
+          key={`${menuAt.id}|${menuAt.x}|${menuAt.y}`}
+          x={menuAt.x}
+          y={menuAt.y}
+          items={menuItems}
+          label={menuLabel}
+          onClose={closeMenu}
+          container={portalContainer}
+        />
+      ) : null}
       {cards ? (
         <div className="mb-2 flex flex-wrap gap-2" aria-label={`Ordenar ${label}`} role="group">
           {visible
@@ -338,6 +480,12 @@ export function DataTable<T extends object>({
         aria-activedescendant={activeDescendant}
         tabIndex={0}
         onKeyDown={onKeyDown}
+        onContextMenu={onContextMenu}
+        onClickCapture={onClickCapture}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={cancelPress}
+        onPointerCancel={cancelPress}
         className={cn(
           "group/grid relative overflow-auto rounded-lg outline-offset-2",
           cards ? "" : "border border-separator bg-raised",

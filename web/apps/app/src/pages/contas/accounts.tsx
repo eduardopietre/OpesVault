@@ -4,7 +4,7 @@
  * the balance the bank shows on a date; a difference is shown, never adjusted by itself.
  */
 import { charts, dom, ymAdd, ymOf, type Id } from "@opesvault/domain";
-import { Button, ChartPanel, Collapsible, notify } from "@opesvault/ui";
+import { Button, ChartPanel, Collapsible, notify, type MenuEntry } from "@opesvault/ui";
 import { useState } from "react";
 import { useGoTo } from "../../data/navigation.ts";
 import { useLedger, useWorkspace } from "../../data/react.tsx";
@@ -25,6 +25,7 @@ import { accountRows, checkRows, type AccountRow, type CheckRow } from "./rows.t
 import { useDialog } from "../../data/dialog.ts";
 import { cents, moneyOr } from "../../data/money.ts";
 import { accountRef } from "../livro/rows.ts";
+import { lockEntries, useLock } from "../../data/read_only.ts";
 
 const HISTORY_MONTHS = 12;
 
@@ -96,6 +97,7 @@ const CHECK_COLUMNS: TierColumn<CheckRow>[] = [
 export function AccountsTab({ reveal }: { reveal?: TabReveal<AccountReveal> | null }) {
   const workspace = useWorkspace();
   const go = useGoTo();
+  const { locked } = useLock();
   const today = workspace.today();
   const rows = useLedger(accountRows);
   const [pick, setPick] = useState<Id | null>(null);
@@ -126,6 +128,27 @@ export function AccountsTab({ reveal }: { reveal?: TabReveal<AccountReveal> | nu
     }
     return selectedId;
   };
+
+  /** An account's context menu: the toolbar's commands, on that account. */
+  const rowMenu = (row: AccountRow): MenuEntry[] =>
+    lockEntries(
+      [
+        { id: "edit", label: "Editar…", onSelect: () => dialog.show({ kind: "account", id: row.id }) },
+        { id: "check", label: "Conferir saldo…", onSelect: () => dialog.show({ kind: "check", id: row.id }) },
+        { kind: "separator", id: "s1" },
+        { id: "entries", label: "Ver lançamentos", onSelect: () => go("livro", { ref: accountRef(row.id) }) },
+      ],
+      locked,
+      ["entries"],
+    );
+  /** A check's context menu: a new check of the same account (a check itself is not edited). */
+  const checkMenu = (): MenuEntry[] =>
+    selectedId === null
+      ? []
+      : lockEntries(
+          [{ id: "check", label: "Conferir saldo…", onSelect: () => dialog.show({ kind: "check", id: selectedId }) }],
+          locked,
+        );
 
   return (
     <div className="flex flex-col gap-4">
@@ -171,6 +194,7 @@ export function AccountsTab({ reveal }: { reveal?: TabReveal<AccountReveal> | nu
             setPick(id);
             dialog.show({ kind: "account", id });
           }}
+          rowMenu={rowMenu}
         />
       ) : (
         <Empty title="Nenhuma conta">
@@ -195,6 +219,8 @@ export function AccountsTab({ reveal }: { reveal?: TabReveal<AccountReveal> | nu
                 getRowId={(r) => r.id}
                 max={6}
                 cardTitle={(r) => r.on}
+                rowMenu={checkMenu}
+                rowMenuLabel={(r) => `Conferência de ${r.on}`}
               />
             ) : (
               <p className="rounded-lg border border-dashed border-separator-strong px-4 py-6 text-center text-body text-secondary">

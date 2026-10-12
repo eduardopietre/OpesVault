@@ -18,7 +18,7 @@ import { chooseMonth } from "../../src/data/month.ts";
 import { toChartData } from "../../src/data/chart_data.ts";
 import { categoryRef, parseCategoryRef, summaryLine, usedPercent } from "../../src/pages/orcamento/rows.ts";
 import { addressSettles, navigations, wentTo } from "../navigations.ts";
-import { undoOnce, clickInTable, flat } from "../dom.ts";
+import { undoOnce, clickInTable, flat, fromRowMenu, rowMenu, table } from "../dom.ts";
 import { accountNamed } from "../lookup.ts";
 import { mountApp } from "../mount.tsx";
 import { cents } from "../../src/data/money.ts";
@@ -200,7 +200,10 @@ describe("Orçamento", () => {
     const before = lines(ledger, now);
     await clickInTable(user, "Orçamento por categoria", "Alimentação");
     await user.click(screen.getByRole("button", { name: "Remover do orçamento" }));
-    expect(dom.budget.lineFor(ledger, food, now)).toBeNull();
+    // destructive: it asks first
+    const ask = await screen.findByRole("alertdialog", { name: "Remover “Alimentação” do orçamento?" });
+    await user.click(within(ask).getByRole("button", { name: "Remover" }));
+    await waitFor(() => expect(dom.budget.lineFor(ledger, food, now)).toBeNull());
     expect(screen.queryByText("Selecionada:")).toBeNull();
     await user.click(await screen.findByRole("button", { name: "Desfazer" }));
     expect(lines(ledger, now)).toEqual(before);
@@ -277,6 +280,40 @@ describe("Orçamento", () => {
     await clickInTable(user, "Orçamento por categoria", "Transporte");
     await user.click(screen.getByRole("button", { name: "Ver lançamentos" }));
     await wentTo(went, "/livro", { ref: `categoria:${accountNamed(ledger, "Transporte").id}:${ymStr(now)}` });
+  });
+
+  it("opens a category's commands on a right click, Remover apart and in red", async () => {
+    const { ledger, now, router, user } = await openPage();
+    const grid = await table("Orçamento por categoria");
+    const opened = await rowMenu(user, grid, "Alimentação");
+    expect(opened.getAttribute("aria-label")).toBe("Ações de Alimentação");
+    expect(
+      within(opened)
+        .getAllByRole("menuitem")
+        .map((item) => item.textContent),
+    ).toEqual(["Alterar valor…", "Ver lançamentos", "Remover do orçamento"]);
+    expect(within(opened).getByRole("menuitem", { name: "Remover do orçamento" }).className).toContain("text-negative");
+    await user.click(within(opened).getByRole("menuitem", { name: "Alterar valor…" }));
+    const dialog = await screen.findByRole("dialog", { name: /Orçamento de/ });
+    expect((within(dialog).getByLabelText(/Planejado para o mês/) as HTMLInputElement).value).toBe("600,00");
+    await user.click(within(dialog).getByRole("button", { name: "Cancelar" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+    const went = navigations(router);
+    await fromRowMenu(user, grid, "Transporte", "Ver lançamentos");
+    await wentTo(went, "/livro", { ref: `categoria:${accountNamed(ledger, "Transporte").id}:${ymStr(now)}` });
+  });
+
+  it("removes a category from its context menu with the same Desfazer", async () => {
+    const { ledger, now, user } = await openPage();
+    const food = accountNamed(ledger, "Alimentação").id;
+    const before = lines(ledger, now);
+    await fromRowMenu(user, await table("Orçamento por categoria"), "Alimentação", "Remover do orçamento");
+    const ask = await screen.findByRole("alertdialog", { name: "Remover “Alimentação” do orçamento?" });
+    await user.click(within(ask).getByRole("button", { name: "Remover" }));
+    await waitFor(() => expect(dom.budget.lineFor(ledger, food, now)).toBeNull());
+    await user.click(await screen.findByRole("button", { name: "Desfazer" }));
+    expect(lines(ledger, now)).toEqual(before);
   });
 
   it("opens the category from an overview alert (ref) and selects it", async () => {

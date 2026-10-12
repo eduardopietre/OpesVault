@@ -10,6 +10,7 @@ import { agendaFigures, dayTitle, entriesOf, monthWeeks } from "../../src/pages/
 import { pinToday } from "../clock.ts";
 import { mountApp } from "../mount.tsx";
 import { navigations, wentTo } from "../navigations.ts";
+import { rowMenu } from "../dom.ts";
 
 // The demonstration's agenda as seen on 6 October 2026: later, its bills turn late ("Atrasado" twice).
 pinToday(2026, 10, 6);
@@ -163,6 +164,29 @@ describe("Calendário", () => {
       .closest("[role=row]") as HTMLElement;
     await user.dblClick(again);
     await waitFor(() => expect(router.state.location.pathname).toBe(pageById(link.page)!.path));
+  });
+
+  it("opens an entry from its context menu, with the same action as its button", async () => {
+    const user = userEvent.setup();
+    const { router, workspace } = await mountApp("/calendario");
+    await heading();
+    const first = monthEventsOf(workspace.ledger, workspace.today())[0]!;
+    const link = eventLink(first);
+    const opened = await rowMenu(user, screen.getByRole("grid", { name: "Vencimentos" }), first.title);
+    expect(opened.getAttribute("aria-label")).toBe(`Ações de ${first.title}`);
+    expect(
+      within(opened)
+        .getAllByRole("menuitem")
+        .map((item) => item.textContent),
+    ).toEqual([link.label]);
+    const went = navigations(router);
+    await user.click(within(opened).getByRole("menuitem", { name: link.label }));
+    await wentTo(
+      went,
+      pageById(link.page)!.path,
+      { ...(link.ref ? { ref: link.ref } : {}), ...(link.act ? { act: link.act } : {}) },
+      { exact: true },
+    );
   });
 
   it("changes month with the picker, shared with the other screens, and never edits the project", async () => {

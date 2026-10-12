@@ -53,6 +53,33 @@ export async function clickRow(user: User, grid: HTMLElement, text: string | Reg
   await user.click(rowOf(grid, text));
 }
 
+/** Right-clicks the row with `text` and returns its context menu (`DataTable`'s `rowMenu`). */
+export async function rowMenu(user: User, grid: HTMLElement, text: string | RegExp): Promise<HTMLElement> {
+  await user.pointer({ keys: "[MouseRight]", target: rowOf(grid, text) });
+  return screen.findByRole("menu");
+}
+
+/** Right-clicks the row with `text`, then chooses `item` in its menu (`path` first: the cascades to open). */
+export async function fromRowMenu(
+  user: User,
+  grid: HTMLElement,
+  text: string | RegExp,
+  item: string | RegExp,
+  ...path: (string | RegExp)[]
+): Promise<void> {
+  const opened = await rowMenu(user, grid, text);
+  let scope = opened;
+  for (const step of path) {
+    // into a cascade by the keyboard (jsdom has no pointer grace area between a menu and its submenu)
+    within(scope).getByRole("menuitem", { name: step }).focus();
+    const before = screen.getAllByRole("menu").length;
+    await user.keyboard("{ArrowRight}");
+    await waitFor(() => expect(screen.getAllByRole("menu").length).toBeGreaterThan(before));
+    scope = screen.getAllByRole("menu").at(-1)!;
+  }
+  await user.click(within(scope).getByRole("menuitem", { name: item }));
+}
+
 /** Clicks the first `text` inside the table with that name (selecting its row); returns the table. */
 export async function clickInTable(user: User, tableName: string, text: string | RegExp) {
   const grid = await table(tableName);

@@ -11,6 +11,8 @@ import {
   flat,
   goTab,
   clickRow,
+  fromRowMenu,
+  rowMenu,
   rowOf,
   submit,
   table,
@@ -18,6 +20,7 @@ import {
   type User,
 } from "../dom.ts";
 import { memberNamed } from "../lookup.ts";
+import { navigations, wentTo } from "../navigations.ts";
 
 const { banking } = dom;
 const MARCH_31 = makeDate(2026, 3, 31);
@@ -483,6 +486,80 @@ describe("Contas bancárias", () => {
     await goTab(user, "Cartões");
     await goTab(user, "Contas bancárias");
     expect(await table("Contas bancárias")).toBeTruthy();
+  });
+});
+
+describe("Menu de contexto das contas bancárias", () => {
+  const names = (menu: HTMLElement) =>
+    within(menu)
+      .getAllByRole("menuitem")
+      .map((item) => item.textContent);
+
+  it("opens a bank account's commands on a right click, Encerrar apart and in red", async () => {
+    const { user, grid } = await openBank();
+    const opened = await rowMenu(user, grid, "Nubank do Bruno");
+    expect(names(opened)).toEqual([
+      "Editar…",
+      "Valores em uma data…",
+      "Novo investimento…",
+      "Encerrar conta bancária…",
+    ]);
+    expect(within(opened).getByRole("menuitem", { name: "Encerrar conta bancária…" }).className).toContain(
+      "text-negative",
+    );
+    await user.click(within(opened).getByRole("menuitem", { name: "Editar…" }));
+    const box = await dialog("Editar conta bancária");
+    expect((within(box).getByLabelText("Nome da conta") as HTMLInputElement).value).toBe("Nubank do Bruno");
+  });
+
+  it("closes the bank account of the row only after the same confirmation", async () => {
+    const { ledger, user, grid } = await openBank();
+    const nubank = bankByName(ledger, "Nubank do Bruno");
+    await fromRowMenu(user, grid, "Nubank do Bruno", "Encerrar conta bancária…");
+    const ask = await screen.findByRole("alertdialog", { name: "Encerrar esta conta bancária?" });
+    await user.click(within(ask).getByRole("button", { name: "Cancelar" }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(banking.bankAccounts(ledger).get(nubank.id)!.archived).toBe(false);
+    await fromRowMenu(user, await table("Contas bancárias"), "Nubank do Bruno", "Encerrar conta bancária…");
+    await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Encerrar" }));
+    await waitFor(() => expect(banking.bankAccounts(ledger).get(nubank.id)!.archived).toBe(true));
+  });
+
+  it("offers an investment of the composition its commands, Excluir apart, in red and confirmed", async () => {
+    const { ledger, user } = await openBank();
+    const parts = await table("Composição da conta bancária");
+    const opened = await rowMenu(user, parts, "CDB Banco X 2028");
+    expect(names(opened)).toEqual([
+      "Atualizar valor…",
+      "Aporte…",
+      "Características…",
+      "Ver lançamentos",
+      "Excluir investimento…",
+    ]);
+    expect(within(opened).getByRole("menuitem", { name: "Excluir investimento…" }).className).toContain(
+      "text-negative",
+    );
+    await user.click(within(opened).getByRole("menuitem", { name: "Aporte…" }));
+    expect(await dialog("Aporte — CDB Banco X 2028")).toBeTruthy();
+    await submit(user, await dialog("Aporte — CDB Banco X 2028"), "Cancelar");
+    await closed(/Aporte —/);
+    const before = snapshot(ledger);
+    await fromRowMenu(user, await table("Composição da conta bancária"), "CDB Banco X 2028", "Excluir investimento…");
+    const ask = await screen.findByRole("alertdialog", { name: "Excluir “CDB Banco X 2028”?" });
+    await user.click(within(ask).getByRole("button", { name: "Cancelar" }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(snapshot(ledger)).toBe(before);
+  });
+
+  it("offers the checking account its values and its entries", async () => {
+    const { ledger, router, user } = await openBank();
+    const itau = bankByName(ledger, "Itaú da Ana");
+    const parts = await table("Composição da conta bancária");
+    const opened = await rowMenu(user, parts, "Conta corrente");
+    expect(names(opened)).toEqual(["Valores em uma data…", "Ver lançamentos"]);
+    const went = navigations(router);
+    await user.click(within(opened).getByRole("menuitem", { name: "Ver lançamentos" }));
+    await wentTo(went, "/livro", { ref: `conta:${itau.checking_id}` });
   });
 });
 

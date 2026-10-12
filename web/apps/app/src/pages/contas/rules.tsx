@@ -6,7 +6,7 @@
  * categorized the same way several times (docs/05 §6).
  */
 import { importing, type Id } from "@opesvault/domain";
-import { Collapsible, notify } from "@opesvault/ui";
+import { Collapsible, notify, type MenuEntry } from "@opesvault/ui";
 import { useState } from "react";
 import { useLedger, useWorkspace } from "../../data/react.tsx";
 import { ReasonDialog } from "../../dialogs/livro_prompts.tsx";
@@ -24,6 +24,7 @@ import {
 import type { TierColumn } from "../../components/tier_columns.ts";
 import { proposalRows, ruleRows, type ProposalRow, type RuleRow } from "./rows.ts";
 import { useDialog } from "../../data/dialog.ts";
+import { lockEntries, useLock } from "../../data/read_only.ts";
 
 const { rules, suggestions } = importing;
 
@@ -85,6 +86,7 @@ type Spec =
 export function RulesTab({ reveal }: { reveal?: TabReveal<Id> | null }) {
   const ledger = useWorkspace().ledger;
   const act = useFormAct();
+  const { locked } = useLock();
   const rows = useLedger(ruleRows);
   const proposals = useLedger(proposalRows);
   const [pick, setPick] = useState<Id | null>(null);
@@ -105,8 +107,8 @@ export function RulesTab({ reveal }: { reveal?: TabReveal<Id> | null }) {
     const rule = needsRule(id);
     if (rule) dialog.show({ kind: "rule", id: rule, proposal: null });
   };
-  const toggle = () => {
-    const rule = needsRule();
+  const toggle = (id: Id | null = pick) => {
+    const rule = needsRule(id);
     const found = rule ? rules.rules(ledger).get(rule) : undefined;
     if (found) dialog.show({ kind: "toggle", id: found.id, active: found.active, pattern: found.pattern });
   };
@@ -118,6 +120,19 @@ export function RulesTab({ reveal }: { reveal?: TabReveal<Id> | null }) {
     }
     dialog.show({ kind: "rule", id: null, proposal: found });
   };
+
+  /** A rule's context menu: editing it and turning it off (or on), with the reason the dialog asks. */
+  const ruleMenu = (row: RuleRow): MenuEntry[] =>
+    lockEntries(
+      [
+        { id: "edit", label: "Editar…", onSelect: () => edit(row.id) },
+        { id: "toggle", label: row.active ? "Desativar…" : "Ativar…", onSelect: () => toggle(row.id) },
+      ],
+      locked,
+    );
+  /** A suggested rule's context menu: turning it into a rule. */
+  const proposalMenu = (row: ProposalRow): MenuEntry[] =>
+    lockEntries([{ id: "create", label: "Criar regra…", onSelect: () => fromProposal(row.id) }], locked);
 
   const editing = dialog.spec?.kind === "rule" && dialog.spec.id ? rules.rules(ledger).get(dialog.spec.id) : undefined;
   const toggling = dialog.spec?.kind === "toggle" ? dialog.spec : null;
@@ -134,7 +149,7 @@ export function RulesTab({ reveal }: { reveal?: TabReveal<Id> | null }) {
           Nova regra…
         </EditButton>
         <EditButton onClick={() => edit()}>Editar…</EditButton>
-        <EditButton onClick={toggle}>Ativar ou desativar…</EditButton>
+        <EditButton onClick={() => toggle()}>Ativar ou desativar…</EditButton>
       </Toolbar>
 
       {rows.length ? (
@@ -146,6 +161,7 @@ export function RulesTab({ reveal }: { reveal?: TabReveal<Id> | null }) {
           selectedId={selected?.id ?? null}
           onSelect={setPick}
           onActivate={(id) => edit(id)}
+          rowMenu={ruleMenu}
           max={12}
         />
       ) : (
@@ -173,6 +189,7 @@ export function RulesTab({ reveal }: { reveal?: TabReveal<Id> | null }) {
             selectedId={chosenProposal?.id ?? null}
             onSelect={setProposal}
             onActivate={(id) => fromProposal(id)}
+            rowMenu={proposalMenu}
             max={12}
           />
         </Collapsible>

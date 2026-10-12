@@ -12,7 +12,7 @@ import {
   LedgerAccountSchema,
   ymOf,
 } from "@opesvault/domain";
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { openContas, snapshot } from "./contas_harness.tsx";
 import {
@@ -24,10 +24,12 @@ import {
   goTab,
   clickRow,
   rowById,
+  rowMenu,
   rowOf,
   submit,
   table,
   undoOnce,
+  type User,
 } from "../dom.ts";
 import { navigations, wentTo } from "../navigations.ts";
 import { accountNamed } from "../lookup.ts";
@@ -445,5 +447,68 @@ describe("Financiamentos", () => {
     await user.click(screen.getByRole("button", { name: "Mais" }));
     await user.click(await screen.findByRole("menuitem", { name: /amortização antecipada/ }));
     expect(await screen.findByText("Selecione um financiamento.")).toBeTruthy();
+  });
+});
+
+describe("Menus de contexto de faturas e financiamentos", () => {
+  const names = (menu: HTMLElement) =>
+    within(menu)
+      .getAllByRole("menuitem")
+      .map((item) => item.textContent);
+  /** Right-clicks a row found by its id (a bill's month, an installment's number) and returns its menu. */
+  const menuOn = async (user: User, row: HTMLElement) => {
+    await user.pointer({ keys: "[MouseRight]", target: row });
+    return screen.findByRole("menu");
+  };
+
+  it("Faturas: pays the bill of the row; a paid bill shows the command disabled", async () => {
+    const { ledger, workspace, user } = await openBills();
+    const today = workspace.today();
+    const card = cardOf(ledger);
+    const oldest = shown(ledger, today).find((b) => b.remaining.isPositive())!;
+    let opened = await menuOn(user, rowById(await table("Faturas do cartão"), monthOf(oldest)));
+    expect(names(opened)).toEqual(["Pagar…"]);
+    await user.click(within(opened).getByRole("menuitem", { name: "Pagar…" }));
+    const box = await dialog("Pagar fatura — Cartão X");
+    expect(flat(box.textContent)).toContain(`Vencimento ${dueText(oldest.cycle.due)}`);
+    await submit(user, box, "Cancelar");
+    await closed("Pagar fatura — Cartão X");
+    const owed = everything(ledger, today).reduce((sum, b) => sum.add(b.remaining), Dec.from(0));
+    workspace.act((l) => l.recordCardPayment(card.id, card.settlement_account_id!, owed, today));
+    const paid = shown(ledger, today).find((b) => b.status(today) === "paid")!;
+    opened = await menuOn(user, rowById(await table("Faturas do cartão"), monthOf(paid)));
+    expect(within(opened).getByRole("menuitem", { name: "Pagar…" }).getAttribute("aria-disabled")).toBe("true");
+  });
+
+  it("Financiamentos: the contract's commands; Pagar parcela… pays its next installment", async () => {
+    const { ledger, router, user, grid } = await openLoans();
+    const plan = planOf(ledger);
+    let opened = await rowMenu(user, grid, plan.name);
+    expect(names(opened)).toEqual([
+      "Pagar parcela…",
+      "Simular ou registrar amortização antecipada…",
+      "Ver lançamentos do financiamento",
+    ]);
+    await user.click(within(opened).getByRole("menuitem", { name: "Pagar parcela…" }));
+    await submit(user, await dialog(`Pagar parcela 3 — ${plan.name}`), "Cancelar");
+    await closed(/Pagar parcela/);
+    const went = navigations(router);
+    opened = await rowMenu(user, await table("Financiamentos"), plan.name);
+    await user.click(within(opened).getByRole("menuitem", { name: "Ver lançamentos do financiamento" }));
+    await wentTo(went, "/livro", { ref: `conta:${plan.liability_account_id}` });
+  });
+
+  it("Cronograma: pays the installment of the row; a paid one shows the command disabled", async () => {
+    const { ledger, user } = await openLoans();
+    const plan = planOf(ledger);
+    const schedule = await screen.findByRole("grid", { name: "Cronograma de parcelas" });
+    let opened = await menuOn(user, rowById(schedule, "1"));
+    expect(names(opened)).toEqual(["Pagar parcela…"]);
+    expect(within(opened).getByRole("menuitem", { name: "Pagar parcela…" }).getAttribute("aria-disabled")).toBe("true");
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+    opened = await menuOn(user, rowById(await screen.findByRole("grid", { name: "Cronograma de parcelas" }), "3"));
+    await user.click(within(opened).getByRole("menuitem", { name: "Pagar parcela…" }));
+    expect(await dialog(`Pagar parcela 3 — ${plan.name}`)).toBeTruthy();
   });
 });

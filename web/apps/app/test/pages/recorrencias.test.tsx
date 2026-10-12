@@ -15,7 +15,7 @@ import {
 import { fitHeight as tableHeight } from "@opesvault/ui";
 import { linkCount, openPage, rules, seedExpense, seedRepeatingCharge, seedRule } from "./recorrencias_harness.tsx";
 import { accountNamed } from "../lookup.ts";
-import { flat, clickInTable, rowById, undoOnce } from "../dom.ts";
+import { flat, clickInTable, fromRowMenu, rowById, rowMenu, undoOnce } from "../dom.ts";
 
 const open = () => openPage("/recorrencias", "Recorrências");
 const day = (d: number): IsoDate => makeDate(2026, 10, d);
@@ -185,7 +185,10 @@ describe("Recorrências", () => {
 
     await clickInTable(user, "Regras de recorrência", "Aluguel");
     await user.click(screen.getByRole("button", { name: "Pausar" }));
-    expect(rules(ledger)[0]!.paused).toBe(true);
+    // pausing stops the forecasts: it asks first
+    const ask = await screen.findByRole("alertdialog", { name: "Pausar “Aluguel”?" });
+    await user.click(within(ask).getByRole("button", { name: "Pausar" }));
+    await waitFor(() => expect(rules(ledger)[0]!.paused).toBe(true));
     expect(await screen.findByText("Recorrência “Aluguel” pausada.")).toBeTruthy();
     const table = screen.getByRole("grid", { name: "Regras de recorrência" });
     expect(flat(rowById(table, rule.id).textContent)).toContain("Pausada");
@@ -399,6 +402,69 @@ describe("Recorrências", () => {
     undoOnce(workspace);
     expect(rules(ledger).some((r) => r.description === "Netflix")).toBe(false);
     expect(await screen.findByRole("grid", { name: "Cobranças que parecem recorrentes" })).toBeTruthy();
+  });
+
+  it("opens a rule's commands on a right click: edit it, pause it", async () => {
+    const { ledger, workspace, user } = await open();
+    const grid = await screen.findByRole("grid", { name: "Regras de recorrência" });
+    const opened = await rowMenu(user, grid, "Aluguel");
+    expect(opened.getAttribute("aria-label")).toBe("Ações de Aluguel");
+    const names = within(opened)
+      .getAllByRole("menuitem")
+      .map((item) => item.textContent);
+    expect(names).toEqual(["Editar…", "Pausar…"]);
+    // pausing is destructive here: last, in red, and it asks first
+    expect(within(opened).getByRole("menuitem", { name: "Pausar…" }).className).toContain("text-negative");
+    await user.click(within(opened).getByRole("menuitem", { name: "Pausar…" }));
+    const ask = await screen.findByRole("alertdialog", { name: "Pausar “Aluguel”?" });
+    await user.click(within(ask).getByRole("button", { name: "Pausar" }));
+    await waitFor(() => expect(rules(ledger)[0]!.paused).toBe(true));
+    expect(await screen.findByText("Recorrência “Aluguel” pausada.")).toBeTruthy();
+    const again = await rowMenu(user, grid, "Aluguel");
+    expect(within(again).getByRole("menuitem", { name: "Retomar" })).toBeTruthy();
+    await user.keyboard("{Escape}");
+    undoOnce(workspace);
+    expect(rules(ledger)[0]!.paused).toBe(false);
+    // the same menu on the subscriptions table
+    await fromRowMenu(
+      user,
+      await screen.findByRole("grid", { name: "Assinaturas e contas fixas" }),
+      "Aluguel",
+      "Editar…",
+    );
+    const dialog = await screen.findByRole("dialog", { name: "Editar recorrência" });
+    expect((within(dialog).getByLabelText("Descrição") as HTMLInputElement).value).toBe("Aluguel");
+  });
+
+  it("links or skips a forecast from its context menu; a resolved one keeps the browser's menu", async () => {
+    const { ledger, user } = await open();
+    const rule = rules(ledger)[0]!;
+    const grid = await screen.findByRole("grid", { name: "Previsões" });
+    const opened = await rowMenu(user, grid, "10/10/2026");
+    expect(opened.getAttribute("aria-label")).toBe("Ações de Aluguel em 10/10/2026");
+    expect(
+      within(opened)
+        .getAllByRole("menuitem")
+        .map((item) => item.textContent),
+    ).toEqual(["Vincular realizado…", "Pular previsão"]);
+    await user.click(within(opened).getByRole("menuitem", { name: "Pular previsão" }));
+    expect([...dom.recurrence.links(ledger).values()][0]).toMatchObject({
+      rule_id: rule.id,
+      due_on: day(10),
+      decision: "skipped",
+    });
+    expect(await screen.findByText("Previsão de 10/10/2026 pulada.")).toBeTruthy();
+    await user.pointer({ keys: "[MouseRight]", target: rowById(grid, forecastId(rule.id, day(10))) });
+    await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+  });
+
+  it("creates the rule from a repeating charge's context menu", async () => {
+    const { workspace, user } = await open();
+    seedRepeatingCharge(workspace);
+    const grid = await screen.findByRole("grid", { name: "Cobranças que parecem recorrentes" });
+    await fromRowMenu(user, grid, "Netflix", "Criar recorrência…");
+    const dialog = await screen.findByRole("dialog", { name: "Nova recorrência" });
+    expect((within(dialog).getByLabelText("Descrição") as HTMLInputElement).value).toBe("Netflix");
   });
 
   it("collapses and reopens the subscriptions section", async () => {

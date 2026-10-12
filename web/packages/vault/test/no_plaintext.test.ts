@@ -87,10 +87,14 @@ describe("no plaintext leaves the tab", () => {
     const newRecoveryKey = await vault.regenerateRecoveryKey(SECRETS.newProjectPassword);
     server.offline = true;
     await vault.stage([{ kind: SECRETS.kind, id: "3", payload: { description: SECRETS.description } }]);
+    // An attachment stored while offline and one retired: both kept on this device, sealed.
+    const waiting = await vault.storeBlob(new TextEncoder().encode(SECRETS.attachment));
+    await vault.retireBlob(waiting);
     await vault.lock();
     server.offline = false;
 
     const stored = await dumpIndexedDb(dev.factory);
+    expect(JSON.parse(stored).blobs).toHaveLength(1);
     const sent = log.join("\n");
     expect(stored).toContain("pending");
     expect(JSON.parse(stored).snapshots).toHaveLength(1);

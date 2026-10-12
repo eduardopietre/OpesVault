@@ -26,7 +26,7 @@ import {
 import type { PreferenceStore } from "@opesvault/ui";
 import { backupFileName, checkOf, documentBlobRefs } from "../data/backup.ts";
 import { activeMembers } from "../data/operator.ts";
-import { DOCUMENT_KIND, Workspace } from "../data/workspace.ts";
+import { Workspace } from "../data/workspace.ts";
 import { accountNameKey } from "../preferences.ts";
 import {
   ServiceError,
@@ -233,15 +233,18 @@ export function createRealServices(options: RealServicesOptions = {}): AppServic
       // The connection or the edit came back: what is waiting in the tab is handed over again.
       if (s.status !== lastStatus && (s.status === "synced" || s.status === "pending")) ws.retry();
       lastStatus = s.status;
-      // The server agrees with this tab: blobs of documents it no longer has can go.
-      if (s.status === "synced") ws.collectBlobs((id) => v.get(DOCUMENT_KIND, id) !== undefined);
+      // The server agrees with this tab: blobs retired in an earlier session that no record cites can go.
+      if (s.status === "synced" && v.hasBlobsToCollect && ws.localOnly === 0) {
+        const cited = new Set([...v.records.values()].flatMap((r) => documentBlobRefs(r).map((ref) => ref.id)));
+        void v.collectBlobs((id) => cited.has(id));
+      }
       report();
     });
     const offRemote = v.onRemoteChange(() => ws.reload(v.records.values(), v.getSnapshot().status === "readOnly"));
     // A failed hand-over or upload is tried again on its own too: an upload can fail with nothing pending in the
     // vault, whose state then never changes.
     let saveRetry: ReturnType<typeof setTimeout> | null = null;
-    const offWorkspace = ws.subscribe(() => {
+    const offWorkspace = ws.onHandOver(() => {
       if (saveRetry === null && ws.stageError !== null && ws.localOnly > 0) {
         saveRetry = setTimeout(() => {
           saveRetry = null;
@@ -257,10 +260,13 @@ export function createRealServices(options: RealServicesOptions = {}): AppServic
       event.returnValue = "";
     };
     if (typeof window !== "undefined") window.addEventListener("beforeunload", onLeave);
+    // Any lock (the button, the idle timer) first lets the tab hand over what it still holds.
+    v.setBeforeLock(() => ws.settled());
     unsubscribeVault = () => {
       offVault();
       offRemote();
       offWorkspace();
+      v.setBeforeLock(null);
       if (saveRetry !== null) clearTimeout(saveRetry);
       if (typeof window !== "undefined") window.removeEventListener("beforeunload", onLeave);
     };

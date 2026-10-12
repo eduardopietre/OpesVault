@@ -180,13 +180,13 @@ describe("real services", () => {
     await b.closeProject();
   }, 30_000);
 
-  it("asks before the tab closes while changes are not on the server, and says what is only in the tab", async () => {
+  it("a document added offline is kept through a lock, reaches the server later, and closing asks first", async () => {
     const server = new MemoryServer();
     const a = realServices(server, "tab-a");
     await a.signUp({ name: "Ana", email: "ana@example.com", password: "senha da conta" });
     const created = await a.createProject({ name: "Casa", password: "senha do projeto" });
     const ws = (await a.openProject(created.project.id, "senha do projeto")).workspace;
-    const details: { unsaved?: number; saveError?: string | null }[] = [];
+    const details: { pending?: number; unsaved?: number; saveError?: string | null }[] = [];
     const stop = a.watchSync((_status, detail) => details.push({ ...detail }));
     const leaving = () => {
       const event = new Event("beforeunload", { cancelable: true });
@@ -196,17 +196,27 @@ describe("real services", () => {
     await until(() => !leaving());
 
     server.offline = true;
-    const pdf = new TextEncoder().encode("%PDF-1.4\nrecibo\n%%EOF");
-    ws.act((_l, session) => session.addDocument("recibo.pdf", pdf));
+    const pdf = new TextEncoder().encode("%PDF-1.4\nrecibo guardado\n%%EOF");
+    const docId = ws.act((_l, session) => session.addDocument("recibo.pdf", pdf)).meta.id;
     await ws.settled();
+    // Sealed in this browser, not only in the tab's memory; not on the server yet, so closing asks.
+    expect(ws.localOnly).toBe(0);
     expect(leaving()).toBe(true);
-    expect(details.at(-1)).toMatchObject({ unsaved: 1, saveError: expect.stringContaining("conexão") });
-
-    server.offline = false;
-    // Tried again on its own (every 5 s): the vault had nothing pending, so its state did not change.
-    await until(() => ws.localOnly === 0 && !leaving(), 15_000);
     expect(details.at(-1)).toMatchObject({ unsaved: 0, saveError: null });
+    expect(details.at(-1)?.pending).toBeGreaterThan(0);
+
+    // Locking drops every key and the tab's memory; the document waits in IndexedDB.
+    await a.lock();
+    server.offline = false;
+    await a.unlock("senha do projeto");
+    await until(() => !leaving());
     stop();
     await a.closeProject();
+
+    const b = realServices(server, "tab-b");
+    await b.signIn("ana@example.com", "senha da conta");
+    const other = (await b.openProject(created.project.id, "senha do projeto")).workspace;
+    expect(new TextDecoder().decode(await other.loadDocument(docId))).toContain("recibo guardado");
+    await b.closeProject();
   }, 30_000);
 });

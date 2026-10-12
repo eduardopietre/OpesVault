@@ -33,10 +33,17 @@ export interface PlainRecordLike {
 
 /** Where changed records and document bytes go. The vault encrypts them before they leave the tab. */
 export interface RecordSink {
-  stage(upserts: readonly PlainRecordLike[], deletes: readonly { kind: string; id: string }[]): Promise<void> | void;
-  putBlob?(data: Uint8Array): Promise<string>;
+  /** `madeAsEditor`: the changes were accepted while this tab could edit (kept even if the lease was lost since). */
+  stage(
+    upserts: readonly PlainRecordLike[],
+    deletes: readonly { kind: string; id: string }[],
+    options?: { readonly madeAsEditor?: boolean },
+  ): Promise<void> | void;
+  /** Keeps a document's bytes, sealed, on this device until the sync uploads them; returns the blob id. */
+  storeBlob?(data: Uint8Array): Promise<string>;
   getBlob?(blobId: string): Promise<Uint8Array>;
-  deleteBlob?(blobId: string): Promise<void>;
+  /** The blob's document was removed: it may be deleted from the server later, once nothing cites it. */
+  retireBlob?(blobId: string): Promise<void>;
 }
 
 /** Record kind holding a document's metadata (the bytes are a blob). */
@@ -96,6 +103,8 @@ export class Workspace {
   readonly #sink: RecordSink | null;
   readonly #today: () => IsoDate;
   readonly #listeners = new Set<() => void>();
+  /** Told when `localOnly` or `stageError` may have changed (the sync indicator; no re-render of the screens). */
+  readonly #handOverListeners = new Set<() => void>();
   #pendingStage: Promise<void> = Promise.resolve();
   /** Bytes of documents known in this tab (loaded on demand or added here). */
   readonly #bytes: Map<string, Uint8Array>;
@@ -111,11 +120,10 @@ export class Workspace {
   readonly #deletes = new Map<string, { kind: string; id: string }>();
   /** Records of the hand-over running now (still only in this tab until it ends). */
   #handing = 0;
-  /**
-   * Blobs of documents removed here (document id → blob id). They are deleted from the server only once it no longer
-   * has the document's record (`collectBlobs`): until then a conflict or an undo may still need them.
-   */
+  /** Blobs of documents removed here (document id → blob id), for an undo to cite the same blob again. */
   readonly #retired = new Map<string, string>();
+  /** Blobs to retire in the vault (their documents were removed), with the next hand-over. */
+  readonly #toRetire = new Set<string>();
   /** A failure of the last hand-over to the vault (shown by the sync state until a hand-over succeeds). */
   stageError: unknown = null;
 
@@ -194,6 +202,16 @@ export class Workspace {
   };
 
   getVersion = (): number => this.#version;
+
+  /** Follows what is only in this tab (`localOnly`, `stageError`), without the screens' change notifications. */
+  onHandOver(listener: () => void): () => void {
+    this.#handOverListeners.add(listener);
+    return () => this.#handOverListeners.delete(listener);
+  }
+
+  #handOverChanged(): void {
+    for (const listener of [...this.#handOverListeners]) listener();
+  }
 
   #changed(): void {
     this.#version += 1;
@@ -295,13 +313,17 @@ export class Workspace {
     for (const id of sent.documentsRemoved) {
       this.#unsent.delete(id);
       const blob = this.#blobOf.get(id);
-      if (blob !== undefined) this.#retired.set(id, blob);
+      if (blob !== undefined) {
+        this.#retired.set(id, blob);
+        this.#toRetire.add(blob);
+      }
       this.#blobOf.delete(id);
       this.#queueDelete(DOCUMENT_KIND, id);
     }
     if (!this.#sink) {
       this.#upserts.clear();
       this.#deletes.clear();
+      this.#toRetire.clear();
       return;
     }
     this.#handOver();
@@ -326,21 +348,21 @@ export class Workspace {
 
   /** Queues a hand-over of everything waiting; hand-overs stay in order. A failure is kept for the sync state. */
   #handOver(): void {
+    this.#handOverChanged();
     this.#pendingStage = this.#pendingStage
       .then(async () => {
         await this.#stageWaiting();
         await this.#uploadUnsent();
+        await this.#retireBlobs();
       })
       .then(
         () => {
-          if (this.stageError !== null && this.localOnly === 0) {
-            this.stageError = null;
-            this.#changed();
-          }
+          if (this.stageError !== null && this.localOnly === 0) this.stageError = null;
+          this.#handOverChanged();
         },
         (error: unknown) => {
           this.stageError = error;
-          this.#changed();
+          this.#handOverChanged();
         },
       );
   }
@@ -358,6 +380,8 @@ export class Workspace {
       await sink.stage(
         upserts.map(([, record]) => record),
         deletes.map(([, ref]) => ref),
+        // `act` refuses edits while read-only: whatever reaches here was made as the editor.
+        { madeAsEditor: true },
       );
     } catch (error) {
       for (const [key, record] of upserts) {
@@ -375,12 +399,12 @@ export class Workspace {
   /** Uploads documents added here; their metadata record is staged only once the bytes are stored. */
   async #uploadUnsent(): Promise<void> {
     const sink = this.#sink;
-    if (!sink?.putBlob) {
+    if (!sink?.storeBlob) {
       this.#unsent.clear();
       return;
     }
     for (const [id, document] of [...this.#unsent]) {
-      const blobId = await sink.putBlob(document.data);
+      const blobId = await sink.storeBlob(document.data);
       this.#blobOf.set(id, blobId);
       this.#unsent.delete(id);
       this.#queueDocument(document.meta, blobId);
@@ -398,7 +422,7 @@ export class Workspace {
    * documents not yet uploaded. Closing the tab or locking loses them.
    */
   get localOnly(): number {
-    return this.#upserts.size + this.#deletes.size + this.#handing + this.#unsent.size;
+    return this.#upserts.size + this.#deletes.size + this.#handing + this.#unsent.size + this.#toRetire.size;
   }
 
   /** Hands over again what is waiting in this tab (the connection or the edit came back). */
@@ -407,36 +431,17 @@ export class Workspace {
     this.#handOver();
   }
 
-  /**
-   * Deletes from the server the blobs of documents removed here, once the server no longer has their records:
-   * `serverHas(id)` says whether the server still keeps the document's record. Call it only when the vault and the
-   * server agree (nothing pending, no conflict). A blob whose record came back (a conflict decided for the server's
-   * version) is kept; a failed deletion is tried again on the next call.
-   */
-  collectBlobs(serverHas: (documentId: string) => boolean): void {
+  /** Tells the vault which blobs lost their documents; it deletes them from the server in a later session. */
+  async #retireBlobs(): Promise<void> {
     const sink = this.#sink;
-    if (!sink?.deleteBlob || this.#retired.size === 0) return;
-    this.#pendingStage = this.#pendingStage.then(async () => {
-      // A removal still waiting in this tab has not reached the vault: the server's answer would be stale.
-      if (this.localOnly > 0) return;
-      for (const [documentId, blobId] of [...this.#retired]) {
-        if (this.#upserts.has(`${DOCUMENT_KIND}\n${documentId}`) || this.#blobOf.has(documentId)) {
-          this.#retired.delete(documentId);
-          continue;
-        }
-        if (serverHas(documentId)) {
-          this.#retired.delete(documentId);
-          this.#blobOf.set(documentId, blobId);
-          continue;
-        }
-        try {
-          await sink.deleteBlob!(blobId);
-          this.#retired.delete(documentId);
-        } catch {
-          // offline or no lease: tried again on the next call
-        }
-      }
-    });
+    if (!sink?.retireBlob) {
+      this.#toRetire.clear();
+      return;
+    }
+    for (const blobId of [...this.#toRetire]) {
+      await sink.retireBlob(blobId);
+      this.#toRetire.delete(blobId);
+    }
   }
 
   /** Resolves when every change so far has been handed to the vault (tests, closing). */

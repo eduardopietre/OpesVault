@@ -1,30 +1,32 @@
 /**
- * What the workspace hands to the vault when a hand-over or an upload fails, and when the blobs of removed
- * documents leave the server.
+ * What the workspace hands to the vault when a hand-over or storing a document fails, and what it says about the
+ * blobs of removed documents.
  */
 import { DomainError } from "@opesvault/domain";
 import { describe, expect, it } from "vitest";
 import { DOCUMENT_KIND, Workspace, type PlainRecordLike, type RecordSink } from "../src/data/workspace.ts";
 
-/** A sink whose stage and putBlob fail while `failing` is set, keeping what reached it. */
+/** A sink whose stage and storeBlob fail while `failing` is set, keeping what reached it. */
 function flakySink() {
   const state = {
     failing: false,
     staged: [] as PlainRecordLike[],
     deleted: [] as { kind: string; id: string }[],
+    options: [] as unknown[],
     blobs: new Map<string, Uint8Array>(),
-    deletedBlobs: [] as string[],
+    retired: [] as string[],
   };
   let next = 0;
   const sink: Required<RecordSink> = {
-    stage(upserts, deletes) {
+    stage(upserts, deletes, options) {
       if (state.failing) return Promise.reject(new DomainError("sem concessão"));
       state.staged.push(...upserts);
       state.deleted.push(...deletes);
+      state.options.push(options);
       return Promise.resolve();
     },
-    putBlob(data) {
-      if (state.failing) return Promise.reject(new DomainError("sem conexão"));
+    storeBlob(data) {
+      if (state.failing) return Promise.reject(new DomainError("bloqueado"));
       const id = `blob-${(next += 1)}`;
       state.blobs.set(id, data);
       return Promise.resolve(id);
@@ -32,10 +34,9 @@ function flakySink() {
     getBlob(id) {
       return Promise.resolve(state.blobs.get(id)!);
     },
-    deleteBlob(id) {
-      if (state.failing) return Promise.reject(new DomainError("sem conexão"));
-      state.deletedBlobs.push(id);
-      state.blobs.delete(id);
+    retireBlob(id) {
+      if (state.failing) return Promise.reject(new DomainError("bloqueado"));
+      state.retired.push(id);
       return Promise.resolve();
     },
   };
@@ -68,6 +69,8 @@ describe("changes the vault did not take", () => {
     expect(workspace.localOnly).toBe(0);
     expect(workspace.stageError).toBeNull();
     expect(state.staged.some((r) => r.kind === "member")).toBe(true);
+    // Made as the editor: the vault keeps it even if the lease was lost in between.
+    expect(state.options.at(-1)).toEqual({ madeAsEditor: true });
   });
 
   it("a newer change of a record wins over the failed one put back", async () => {
@@ -108,34 +111,16 @@ describe("blobs of removed documents", () => {
     return { ...context, id: doc.meta.id };
   }
 
-  it("leave the server only once it no longer has the document's record", async () => {
+  it("are retired in the vault, which deletes them in a later session", async () => {
     const { state, workspace, id } = await withDocument();
     workspace.act((_l, session) => session.removeDocument(id));
     await workspace.settled();
     expect(state.deleted).toContainEqual({ kind: DOCUMENT_KIND, id });
-    expect(state.deletedBlobs).toEqual([]);
-
-    // A conflict decided for the server's version: its record is still there, so is the blob.
-    workspace.collectBlobs(() => true);
-    await workspace.settled();
-    expect(state.deletedBlobs).toEqual([]);
+    expect(state.retired).toEqual(["blob-1"]);
+    expect(state.blobs.size).toBe(1);
   });
 
-  it("are deleted when the server agrees, and tried again after a failure", async () => {
-    const { state, workspace, id } = await withDocument();
-    workspace.act((_l, session) => session.removeDocument(id));
-    await workspace.settled();
-    state.failing = true;
-    workspace.collectBlobs(() => false);
-    await workspace.settled();
-    expect(state.deletedBlobs).toEqual([]);
-    state.failing = false;
-    workspace.collectBlobs(() => false);
-    await workspace.settled();
-    expect(state.deletedBlobs).toEqual(["blob-1"]);
-  });
-
-  it("an undone removal points to the same blob again, without uploading it", async () => {
+  it("an undone removal points to the same blob again, without storing it again", async () => {
     const { state, workspace, id } = await withDocument();
     workspace.act((_l, session) => session.removeDocument(id));
     await workspace.settled();
@@ -145,23 +130,18 @@ describe("blobs of removed documents", () => {
     expect(state.blobs.size).toBe(1);
     const record = state.staged.find((r) => r.kind === DOCUMENT_KIND && r.id === id);
     expect((record?.payload as { blob_id: string }).blob_id).toBe("blob-1");
-    workspace.collectBlobs(() => false);
-    await workspace.settled();
-    expect(state.deletedBlobs).toEqual([]);
   });
 
-  it("a removal still waiting in the tab is not decided by what the server has", async () => {
+  it("a retirement that failed waits in the tab like any change", async () => {
     const { state, workspace, id } = await withDocument();
     state.failing = true;
     workspace.act((_l, session) => session.removeDocument(id));
     await workspace.settled();
-    workspace.collectBlobs(() => true);
-    await workspace.settled();
+    expect(workspace.localOnly).toBeGreaterThan(0);
     state.failing = false;
     workspace.retry();
     await workspace.settled();
-    workspace.collectBlobs(() => false);
-    await workspace.settled();
-    expect(state.deletedBlobs).toEqual(["blob-1"]);
+    expect(state.retired).toEqual(["blob-1"]);
+    expect(workspace.localOnly).toBe(0);
   });
 });

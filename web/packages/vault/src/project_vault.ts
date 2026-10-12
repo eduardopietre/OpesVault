@@ -265,6 +265,8 @@ const SNAPSHOT_DELAY_MS = 5000;
 
 /** Records a first download stores in one IndexedDB transaction (several pulled pages): fewer, bigger writes. */
 const DOWNLOAD_BATCH = 8000;
+/** The longest `lock` waits for the app's hand-over (`setBeforeLock`). */
+const BEFORE_LOCK_MS = 10_000;
 
 /**
  * Decrypts many records, a batch at a time; a record that fails to open is `null` (damaged). `onBatch` hears
@@ -337,6 +339,13 @@ export class ProjectVault {
    * server, that push was accepted: a later local edit is rebased on it instead of conflicting with itself.
    */
   readonly #unconfirmed = new Map<string, (B64 | null)[]>();
+  /** Attachments stored on this device (`storeBlob`) and not yet uploaded: they go before the records. */
+  #blobsWaiting = 0;
+  /** Attachments retired before this unlock (`retireBlob`), which `collectBlobs` may delete from the server. */
+  readonly #retiredEarlier = new Set<string>();
+  #collecting = false;
+  /** Awaited before locking: the app hands over what it still holds (`setBeforeLock`). */
+  #beforeLock: (() => Promise<void>) | null = null;
   readonly #conflicts = new Map<string, Conflict>();
   readonly #damaged = new Set<string>();
   #cursor = 0;
@@ -464,6 +473,11 @@ export class ProjectVault {
     if (this.unlocked) this.#idle?.touch();
   }
 
+  /** Sets what `lock` awaits first (a few seconds at most): the app's hand-over of what it still holds. */
+  setBeforeLock(hook: (() => Promise<void>) | null): void {
+    this.#beforeLock = hook;
+  }
+
   /** Marks user activity for the idle lock. */
   touch(): void {
     if (this.unlocked) this.#idle?.touch();
@@ -483,13 +497,13 @@ export class ProjectVault {
     else if (this.#mode === "readOnly") status = "readOnly";
     else if (!this.#online) status = "offline";
     else if (this.#syncing) status = "syncing";
-    else if (this.#pending.size > 0) status = "pending";
+    else if (this.#pending.size > 0 || this.#blobsWaiting > 0) status = "pending";
     else status = "synced";
     const next: VaultSnapshot = {
       status,
       unlocked,
       name: this.#name,
-      pending: this.#pending.size,
+      pending: this.#pending.size + this.#blobsWaiting,
       conflicts: this.#conflictList,
       lease: this.#lease,
       heldBy: this.#heldBy,
@@ -629,6 +643,17 @@ export class ProjectVault {
    */
   async lock(): Promise<void> {
     if (this.#keys === null || this.#locking) return;
+    const beforeLock = this.#beforeLock;
+    if (beforeLock !== null) {
+      // What the app made and has not handed over yet would be lost with the keys (an idle lock too).
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      await Promise.race([
+        beforeLock().catch(() => undefined),
+        new Promise<void>((resolve) => (timer = setTimeout(resolve, BEFORE_LOCK_MS))),
+      ]);
+      clearTimeout(timer);
+      if (this.#keys === null || this.#locking) return;
+    }
     this.#locking = true;
     this.#generation += 1;
     this.#clearTimers();
@@ -660,6 +685,8 @@ export class ProjectVault {
     this.#pending.clear();
     this.#inFlight.clear();
     this.#unconfirmed.clear();
+    this.#blobsWaiting = 0;
+    this.#retiredEarlier.clear();
     this.#conflicts.clear();
     this.#conflictsChanged();
     this.#damaged.clear();
@@ -765,6 +792,10 @@ export class ProjectVault {
   ): Promise<void> {
     const cached = await this.#cache.getProject(this.projectId);
     const pending = await this.#cache.listPending(this.projectId);
+    const blobs = await this.#cache.listBlobs(this.projectId);
+    this.#blobsWaiting = blobs.filter((blob) => blob.sealed !== null).length;
+    this.#retiredEarlier.clear();
+    for (const blob of blobs) if (blob.retired) this.#retiredEarlier.add(blob.id);
     this.#cursor = cached?.cursor ?? 0;
     this.#sealedName = cached?.sealedName ?? null;
     this.#resumeDownload = cached?.downloading === true;
@@ -1066,8 +1097,14 @@ export class ProjectVault {
    * Records local changes. The in-memory view changes at once; the sealed changes are in
    * IndexedDB when the promise resolves, and are pushed shortly after.
    */
-  stage(upserts: readonly PlainRecord[], deletes: readonly RecordRef[] = []): Promise<void> {
-    const keys = this.#requireEditable();
+  stage(
+    upserts: readonly PlainRecord[],
+    deletes: readonly RecordRef[] = [],
+    options: { readonly madeAsEditor?: boolean } = {},
+  ): Promise<void> {
+    // A change the app accepted while this tab was the editor is kept even if the lease was lost since: it waits in
+    // the queue and is pushed, with the conflict check, once the lease is back (docs/19 §9.2).
+    const keys = options.madeAsEditor === true ? this.#requireUnlocked() : this.#requireEditable();
     // Refused before anything changes: queued, a record the server refuses would block every change after it.
     if (upserts.some((record) => sealedRecordLength(record) > LIMITS.maxRecordCiphertext)) {
       throw new VaultError("too_large");
@@ -1198,7 +1235,9 @@ export class ProjectVault {
   }
 
   #schedulePush(delay = this.#pushDelayMs): void {
-    if (!this.unlocked || this.#pending.size === 0 || this.#timerHandles.has("push")) return;
+    if (!this.unlocked || (this.#pending.size === 0 && this.#blobsWaiting === 0) || this.#timerHandles.has("push")) {
+      return;
+    }
     this.#schedule("push", delay, () => {
       this.#wantPush = true;
       void this.#runSync();
@@ -1492,6 +1531,18 @@ export class ProjectVault {
         await this.#pullAll(generation);
         this.#needPull = false;
       }
+      try {
+        // Attachments first: a record pushed below may cite one.
+        await this.#uploadBlobs(this.#lease, generation);
+      } catch (error) {
+        if (!isLeaseError(error)) throw error;
+        this.#lease = null;
+        this.#mode = "none";
+        this.#clearTimer("renew");
+        await this.#acquire(false);
+        if (generation !== this.#generation || !this.#isEditor()) return;
+        continue;
+      }
       const batch = this.#nextBatch();
       if (batch.length === 0) return;
       let result;
@@ -1615,6 +1666,12 @@ export class ProjectVault {
     try {
       const cached = await this.#cache.getProject(this.projectId);
       let cursor = cached?.cursor ?? 0;
+      for (const blob of await this.#cache.listBlobs(this.projectId)) {
+        if (blob.sealed === null) continue;
+        if (this.#keys !== null) return;
+        await this.#backend.putBlob(this.projectId, lease.leaseId, blob.id, blob.sealed);
+        await this.#cache.updateBlob(this.projectId, blob.id, { sealed: null });
+      }
       const pending = await this.#cache.listPending(this.projectId);
       for (let start = 0; start < pending.length;) {
         if (this.#keys !== null) return;
@@ -1691,7 +1748,7 @@ export class ProjectVault {
     this.#clearTimer("poll");
     this.#scheduleRenew();
     this.#wantPull = true;
-    this.#wantPush = this.#pending.size > 0;
+    this.#wantPush = this.#pending.size > 0 || this.#blobsWaiting > 0;
     this.#update();
     void this.#runSync();
   }
@@ -1797,12 +1854,101 @@ export class ProjectVault {
     return blobId;
   }
 
-  /** Downloads and decrypts an attachment, or takes it from the in-memory cache. Returns a copy. */
+  /**
+   * Encrypts an attachment and keeps it on this device (IndexedDB, sealed), without the network: it is uploaded by
+   * the sync, before the records that may cite it, and survives a reload or a lock until then. Returns its id.
+   */
+  async storeBlob(data: Uint8Array, blobId: string = randomId(this.#random)): Promise<string> {
+    const keys = this.#requireUnlocked();
+    if (!ID_PATTERN.test(blobId)) throw new TypeError("blob id must be 32 lowercase hex characters");
+    const sealed = await keys.sealBlob(blobId, data, this.#random);
+    // Refused here rather than by the server later, where it would hold up every upload after it.
+    if (sealed.length > LIMITS.maxBlobBytes) throw new VaultError("too_large");
+    const generation = this.#generation;
+    await this.#exclusive(async () => {
+      const current = await this.#cache.getBlob(this.projectId, blobId);
+      await this.#cache.putBlob({ projectId: this.projectId, id: blobId, sealed, retired: current?.retired ?? false });
+      if (generation === this.#generation && (current === null || current.sealed === null)) this.#blobsWaiting += 1;
+    });
+    if (generation !== this.#generation) return blobId;
+    this.#blobs.put(blobId, data.slice());
+    this.#update();
+    this.#schedulePush();
+    return blobId;
+  }
+
+  /** Uploads what `storeBlob` kept, one at a time; each leaves the waiting list once the server has it. */
+  async #uploadBlobs(lease: EditLease, generation: number): Promise<void> {
+    if (this.#blobsWaiting === 0) return;
+    for (const blob of await this.#cache.listBlobs(this.projectId)) {
+      if (blob.sealed === null) continue;
+      if (generation !== this.#generation) return;
+      await this.#backend.putBlob(this.projectId, lease.leaseId, blob.id, blob.sealed);
+      await this.#exclusive(() => this.#cache.updateBlob(this.projectId, blob.id, { sealed: null }));
+      if (generation !== this.#generation) return;
+      this.#blobsWaiting -= 1;
+      this.#update();
+    }
+  }
+
+  /**
+   * Marks an attachment whose document was removed, on this device (IndexedDB): `collectBlobs` deletes it from the
+   * server in a later unlock, once no record cites it. Not in this one: an undo here may still cite it.
+   */
+  async retireBlob(blobId: string): Promise<void> {
+    this.#requireUnlocked();
+    await this.#exclusive(() => this.#cache.updateBlob(this.projectId, blobId, { retired: true }));
+  }
+
+  /** True when attachments retired before this unlock wait for `collectBlobs`. */
+  get hasBlobsToCollect(): boolean {
+    return this.#retiredEarlier.size > 0;
+  }
+
+  /**
+   * Deletes from the server the attachments retired before this unlock that no record cites (`inUse` says which
+   * are cited, from the records: the vault does not read payloads). Only while synced as the editor, when the
+   * records here are the server's; one cited again (an undo, a conflict decided for the server) is kept. A failure
+   * leaves the rest for the next call.
+   */
+  async collectBlobs(inUse: (blobId: string) => boolean): Promise<void> {
+    const lease = this.#lease;
+    if (this.#collecting || this.#retiredEarlier.size === 0 || lease === null) return;
+    if (this.getSnapshot().status !== "synced" || this.#unstaged > 0) return;
+    const generation = this.#generation;
+    this.#collecting = true;
+    try {
+      for (const blobId of [...this.#retiredEarlier]) {
+        if (generation !== this.#generation) return;
+        if (inUse(blobId)) {
+          await this.#exclusive(() => this.#cache.updateBlob(this.projectId, blobId, { retired: false }));
+        } else {
+          const row = await this.#cache.getBlob(this.projectId, blobId);
+          const uploaded = row === null || row.sealed === null;
+          // One never uploaded is not on the server: dropping it here is enough.
+          if (uploaded) await this.#backend.deleteBlob(this.projectId, lease.leaseId, blobId);
+          await this.#exclusive(() => this.#cache.removeBlob(this.projectId, blobId));
+          if (generation !== this.#generation) return;
+          if (!uploaded) this.#blobsWaiting -= 1;
+          this.#blobs.delete(blobId);
+        }
+        this.#retiredEarlier.delete(blobId);
+      }
+    } catch {
+      // offline or no lease: the rest waits for the next call
+    } finally {
+      this.#collecting = false;
+      this.#update();
+    }
+  }
+
+  /** Downloads and decrypts an attachment, or takes it from memory or from this device. Returns a copy. */
   async getBlob(blobId: string): Promise<Uint8Array> {
     const keys = this.#requireUnlocked();
     const cached = this.#blobs.get(blobId);
     if (cached !== undefined) return cached.slice();
-    const sealed = await this.#remote(() => this.#backend.getBlob(this.projectId, blobId));
+    const stored = this.#blobsWaiting > 0 ? await this.#cache.getBlob(this.projectId, blobId) : null;
+    const sealed = stored?.sealed ?? (await this.#remote(() => this.#backend.getBlob(this.projectId, blobId)));
     const data = await keys.openBlob(blobId, sealed);
     if (this.unlocked && this.#keys === keys) this.#blobs.put(blobId, data.slice());
     return data;

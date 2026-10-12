@@ -5,7 +5,7 @@
  * reloads, while the project is locked. Nothing here is plaintext: records and pending changes are
  * the same sealed text the server receives, and the envelope is the server's envelope.
  *
- * Stores (database "opesvault", version 2):
+ * Stores (database "opesvault", version 3):
  * - projects:  projectId → { cursor (pull revision), envelope, sealedName, generation }
  * - records:   [projectId, opaque id] → { revision, ciphertext | null, gen } (the server's current version;
  *              tombstones are kept, since their revision is the base for re-creating the record). `gen` is the
@@ -14,6 +14,9 @@
  * - snapshots: projectId → { generation, sealed } — this device's snapshot: every record opened at one
  *              generation, sealed in one block with a key derived from the project key (docs/19 §8). Opening
  *              a big project decrypts it and then only the records written after it.
+ * - blobs:     [projectId, blob id] → { sealed | null, retired } (version 3) — attachments of this device: `sealed`
+ *              is an attachment stored here and not yet uploaded (sent before the records, which may cite it);
+ *              `retired` marks one whose document was removed, to delete from the server once nothing cites it.
  *
  * The generation goes up with every transaction that writes records, so "the rows written after the
  * snapshot" is an index range. Version 1 rows have no `gen`: they are older than any snapshot.
@@ -21,7 +24,7 @@
 import type { B64, Envelope, SealedRecord } from "./backend.ts";
 
 export const CACHE_DB_NAME = "opesvault";
-const CACHE_DB_VERSION = 2;
+const CACHE_DB_VERSION = 3;
 
 export interface CachedProject {
   readonly projectId: string;
@@ -64,6 +67,16 @@ export interface PendingChange {
   readonly ciphertext: B64 | null;
   /** Changes on every new local edit of the record, so that a push only clears what it sent. */
   readonly seq: string;
+}
+
+/** An attachment this device still has to upload or to delete from the server (see the stores above). */
+export interface CachedBlob {
+  readonly projectId: string;
+  readonly id: string;
+  /** The sealed attachment, while it waits to be uploaded; null once the server has it. */
+  readonly sealed: Uint8Array | null;
+  /** Its document was removed: delete it from the server once no record cites it. */
+  readonly retired: boolean;
 }
 
 /** What a successful push wrote: the pending entries it sent, by their seq. */
@@ -123,6 +136,7 @@ export class VaultCache {
       if (!records.indexNames.contains("byGen")) records.createIndex("byGen", ["projectId", "gen"]);
       if (!db.objectStoreNames.contains("pending")) db.createObjectStore("pending", { keyPath: ["projectId", "id"] });
       if (!db.objectStoreNames.contains("snapshots")) db.createObjectStore("snapshots", { keyPath: "projectId" });
+      if (!db.objectStoreNames.contains("blobs")) db.createObjectStore("blobs", { keyPath: ["projectId", "id"] });
     };
     return new VaultCache(await request(req), keyRange, options.name ?? CACHE_DB_NAME);
   }
@@ -316,23 +330,65 @@ export class VaultCache {
     await done(tx);
   }
 
+  async listBlobs(projectId: string): Promise<CachedBlob[]> {
+    const tx = this.#db.transaction("blobs", "readonly");
+    return (await request(tx.objectStore("blobs").getAll(this.#range(projectId)))) as CachedBlob[];
+  }
+
+  async getBlob(projectId: string, id: string): Promise<CachedBlob | null> {
+    const tx = this.#db.transaction("blobs", "readonly");
+    return ((await request(tx.objectStore("blobs").get([projectId, id]))) as CachedBlob | undefined) ?? null;
+  }
+
+  async putBlob(blob: CachedBlob): Promise<void> {
+    const tx = this.#db.transaction("blobs", "readwrite");
+    tx.objectStore("blobs").put(blob);
+    await done(tx);
+  }
+
+  /**
+   * Changes one attachment's row: `sealed: null` once uploaded, `retired` set or cleared. A row left with nothing
+   * to do (uploaded and not retired) is removed.
+   */
+  async updateBlob(
+    projectId: string,
+    id: string,
+    changes: Partial<Pick<CachedBlob, "sealed" | "retired">>,
+  ): Promise<void> {
+    const tx = this.#db.transaction("blobs", "readwrite");
+    const store = tx.objectStore("blobs");
+    const current = (await request(store.get([projectId, id]))) as CachedBlob | undefined;
+    const next: CachedBlob = { projectId, id, sealed: null, retired: false, ...current, ...changes };
+    if (next.sealed === null && !next.retired) store.delete([projectId, id]);
+    else store.put(next);
+    await done(tx);
+  }
+
+  async removeBlob(projectId: string, id: string): Promise<void> {
+    const tx = this.#db.transaction("blobs", "readwrite");
+    tx.objectStore("blobs").delete([projectId, id]);
+    await done(tx);
+  }
+
   /** Removes everything cached on this device, for every project (the "forget this device" command). */
   async forgetAll(): Promise<void> {
-    const tx = this.#db.transaction(["records", "pending", "projects", "snapshots"], "readwrite");
+    const tx = this.#db.transaction(["records", "pending", "projects", "snapshots", "blobs"], "readwrite");
     tx.objectStore("records").clear();
     tx.objectStore("pending").clear();
     tx.objectStore("projects").clear();
     tx.objectStore("snapshots").clear();
+    tx.objectStore("blobs").clear();
     await done(tx);
   }
 
   /** Removes everything cached for a project (after it is deleted or access is lost). */
   async forgetProject(projectId: string): Promise<void> {
-    const tx = this.#db.transaction(["records", "pending", "projects", "snapshots"], "readwrite");
+    const tx = this.#db.transaction(["records", "pending", "projects", "snapshots", "blobs"], "readwrite");
     tx.objectStore("records").delete(this.#range(projectId));
     tx.objectStore("pending").delete(this.#range(projectId));
     tx.objectStore("projects").delete(projectId);
     tx.objectStore("snapshots").delete(projectId);
+    tx.objectStore("blobs").delete(this.#range(projectId));
     await done(tx);
   }
 }

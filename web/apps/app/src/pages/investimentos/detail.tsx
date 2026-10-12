@@ -213,9 +213,9 @@ function PositionDetail({
 
       <div className="grid grid-cols-2 gap-3 medium:grid-cols-4">
         <FigureCard label="Último valor" text={numbers.value} raw={numbers.valueRaw} />
-        <FigureCard label="Custo remanescente" text={numbers.cost} raw={numbers.costRaw} />
+        <FigureCard label="Total investido" text={numbers.cost} raw={numbers.costRaw} />
         <FigureCard
-          label="Não realizado"
+          label="Rendimento"
           text={numbers.unrealized}
           raw={numbers.unrealizedRaw}
           tone={numbers.unrealizedTone ?? undefined}

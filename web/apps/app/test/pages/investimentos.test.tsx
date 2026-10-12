@@ -47,7 +47,8 @@ describe("Investimentos: carteira e detalhe", () => {
     expect(text).toContain("04.02");
     expect(text).toContain("110% do CDI");
     expect(text).toContain("Retido na fonte");
-    expect(text).toContain("resultado não realizado (valor observado − custo remanescente)");
+    expect(text).toContain("rendimento = último valor − total investido");
+    for (const label of ["Último valor", "Total investido", "Rendimento", "Vencimento"]) expect(text).toContain(label);
   });
 
   it("draws the evolution with its values: gross series, same dates as the domain's chart", async () => {

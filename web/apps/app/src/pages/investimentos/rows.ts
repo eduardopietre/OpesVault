@@ -169,7 +169,8 @@ export function figures(ledger: Ledger, positionId: Id, today: IsoDate): Figures
     unrealizedTone: toneOf(gain.value),
     maturity: due,
     maturityTone: dueTone,
-    method: [gain.method, ...gain.notes].join(" · "),
+    // The domain names the method by its terms (golden files); the screen by the cards' names.
+    method: ["rendimento = último valor − total investido", ...gain.notes].join(" · "),
     reason: gain.value === null ? (gain.notes[0] ?? null) : null,
   };
 }

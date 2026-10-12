@@ -26,7 +26,7 @@ export const PORTFOLIO_COLUMNS: TierColumn<PortfolioRow>[] = [
   { id: "mode", header: "Modo", cell: (r) => r.mode, sortValue: (r) => r.mode, width: 100, tier: 5 },
   {
     id: "cost",
-    header: "Custo remanescente",
+    header: "Total investido",
     cell: (r) => r.cost,
     sortValue: (r) => r.costSort,
     align: "end",
@@ -45,7 +45,7 @@ export const PORTFOLIO_COLUMNS: TierColumn<PortfolioRow>[] = [
   { id: "base", header: "Data-base", cell: (r) => r.base, grow: 1, width: 150, tier: 5 },
   {
     id: "unrealized",
-    header: "Não realizado",
+    header: "Rendimento",
     // plain text, with the sign in the number: a colored text loses its contrast on a selected row
     cell: (r) => (r.unrealizedSort === null ? <Warn>{r.unrealized}</Warn> : r.unrealized),
     sortValue: (r) => r.unrealizedSort,

@@ -32,7 +32,7 @@ for (const size of TEST_SIZES) {
         await expect(portfolio.getByText("CDB Banco X 2028")).toBeVisible();
         await expect(page.getByRole("heading", { level: 2, name: "CDB Banco X 2028" })).toBeVisible();
         // the figures and the sections of the selected investment
-        await expect(page.getByText("Custo remanescente").first()).toBeVisible();
+        await expect(page.getByText("Total investido").first()).toBeVisible();
         await expect(page.getByText("Vencimento").first()).toBeVisible();
         await expect(page.getByText(/110% do CDI/)).toBeVisible();
         await expect(page.getByRole("heading", { name: "Evolução do investimento" })).toBeVisible();

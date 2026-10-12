@@ -303,9 +303,9 @@ export function Page() {
               max={8}
             />
             <p className="text-caption text-secondary">
-              Custo remanescente: o que você aplicou e ainda não resgatou. Não realizado: último valor menos esse custo,
-              ganho ou perda que ainda não saiu do investimento. Realizado: o resultado do que já foi resgatado ou
-              vendido. “Indisponível” e “sem avaliação” indicam falta de dado, nunca zero.
+              Total investido: o que você aplicou e ainda não resgatou, sem o rendimento. Rendimento: último valor menos
+              o total investido, ganho ou perda que ainda está no investimento. Realizado: o resultado do que já foi
+              resgatado ou vendido. “Indisponível” e “sem avaliação” indicam falta de dado, nunca zero.
             </p>
           </section>
 

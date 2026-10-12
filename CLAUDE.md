@@ -22,6 +22,7 @@ pnpm --filter @opesvault/app e2e:full       # cinco tamanhos, claro e escuro (E2
 pnpm --filter @opesvault/app e2e:real       # contra o servidor real e SQLite
 pnpm --filter @opesvault/app screens        # capturas de todas as telas em web/build/telas
 pnpm --filter @opesvault/app perf           # 50 mil lançamentos (build/perf/results.json, ~6 min)
+node tools/avaliar_modelos.ts [MODELO ...]  # compara modelos do Ollama local na categorização (build/ia); roda onde o Ollama está
 docker compose up --build                   # servidor + app atrás do Caddy (docs/20)
 ```
 

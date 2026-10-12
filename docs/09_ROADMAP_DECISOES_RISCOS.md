@@ -100,7 +100,7 @@ Feito em 04/10/2026 (`05` §5): a mesma IA em Importar, no Livro (outra categori
 
 | Item | Por quê | Decisão? |
 |---|---|---|
-| **Avaliar com descrições reais**: `avaliar_modelos.py --arquivo` lendo uma lista rotulada fora do repositório (exportada dos itens aprovados) | O benchmark atual é sintético; a escolha do modelo precisa ser confirmada na fase 7 | Não |
+| **Avaliar com descrições reais**: `tools/avaliar_modelos.ts --arquivo` lendo uma lista rotulada fora do repositório (exportada dos itens aprovados) | O benchmark atual é sintético; a escolha do modelo precisa ser confirmada na fase 7 | Não |
 | **Estabelecimento normalizado**: "IFD*IFOOD.COM AGENCIA" → "iFood", sugerido pela IA e aprovado na revisão | Busca, relatórios e regras por estabelecimento ficam legíveis | **Feito sem mudar o esquema**: nome aprovado guardado ao lado (`merchant_alias`), casado pela descrição limpa; sugestão por limpeza determinística e, desde 04/10/2026, também pela IA local no Livro (nomes validados pela descrição, conferidos numa lista) |
 | **Regra a partir de sugestões aceitas**: ao aprovar a mesma categoria da IA para um estabelecimento algumas vezes, oferecer criar a regra | Tira o modelo do caminho para o que já é certo | Não |
 | **Sugestão só com concordância**: perguntar duas vezes (ou a dois modelos) e sugerir só quando concordam | Sugestão errada é pior que abstenção; custa o dobro do tempo | Sim: tempo × acerto |

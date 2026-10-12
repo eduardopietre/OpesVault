@@ -13,6 +13,7 @@ pnpm --filter @opesvault/app e2e        # end-to-end tests of the production bui
 pnpm --filter @opesvault/app e2e:full   # the same at every size (1920, 1280, 900, 768, 390), light and dark; before closing a phase
 pnpm --filter @opesvault/app e2e:real   # the same build against the real server and SQLite (sign up, project, sync, plaintext scan)
 pnpm --filter @opesvault/app perf       # a generated 50 000-entry project: opening, memory, Livro (build/perf/results.json, ~6 min)
+node tools/avaliar_modelos.ts [MODELO ...] [--exemplos]   # compares local Ollama models on categorizing (build/ia; Node < 22.18: --experimental-strip-types)
 pnpm --filter @opesvault/server build   # the server as one bundle (dist/server.mjs)
 docker compose up -d --build            # server + app behind Caddy (docs/20)
 docker compose -f docker-compose.local.yml up -d --build   # local testing: http://localhost:8080, data in a volume

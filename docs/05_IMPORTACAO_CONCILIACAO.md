@@ -79,7 +79,7 @@ Implementação (`ai/ollama.py`, `ai/prompts.py`, `importing/ai_suggestions.py`,
 - **Novo lançamento:** quando o histórico não conhece a descrição, **Perguntar à IA local** consulta só aquela descrição e seleciona a categoria sugerida, com o aviso “sugerida pela IA local”; a escolha feita à mão enquanto o modelo responde prevalece;
 - **GPU ou CPU:** **Verificar Ollama** carrega o modelo escolhido e lê `/api/ps` para dizer quanto dele coube na GPU; na CPU cada consulta leva muitas vezes mais;
 - o Ollama mantém em memória o último prompt enquanto o modelo está carregado; ao fechar o cofre ou o app, os modelos usados na sessão são descarregados (`keep_alive: 0`), no endereço em que foram usados;
-- `scripts/avaliar_modelos.py` compara modelos instalados na tarefa real (acerto, erros, abstenções, linhas com instrução embutida, estabilidade, tempo e parte do modelo na GPU); `--exemplos` mede também com exemplos de histórico.
+- `web/tools/avaliar_modelos.ts` (antes `scripts/avaliar_modelos.py`, do desktop) compara modelos instalados na tarefa real, com o mesmo cliente e prompt do app (acerto, erros, abstenções, linhas com instrução embutida, estabilidade, tempo e parte do modelo na GPU); `--exemplos` mede também com exemplos de histórico.
 
 **Assistente com ferramentas** (decisão do usuário de 04/10/2026; `opesvault/assistant`, `ui/pages/assistant_page.py`). Revê o “não habilitar ferramentas” acima só para o Assistente: o modelo pode **pedir** ferramentas do próprio aplicativo, que o aplicativo executa; as tarefas de sugestão continuam sem ferramentas.
 

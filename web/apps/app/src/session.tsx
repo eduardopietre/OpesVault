@@ -5,6 +5,7 @@
  */
 import { cancelAllDecisions, clearToasts, type SyncState } from "@opesvault/ui";
 import { createContext, useContext, useMemo, useSyncExternalStore, type ReactNode } from "react";
+import { defaultOperator } from "./data/operator.ts";
 import { chooseMonth, monthOfDate } from "./data/shared_month.ts";
 import type { Account, AppServices, OpenOptions, OpenProject } from "./services/types.ts";
 
@@ -83,6 +84,10 @@ export interface SessionActions {
 
 export function sessionActions(services: AppServices, store: SessionStore): SessionActions {
   let unwatch: (() => void) | null = null;
+  /** The operator picked in the top bar, per project, for the life of this tab (memory only, docs/19 §8). */
+  const chosenOperator = new Map<string, string>();
+  const operatorOnOpen = (open: OpenProject) =>
+    defaultOperator(open.members, store.get().account?.name, chosenOperator.get(open.project.id));
   /** Follows the vault: sync state in the top bar, and an idle lock decided by the vault itself. */
   const watch = () => {
     unwatch?.();
@@ -122,12 +127,13 @@ export function sessionActions(services: AppServices, store: SessionStore): Sess
       unwatch?.();
       unwatch = null;
       await services.signOut();
+      chosenOperator.clear();
       forget();
       store.update({ ...EMPTY, online: store.get().online });
     },
     async openProject(id, password, options) {
       const open = await services.openProject(id, password, options);
-      const operatorId = open.members[0]?.id ?? null;
+      const operatorId = operatorOnOpen(open);
       open.workspace.setOperator(operatorName(open, operatorId));
       chooseMonth(open.startMonth ?? monthOfDate(open.workspace.today()));
       store.update({ open, locked: false, lockedName: null, sync: "synced", operatorId });
@@ -135,7 +141,7 @@ export function sessionActions(services: AppServices, store: SessionStore): Sess
     },
     async recoverProject(id, recoveryKey, newPassword) {
       const open = await services.recoverProject(id, recoveryKey, newPassword);
-      const operatorId = open.members[0]?.id ?? null;
+      const operatorId = operatorOnOpen(open);
       open.workspace.setOperator(operatorName(open, operatorId));
       chooseMonth(open.startMonth ?? monthOfDate(open.workspace.today()));
       store.update({ open, locked: false, lockedName: null, sync: "synced", operatorId });
@@ -150,6 +156,7 @@ export function sessionActions(services: AppServices, store: SessionStore): Sess
       unwatch?.();
       unwatch = null;
       await services.forgetDevice();
+      chosenOperator.clear();
       forget();
       store.update({ ...EMPTY, online: store.get().online });
     },
@@ -168,14 +175,17 @@ export function sessionActions(services: AppServices, store: SessionStore): Sess
     },
     async unlock(password) {
       const open = await services.unlock(password);
-      const operatorId = store.get().operatorId ?? open.members[0]?.id ?? null;
+      const operatorId = defaultOperator(open.members, store.get().account?.name, store.get().operatorId);
       open.workspace.setOperator(operatorName(open, operatorId));
       store.update({ open, locked: false, lockedName: null, operatorId });
       watch();
     },
     setOperator(id) {
       const open = store.get().open;
-      if (open) open.workspace.setOperator(operatorName(open, id));
+      if (open) {
+        open.workspace.setOperator(operatorName(open, id));
+        chosenOperator.set(open.project.id, id);
+      }
       store.update({ operatorId: id });
     },
   };

@@ -60,6 +60,12 @@ export function readIdleLock(store: PreferenceStore): number {
   return (IDLE_LOCK_CHOICES as readonly number[]).includes(value) ? value : IDLE_LOCK_DEFAULT;
 }
 
+/**
+ * The name typed at sign-up, by account (the server keeps only the e-mail). Account data, not project data;
+ * "Esquecer este aparelho" erases it with the other preferences.
+ */
+export const accountNameKey = (accountId: string): string => `conta/${accountId}/nome`;
+
 export const THEME_KEY = "aparencia/tema";
 export const SIDEBAR_KEY = "barra-lateral/recolhida";
 

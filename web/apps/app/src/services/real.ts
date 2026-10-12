@@ -23,8 +23,10 @@ import {
   signIn as vaultSignIn,
   signUp as vaultSignUp,
 } from "@opesvault/vault";
+import type { PreferenceStore } from "@opesvault/ui";
 import { backupFileName, checkOf, documentBlobRefs } from "../data/backup.ts";
 import { Workspace } from "../data/workspace.ts";
+import { accountNameKey } from "../preferences.ts";
 import {
   ServiceError,
   type Account,
@@ -47,6 +49,8 @@ export interface RealServicesOptions {
   /** Tests only: cheaper key derivation and vault timing. */
   readonly kdf?: KdfParams;
   readonly vaultOptions?: Partial<Pick<ProjectVaultOptions, "timers" | "pushDelayMs" | "retryMs" | "pollMs">>;
+  /** Where this device keeps the name typed at sign-up (the server keeps only the e-mail). */
+  readonly accountNames?: Pick<PreferenceStore, "get" | "set">;
 }
 
 const BACKUP_MESSAGES: Record<BackupError["code"], string> = {
@@ -139,6 +143,9 @@ export function createRealServices(options: RealServicesOptions = {}): AppServic
   let summary: ProjectSummary | null = null;
   let unsubscribeVault: (() => void) | null = null;
   const syncListeners = new Set<(status: ProjectSyncStatus, detail?: SyncDetail) => void>();
+  /** The name typed at sign-up on this device; otherwise one made from the e-mail. */
+  const nameOf = (accountId: string, email: string): string =>
+    options.accountNames?.get(accountNameKey(accountId))?.trim() || nameFromEmail(email);
   let idleMs: number | null = options.idleLockMs === undefined ? 15 * 60_000 : options.idleLockMs;
   let unwatchActivity: (() => void) | null = null;
   /** Asked once per page load (a browser may ask the person): whether IndexedDB may be erased under pressure. */
@@ -246,7 +253,7 @@ export function createRealServices(options: RealServicesOptions = {}): AppServic
     async signIn(email, password) {
       return guard(async () => {
         const session = await vaultSignIn(backend, email, password, options.kdf);
-        account = { id: session.accountId, name: nameFromEmail(session.email), email: session.email };
+        account = { id: session.accountId, name: nameOf(session.accountId, session.email), email: session.email };
         askPersistence();
         return account;
       });
@@ -254,7 +261,8 @@ export function createRealServices(options: RealServicesOptions = {}): AppServic
     async signUp({ name, email, password }) {
       return guard(async () => {
         const session = await vaultSignUp(backend, email, password, options.kdf);
-        account = { id: session.accountId, name: name.trim() || nameFromEmail(session.email), email: session.email };
+        if (name.trim()) options.accountNames?.set(accountNameKey(session.accountId), name.trim());
+        account = { id: session.accountId, name: nameOf(session.accountId, session.email), email: session.email };
         askPersistence();
         return account;
       });
@@ -263,7 +271,7 @@ export function createRealServices(options: RealServicesOptions = {}): AppServic
       try {
         const session = await backend.currentSession();
         if (session === null) return null;
-        account = { id: session.accountId, name: nameFromEmail(session.email), email: session.email };
+        account = { id: session.accountId, name: nameOf(session.accountId, session.email), email: session.email };
         return account;
       } catch {
         // Offline or the server is away: the person signs in when it is back.

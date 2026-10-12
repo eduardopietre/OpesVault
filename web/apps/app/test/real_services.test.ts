@@ -6,6 +6,7 @@ import "fake-indexeddb/auto";
 import { IDBFactory, IDBKeyRange } from "fake-indexeddb";
 import { AccountType, dom, queries, type IsoDate } from "@opesvault/domain";
 import { MemoryServer, VaultCache } from "@opesvault/vault";
+import { memoryPreferences } from "@opesvault/ui";
 import { describe, expect, it } from "vitest";
 import { createRealServices } from "../src/services/real.ts";
 import { ServiceError } from "../src/services/types.ts";
@@ -39,6 +40,38 @@ describe("real services", () => {
     expect((await second.openProject(created.project.id, "senha do projeto")).project.name).toBe("Casa");
     await second.signOut();
     expect(await load().restoreAccount?.()).toBeNull();
+  });
+
+  it("keeps the name typed at sign-up on this device; elsewhere the name comes from the e-mail", async () => {
+    const server = new MemoryServer();
+    const backend = server.client();
+    const factory = new IDBFactory();
+    const names = memoryPreferences();
+    const load = (accountNames = names) =>
+      createRealServices({
+        backend,
+        openCache: () => VaultCache.open({ factory, keyRange: IDBKeyRange }),
+        holder: "tab-a",
+        kdf: TEST_KDF,
+        idleLockMs: null,
+        accountNames,
+      });
+    const account = await load().signUp({
+      name: "  Teste Local ",
+      email: "teste@example.com",
+      password: "senha da conta",
+    });
+    expect(account.name).toBe("Teste Local");
+    // a page load on the same device, and a new sign-in there
+    expect(await load().restoreAccount?.()).toMatchObject({ name: "Teste Local" });
+    const again = load();
+    await again.signOut();
+    expect(await again.signIn("teste@example.com", "senha da conta")).toMatchObject({ name: "Teste Local" });
+    // another device never saw the sign-up: the name comes from the e-mail
+    expect(await load(memoryPreferences()).signIn("teste@example.com", "senha da conta")).toMatchObject({
+      name: "Teste",
+    });
+    expect(names.keys?.()).toEqual([`conta/${account.id}/nome`]); // by the opaque account id, never the e-mail
   });
 
   it("creates, edits, syncs and opens a project on another device", async () => {

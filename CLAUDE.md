@@ -35,7 +35,8 @@ O Chromium já está instalado (`/opt/pw-browsers`); **nunca** rode `playwright 
 - **Desktop removido (07/10/2026):** sem Python no repositório. Os `docs/13`–`16` descrevem a implementação do desktop e valem como histórico; o que vale para a web está no `18`, `19` e `20`.
 - Exportação CSV: texto livre que começa com `=`, `+`, `-`, `@`, tabulação ou retorno de carro ganha `'` na frente; colunas de valor não mudam (`docs/19` achado 12).
 - O Assistente usa ferramentas do próprio aplicativo (sem servidor MCP); **toda alteração exige aprovação explícita**; resposta inválida volta ao modelo como erro, e três seguidas interrompem a pergunta; CPF e CNPJ fora do alcance.
-- Repositório **privado**, sem CI. Trabalho na branch `web`; a `main` recebe a web ao fim da W13.
+- Repositório **privado**, sem CI. Desde 11/10/2026 a `main` é a web (a antiga branch `web`); o desktop em Python ficou na branch `desktop`.
+- **Operador e nome da conta:** o integrante que opera é escolhido ao abrir pelo `data/operator.ts` (o escolhido nesta aba, o integrante com o nome da conta, ou o primeiro por nome), nunca pela ordem dos registros; a escolha fica só na memória da aba, porque id de integrante é dado do projeto (`docs/19` §8). O nome digitado ao criar a conta fica nas preferências do aparelho (`accountNameKey`), já que o servidor guarda só o e-mail.
 
 ## Onde procurar
 

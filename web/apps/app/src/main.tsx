@@ -29,6 +29,7 @@ async function start() {
       (await import("./services/real.ts")).createRealServices({
         holder: tabHolder(),
         idleLockMs: idleMinutes * 60_000,
+        accountNames: preferences,
       }),
     );
   const session = new SessionStore();

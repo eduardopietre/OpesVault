@@ -42,6 +42,7 @@ import { useGoTo, useReveal } from "../../data/navigation.ts";
 import { Empty, EditButton, ListTable, Toolbar, usePick } from "../../components/list_parts.tsx";
 import { NOTE_COLUMNS, PORTFOLIO_COLUMNS } from "./columns.tsx";
 import { Detail } from "./detail.tsx";
+import { SavingsPanel } from "./savings_panel.tsx";
 import { eventRows, noteRows, parseReveal, portfolioRows, summaryLine, valuationRows, type NoteRow } from "./rows.ts";
 import { useDialog } from "../../data/dialog.ts";
 import { useLock } from "../../data/read_only.ts";
@@ -91,7 +92,14 @@ export function Page() {
 
   // ── commands ─────────────────────────────────────
 
-  const need = (): Id | null => needRow("Selecione um investimento.")?.id ?? null;
+  const need = (): Id | null => {
+    const row = needRow("Selecione um investimento.");
+    if (row?.savings) {
+      notify("A poupança acompanha os lançamentos da conta: registre depósitos, retiradas e juros no Livro.");
+      return null;
+    }
+    return row?.id ?? null;
+  };
 
   const withPosition = (make: (positionId: Id) => Spec) => () => {
     const id = need();
@@ -298,7 +306,8 @@ export function Page() {
               onSelect={setPick}
               onActivate={(id) => {
                 setPick(id);
-                if (!locked) dialog.show({ kind: "profile", positionId: id });
+                if (rows.find((r) => r.id === id)?.savings) goTo("livro", { ref: accountRef(id) });
+                else if (!locked) dialog.show({ kind: "profile", positionId: id });
               }}
               max={8}
             />
@@ -312,24 +321,33 @@ export function Page() {
           <AnimatePresence mode="wait" initial={false}>
             {selected ? (
               <motion.div key={selected.id} {...preset.enter}>
-                <Detail
-                  positionId={selected.id}
-                  today={today}
-                  valuation={valuationPick}
-                  onValuation={(id) => setChosen({ positionId: selected.id, valuation: id, event: eventPick })}
-                  event={eventPick}
-                  onEvent={(id) => setChosen({ positionId: selected.id, valuation: valuationPick, event: id })}
-                  onValuate={() => dialog.show({ kind: "valuation", positionId: selected.id })}
-                  onContribute={() => dialog.show({ kind: "contribution", positionId: selected.id })}
-                  onProfile={profile}
-                  onSeeEntries={() =>
-                    goTo("livro", { ref: accountRef(service.position(ledger, selected.id).account_id) })
-                  }
-                  onUse={useValuation}
-                  onFix={fixValuation}
-                  onComplete={completeRedemption}
-                  onBank={(bankId) => goTo("contas", { ref: `banco:${bankId}` })}
-                />
+                {selected.savings ? (
+                  <SavingsPanel
+                    accountId={selected.id}
+                    today={today}
+                    onSeeEntries={() => goTo("livro", { ref: accountRef(selected.id) })}
+                    onBank={(bankId) => goTo("contas", { ref: `banco:${bankId}` })}
+                  />
+                ) : (
+                  <Detail
+                    positionId={selected.id}
+                    today={today}
+                    valuation={valuationPick}
+                    onValuation={(id) => setChosen({ positionId: selected.id, valuation: id, event: eventPick })}
+                    event={eventPick}
+                    onEvent={(id) => setChosen({ positionId: selected.id, valuation: valuationPick, event: id })}
+                    onValuate={() => dialog.show({ kind: "valuation", positionId: selected.id })}
+                    onContribute={() => dialog.show({ kind: "contribution", positionId: selected.id })}
+                    onProfile={profile}
+                    onSeeEntries={() =>
+                      goTo("livro", { ref: accountRef(service.position(ledger, selected.id).account_id) })
+                    }
+                    onUse={useValuation}
+                    onFix={fixValuation}
+                    onComplete={completeRedemption}
+                    onBank={(bankId) => goTo("contas", { ref: `banco:${bankId}` })}
+                  />
+                )}
               </motion.div>
             ) : null}
           </AnimatePresence>

@@ -18,7 +18,7 @@ Tela inicial apresenta criar/abrir/restaurar. Lista de recentes é opcional e gu
 | Conferência | PDF à esquerda, campos e tabela à direita | Selecionar evidência, corrigir, aprovar ou rejeitar |
 | Conta/cartão | Saldo, movimentos, ciclo e obrigações | Vincular pagamento, conferir fatura e adicionais |
 | Recorrências | Regras, previsões e exceções | Confirmar padrão, pausar, editar e vincular realizado |
-| Investimento | Posição, custo, avaliações, movimentos e gráfico; resumo do período (rendimento em R$, rentabilidade, equivalente ao ano e ao mês) e rendimento entre valores informados | Atualizar valor (nova avaliação), aporte (conta de origem opcional), distribuição, resgate, simulação e excluir investimento (com confirmação; lançamentos cancelados, desfazível) |
+| Investimento | Posição, custo, avaliações, movimentos e gráfico; cada conta poupança em uso aparece na carteira como “Poupança (conta)”, lida do Livro (último valor = saldo; rendimento = juros lançados como receita; total investido = saldo − juros), com o gráfico do saldo; resumo do período (rendimento em R$, rentabilidade, equivalente ao ano e ao mês) e rendimento entre valores informados | Atualizar valor (nova avaliação), aporte (conta de origem opcional), distribuição, resgate, simulação e excluir investimento (com confirmação; lançamentos cancelados, desfazível) |
 | Backup | Revisão salva, cópias e integridade | Criar cópia e restaurar em destino separado |
 | Calendário | Faturas, recorrências, parcelas de financiamento e vencimentos de investimentos do mês, por dia, com situação | Abrir o ponto onde se paga ou vincula |
 | Reembolsos e acertos | Reembolsos a receber; quem deve a quem na família e as despesas que formam o saldo | Registrar recebimento, negativa e acerto |

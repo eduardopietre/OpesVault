@@ -1,5 +1,5 @@
 /** Investimentos: the portfolio, the selected investment's figures, charts and tables; empty and read-only projects. */
-import { Dec, charts, formatBrl, formatDateBr, formatDecimalBr, investments, makeDate } from "@opesvault/domain";
+import { Dec, charts, dom, formatBrl, formatDateBr, formatDecimalBr, investments, makeDate } from "@opesvault/domain";
 import { tableRows as chartRows } from "@opesvault/ui";
 import { screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
@@ -131,6 +131,40 @@ describe("Investimentos: carteira e detalhe", () => {
     expect(row).toContain(formatBrl(latest.gain.value!));
     expect(row).toContain(`${formatDecimalBr(latest.rate.value!.mul(Dec.from(100)), 2)}%`);
     expect(row).toContain(`${formatDecimalBr(latest.monthly!.mul(Dec.from(100)), 2)}%`);
+  });
+});
+
+describe("Investimentos: poupança", () => {
+  it("lists every savings account as an investment, a savings-only bank account too, named after it", async () => {
+    const { ledger, workspace, user } = await openInvestimentos();
+    // a bank account with only a savings part, beside the demo's checking + savings one
+    workspace.act((l) => {
+      const built = dom.banking.build({
+        name: "Caixa do Bruno",
+        bank_code: "104",
+        bank_name: null,
+        branch: null,
+        number: null,
+        holder_id: [...l.members.values()][1]!.id,
+        co_holder_id: null,
+      });
+      dom.banking.create(l, built, { savings: true });
+    });
+    const grid = await table("Investimentos");
+    await waitFor(() => expect(flat(grid.textContent)).toContain("Poupança (Caixa do Bruno)"));
+    const demo = flat(rowOf(grid, "Poupança (Itaú da Ana)").textContent);
+    const savingsId = [...dom.banking.bankAccounts(ledger).values()].find((b) => b.name === "Itaú da Ana")!.savings_id!;
+    const figures = investments.savings.savingsFigures(ledger, savingsId, workspace.today());
+    expect(demo).toContain("Poupança");
+    expect(demo).toContain(formatBrl(figures.value));
+    // selecting it shows its own panel; the commands of an investment explain instead of failing
+    await user.click(within(rowOf(grid, "Poupança (Itaú da Ana)")).getAllByRole("gridcell")[0]!);
+    expect(await screen.findByRole("heading", { level: 2, name: "Poupança (Itaú da Ana)" })).toBeTruthy();
+    expect(screen.getByRole("toolbar", { name: "Comandos da poupança" })).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Registrar" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Atualizar valor…" }));
+    expect(await screen.findByText(/A poupança acompanha os lançamentos da conta/)).toBeTruthy();
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 });
 

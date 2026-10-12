@@ -73,6 +73,8 @@ export interface PortfolioRow {
   realized: string;
   realizedSort: bigint | null;
   closed: boolean;
+  /** A savings account read from Livro (`investments.savings`), not a position: its row id is the account's. */
+  savings: boolean;
 }
 
 export function portfolioRows(ledger: Ledger, today: IsoDate): PortfolioRow[] {
@@ -102,9 +104,61 @@ export function portfolioRows(ledger: Ledger, today: IsoDate): PortfolioRow[] {
       realized: moneyOr(done.value) + (done.quality === performance.Quality.INCOMPLETE ? " (incompleto)" : ""),
       realizedSort: cents(done.value),
       closed: pos.closed,
+      savings: false,
+    });
+  }
+  for (const account of investments.savings.savingsAccounts(ledger)) {
+    const f = investments.savings.savingsFigures(ledger, account.id, today);
+    out.push({
+      id: account.id,
+      name: investments.savings.savingsName(ledger, account.id),
+      assetClass: "Poupança",
+      mode: "Saldo",
+      cost: formatBrl(f.invested),
+      costSort: cents(f.invested),
+      value: formatBrl(f.value),
+      valueSort: cents(f.value),
+      base: `${formatDateBr(today)} (saldo no Livro)`,
+      unrealized: formatBrl(f.income),
+      unrealizedSort: cents(f.income),
+      unrealizedTone: toneOf(f.income),
+      realized: DASH,
+      realizedSort: null,
+      closed: false,
+      savings: true,
     });
   }
   return out;
+}
+
+export interface SavingsDetail {
+  name: string;
+  value: string;
+  valueRaw: string;
+  invested: string;
+  investedRaw: string;
+  income: string;
+  incomeRaw: string;
+  incomeTone: "positive" | "negative" | null;
+  /** The bank account that holds it, for "Ver conta bancária". */
+  bankId: Id | null;
+}
+
+/** The cards of a savings account: balance, deposits less withdrawals, and the interest credited. */
+export function savingsDetail(ledger: Ledger, accountId: Id, today: IsoDate): SavingsDetail {
+  const f = investments.savings.savingsFigures(ledger, accountId, today);
+  const bank = [...banking.bankAccounts(ledger).values()].find((b) => b.savings_id === accountId);
+  return {
+    name: investments.savings.savingsName(ledger, accountId),
+    value: formatBrl(f.value),
+    valueRaw: f.value.toFixed(),
+    invested: formatBrl(f.invested),
+    investedRaw: f.invested.toFixed(),
+    income: formatBrl(f.income),
+    incomeRaw: f.income.toFixed(),
+    incomeTone: toneOf(f.income),
+    bankId: bank?.id ?? null,
+  };
 }
 
 /** "3 em carteira" or "3 em carteira · 4 no total". */

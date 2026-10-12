@@ -8,3 +8,4 @@ export * as simulation from "./simulation.ts";
 export * as profile from "./profile.ts";
 export * as notes from "./notes.ts";
 export * as benchmarks from "./benchmarks.ts";
+export * as savings from "./savings.ts";

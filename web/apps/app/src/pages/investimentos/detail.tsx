@@ -72,7 +72,7 @@ const money = (text: string) =>
     ? `-${formatDecimalBR(text.slice(1), { places: 2, currency: true })}`
     : formatDecimalBR(text, { places: 2, currency: true });
 
-function FigureCard({
+export function FigureCard({
   label,
   text,
   raw,

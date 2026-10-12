@@ -17,6 +17,39 @@ export const CARD_TIERS = 3;
 
 const minWidth = (column: { width?: number | undefined }) => column.width ?? 120;
 
+/** A cell's horizontal padding (`px-3` on both sides), added to the width of its text. */
+export const CELL_PADDING = 24;
+
+/**
+ * The longest text of each number column (aligned to the end), by its id: amounts must never be cut, and a fixed
+ * width cannot know that a balance reached the millions. Cells that render an element are left out.
+ */
+export function longestTexts<T>(columns: readonly TierColumn<T>[], rows: readonly T[]): Map<string, string> {
+  const longest = new Map<string, string>();
+  for (const column of columns) {
+    if (column.align !== "end") continue;
+    let text = "";
+    for (const row of rows) {
+      const value = column.cell(row);
+      const shown = typeof value === "string" ? value : typeof value === "number" ? String(value) : "";
+      if (shown.length > text.length) text = shown;
+    }
+    if (text) longest.set(column.id, text);
+  }
+  return longest;
+}
+
+/** The columns with each minimum width raised to `needed` (px, by column id) where it is larger. */
+export function widenColumns<T>(
+  columns: readonly TierColumn<T>[],
+  needed: ReadonlyMap<string, number>,
+): TierColumn<T>[] {
+  return columns.map((column) => {
+    const width = needed.get(column.id);
+    return width !== undefined && width > minWidth(column) ? { ...column, width } : column;
+  });
+}
+
 /** The columns to draw in `width` px (0: not measured yet, every column), in their own order. */
 export function fitColumns<T>(columns: readonly TierColumn<T>[], width: number): DataColumn<T>[] {
   const strip = (list: readonly TierColumn<T>[]): DataColumn<T>[] =>

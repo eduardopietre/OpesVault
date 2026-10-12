@@ -14,9 +14,9 @@ import {
   usePhone,
 } from "@opesvault/ui";
 import { TriangleAlert } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useLock } from "../data/read_only.ts";
-import { fitColumns, type TierColumn } from "./tier_columns.ts";
+import { CELL_PADDING, fitColumns, longestTexts, widenColumns, type TierColumn } from "./tier_columns.ts";
 
 /**
  * A value that needs attention (a difference from the bank, a rule the family contradicts): the warning shape
@@ -55,12 +55,55 @@ export function ListTable<T extends object>({
 }: Omit<DataTableProps<T>, "height" | "columns"> & { max?: number; columns: readonly TierColumn<T>[] }) {
   const [measure, width] = useElementWidth<HTMLDivElement>();
   const height = fitHeight(props.rows.length, max, usePhone());
-  const fitted = useMemo(() => fitColumns(columns, width), [columns, width]);
+  const { probe, widths } = useTextWidths(columns, props.rows);
+  const fitted = useMemo(() => fitColumns(widenColumns(columns, widths), width), [columns, widths, width]);
   return (
-    <div ref={measure} className="min-w-0">
+    <div ref={measure} className="relative min-w-0">
+      <span
+        ref={probe}
+        aria-hidden="true"
+        className="pointer-events-none invisible absolute top-0 left-0 text-body whitespace-nowrap tabular-nums"
+      />
       <DataTable {...props} columns={fitted} height={height} />
     </div>
   );
+}
+
+/**
+ * The width each number column needs for its longest text, measured in the cells' own type (`text-body`,
+ * tabular figures) once the fonts have loaded, so an amount is never cut: the column grows, and the tiers then
+ * drop other columns instead of scrolling sideways.
+ */
+function useTextWidths<T>(columns: readonly TierColumn<T>[], rows: readonly T[]) {
+  const probe = useRef<HTMLSpanElement>(null);
+  const longest = useMemo(() => longestTexts(columns, rows), [columns, rows]);
+  const [widths, setWidths] = useState<ReadonlyMap<string, number>>(() => new Map());
+  const [fontsLoaded, setFontsLoaded] = useState(false);
+  useEffect(() => {
+    let live = true;
+    const fonts = (document as Partial<Document>).fonts;
+    void fonts?.ready.then(() => {
+      if (live) setFontsLoaded(true);
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
+  useLayoutEffect(() => {
+    const span = probe.current;
+    if (!span) return;
+    const next = new Map<string, number>();
+    for (const [id, text] of longest) {
+      span.textContent = text;
+      const px = Math.ceil(span.getBoundingClientRect().width);
+      if (px > 0) next.set(id, px + CELL_PADDING);
+    }
+    span.textContent = "";
+    setWidths((previous) =>
+      previous.size === next.size && [...next].every(([id, px]) => previous.get(id) === px) ? previous : next,
+    );
+  }, [longest, fontsLoaded]);
+  return { probe, widths };
 }
 
 /** An empty table or chart: what it is, why it is empty and what to do. */

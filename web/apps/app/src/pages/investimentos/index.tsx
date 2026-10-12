@@ -184,7 +184,7 @@ export function Page() {
             items={lock([
               {
                 id: "valuation",
-                label: "Avaliação…",
+                label: "Atualizar valor…",
                 onSelect: withPosition((positionId) => ({ kind: "valuation", positionId })),
               },
               { kind: "separator", id: "s1" },

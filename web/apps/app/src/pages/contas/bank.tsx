@@ -9,6 +9,7 @@ import { useState } from "react";
 import { useAct, useLedger, useWorkspace } from "../../data/react.tsx";
 import { BankAccountDialog } from "../../dialogs/bank_account.tsx";
 import { InvestmentDialog } from "../../dialogs/bank_investment.tsx";
+import { InvestmentValuationDialog } from "../../dialogs/investment_valuation.tsx";
 import { ValuesDialog } from "../../dialogs/bank_values.tsx";
 import { useUndo } from "../../shell/undo.tsx";
 import { type TabReveal, EditButton, Empty, ListTable, Toolbar, useTabReveal } from "../../components/list_parts.tsx";
@@ -68,6 +69,7 @@ const PART_COLUMNS: TierColumn<PartRow>[] = [
 type Spec =
   | { kind: "bank"; id: Id | null }
   | { kind: "values"; id: Id }
+  | { kind: "valuation"; positionId: Id; name: string }
   | { kind: "investment"; bankId: Id | null; positionId: Id | null };
 
 /** A link to this tab: a bank account to select, or the new investment form (Investimentos' empty page). */
@@ -137,6 +139,11 @@ export function BankTab({ reveal }: { reveal?: TabReveal<BankReveal> | null }) {
     }
     dialog.show({ kind: "values", id: item.id });
   };
+  const chosenInvestment = (): PartRow | null => {
+    if (chosenPart?.kind === "investment") return chosenPart;
+    notify("Escolha um investimento na composição.");
+    return null;
+  };
   const editInvestment = (id: Id | null = chosenPart?.kind === "investment" ? chosenPart.id : null) => {
     const found = parts.find((p) => p.id === id);
     if (!found || found.kind !== "investment") {
@@ -144,6 +151,11 @@ export function BankTab({ reveal }: { reveal?: TabReveal<BankReveal> | null }) {
       return;
     }
     dialog.show({ kind: "investment", bankId: null, positionId: found.id });
+  };
+  /** How much one investment was worth on a date (the evolution and the returns in Investimentos come from it). */
+  const updateValue = () => {
+    const found = chosenInvestment();
+    if (found) dialog.show({ kind: "valuation", positionId: found.id, name: found.label });
   };
   const archive = async () => {
     if (!item) {
@@ -201,9 +213,14 @@ export function BankTab({ reveal }: { reveal?: TabReveal<BankReveal> | null }) {
               prefKey="contas/bancarias_composicao"
               description={whereLine(ledger, item)}
               actions={
-                <EditButton variant="ghost" size="sm" onClick={() => editInvestment()}>
-                  Características…
-                </EditButton>
+                <>
+                  <EditButton variant="ghost" size="sm" onClick={updateValue}>
+                    Atualizar valor…
+                  </EditButton>
+                  <EditButton variant="ghost" size="sm" onClick={() => editInvestment()}>
+                    Características…
+                  </EditButton>
+                </>
               }
             >
               {parts.length ? (
@@ -263,8 +280,22 @@ export function BankTab({ reveal }: { reveal?: TabReveal<BankReveal> | null }) {
           positionId={dialog.spec.positionId}
           onDone={(profile, created) => {
             setPart(profile.position_id);
-            notify(created ? "Investimento cadastrado." : "Características salvas.");
+            notify(
+              created
+                ? "Investimento cadastrado. Para informar o valor dele numa data, selecione-o na composição e use Atualizar valor."
+                : "Características salvas.",
+            );
           }}
+        />
+      ) : null}
+      {dialog.spec?.kind === "valuation" ? (
+        <InvestmentValuationDialog
+          key={dialog.key}
+          open={dialog.open}
+          onClose={dialog.close}
+          positionId={dialog.spec.positionId}
+          name={dialog.spec.name}
+          onDone={() => notify("Valor registrado.")}
         />
       ) : null}
     </div>

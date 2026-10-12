@@ -65,7 +65,7 @@ forEachScreen(({ suffix }) => {
     await shot(page, `dialogo-simulador-${suffix}`, false);
     await page.keyboard.press("Escape");
 
-    await menu(page, "Registrar", "Avaliação…");
+    await menu(page, "Registrar", "Atualizar valor…");
     await shot(page, `dialogo-avaliacao-${suffix}`, false);
     await page.keyboard.press("Escape");
     await menu(page, "Mais", /^Características/);

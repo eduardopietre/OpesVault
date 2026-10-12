@@ -1,6 +1,6 @@
 /**
- * Nova avaliação (desktop `EventCommands.new_valuation`, docs/07 §3) and Corrigir observação. A valuation is
- * an observed value on a date, never a flow: a new date adds a point; another source on a date that already
+ * Atualizar valor (a new valuation; desktop `EventCommands.new_valuation`, docs/07 §3) and Corrigir observação. A
+ * valuation is an observed value on a date, never a flow: a new date adds a point; another source on a date that already
  * has one is kept apart (the first is used until the person picks another); the same source on the same date
  * is refused and the person is pointed to "corrigir observação". The default reading of a date that also has
  * movements is the closing of the day, after them.
@@ -75,7 +75,7 @@ export function InvestmentValuationDialog({
     <FormDialog
       open={open}
       onClose={onClose}
-      title={`Nova avaliação — ${name}`}
+      title={`Atualizar valor — ${name}`}
       confirmLabel="Registrar"
       size="md"
       onConfirm={confirm}

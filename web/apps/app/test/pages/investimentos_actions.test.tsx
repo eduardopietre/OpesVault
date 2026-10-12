@@ -106,12 +106,12 @@ describe("Avaliações", () => {
     const { user, ledger, workspace } = await openInvestimentos();
     const id = cdbOf(ledger);
     const before = snapshot(ledger);
-    await menu(user, "Registrar", "Avaliação…");
-    let box = await dialog(/Nova avaliação — CDB Banco X 2028/);
+    await menu(user, "Registrar", "Atualizar valor…");
+    let box = await dialog(/Atualizar valor — CDB Banco X 2028/);
     await fill(user, box, "Data", "15/04/2026");
     await fill(user, box, "Valor", "5.200,00");
     await submit(user, box, "Registrar");
-    await closed(/Nova avaliação/);
+    await closed(/Atualizar valor/);
     const created = service.valuationsOf(ledger, id).find((v) => v.on === "2026-04-15")!;
     expect(formatBrl(created.value)).toBe("R$ 5.200,00");
     expect(created.selected).toBe(true);
@@ -121,8 +121,8 @@ describe("Avaliações", () => {
     expect(snapshot(ledger)).toBe(before);
 
     // the same source on a date that already has one
-    await menu(user, "Registrar", "Avaliação…");
-    box = await dialog(/Nova avaliação/);
+    await menu(user, "Registrar", "Atualizar valor…");
+    box = await dialog(/Atualizar valor/);
     await fill(user, box, "Data", SOURCE_DATE);
     await fill(user, box, "Valor", "9.999,00");
     expect(within(box).getByText(/Já existe avaliação desta fonte em 28\/03\/2026/)).toBeTruthy();
@@ -135,14 +135,14 @@ describe("Avaliações", () => {
     const { user, ledger, workspace } = await openInvestimentos();
     const id = cdbOf(ledger);
     const before = snapshot(ledger);
-    await menu(user, "Registrar", "Avaliação…");
-    const box = await dialog(/Nova avaliação/);
+    await menu(user, "Registrar", "Atualizar valor…");
+    const box = await dialog(/Atualizar valor/);
     await fill(user, box, "Data", SOURCE_DATE);
     await fill(user, box, "Valor", "5.140,00");
     await fill(user, box, "Fonte", "extrato do banco");
     expect(within(box).getByText(/Esta será registrada como outra fonte/)).toBeTruthy();
     await submit(user, box, "Registrar");
-    await closed(/Nova avaliação/);
+    await closed(/Atualizar valor/);
     const day = service.valuationsOf(ledger, id).filter((v) => v.on === "2026-03-28");
     expect(day).toHaveLength(2);
     expect(day.filter((v) => v.selected)).toHaveLength(1);
@@ -170,8 +170,8 @@ describe("Avaliações", () => {
     const { user, ledger, workspace } = await openInvestimentos();
     const id = cdbOf(ledger);
     workspace.act((l) => service.contribute(l, id, "50", makeDate(2026, 4, 2), cashOf(l)));
-    await menu(user, "Registrar", "Avaliação…");
-    const box = await dialog(/Nova avaliação/);
+    await menu(user, "Registrar", "Atualizar valor…");
+    const box = await dialog(/Atualizar valor/);
     await fill(user, box, "Data", "02/04/2026");
     expect(within(box).getByText(/Há movimentos neste dia \(1 evento\)/)).toBeTruthy();
     expect(within(box).getByText(/fechamento do dia, depois dos movimentos/)).toBeTruthy();

@@ -93,7 +93,7 @@ export function InvestmentDialog({ open, onClose, bankId = null, positionId = nu
   const [assetClass, setAssetClass] = useState<string>(model.AssetClass.OTHER);
   const [bank, setBank] = useState<string>(current?.bank_account_id ?? bankId ?? NONE);
   const [value, setValue] = useState("");
-  const [fromChecking, setFromChecking] = useState(true);
+  const [fromChecking, setFromChecking] = useState(false);
   const [issuer, setIssuer] = useState(current?.issuer ?? "");
   const [issuerId, setIssuerId] = useState(current?.issuer_tax_id ? tax.ids.display(current.issuer_tax_id) : "");
   const [indexer, setIndexer] = useState<string>(current?.indexer ?? NONE);

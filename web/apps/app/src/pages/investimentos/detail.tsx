@@ -185,7 +185,7 @@ export function Detail({
           <p className="mt-1 text-body text-secondary">{summary.join(" · ")}</p>
         </div>
         <div role="toolbar" aria-label="Comandos do investimento" className="flex flex-wrap items-center gap-2">
-          <EditButton onClick={onValuate}>Avaliar…</EditButton>
+          <EditButton onClick={onValuate}>Atualizar valor…</EditButton>
           <EditButton onClick={onProfile}>Características…</EditButton>
           <Button onClick={onSeeEntries}>Ver lançamentos</Button>
           {bankId && bank ? <Button onClick={() => onBank(bankId)}>Ver conta bancária</Button> : null}
@@ -211,8 +211,8 @@ export function Detail({
           <ChartPanel chart={evolution} prefKey="investimentos/evolucao" height={300} />
         ) : (
           <Empty title="Sem avaliações">
-            Registre a primeira em Registrar › Avaliação (ou em Avaliar…): sem valores observados não há evolução nem
-            rentabilidade, e o resultado fica indisponível, nunca zero.
+            Informe quanto o investimento valia numa data em Atualizar valor…: sem valores observados não há evolução
+            nem rentabilidade, e o resultado fica indisponível, nunca zero.
           </Empty>
         )}
       </section>

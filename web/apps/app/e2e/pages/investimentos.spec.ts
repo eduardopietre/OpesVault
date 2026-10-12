@@ -58,9 +58,9 @@ for (const size of TEST_SIZES) {
         const errors = watchErrors(page);
         await openDemo(page, "/investimentos");
         await expect(tableAt(page, "Avaliações", phone)).toBeVisible();
-        // Registrar › Avaliação…: the refusal, then a value
-        await menu(page, "Registrar", "Avaliação…");
-        let dialog = await openDialog(page, /Nova avaliação — CDB Banco X 2028/, "nova avaliação");
+        // Registrar › Atualizar valor…: the refusal, then a value
+        await menu(page, "Registrar", "Atualizar valor…");
+        let dialog = await openDialog(page, /Atualizar valor — CDB Banco X 2028/, "atualizar valor");
         await submit(dialog, "Registrar");
         await expect(dialog.getByText("Informe o valor.")).toBeVisible();
         await field(dialog, "Data").fill("28/03/2026");

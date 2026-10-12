@@ -46,7 +46,7 @@ describe("Links into Investimentos", () => {
     const opened = await openInvestimentos();
     const id = second(opened);
     await follow(opened.router, id, "avaliar");
-    expect(await dialog("Nova avaliação — LCI Banco Z")).toBeTruthy();
+    expect(await dialog("Atualizar valor — LCI Banco Z")).toBeTruthy();
     expect(selectedRow(await table("Investimentos"))!.getAttribute("data-row-id")).toBe(id);
   });
 

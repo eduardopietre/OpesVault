@@ -295,6 +295,12 @@ describe("Contas bancárias", () => {
     await fill(user, box, "Taxa (%)", "105");
     await user.click(within(box).getByRole("checkbox", { name: "Vencimento: informada" }));
     await fill(user, box, "Vencimento", "15/06/2027");
+    // the money only leaves the checking account when the person says so
+    const fromChecking = within(box).getByRole("checkbox", {
+      name: "O dinheiro saiu da conta corrente desta conta bancária",
+    });
+    expect(fromChecking.getAttribute("aria-checked")).toBe("false");
+    await user.click(fromChecking);
     await submit(user, box, "Salvar");
     await closed("Novo investimento");
     expect(investments.service.positions(ledger).size).toBe(positions + 1);
@@ -306,7 +312,7 @@ describe("Contas bancárias", () => {
     expect(position.holder_id).toBe(nubank.holder_id);
     // the money left the checking account
     expect(formatBrl(queries.balance(ledger, nubank.checking_id!))).toBe("-R$ 360,00");
-    expect(await screen.findByText("Investimento cadastrado.")).toBeTruthy();
+    expect(await screen.findByText(/^Investimento cadastrado\./)).toBeTruthy();
     expect(flat((await screen.findByRole("grid", { name: "Composição da conta bancária" })).textContent)).toContain(
       "CDB Nubank 2027",
     );
@@ -346,6 +352,32 @@ describe("Contas bancárias", () => {
     expect(await screen.findByText("Características salvas.")).toBeTruthy();
     undoOnce(workspace);
     expect(investments.profile.profileOf(ledger, position.id)).toEqual(before);
+  });
+
+  it("updates the value of an investment on a date from the composition; one undo reverts", async () => {
+    const { ledger, workspace, user } = await openBank();
+    const parts = await screen.findByRole("grid", { name: "Composição da conta bancária" });
+    await clickRow(user, parts, "Conta corrente");
+    await user.click(screen.getByRole("button", { name: "Atualizar valor…" }));
+    expect(await screen.findByText("Escolha um investimento na composição.")).toBeTruthy();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    await clickRow(user, parts, "CDB Banco X 2028");
+    const position = [...investments.service.positions(ledger).values()].find(
+      (p) => investments.service.assets(ledger).get(p.asset_id)?.name === "CDB Banco X 2028",
+    )!;
+    const count = investments.service.valuationsOf(ledger, position.id).length;
+    await user.click(screen.getByRole("button", { name: "Atualizar valor…" }));
+    const box = await dialog("Atualizar valor — CDB Banco X 2028");
+    await fill(user, box, "Data", "15/03/2026");
+    await fill(user, box, "Valor", "12.345,67");
+    await submit(user, box, "Registrar");
+    await closed(/Atualizar valor/);
+    const added = investments.service.valuationsOf(ledger, position.id);
+    expect(added.length).toBe(count + 1);
+    expect(added.some((v) => v.on === "2026-03-15" && formatBrl(v.value) === "R$ 12.345,67")).toBe(true);
+    expect(await screen.findByText("Valor registrado.")).toBeTruthy();
+    undoOnce(workspace);
+    expect(investments.service.valuationsOf(ledger, position.id).length).toBe(count);
   });
 
   it("refuses an invalid CNPJ and a rate that is not a number in the characteristics", async () => {

@@ -83,6 +83,10 @@ export interface SyncDetail {
   pending: number;
   /** The browser said it may erase this site's storage (persistence denied): pending changes could be lost. */
   storageAtRisk: boolean;
+  /** Changes only in this tab's memory (not yet stored in the browser, or documents not uploaded): lost on closing. */
+  unsaved?: number;
+  /** Why they could not be stored, for the person; null while nothing failed. */
+  saveError?: string | null;
 }
 
 /** Progress of a backup operation (records, documents, restoring); `total` is 0 when not known. */

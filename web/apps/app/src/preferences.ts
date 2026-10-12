@@ -74,20 +74,57 @@ export function readTheme(store: PreferenceStore): ThemeChoice {
   return value === "light" || value === "dark" ? value : "system";
 }
 
+const HOLDER_KEY = PREFIX + "aba";
+
 /**
  * This tab's label for the edit lease, kept for the life of the tab (sessionStorage), so a reload gets
  * its own lease back at once instead of opening read-only until the old one expires (docs/19).
  * It is a random label, not project data.
  */
 export function tabHolder(): string {
-  const key = PREFIX + "aba";
   try {
-    const existing = sessionStorage.getItem(key);
+    const existing = sessionStorage.getItem(HOLDER_KEY);
     if (existing) return existing;
     const created = `tab-${crypto.randomUUID()}`;
-    sessionStorage.setItem(key, created);
+    sessionStorage.setItem(HOLDER_KEY, created);
     return created;
   } catch {
     return `tab-${crypto.randomUUID()}`;
+  }
+}
+
+/** How long a tab waits for its label to be freed (a reload: the page before lets it go as it unloads). */
+const CLAIM_WAIT_MS = 2000;
+
+/**
+ * `tabHolder`, held by this page for as long as it lives (Web Locks). A duplicated tab inherits the same
+ * sessionStorage, so it would share the label and the two tabs would hand the edit lease to each other without
+ * end (docs/19 §9.2). The page that finds the label still held after the wait takes a new one of its own.
+ */
+export async function claimTabHolder(
+  locks: LockManager | null | undefined = globalThis.navigator?.locks,
+  waitMs = CLAIM_WAIT_MS,
+): Promise<string> {
+  if (!locks) return tabHolder();
+  const claim = (label: string, signal?: AbortSignal) =>
+    new Promise<boolean>((resolve) => {
+      locks
+        .request(`opesvault-aba-${label}`, signal ? { signal } : { ifAvailable: true }, (lock) => {
+          resolve(lock !== null);
+          // Held until the page goes away.
+          return lock === null ? undefined : new Promise<never>(() => undefined);
+        })
+        .catch(() => resolve(false));
+    });
+  const label = tabHolder();
+  if (await claim(label, AbortSignal.timeout(waitMs))) return label;
+  for (;;) {
+    const created = `tab-${crypto.randomUUID()}`;
+    try {
+      sessionStorage.setItem(HOLDER_KEY, created);
+    } catch {
+      // no sessionStorage: the label lives as long as this page
+    }
+    if (await claim(created)) return created;
   }
 }

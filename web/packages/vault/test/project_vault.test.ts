@@ -341,6 +341,62 @@ describe("offline, reloads and network failures", () => {
     expect(pulled.records).toHaveLength(2);
   });
 
+  /** A device whose next push is applied by the server but answered as `offline`. */
+  async function losingAnswers() {
+    const server = new MemoryServer();
+    const real = server.client();
+    let drop = false;
+    const flaky = intercept(real, {
+      push: async (projectId, leaseId, records) => {
+        const result = await real.push(projectId, leaseId, records);
+        if (drop) {
+          drop = false;
+          throw new BackendError("offline");
+        }
+        return result;
+      },
+    });
+    const dev = await device(server, flaky);
+    await account(flaky, "ana@example.com");
+    const { vault } = await createProject(dev);
+    return { real, dev, vault, loseNextAnswer: () => (drop = true) };
+  }
+
+  it("an edit made after a push whose answer was lost builds on that push, without a conflict with itself", async () => {
+    const { real, dev, vault, loseNextAnswer } = await losingAnswers();
+    await vault.stage([op("1", "primeira")]);
+    await vault.syncNow();
+    loseNextAnswer();
+    await vault.stage([op("1", "segunda")]);
+    await vault.syncNow();
+    expect(vault.getSnapshot()).toMatchObject({ status: "offline", pending: 1 });
+    await vault.stage([op("1", "terceira")]);
+    await vault.syncNow();
+    expect(vault.getSnapshot()).toMatchObject({ status: "synced", pending: 0, conflicts: [] });
+    expect(vault.get("operation", "1")).toEqual(op("1", "terceira"));
+    const pulled = await real.pull(vault.projectId, 0);
+    expect(pulled.revision).toBe(3);
+    // Reopened from the cache: the rebased entry was stored too.
+    const reader = (await dev.reload()).vault(vault.projectId);
+    await vault.lock();
+    await reader.unlock("senha do projeto");
+    expect(reader.get("operation", "1")).toEqual(op("1", "terceira"));
+  });
+
+  it("deleting a new record whose push lost its answer deletes it on the server too", async () => {
+    const { real, vault, loseNextAnswer } = await losingAnswers();
+    loseNextAnswer();
+    await vault.stage([op("1", "nova")]);
+    await vault.syncNow();
+    expect(vault.getSnapshot()).toMatchObject({ status: "offline", pending: 1 });
+    await vault.stage([], [{ kind: "operation", id: "1" }]);
+    await vault.syncNow();
+    expect(vault.getSnapshot()).toMatchObject({ status: "synced", pending: 0, conflicts: [] });
+    expect(vault.get("operation", "1")).toBeUndefined();
+    const pulled = await real.pull(vault.projectId, 0);
+    expect(pulled.records.map((r) => r.ciphertext)).toEqual([null]);
+  });
+
   it("an edit made while a push is in flight stays pending", async () => {
     const server = new MemoryServer();
     const real = server.client();

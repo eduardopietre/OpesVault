@@ -112,7 +112,7 @@ bloco i = AES-256-GCM(chave do anexo, nonce = contador i, até 1 MiB, AAD)
 AAD     = "opesvault/blob/v1|" + idDoProjeto + "|" + idDoAnexo + "|" + i + "|" + final(0/1) + "|" + tamanhoDoBloco
 ```
 
-Cada anexo tem chave própria e aleatória, por isso o nonce pode ser contador. O AAD impede reordenar, cortar, trocar de anexo ou de projeto e mudar o tamanho do bloco. Anexos só são baixados e decifrados quando exibidos e ficam numa memória limitada (64 MiB) enquanto o projeto está desbloqueado; nunca vão para o disco em claro.
+Cada anexo tem chave própria e aleatória, por isso o nonce pode ser contador. O AAD impede reordenar, cortar, trocar de anexo ou de projeto e mudar o tamanho do bloco. Anexos só são baixados e decifrados quando exibidos e ficam numa memória limitada (64 MiB) enquanto o projeto está desbloqueado; nunca vão para o disco em claro. O anexo de um documento removido só é apagado do servidor depois que o servidor já não tem o registro do documento (nada pendente, nenhum conflito): até lá, um conflito decidido pela versão do servidor ou um desfazer ainda precisam dele, e o desfazer volta a apontar para o mesmo anexo.
 
 ### 6.5 Ids
 
@@ -147,7 +147,8 @@ Isso é limitação conhecida, como as do `03` §1: o padrão de uso pode revela
   - o texto é comprimido (gzip, em fluxo) antes de ser selado (formato 2, W13); um retrato do formato 1, sem compressão, não abre, é apagado e escrito de novo. Comprimir antes de cifrar é seguro aqui: o retrato fica no aparelho e ninguém consegue misturar texto escolhido nele e observar o tamanho resultante, que é o que um ataque do tipo CRIME exige.
 - **Primeiro download** (W13): num aparelho que nunca abriu o projeto, as páginas baixadas são gravadas cifradas, várias por transação, e abertas juntas no fim. Cada transação grava também o cursor e a marca de download em andamento, então o cache fica consistente se a abertura for cancelada ou a aba fechada no meio: a próxima abertura continua de onde parou. Cancelar descarta tudo o que já estava decifrado na memória e deixa o projeto bloqueado.
 - Um teste (`web/packages/vault/test/no_plaintext.test.ts`) grava registros, anexo, nome, troca de senha e chave de recuperação, depois vasculha todo o IndexedDB e todo argumento enviado ao servidor procurando conteúdo, tipo, id real, nome, senhas e chave de recuperação. Nada pode aparecer.
-- O app pede `navigator.storage.persist()` para o navegador não apagar o IndexedDB sob pressão de espaço. Mesmo assim, o navegador ou o usuário podem apagá-lo: alterações pendentes se perdem com ele. Por isso a sincronização é frequente, o app avisa quando há pendências ao fechar a aba (`18` §3.3) e, quando o navegador recusa a persistência e há alterações ainda não enviadas, mostra um aviso fixo abaixo da barra superior (W13).
+- O app pede `navigator.storage.persist()` para o navegador não apagar o IndexedDB sob pressão de espaço. Mesmo assim, o navegador ou o usuário podem apagá-lo: alterações pendentes se perdem com ele. Por isso a sincronização é frequente, o app pede confirmação ao navegador (`beforeunload`) quando se fecha a aba com alterações ainda não aceitas pelo servidor (`18` §3.3) e, quando o navegador recusa a persistência e há alterações ainda não enviadas, mostra um aviso fixo abaixo da barra superior (W13).
+- **Alterações só na aba.** Uma alteração que o cofre não recebeu (sem concessão de edição, grande demais) e um anexo que não subiu (sem conexão) existem só na memória da aba: não estão nem no IndexedDB. O app os guarda, mostra um aviso fixo abaixo da barra superior com a quantidade e o motivo, tenta de novo quando a conexão ou a edição voltam (e a cada 5 s enquanto houver falha) e os conta no aviso ao fechar a aba. Bloquear o projeto ainda os perde.
 - `localStorage` e `sessionStorage` não recebem nada do projeto (regra de lint). Preferências do aparelho, como o rótulo da aba, ficam fora do projeto.
 
 ## 9. Sessão, bloqueio e sincronização
@@ -162,7 +163,7 @@ Isso é limitação conhecida, como as do `03` §1: o padrão de uso pode revela
 
 - Uma concessão de edição por projeto, de 60 s, renovada a cada 20 s enquanto a aba vive. Sem ela, escrever registros ou anexos é recusado pelo servidor (`no_lease`).
 - Outra aba ou aparelho abre **só para leitura**, mostra quem está editando, puxa as novidades periodicamente e pode **assumir** a edição explicitamente. Quem perde a concessão passa a só leitura sem perder o que já tinha registrado: as pendências ficam na fila e voltam a subir quando a concessão for recuperada, com conferência de conflito.
-- A mesma aba recarregada (mesmo rótulo de aba e mesma conta) recupera a própria concessão sem precisar assumir.
+- A mesma aba recarregada (mesmo rótulo de aba e mesma conta) recupera a própria concessão sem precisar assumir. O rótulo fica no `sessionStorage` e é reservado pela página com Web Locks enquanto ela vive: uma aba duplicada herda o `sessionStorage`, encontra o rótulo reservado (depois de esperar 2 s, o tempo de a página anterior de um recarregamento soltá-lo) e cria um rótulo próprio, para que as duas abas não troquem a concessão entre si sem fim.
 - Sem rede, a aba que era editora continua editando; as alterações esperam na fila.
 
 ### 9.3 Conflitos
@@ -172,7 +173,7 @@ Isso é limitação conhecida, como as do `03` §1: o padrão de uso pode revela
 
 ### 9.4 Queda de rede no meio do envio
 
-Se a resposta de um envio se perde, o app não sabe se ele foi aceito e **não reenvia às cegas**: puxa primeiro. Um registro puxado com texto cifrado idêntico ao pendente prova que o envio foi aceito (o nonce aleatório torna a coincidência impossível na prática); a pendência é dada por enviada. Assim nada se perde nem se duplica (`18` W2).
+Se a resposta de um envio se perde, o app não sabe se ele foi aceito e **não reenvia às cegas**: puxa primeiro. Um registro puxado com texto cifrado idêntico ao pendente prova que o envio foi aceito (o nonce aleatório torna a coincidência impossível na prática); a pendência é dada por enviada. Se o registro foi editado de novo enquanto isso, o app lembra o que enviou sem resposta: encontrando esse texto no servidor, a edição nova passa a se basear na revisão dele, em vez de virar um conflito com a própria edição anterior; e apagar um registro novo nessa situação envia a lápide, em vez de só esquecê-lo no aparelho. Assim nada se perde nem se duplica (`18` W2).
 
 ## 10. Senha e chave de recuperação
 

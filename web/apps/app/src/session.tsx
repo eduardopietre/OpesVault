@@ -22,6 +22,9 @@ export interface SessionState {
   pending: number;
   /** The browser may erase this device's data (persistent storage denied). */
   storageAtRisk: boolean;
+  /** Changes only in this tab's memory: they could not be stored in the browser yet (`saveError` says why). */
+  unsaved: number;
+  saveError: string | null;
 }
 
 const EMPTY: SessionState = {
@@ -34,6 +37,8 @@ const EMPTY: SessionState = {
   online: true,
   pending: 0,
   storageAtRisk: false,
+  unsaved: 0,
+  saveError: null,
 };
 
 export class SessionStore {
@@ -112,7 +117,16 @@ export function sessionActions(services: AppServices, store: SessionStore): Sess
       const state = store.get();
       const pending = detail?.pending ?? 0;
       const storageAtRisk = detail?.storageAtRisk ?? false;
-      if (pending !== state.pending || storageAtRisk !== state.storageAtRisk) store.update({ pending, storageAtRisk });
+      const unsaved = detail?.unsaved ?? 0;
+      const saveError = detail?.saveError ?? null;
+      if (
+        pending !== state.pending ||
+        storageAtRisk !== state.storageAtRisk ||
+        unsaved !== state.unsaved ||
+        saveError !== state.saveError
+      ) {
+        store.update({ pending, storageAtRisk, unsaved, saveError });
+      }
       if (status === "locked") {
         if (state.open) {
           cancelAllDecisions();

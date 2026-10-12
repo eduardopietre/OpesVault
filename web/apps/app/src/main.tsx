@@ -4,7 +4,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App.tsx";
 import { chooseMonth, localMonth } from "./data/shared_month.ts";
-import { devicePreferences, readIdleLock, tabHolder } from "./preferences.ts";
+import { claimTabHolder, devicePreferences, readIdleLock } from "./preferences.ts";
 import { UpdatePrompt } from "./pwa/UpdatePrompt.tsx";
 import { createAppRouter, preloadProjectScreens } from "./router.tsx";
 import { installTrustedTypes } from "./security.ts";
@@ -27,7 +27,7 @@ async function start() {
     fake ??
     lazyServices(async () =>
       (await import("./services/real.ts")).createRealServices({
-        holder: tabHolder(),
+        holder: await claimTabHolder(),
         idleLockMs: idleMinutes * 60_000,
         accountNames: preferences,
       }),

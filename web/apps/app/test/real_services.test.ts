@@ -179,4 +179,34 @@ describe("real services", () => {
     await a.closeProject();
     await b.closeProject();
   }, 30_000);
+
+  it("asks before the tab closes while changes are not on the server, and says what is only in the tab", async () => {
+    const server = new MemoryServer();
+    const a = realServices(server, "tab-a");
+    await a.signUp({ name: "Ana", email: "ana@example.com", password: "senha da conta" });
+    const created = await a.createProject({ name: "Casa", password: "senha do projeto" });
+    const ws = (await a.openProject(created.project.id, "senha do projeto")).workspace;
+    const details: { unsaved?: number; saveError?: string | null }[] = [];
+    const stop = a.watchSync((_status, detail) => details.push({ ...detail }));
+    const leaving = () => {
+      const event = new Event("beforeunload", { cancelable: true });
+      window.dispatchEvent(event);
+      return event.defaultPrevented;
+    };
+    await until(() => !leaving());
+
+    server.offline = true;
+    const pdf = new TextEncoder().encode("%PDF-1.4\nrecibo\n%%EOF");
+    ws.act((_l, session) => session.addDocument("recibo.pdf", pdf));
+    await ws.settled();
+    expect(leaving()).toBe(true);
+    expect(details.at(-1)).toMatchObject({ unsaved: 1, saveError: expect.stringContaining("conexão") });
+
+    server.offline = false;
+    // Tried again on its own (every 5 s): the vault had nothing pending, so its state did not change.
+    await until(() => ws.localOnly === 0 && !leaving(), 15_000);
+    expect(details.at(-1)).toMatchObject({ unsaved: 0, saveError: null });
+    stop();
+    await a.closeProject();
+  }, 30_000);
 });

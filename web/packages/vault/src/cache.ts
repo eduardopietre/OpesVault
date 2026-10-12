@@ -221,7 +221,9 @@ export class VaultCache {
    * Stores pulled records in one transaction: the server's records (tombstones included; one page, or several
    * pages of a first download in order, the later version of a record last), pending entries they proved were
    * already accepted, and the new cursor. `downloading` marks a first download that goes on after these rows.
-   * Returns the generation the rows were written at.
+   * `rebased` are pending entries now based on a newer revision (a push of theirs was accepted, its answer lost);
+   * an entry edited again meanwhile (another seq) is rebased all the same. Returns the generation the rows were
+   * written at.
    */
   async applyPull(
     projectId: string,
@@ -229,6 +231,7 @@ export class VaultCache {
     cursor: number,
     acknowledged: readonly string[],
     downloading = false,
+    rebased: readonly PendingChange[] = [],
   ): Promise<number> {
     const tx = this.#db.transaction(["records", "pending", "projects"], "readwrite");
     const projects = tx.objectStore("projects");
@@ -240,6 +243,10 @@ export class VaultCache {
     }
     const pendingStore = tx.objectStore("pending");
     for (const id of acknowledged) pendingStore.delete([projectId, id]);
+    for (const change of rebased) {
+      const current = (await request(pendingStore.get([projectId, change.id]))) as PendingChange | undefined;
+      if (current !== undefined) pendingStore.put({ ...current, baseRevision: change.baseRevision });
+    }
     projects.put({ projectId, envelope: null, sealedName: null, ...current, cursor, generation: gen, downloading });
     await done(tx);
     return gen;

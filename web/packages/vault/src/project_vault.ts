@@ -44,6 +44,7 @@ import {
   ID_PATTERN,
   LEASE_MS,
   LIMITS,
+  type B64,
   type EditLease,
   type Envelope,
   type EnvelopeContent,
@@ -331,6 +332,11 @@ export class ProjectVault {
   readonly #pending = new Map<string, PendingChange>();
   /** Opaque ids in a push whose answer has not arrived yet. */
   readonly #inFlight = new Set<string>();
+  /**
+   * opaque id → what pushes whose answer was lost sent for it (docs/19 §9.4). If a pull finds one of these on the
+   * server, that push was accepted: a later local edit is rebased on it instead of conflicting with itself.
+   */
+  readonly #unconfirmed = new Map<string, (B64 | null)[]>();
   readonly #conflicts = new Map<string, Conflict>();
   readonly #damaged = new Set<string>();
   #cursor = 0;
@@ -652,6 +658,8 @@ export class ProjectVault {
     this.#known.clear();
     this.#tombstones.clear();
     this.#pending.clear();
+    this.#inFlight.clear();
+    this.#unconfirmed.clear();
     this.#conflicts.clear();
     this.#conflictsChanged();
     this.#damaged.clear();
@@ -1093,9 +1101,13 @@ export class ProjectVault {
         const id = await keys.opaqueId(ref.kind, ref.id);
         this.#refs.set(id, { kind: ref.kind, id: ref.id });
         const known = this.#known.get(id);
-        if ((known === undefined || this.#tombstones.has(id)) && !this.#inFlight.has(id)) {
+        if (
+          (known === undefined || this.#tombstones.has(id)) &&
+          !this.#inFlight.has(id) &&
+          !this.#unconfirmed.has(id)
+        ) {
           // Never reached the server (or already deleted there): just forget the local change.
-          // A record being pushed right now does reach it, so its deletion must follow.
+          // A record being pushed right now, or in a push whose answer was lost, may reach it: its deletion follows.
           changes.delete(id);
           if (this.#pending.has(id)) {
             dropped.push(id);
@@ -1363,6 +1375,7 @@ export class ProjectVault {
       return;
     }
     const acknowledged: string[] = [];
+    const rebased: PendingChange[] = [];
     const upserts: PlainRecord[] = [];
     const deletes: RecordRef[] = [];
     const plainChanges: (() => void)[] = [];
@@ -1380,9 +1393,15 @@ export class ProjectVault {
       const known = this.#known.get(record.id) ?? 0;
       const pending = this.#pending.get(record.id);
       if (record.revision <= known) continue;
+      const sentEarlier = this.#unconfirmed.get(record.id)?.includes(record.ciphertext) ?? false;
+      this.#unconfirmed.delete(record.id);
       if (pending !== undefined) {
         if (pending.ciphertext === record.ciphertext) {
           acknowledged.push(record.id);
+        } else if (sentEarlier) {
+          // A push whose answer was lost was accepted, and the record was edited here again since: that newer edit
+          // now builds on what the server has, which is this device's own earlier version, not someone else's.
+          rebased.push({ ...pending, baseRevision: record.revision });
         } else if (record.revision > pending.baseRevision) {
           const ref = this.#refs.get(record.id);
           let remote: PlainRecord | null = null;
@@ -1427,7 +1446,7 @@ export class ProjectVault {
         this.#damaged.add(record.id);
       }
     }
-    await this.#cache.applyPull(this.projectId, page.records, page.revision, acknowledged);
+    await this.#cache.applyPull(this.projectId, page.records, page.revision, acknowledged, false, rebased);
     this.#snapshotStale += page.records.length;
     if (generation !== this.#generation) return;
     for (const record of page.records) {
@@ -1438,6 +1457,12 @@ export class ProjectVault {
     for (const id of acknowledged) {
       this.#pending.delete(id);
       if (this.#conflicts.delete(id)) conflictsChanged = true;
+    }
+    for (const change of rebased) {
+      // Unless edited again while the page was being stored: that edit keeps its own entry, rebased too.
+      const current = this.#pending.get(change.id);
+      if (current !== undefined) this.#pending.set(change.id, { ...current, baseRevision: change.baseRevision });
+      if (this.#conflicts.delete(change.id)) conflictsChanged = true;
     }
     for (const change of plainChanges) change();
     this.#cursor = page.revision;
@@ -1479,7 +1504,9 @@ export class ProjectVault {
         );
       } catch (error) {
         if (isLeaseError(error)) {
-          // Expired or taken over: try to get it back (free again), else become read-only.
+          // Expired or taken over: try to get it back (free again), else become read-only. The server checks
+          // the lease before writing anything, so nothing of this batch reached it.
+          for (const change of batch) this.#inFlight.delete(change.id);
           this.#lease = null;
           this.#mode = "none";
           this.#clearTimer("renew");
@@ -1488,7 +1515,13 @@ export class ProjectVault {
           continue;
         }
         // The push may or may not have been applied: learn it from the server before resending.
-        if (isOffline(error) || !(error instanceof BackendError)) this.#needPull = true;
+        if (isOffline(error) || !(error instanceof BackendError)) {
+          this.#needPull = true;
+          for (const change of batch) {
+            const sent = this.#unconfirmed.get(change.id) ?? [];
+            this.#unconfirmed.set(change.id, [...sent, change.ciphertext]);
+          }
+        }
         for (const change of batch) this.#inFlight.delete(change.id);
         throw error;
       }
@@ -1519,6 +1552,7 @@ export class ProjectVault {
           this.#snapshotStale += batch.length;
           if (generation !== this.#generation) return;
           for (const change of batch) {
+            this.#unconfirmed.delete(change.id);
             const current = this.#pending.get(change.id);
             if (current?.seq === change.seq) this.#pending.delete(change.id);
             else if (current) this.#pending.set(change.id, { ...current, baseRevision: revision });
@@ -1582,9 +1616,19 @@ export class ProjectVault {
       const cached = await this.#cache.getProject(this.projectId);
       let cursor = cached?.cursor ?? 0;
       const pending = await this.#cache.listPending(this.projectId);
-      for (let start = 0; start < pending.length; start += LIMITS.maxPushRecords) {
+      for (let start = 0; start < pending.length;) {
         if (this.#keys !== null) return;
-        const batch = pending.slice(start, start + LIMITS.maxPushRecords);
+        // Within the server's limits on count and total size, like #nextBatch.
+        let end = start;
+        let size = 0;
+        while (end < pending.length && end - start < LIMITS.maxPushRecords) {
+          const length = pending[end]!.ciphertext?.length ?? 0;
+          if (end > start && size + length > LIMITS.maxPushCiphertext) break;
+          size += length;
+          end += 1;
+        }
+        const batch = pending.slice(start, end);
+        start = end;
         const result = await this.#backend.push(
           this.projectId,
           lease.leaseId,

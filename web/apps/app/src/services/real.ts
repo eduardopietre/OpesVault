@@ -26,7 +26,7 @@ import {
 import type { PreferenceStore } from "@opesvault/ui";
 import { backupFileName, checkOf, documentBlobRefs } from "../data/backup.ts";
 import { activeMembers } from "../data/operator.ts";
-import { Workspace } from "../data/workspace.ts";
+import { DOCUMENT_KIND, Workspace } from "../data/workspace.ts";
 import { accountNameKey } from "../preferences.ts";
 import {
   ServiceError,
@@ -65,6 +65,9 @@ const BACKUP_MESSAGES: Record<BackupError["code"], string> = {
   corrupted: "O arquivo está danificado, incompleto ou foi alterado. Nada dele foi usado.",
   invalid_content: "O conteúdo do arquivo não confere com o formato de backup. Nada dele foi usado.",
 };
+
+/** How soon a failed hand-over or upload of the open project is tried again (the vault's own retry interval). */
+const SAVE_RETRY_MS = 5_000;
 
 /** The user-facing message for a failure of the vault or the server. */
 export function serviceError(error: unknown): ServiceError {
@@ -166,7 +169,13 @@ export function createRealServices(options: RealServicesOptions = {}): AppServic
   const report = () => {
     const snapshot = vault?.getSnapshot();
     const status: ProjectSyncStatus = snapshot ? snapshot.status : "locked";
-    const detail = { pending: snapshot?.pending ?? 0, storageAtRisk };
+    const failure = workspace?.stageError ?? null;
+    const detail: SyncDetail = {
+      pending: snapshot?.pending ?? 0,
+      storageAtRisk,
+      unsaved: workspace?.localOnly ?? 0,
+      saveError: failure === null ? null : serviceError(failure).message,
+    };
     for (const listener of syncListeners) listener(status, detail);
   };
 
@@ -217,15 +226,43 @@ export function createRealServices(options: RealServicesOptions = {}): AppServic
     const name = snapshot.name ?? projectSummary.name;
     const ws = Workspace.fromRecords(v.records.values(), name, { sink: v, readOnly });
     unsubscribeVault?.();
+    let lastStatus = v.getSnapshot().status;
     const offVault = v.subscribe(() => {
       const s = v.getSnapshot();
       ws.setReadOnly(s.status === "readOnly");
+      // The connection or the edit came back: what is waiting in the tab is handed over again.
+      if (s.status !== lastStatus && (s.status === "synced" || s.status === "pending")) ws.retry();
+      lastStatus = s.status;
+      // The server agrees with this tab: blobs of documents it no longer has can go.
+      if (s.status === "synced") ws.collectBlobs((id) => v.get(DOCUMENT_KIND, id) !== undefined);
       report();
     });
     const offRemote = v.onRemoteChange(() => ws.reload(v.records.values(), v.getSnapshot().status === "readOnly"));
+    // A failed hand-over or upload is tried again on its own too: an upload can fail with nothing pending in the
+    // vault, whose state then never changes.
+    let saveRetry: ReturnType<typeof setTimeout> | null = null;
+    const offWorkspace = ws.subscribe(() => {
+      if (saveRetry === null && ws.stageError !== null && ws.localOnly > 0) {
+        saveRetry = setTimeout(() => {
+          saveRetry = null;
+          ws.retry();
+        }, options.vaultOptions?.retryMs ?? SAVE_RETRY_MS);
+      }
+      report();
+    });
+    // Closing the tab with changes not yet on the server (docs/19 §8): the browser asks first.
+    const onLeave = (event: BeforeUnloadEvent) => {
+      if (v.getSnapshot().pending === 0 && ws.localOnly === 0) return;
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    if (typeof window !== "undefined") window.addEventListener("beforeunload", onLeave);
     unsubscribeVault = () => {
       offVault();
       offRemote();
+      offWorkspace();
+      if (saveRetry !== null) clearTimeout(saveRetry);
+      if (typeof window !== "undefined") window.removeEventListener("beforeunload", onLeave);
     };
     unwatchActivity?.();
     unwatchActivity = typeof window === "undefined" ? null : watchActivity(window, () => v.touch());

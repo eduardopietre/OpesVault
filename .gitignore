@@ -2,6 +2,11 @@
 build/
 dist/
 coverage/
+.cpython-312.pyc
+.coverage
+fase0-selftest.json
+fase0-ram.json
+*.pyc
 
 # ── Dados sensíveis: NUNCA versionar ───────────────────
 # Projetos, backups e bancos locais (cifrados ou não)

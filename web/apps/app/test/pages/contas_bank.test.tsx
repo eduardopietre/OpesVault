@@ -380,6 +380,27 @@ describe("Contas bancárias", () => {
     expect(investments.service.valuationsOf(ledger, position.id).length).toBe(count);
   });
 
+  it("adds a contribution to an investment from the composition, out of a cash account; one undo reverts", async () => {
+    const { ledger, workspace, user } = await openBank();
+    const parts = await screen.findByRole("grid", { name: "Composição da conta bancária" });
+    await clickRow(user, parts, "CDB Banco X 2028");
+    const position = [...investments.service.positions(ledger).values()].find(
+      (p) => investments.service.assets(ledger).get(p.asset_id)?.name === "CDB Banco X 2028",
+    )!;
+    const cost = investments.service.remainingCost(ledger, position.id);
+    const before = snapshot(ledger);
+    await user.click(screen.getByRole("button", { name: "Aporte…" }));
+    const box = await dialog("Aporte — CDB Banco X 2028");
+    await fill(user, box, "Data", "20/03/2026");
+    await fill(user, box, "Valor", "500,00");
+    await submit(user, box, "Registrar");
+    await closed(/Aporte —/);
+    expect(investments.service.remainingCost(ledger, position.id).eq(cost.add("500"))).toBe(true);
+    expect(await screen.findByText("Aporte registrado.")).toBeTruthy();
+    undoOnce(workspace);
+    expect(snapshot(ledger)).toBe(before);
+  });
+
   it("refuses an invalid CNPJ and a rate that is not a number in the characteristics", async () => {
     const { workspace, user } = await openBank();
     const parts = await screen.findByRole("grid", { name: "Composição da conta bancária" });

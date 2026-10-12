@@ -17,6 +17,7 @@ import type { Id } from "../lib/ids.ts";
 import { EventQuality } from "./model.ts";
 import {
   externalFlows,
+  periodResult,
   Quality,
   type Result,
   result,
@@ -181,4 +182,63 @@ export function allMethods(ledger: Ledger, positionId: Id, start: IsoDate, end: 
     xirr(ledger, positionId, start, end),
     modifiedDietz(ledger, positionId, start, end),
   ];
+}
+
+// ── equivalent rates and intervals ───────────────
+
+/** The month of the equivalent rates: the XIRR year of 365 calendar days over twelve. */
+export const MONTH_DAYS = Dec.from(365).div(12);
+export const YEAR_DAYS = Dec.from(365);
+
+/**
+ * A rate over `days` restated over `target` days, compounded: (1 + r)^(target / days) − 1. Always labeled as an
+ * equivalent rate (docs/06 §5: never annualized in silence). Null when r ≤ −100% or the period has no length.
+ */
+export function equivalentRate(rate: Dec, days: Dec | number, target: Dec | number): Dec | null {
+  const base = Dec.from(1).add(rate);
+  const length = Dec.from(days);
+  if (!base.isPositive() || !length.isPositive()) return null;
+  return withContext({ prec: 40 }, () => Dec.from(target).div(length).mul(base.ln()).exp_().sub(1)).plus();
+}
+
+/** What happened between two consecutive dates with a value informed. */
+export interface Interval {
+  readonly start: IsoDate;
+  readonly end: IsoDate;
+  readonly days: number;
+  /** Net external flows after the start and up to the end: contributions positive, withdrawals negative. */
+  readonly flows: Dec;
+  /** Result in money (docs/06 §4): end − start − flows. */
+  readonly gain: Result;
+  /** Return of the interval: simple without contributions or withdrawals, Modified Dietz (estimate) with them. */
+  readonly rate: Result;
+  /** `rate` restated over a month, or null when it is unknown. */
+  readonly monthly: Dec | null;
+}
+
+/** Every interval between consecutive valuation dates of the position, oldest first. Nothing is interpolated. */
+export function intervals(ledger: Ledger, positionId: Id): Interval[] {
+  const dates = [...new Set(selectedSeries(ledger, positionId).map((v) => v.on))].sort();
+  const out: Interval[] = [];
+  for (let i = 1; i < dates.length; i++) {
+    const start = dates[i - 1]!;
+    const end = dates[i]!;
+    const days = daysBetween(end, start);
+    const flows = Dec.sum(
+      externalFlows(ledger, positionId, start, end).map((f) => f.amount),
+      ZERO,
+    );
+    const simple = simpleReturn(ledger, positionId, start, end);
+    const rate = simple.value !== null ? simple : modifiedDietz(ledger, positionId, start, end);
+    out.push({
+      start,
+      end,
+      days,
+      flows,
+      gain: periodResult(ledger, positionId, start, end),
+      rate,
+      monthly: rate.value === null ? null : equivalentRate(rate.value, days, MONTH_DAYS),
+    });
+  }
+  return out;
 }

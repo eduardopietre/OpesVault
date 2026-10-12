@@ -2,7 +2,7 @@
 import { Badge } from "@opesvault/ui";
 import type { TierColumn } from "../../components/tier_columns.ts";
 import { Warn } from "../../components/list_parts.tsx";
-import type { EventRow, LotRow, NoteRow, PortfolioRow, ReturnRow, ValuationRow } from "./rows.ts";
+import type { EventRow, IntervalRow, LotRow, NoteRow, PortfolioRow, ReturnRow, ValuationRow } from "./rows.ts";
 
 export const PORTFOLIO_COLUMNS: TierColumn<PortfolioRow>[] = [
   {
@@ -142,6 +142,39 @@ export const RETURN_COLUMNS: TierColumn<ReturnRow>[] = [
   },
   { id: "quality", header: "Qualidade", cell: (r) => r.quality, width: 105, tier: 3 },
   { id: "notes", header: "Observações", cell: (r) => r.notes, grow: 3, width: 220, tier: 2 },
+];
+
+export const INTERVAL_COLUMNS: TierColumn<IntervalRow>[] = [
+  {
+    id: "period",
+    header: "Entre",
+    cell: (r) => r.period,
+    sortValue: (r) => r.periodSort,
+    grow: 2,
+    width: 200,
+    tier: 1,
+  },
+  { id: "days", header: "Prazo", cell: (r) => r.days, align: "end", width: 80, tier: 4 },
+  { id: "flows", header: "Aportes − resgates", cell: (r) => r.flows, align: "end", width: 150, tier: 3 },
+  {
+    id: "gain",
+    header: "Rendimento",
+    cell: (r) => (r.gainCents === null ? <Warn>{r.gain}</Warn> : r.gain),
+    sortValue: (r) => r.gainCents,
+    align: "end",
+    width: 125,
+    tier: 1,
+  },
+  {
+    id: "rate",
+    header: "No período",
+    cell: (r) => (r.available ? r.rate : <Warn>{r.rate}</Warn>),
+    align: "end",
+    width: 110,
+    tier: 1,
+  },
+  { id: "monthly", header: "Equivalente ao mês", cell: (r) => r.monthly, align: "end", width: 150, tier: 2 },
+  { id: "notes", header: "Observações", cell: (r) => r.notes, grow: 2, width: 200, tier: 5 },
 ];
 
 export const NOTE_COLUMNS: TierColumn<NoteRow>[] = [

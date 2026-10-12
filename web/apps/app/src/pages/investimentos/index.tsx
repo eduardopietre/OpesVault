@@ -312,6 +312,7 @@ export function Page() {
                   event={eventPick}
                   onEvent={(id) => setChosen({ positionId: selected.id, valuation: valuationPick, event: id })}
                   onValuate={() => dialog.show({ kind: "valuation", positionId: selected.id })}
+                  onContribute={() => dialog.show({ kind: "contribution", positionId: selected.id })}
                   onProfile={profile}
                   onSeeEntries={() =>
                     goTo("livro", { ref: accountRef(service.position(ledger, selected.id).account_id) })

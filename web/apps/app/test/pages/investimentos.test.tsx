@@ -97,6 +97,40 @@ describe("Investimentos: carteira e detalhe", () => {
       }
     }
   });
+
+  it("sums up the period: the result in money, the return, and the same as a rate per year and per month", async () => {
+    const { ledger } = await openInvestimentos();
+    const id = cdbOf(ledger);
+    const dates = performance.selectedSeries(ledger, id).map((v) => v.on);
+    const [start, end] = [dates[0]!, dates[dates.length - 1]!];
+    const group = await screen.findByRole("group", { name: "Resumo do período" });
+    await waitFor(() => expect(flat(group.textContent)).not.toContain("calculando…"));
+    const text = flat(group.textContent);
+    const pct = (value: Dec) => `${formatDecimalBr(value.mul(Dec.from(100)), 2)}%`;
+    const gain = performance.periodResult(ledger, id, start, end).value!;
+    expect(text).toContain("Rendimento no período");
+    expect(text).toContain(formatBrl(gain));
+    const rate = returns
+      .allMethods(ledger, id, start, end)
+      .find((r) => r.value !== null && !r.method.startsWith("XIRR"))!;
+    expect(text).toContain(pct(rate.value!));
+    const yearly = returns.xirr(ledger, id, start, end).value!;
+    expect(text).toContain(pct(yearly));
+    expect(text).toContain(pct(returns.equivalentRate(yearly, returns.YEAR_DAYS, returns.MONTH_DAYS)!));
+  });
+
+  it("lists each stretch between values informed: the result in money, the return and its monthly equivalent", async () => {
+    const { ledger } = await openInvestimentos();
+    const id = cdbOf(ledger);
+    const grid = await table("Rendimento entre valores informados");
+    const stretches = returns.intervals(ledger, id);
+    expect(within(grid).getAllByRole("row").length - 1).toBe(stretches.length);
+    const latest = stretches[stretches.length - 1]!;
+    const row = flat(rowOf(grid, `${formatDateBr(latest.start)} a ${formatDateBr(latest.end)}`).textContent);
+    expect(row).toContain(formatBrl(latest.gain.value!));
+    expect(row).toContain(`${formatDecimalBr(latest.rate.value!.mul(Dec.from(100)), 2)}%`);
+    expect(row).toContain(`${formatDecimalBr(latest.monthly!.mul(Dec.from(100)), 2)}%`);
+  });
 });
 
 describe("Investimentos: projeto vazio e somente leitura", () => {

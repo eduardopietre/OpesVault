@@ -9,6 +9,7 @@ import { useState } from "react";
 import { useAct, useLedger, useWorkspace } from "../../data/react.tsx";
 import { BankAccountDialog } from "../../dialogs/bank_account.tsx";
 import { InvestmentDialog } from "../../dialogs/bank_investment.tsx";
+import { InvestmentContributionDialog } from "../../dialogs/investment_flow.tsx";
 import { InvestmentValuationDialog } from "../../dialogs/investment_valuation.tsx";
 import { ValuesDialog } from "../../dialogs/bank_values.tsx";
 import { useUndo } from "../../shell/undo.tsx";
@@ -69,7 +70,7 @@ const PART_COLUMNS: TierColumn<PartRow>[] = [
 type Spec =
   | { kind: "bank"; id: Id | null }
   | { kind: "values"; id: Id }
-  | { kind: "valuation"; positionId: Id; name: string }
+  | { kind: "valuation" | "contribution"; positionId: Id; name: string }
   | { kind: "investment"; bankId: Id | null; positionId: Id | null };
 
 /** A link to this tab: a bank account to select, or the new investment form (Investimentos' empty page). */
@@ -157,6 +158,11 @@ export function BankTab({ reveal }: { reveal?: TabReveal<BankReveal> | null }) {
     const found = chosenInvestment();
     if (found) dialog.show({ kind: "valuation", positionId: found.id, name: found.label });
   };
+  /** More money into one investment, out of a cash account. */
+  const contribute = () => {
+    const found = chosenInvestment();
+    if (found) dialog.show({ kind: "contribution", positionId: found.id, name: found.label });
+  };
   const archive = async () => {
     if (!item) {
       notify("Selecione uma conta bancária.");
@@ -216,6 +222,9 @@ export function BankTab({ reveal }: { reveal?: TabReveal<BankReveal> | null }) {
                 <>
                   <EditButton variant="ghost" size="sm" onClick={updateValue}>
                     Atualizar valor…
+                  </EditButton>
+                  <EditButton variant="ghost" size="sm" onClick={contribute}>
+                    Aporte…
                   </EditButton>
                   <EditButton variant="ghost" size="sm" onClick={() => editInvestment()}>
                     Características…
@@ -296,6 +305,16 @@ export function BankTab({ reveal }: { reveal?: TabReveal<BankReveal> | null }) {
           positionId={dialog.spec.positionId}
           name={dialog.spec.name}
           onDone={() => notify("Valor registrado.")}
+        />
+      ) : null}
+      {dialog.spec?.kind === "contribution" ? (
+        <InvestmentContributionDialog
+          key={dialog.key}
+          open={dialog.open}
+          onClose={dialog.close}
+          positionId={dialog.spec.positionId}
+          name={dialog.spec.name}
+          onDone={() => notify("Aporte registrado.")}
         />
       ) : null}
     </div>

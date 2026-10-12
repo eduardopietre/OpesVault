@@ -23,14 +23,16 @@ import {
 import { useMemo, useState } from "react";
 import { useLedger } from "../../data/react.tsx";
 import { returnsChartOf, toInvestmentChart, toPercentChart } from "./chart.ts";
-import { EVENT_COLUMNS, LOT_COLUMNS, RETURN_COLUMNS, VALUATION_COLUMNS } from "./columns.tsx";
+import { EVENT_COLUMNS, INTERVAL_COLUMNS, LOT_COLUMNS, RETURN_COLUMNS, VALUATION_COLUMNS } from "./columns.tsx";
 import { useDeferred } from "./deferred.ts";
 import {
   assembleReturns,
   eventRows,
   figures,
+  intervalRows,
   lotRows,
   periodDates,
+  periodSummary,
   planReturns,
   profileSummary,
   returnRows,
@@ -55,6 +57,7 @@ export interface DetailProps {
   event: Id | null;
   onEvent: (id: Id) => void;
   onValuate: () => void;
+  onContribute: () => void;
   onProfile: () => void;
   onSeeEntries: () => void;
   onUse: () => void;
@@ -108,6 +111,7 @@ export function Detail({
   event,
   onEvent,
   onValuate,
+  onContribute,
   onProfile,
   onSeeEntries,
   onUse,
@@ -129,6 +133,7 @@ export function Detail({
   const valuations = useLedger((l) => valuationRows(l, positionId), key);
   const events = useLedger((l) => eventRows(l, positionId), key);
   const lots = useLedger((l) => lotRows(l, positionId), key);
+  const stretches = useLedger((l) => intervalRows(l, positionId), key);
   const dates = useLedger((l) => periodDates(l, positionId), key);
   const rules = useLedger((l) => [...benchmarks.benchmarks(l).values()].map((b) => ({ id: b.id, name: b.name })), key);
   const evolution = useLedger((l) => toInvestmentChart(charts.data.investmentEvolution(l, positionId)), key);
@@ -159,6 +164,10 @@ export function Detail({
     () => (plan.value ? returnRows(assembleReturns(plan.value, solved.value)) : null),
     [plan.value, solved.value],
   );
+  const period = useMemo(
+    () => (plan.value ? periodSummary(plan.value, solved.value) : null),
+    [plan.value, solved.value],
+  );
   const returnsChart = useMemo(
     () =>
       plan.value && solved.value && start && end
@@ -186,6 +195,7 @@ export function Detail({
         </div>
         <div role="toolbar" aria-label="Comandos do investimento" className="flex flex-wrap items-center gap-2">
           <EditButton onClick={onValuate}>Atualizar valor…</EditButton>
+          <EditButton onClick={onContribute}>Aporte…</EditButton>
           <EditButton onClick={onProfile}>Características…</EditButton>
           <Button onClick={onSeeEntries}>Ver lançamentos</Button>
           {bankId && bank ? <Button onClick={() => onBank(bankId)}>Ver conta bancária</Button> : null}
@@ -334,6 +344,25 @@ export function Detail({
             </div>
           ) : (
             <>
+              {period ? (
+                <div role="group" aria-label="Resumo do período" className="grid grid-cols-2 gap-3 medium:grid-cols-4">
+                  <FigureCard
+                    label="Rendimento no período"
+                    text={period.gain}
+                    raw={period.gainRaw}
+                    tone={period.gainTone ?? undefined}
+                    note="antes de imposto e taxas de saída; aportes não contam"
+                  />
+                  <FigureCard label="Rentabilidade no período" text={period.rate} raw={null} note={period.rateNote} />
+                  <FigureCard label="Equivalente ao ano" text={period.yearly} raw={null} note={period.equivalentNote} />
+                  <FigureCard
+                    label="Equivalente ao mês"
+                    text={period.monthly}
+                    raw={null}
+                    note={period.equivalentNote}
+                  />
+                </div>
+              ) : null}
               <ListTable
                 label="Rentabilidade por método"
                 rows={returnRowsNow}
@@ -351,6 +380,26 @@ export function Detail({
             </>
           )}
         </div>
+      </Collapsible>
+
+      <Collapsible
+        title="Rendimento entre valores informados"
+        prefKey="investimentos/intervalos"
+        description="Cada trecho entre duas datas com valor informado: o que rendeu em reais e em %, e a taxa equivalente ao mês. Nada é estimado entre as datas."
+      >
+        {stretches.length ? (
+          <ListTable
+            label="Rendimento entre valores informados"
+            rows={stretches}
+            columns={INTERVAL_COLUMNS}
+            getRowId={(r) => r.id}
+            max={8}
+          />
+        ) : (
+          <Empty title="Informe mais um valor">
+            O rendimento aparece a partir do segundo valor informado em Atualizar valor…, em outra data.
+          </Empty>
+        )}
       </Collapsible>
 
       {showLots ? (

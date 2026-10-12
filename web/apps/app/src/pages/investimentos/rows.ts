@@ -311,6 +311,8 @@ export function returnRows(results: readonly (investments.performance.Result | n
 
 /** The return methods of a period: the quick ones computed, the internal rate of return only planned. */
 export interface ReturnsPlan {
+  /** The result in money of the period (docs/06 §4). */
+  gain: investments.performance.Result;
   simple: investments.performance.Result;
   twr: investments.performance.Result;
   dietz: investments.performance.Result;
@@ -327,6 +329,7 @@ export function planReturns(
 ): ReturnsPlan {
   const bench = benchmarkId ? benchmarks.benchmarks(ledger).get(benchmarkId) : undefined;
   return {
+    gain: performance.periodResult(ledger, positionId, start, end),
     simple: performance.simpleReturn(ledger, positionId, start, end),
     twr: returns.twr(ledger, positionId, start, end),
     dietz: returns.modifiedDietz(ledger, positionId, start, end),
@@ -342,6 +345,107 @@ export function assembleReturns<T extends investments.performance.Result | null>
 ): (investments.performance.Result | T)[] {
   const all = [plan.simple, plan.twr, xirr, plan.dietz];
   return plan.bench ? [...all, plan.bench] : all;
+}
+
+// ── period summary and intervals ─────────────────
+
+/** A percentage restated over another span, or "indisponível". */
+const equivalent = (rate: Dec | null, days: Dec | number, target: Dec): string =>
+  percent(rate === null ? null : returns.equivalentRate(rate, days, target));
+
+export interface PeriodSummary {
+  gain: string;
+  gainRaw: string | null;
+  gainTone: "positive" | "negative" | null;
+  /** The return of the whole period and how it was obtained. */
+  rate: string;
+  rateNote: string;
+  /** The equivalent rates from the internal rate of return; "calculando…" while it is solved. */
+  yearly: string;
+  monthly: string;
+  equivalentNote: string;
+}
+
+/**
+ * The period in four figures: what it earned in money, its return, and the same return as a rate per year and per
+ * month. The return is the time-weighted one when the values around each flow allow it, else Modified Dietz (an
+ * estimate) or the simple one; the equivalent rates come from the internal rate of return (money-weighted, days/365).
+ */
+export function periodSummary(plan: ReturnsPlan, xirr: investments.performance.Result | null): PeriodSummary {
+  const gain = plan.gain.value;
+  const rate = [plan.simple, plan.twr, plan.dietz].find((r) => r.value !== null) ?? plan.dietz;
+  const rateNote =
+    rate.value === null
+      ? (rate.notes[0] ?? "Dados insuficientes.")
+      : rate === plan.dietz
+        ? "Modified Dietz (estimativa), sem anualização"
+        : rate === plan.twr
+          ? "TWR, sem anualização"
+          : "retorno simples, sem anualização";
+  let yearly = "calculando…";
+  let monthly = "calculando…";
+  let equivalentNote = "Taxa interna de retorno em cálculo.";
+  if (xirr !== null) {
+    yearly = percent(xirr.value);
+    monthly = equivalent(xirr.value, returns.YEAR_DAYS, returns.MONTH_DAYS);
+    equivalentNote =
+      xirr.value === null
+        ? (xirr.notes[0] ?? "Taxa interna de retorno indisponível.")
+        : xirr.start !== null && xirr.end !== null && daysBetween(xirr.end, xirr.start) < 365
+          ? "XIRR; período menor que um ano, taxa equivalente estimada"
+          : "XIRR, taxa equivalente";
+  }
+  return {
+    gain: gain === null ? "indisponível" : formatBrl(gain),
+    gainRaw: gain === null ? null : gain.toFixed(),
+    gainTone: toneOf(gain),
+    rate: percent(rate.value),
+    rateNote,
+    yearly,
+    monthly,
+    equivalentNote,
+  };
+}
+
+export interface IntervalRow {
+  id: string;
+  period: string;
+  periodSort: string;
+  days: string;
+  /** Contributions less withdrawals in the stretch. */
+  flows: string;
+  gain: string;
+  gainCents: bigint | null;
+  rate: string;
+  monthly: string;
+  /** How the return was obtained, or why it is missing. */
+  notes: string;
+  available: boolean;
+}
+
+/** One row per stretch between two dates with a value informed, the latest first. */
+export function intervalRows(ledger: Ledger, positionId: Id): IntervalRow[] {
+  return returns
+    .intervals(ledger, positionId)
+    .map((i) => ({
+      id: `${i.start}|${i.end}`,
+      period: `${formatDateBr(i.start)} a ${formatDateBr(i.end)}`,
+      periodSort: i.end,
+      days: plural(i.days, "dia", "dias"),
+      flows: i.flows.isZero() ? DASH : formatBrl(i.flows),
+      gain: moneyOr(i.gain.value),
+      gainCents: cents(i.gain.value),
+      rate: percent(i.rate.value),
+      monthly: percent(i.monthly),
+      notes:
+        i.rate.value === null || i.gain.value === null
+          ? [...i.gain.notes, ...i.rate.notes].filter((n) => !n.startsWith("valores ")).join("; ")
+          : i.rate.quality === performance.Quality.ESTIMATE
+            ? "com aporte ou resgate: estimativa (Modified Dietz)"
+            : "",
+      available: i.rate.value !== null && i.gain.value !== null,
+    }))
+    .reverse();
 }
 
 // ── brokerage notes ──────────────────────────────

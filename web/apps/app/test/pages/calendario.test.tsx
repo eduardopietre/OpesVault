@@ -7,9 +7,12 @@ import { chooseMonth } from "../../src/data/month.ts";
 import { pageById } from "../../src/pages.tsx";
 import { dayLabel } from "../../src/pages/calendario/month_grid.tsx";
 import { agendaFigures, dayTitle, entriesOf, monthWeeks } from "../../src/pages/calendario/rows.ts";
+import { pinToday } from "../clock.ts";
 import { mountApp } from "../mount.tsx";
 import { navigations, wentTo } from "../navigations.ts";
 
+// The demonstration's agenda as seen on 6 October 2026: later, its bills turn late ("Atrasado" twice).
+pinToday(2026, 10, 6);
 beforeEach(() => chooseMonth(ymOf(today())));
 afterEach(() => vi.unstubAllGlobals());
 

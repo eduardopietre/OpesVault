@@ -16,10 +16,13 @@ import {
   latestActivityMonth,
   monthFigures,
 } from "../../src/pages/visao-geral/rows.ts";
+import { pinToday } from "../clock.ts";
 import { mountApp } from "../mount.tsx";
 import { addressSettles, navigations, wentTo } from "../navigations.ts";
 import { memberNamed } from "../lookup.ts";
 
+// The demonstration's notices as seen on 6 October 2026 (later, no forecast waits to be linked).
+pinToday(2026, 10, 6);
 afterEach(() => vi.restoreAllMocks());
 
 const heading = () => screen.findByRole("heading", { level: 1, name: "Visão geral" });

@@ -18,13 +18,13 @@ Tela inicial apresenta criar/abrir/restaurar. Lista de recentes é opcional e gu
 | Conferência | PDF à esquerda, campos e tabela à direita | Selecionar evidência, corrigir, aprovar ou rejeitar |
 | Conta/cartão | Saldo, movimentos, ciclo e obrigações | Vincular pagamento, conferir fatura e adicionais |
 | Recorrências | Regras, previsões e exceções | Confirmar padrão, pausar, editar e vincular realizado |
-| Investimento | Posição, custo, avaliações, movimentos e gráfico; resumo do período (rendimento em R$, rentabilidade, equivalente ao ano e ao mês) e rendimento entre valores informados | Atualizar valor (nova avaliação), aporte, distribuição, resgate e simulação |
+| Investimento | Posição, custo, avaliações, movimentos e gráfico; resumo do período (rendimento em R$, rentabilidade, equivalente ao ano e ao mês) e rendimento entre valores informados | Atualizar valor (nova avaliação), aporte (conta de origem opcional), distribuição, resgate, simulação e excluir investimento (com confirmação; lançamentos cancelados, desfazível) |
 | Backup | Revisão salva, cópias e integridade | Criar cópia e restaurar em destino separado |
 | Calendário | Faturas, recorrências, parcelas de financiamento e vencimentos de investimentos do mês, por dia, com situação | Abrir o ponto onde se paga ou vincula |
 | Reembolsos e acertos | Reembolsos a receber; quem deve a quem na família e as despesas que formam o saldo | Registrar recebimento, negativa e acerto |
 | Metas | Metas, progresso, quanto falta por mês, ritmo recente; gráfico e tabela da meta | Criar, editar, arquivar |
 | Financiamentos (Contas e cartões) | Contrato, cronograma, saldo devedor, juros a pagar | Pagar parcela, simular e registrar amortização antecipada |
-| Contas bancárias (Contas e cartões) | Banco, agência, conta, titulares, corrente, poupança, investimentos e total; composição com tipo no IRPF, rentabilidade, vencimento, tributação, valor hoje e último valor informado | Nova conta bancária, editar, valores em uma data, novo investimento (o dinheiro só sai da corrente se marcado), atualizar valor, aporte, características, encerrar |
+| Contas bancárias (Contas e cartões) | Banco, agência, conta, titulares, corrente, poupança, investimentos e total; composição com tipo no IRPF, rentabilidade, vencimento, tributação, valor hoje e último valor informado | Nova conta bancária, editar, valores em uma data, novo investimento (o dinheiro só sai da corrente se marcado), atualizar valor, aporte, características, excluir investimento (com confirmação), encerrar |
 | Imposto de renda | Ano e declarante; pendências, documentos do ano, rendimentos, pagamentos efetuados, bens e dívidas, renda variável, simplificada × completa e informes | Resolver pendência, CPF/CNPJ, natureza, contracheques, comprovantes, classificar bem, importar informe, registrar DARF, relatório em PDF |
 | Assistente | Conversa com a IA local, que consulta o projeto com as ferramentas do aplicativo; atividade de cada ferramenta; atalhos para o Livro filtrado | Perguntar, aprovar ou recusar cada alteração proposta, nova conversa |
 

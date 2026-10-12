@@ -417,6 +417,33 @@ describe("Contas bancárias", () => {
     expect(workspace.undoStack.canUndo()).toBe(false);
   });
 
+  it("removes an investment from the composition after a confirmation; Desfazer brings it back", async () => {
+    const { ledger, user } = await openBank();
+    const parts = await screen.findByRole("grid", { name: "Composição da conta bancária" });
+    await clickRow(user, parts, "Conta corrente");
+    await user.click(screen.getByRole("button", { name: "Excluir investimento…" }));
+    expect(await screen.findByText("Escolha um investimento na composição.")).toBeTruthy();
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    const position = [...investments.service.positions(ledger).values()].find(
+      (p) => investments.service.assets(ledger).get(p.asset_id)?.name === "CDB Banco X 2028",
+    )!;
+    const before = snapshot(ledger);
+    await clickRow(user, parts, "CDB Banco X 2028");
+    // cancel keeps it
+    await user.click(screen.getByRole("button", { name: "Excluir investimento…" }));
+    let ask = await screen.findByRole("alertdialog", { name: "Excluir “CDB Banco X 2028”?" });
+    await user.click(within(ask).getByRole("button", { name: "Cancelar" }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(snapshot(ledger)).toBe(before);
+    await user.click(screen.getByRole("button", { name: "Excluir investimento…" }));
+    ask = await screen.findByRole("alertdialog", { name: "Excluir “CDB Banco X 2028”?" });
+    await user.click(within(ask).getByRole("button", { name: "Excluir" }));
+    await waitFor(() => expect(investments.service.positions(ledger).has(position.id)).toBe(false));
+    expect(within(await table("Composição da conta bancária")).queryByText("CDB Banco X 2028")).toBeNull();
+    await user.click(await screen.findByRole("button", { name: "Desfazer" }));
+    expect(snapshot(ledger)).toBe(before);
+  });
+
   it("closes a bank account after a confirmation, offers Desfazer, and keeps the ledger accounts", async () => {
     const { ledger, user, grid } = await openBank();
     const nubank = bankByName(ledger, "Nubank do Bruno");

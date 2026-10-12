@@ -10,6 +10,7 @@ import { DomainError, type Ledger } from "../domain/ledger.ts";
 import {
   AccountSubtype,
   AccountType,
+  isActive,
   LedgerAccountSchema,
   type Operation,
   OperationKind,
@@ -221,6 +222,45 @@ export function createPosition(
     addValuation(ledger, pos.id, openedOn, referenceValue, referenceNature, { source: "referência inicial" });
   }
   return pos;
+}
+
+// ── removal ──────────────────────────────────────
+
+/** Records of other modules tied to a position by `ref` (tax nature and Bens e Direitos description). */
+const TIED_BY_REF = ["income_classification", "asset_filing"] as const;
+
+/**
+ * Excluir investimento, for one entered by mistake. Every operation of it is cancelled (it stays in the history,
+ * out of every balance, as a cancellation in Livro); its ledger account is archived; the position, its valuations,
+ * events, lots, characteristics and tax records go, and so does its asset when no other position holds it. A
+ * closed month refuses it, like any other change to its figures. One `act`, so one undo brings it all back.
+ */
+export function removePosition(ledger: Ledger, positionId: Id): void {
+  const pos = position(ledger, positionId);
+  const reason = "investimento excluído";
+  const touched = new Set<Id>(eventsOf(ledger, positionId).flatMap((e) => e.operation_ids));
+  for (const op of ledger.operations.values()) {
+    if (op.postings.some((p) => p.account_id === pos.account_id)) touched.add(op.id);
+  }
+  for (const id of touched) {
+    const op = ledger.operations.get(id);
+    if (op !== undefined && isActive(op)) ledger.cancelOperation(id, reason);
+  }
+  // Removed newest first: undo puts them back oldest first, in their original order.
+  const byPosition = (kind: string) => {
+    const store = ledger.entities<{ id: Id; position_id: Id }>(kind);
+    for (const item of [...store.values()].reverse()) if (item.position_id === positionId) store.delete(item.id);
+  };
+  for (const kind of ["valuation", "investment_event", "lot", "investment_profile"]) byPosition(kind);
+  for (const kind of TIED_BY_REF) {
+    const store = ledger.entities<{ id: Id; subject: string; ref: Id }>(kind);
+    for (const item of [...store.values()].reverse())
+      if (item.subject === "position" && item.ref === positionId) store.delete(item.id);
+  }
+  positions(ledger).delete(positionId);
+  if (![...positions(ledger).values()].some((p) => p.asset_id === pos.asset_id)) assets(ledger).delete(pos.asset_id);
+  const account = ledger.accounts.get(pos.account_id);
+  if (account !== undefined && !account.archived) ledger.updateAccount({ ...account, archived: true }, reason);
 }
 
 // ── valuations ───────────────────────────────────

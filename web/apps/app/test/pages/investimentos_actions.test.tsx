@@ -206,6 +206,23 @@ describe("Avaliações", () => {
   });
 });
 
+describe("Excluir investimento", () => {
+  it("removes the selected investment after a confirmation: it leaves the portfolio, and Desfazer brings it back", async () => {
+    const { user, ledger } = await openInvestimentos();
+    const id = cdbOf(ledger);
+    const before = snapshot(ledger);
+    await menu(user, "Mais", "Excluir investimento…");
+    const ask = await screen.findByRole("alertdialog", { name: "Excluir “CDB Banco X 2028”?" });
+    expect(flat(ask.textContent)).toContain("Dá para desfazer");
+    await user.click(within(ask).getByRole("button", { name: "Excluir" }));
+    await waitFor(() => expect(service.positions(ledger).has(id)).toBe(false));
+    expect(await screen.findByText("Investimento excluído.")).toBeTruthy();
+    expect(await screen.findByText("0 em carteira")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Desfazer" }));
+    expect(snapshot(ledger)).toBe(before);
+  });
+});
+
 describe("Aportes, proventos e resgates", () => {
   it("registers a contribution as capital moved in, never as income; one undo reverts it", async () => {
     const { user, ledger, workspace } = await openInvestimentos();

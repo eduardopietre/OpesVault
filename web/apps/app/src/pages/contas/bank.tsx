@@ -10,6 +10,7 @@ import { useAct, useLedger, useWorkspace } from "../../data/react.tsx";
 import { BankAccountDialog } from "../../dialogs/bank_account.tsx";
 import { InvestmentDialog } from "../../dialogs/bank_investment.tsx";
 import { InvestmentContributionDialog } from "../../dialogs/investment_flow.tsx";
+import { useRemoveInvestment } from "../../dialogs/investment_remove.ts";
 import { InvestmentValuationDialog } from "../../dialogs/investment_valuation.tsx";
 import { ValuesDialog } from "../../dialogs/bank_values.tsx";
 import { useUndo } from "../../shell/undo.tsx";
@@ -158,6 +159,11 @@ export function BankTab({ reveal }: { reveal?: TabReveal<BankReveal> | null }) {
     const found = chosenInvestment();
     if (found) dialog.show({ kind: "valuation", positionId: found.id, name: found.label });
   };
+  const removeInvestment = useRemoveInvestment();
+  const remove = async () => {
+    const found = chosenInvestment();
+    if (found && (await removeInvestment(found.id, found.label))) setPart(null);
+  };
   /** More money into one investment, out of a cash account. */
   const contribute = () => {
     const found = chosenInvestment();
@@ -228,6 +234,9 @@ export function BankTab({ reveal }: { reveal?: TabReveal<BankReveal> | null }) {
                   </EditButton>
                   <EditButton variant="ghost" size="sm" onClick={() => editInvestment()}>
                     Características…
+                  </EditButton>
+                  <EditButton variant="ghost" size="sm" onClick={() => void remove()}>
+                    Excluir investimento…
                   </EditButton>
                 </>
               }

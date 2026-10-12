@@ -264,3 +264,36 @@ describe("contribution without a cash account", () => {
     expect(eq(periodResult(f.ledger, pos.id, d("2026-01-01"), d("2026-03-31")).value, "100.00")).toBe(true);
   });
 });
+
+describe("removing an investment entered by mistake", () => {
+  it("cancels its operations, archives its account and removes the position and everything tied to it", () => {
+    const f = family();
+    const bankBefore = (() => {
+      f.ledger.recordOpeningBalance(f.bank, "100000.00", d("2025-12-31"));
+      return queries.balance(f.ledger, f.bank);
+    })();
+    const pos = inv.createPosition(f.ledger, "CDB errado", AssetClass.FIXED_INCOME, d("2026-01-01"), {
+      initial_cost: "10000.00",
+      from_account: f.bank,
+    });
+    inv.contribute(f.ledger, pos.id, "500.00", d("2026-02-01"), f.bank);
+    inv.contribute(f.ledger, pos.id, "300.00", d("2026-02-05"), null);
+    inv.addValuation(f.ledger, pos.id, d("2026-03-31"), "11000", ValueNature.GROSS);
+    expect(queries.balance(f.ledger, f.bank).eq(bankBefore.sub("10500"))).toBe(true);
+
+    inv.removePosition(f.ledger, pos.id);
+    expect(inv.positions(f.ledger).has(pos.id)).toBe(false);
+    expect(inv.assets(f.ledger).has(pos.asset_id)).toBe(false);
+    expect([...inv.valuations(f.ledger).values()].some((v) => v.position_id === pos.id)).toBe(false);
+    expect([...inv.events(f.ledger).values()].some((e) => e.position_id === pos.id)).toBe(false);
+    expect(f.ledger.accounts.get(pos.account_id)!.archived).toBe(true);
+    // the money is back where it was, and nothing of it is left in any balance
+    expect(queries.balance(f.ledger, f.bank).eq(bankBefore)).toBe(true);
+    expect(queries.balance(f.ledger, pos.account_id).isZero()).toBe(true);
+  });
+
+  it("says so for a position that does not exist", () => {
+    const f = family();
+    expect(() => inv.removePosition(f.ledger, "nao-existe" as never)).toThrow(DomainError);
+  });
+});

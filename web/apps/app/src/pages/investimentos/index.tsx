@@ -35,6 +35,7 @@ import {
 import { InvestmentRuleDialog } from "../../dialogs/investment_rule.tsx";
 import { InvestmentSimulateDialog } from "../../dialogs/investment_simulate.tsx";
 import { InvestmentTradeDialog, type TradeKind } from "../../dialogs/investment_trade.tsx";
+import { useRemoveInvestment } from "../../dialogs/investment_remove.ts";
 import { InvestmentFixDialog, InvestmentValuationDialog } from "../../dialogs/investment_valuation.tsx";
 import { useAct, useLedger, useWorkspace } from "../../data/react.tsx";
 import { useGoTo, useReveal } from "../../data/navigation.ts";
@@ -151,6 +152,12 @@ export function Page() {
 
   const profile = withPosition((positionId) => ({ kind: "profile", positionId }));
 
+  const removeInvestment = useRemoveInvestment();
+  const remove = async () => {
+    const id = need();
+    if (id && (await removeInvestment(id, nameOf(id)))) setPick(null);
+  };
+
   // A maturity notice or a link: select the position; "avaliar" and "simular" start the action.
   useReveal((ref, action) => {
     const id = parseReveal(ref, ledger);
@@ -234,6 +241,7 @@ export function Page() {
                   label: "Características (tipo, emissor, taxa, vencimento, tributação)…",
                   onSelect: profile,
                 },
+                { id: "remove", label: "Excluir investimento…", onSelect: () => void remove() },
                 { kind: "separator", id: "s1" },
                 {
                   id: "composition",

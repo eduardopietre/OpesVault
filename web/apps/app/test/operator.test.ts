@@ -34,6 +34,29 @@ describe("default operator", () => {
 });
 
 describe("operator in the session", () => {
+  it("offers a member added after opening at once, and an inactive operator gives way to the default", async () => {
+    const services = createFakeServices({ seed: true });
+    const store = new SessionStore();
+    const actions = sessionActions(services, store);
+    await actions.signIn(DEMO.email, DEMO.password);
+    await actions.openProject(services.demoProjectId!, DEMO.projectPassword);
+    const workspace = store.get().open!.workspace;
+    // as the setup assistant or Configurações do it, after the project opened
+    const carla = workspace.act((ledger) => ledger.addMember("Carla"), "adicionar integrante");
+    expect(store.get().open!.members.map((m) => m.name)).toEqual(["Ana", "Bruno", "Carla"]);
+    actions.setOperator(carla.id);
+    expect(workspace.ledger.operator).toBe("Carla");
+    workspace.act((ledger) => ledger.updateMember({ ...carla, active: false }, "saiu do projeto"), "desativar");
+    const ana = store.get().open!.members.find((m) => m.name === "Ana")!;
+    expect(store.get().open!.members.map((m) => m.name)).toEqual(["Ana", "Bruno"]);
+    expect(store.get().operatorId).toBe(ana.id); // the account is Ana Souza
+    expect(workspace.ledger.operator).toBe("Ana");
+    // after closing, the project no longer moves the session
+    await actions.closeProject();
+    workspace.act((ledger) => ledger.addMember("Davi"), "adicionar integrante");
+    expect(store.get().open).toBeNull();
+  });
+
   it("remembers the choice per project while the tab lives, and starts over after signing out", async () => {
     const services = createFakeServices({ seed: true });
     const store = new SessionStore();

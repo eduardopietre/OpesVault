@@ -5,7 +5,7 @@
  */
 import { cancelAllDecisions, clearToasts, type SyncState } from "@opesvault/ui";
 import { createContext, useContext, useMemo, useSyncExternalStore, type ReactNode } from "react";
-import { defaultOperator } from "./data/operator.ts";
+import { activeMembers, defaultOperator, sameMembers } from "./data/operator.ts";
 import { chooseMonth, monthOfDate } from "./data/shared_month.ts";
 import type { Account, AppServices, OpenOptions, OpenProject } from "./services/types.ts";
 
@@ -88,10 +88,27 @@ export function sessionActions(services: AppServices, store: SessionStore): Sess
   const chosenOperator = new Map<string, string>();
   const operatorOnOpen = (open: OpenProject) =>
     defaultOperator(open.members, store.get().account?.name, chosenOperator.get(open.project.id));
+  /**
+   * Follows the open project's members (added in the assistant, in Configurações or on another device), so the
+   * top bar offers them at once; an operator who is no longer active gives way to the default.
+   */
+  const followMembers = (workspace: OpenProject["workspace"]) =>
+    workspace.subscribe(() => {
+      const state = store.get();
+      if (state.open?.workspace !== workspace) return;
+      const members = activeMembers(workspace.ledger);
+      if (sameMembers(members, state.open.members)) return;
+      const open = { ...state.open, members };
+      const operatorId = defaultOperator(members, state.account?.name, state.operatorId);
+      workspace.setOperator(operatorName(open, operatorId));
+      store.update({ open, operatorId });
+    });
   /** Follows the vault: sync state in the top bar, and an idle lock decided by the vault itself. */
   const watch = () => {
     unwatch?.();
-    unwatch = services.watchSync((status, detail) => {
+    const workspace = store.get().open?.workspace;
+    const unfollow = workspace ? followMembers(workspace) : () => {};
+    const unsync = services.watchSync((status, detail) => {
       const state = store.get();
       const pending = detail?.pending ?? 0;
       const storageAtRisk = detail?.storageAtRisk ?? false;
@@ -107,6 +124,10 @@ export function sessionActions(services: AppServices, store: SessionStore): Sess
       if (status === "readOnly") return; // shown from open.readOnly / the workspace
       store.update({ sync: status });
     });
+    unwatch = () => {
+      unfollow();
+      unsync();
+    };
   };
   const operatorName = (open: OpenProject, id: string | null) => open.members.find((m) => m.id === id)?.name ?? null;
   const forget = () => {

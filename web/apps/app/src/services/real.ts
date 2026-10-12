@@ -25,6 +25,7 @@ import {
 } from "@opesvault/vault";
 import type { PreferenceStore } from "@opesvault/ui";
 import { backupFileName, checkOf, documentBlobRefs } from "../data/backup.ts";
+import { activeMembers } from "../data/operator.ts";
 import { Workspace } from "../data/workspace.ts";
 import { accountNameKey } from "../preferences.ts";
 import {
@@ -202,7 +203,7 @@ export function createRealServices(options: RealServicesOptions = {}): AppServic
   const openedOf = (ws: Workspace, project: ProjectSummary): OpenProject => ({
     project,
     workspace: ws,
-    members: [...ws.ledger.members.values()].filter((m) => m.active).map((m) => ({ id: m.id, name: m.name })),
+    members: activeMembers(ws.ledger),
     attention: {},
     readOnly: ws.readOnly,
   });

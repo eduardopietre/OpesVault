@@ -293,22 +293,29 @@ export function selectValuation(ledger: Ledger, valuationId: Id): void {
 
 // ── flows ────────────────────────────────────────
 
+/**
+ * Capital into the position. From a cash account of the project, or (`fromAccount` null) from money the project
+ * does not track: then the other side is the opening equity, as a new position's initial cost without an account.
+ * Either way it is never income.
+ */
 export function contribute(
   ledger: Ledger,
   positionId: Id,
   amount: unknown,
   on: IsoDate,
-  fromAccount: Id,
+  fromAccount: Id | null,
 ): InvestmentEvent {
   const pos = position(ledger, positionId);
-  requireCash(ledger, fromAccount);
+  if (fromAccount !== null) requireCash(ledger, fromAccount);
   const value = toDecimal(amount);
   if (!value.isPositive()) throw new DomainError("Informe um valor positivo.");
+  const source = fromAccount ?? ledger.meta.opening_equity_id;
+  if (source === null) throw new DomainError("Cofre sem conta de patrimônio de abertura.");
   const op = ledger.addOperation(
     operation({
       kind: OperationKind.INVESTMENT_CONTRIBUTION,
       description: `Aporte — ${assetName(ledger, pos)}`,
-      postings: [posting(pos.account_id, value), posting(fromAccount, value.negate())],
+      postings: [posting(pos.account_id, value), posting(source, value.negate())],
       occurred_on: on,
       settled_on: on,
     }),

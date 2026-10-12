@@ -8,7 +8,7 @@ import { DateField, MoneyField, Select } from "@opesvault/ui";
 import { useState } from "react";
 import { useWorkspace } from "../data/react.tsx";
 import { cashAccounts } from "./investment_forms.ts";
-import { Caption, FormDialog, FormGrid, useFormAct } from "./livro_form.tsx";
+import { Caption, FormDialog, FormGrid, NONE, useFormAct } from "./livro_form.tsx";
 import { dateText, readDate, readMoney } from "./form_readers.ts";
 
 const { service } = investments;
@@ -39,14 +39,16 @@ export function InvestmentContributionDialog({
 }: FlowProps & { positionId: Id; name: string }) {
   const workspace = useWorkspace();
   const act = useFormAct();
-  const { options, account, setAccount, need } = useAccount();
+  // Optional: the money may come from outside the project's accounts, and it does not leave one unless chosen.
+  const options = [{ id: NONE, label: "Nenhuma (dinheiro de fora do projeto)" }, ...cashAccounts(workspace.ledger)];
+  const [account, setAccount] = useState<string>(NONE);
   const [when, setWhen] = useState(dateText(workspace.today()));
   const [value, setValue] = useState("");
 
   const confirm = () => {
     const on = readDate(when);
     const amount = readMoney(value);
-    const from = need();
+    const from = account === NONE ? null : account;
     act((l) => service.contribute(l, positionId, amount, on, from), "registrar aporte");
     onDone?.();
   };
@@ -63,14 +65,11 @@ export function InvestmentContributionDialog({
       <FormGrid columns={1}>
         <DateField label="Data" value={when} onChange={setWhen} />
         <MoneyField label="Valor" value={value} onChange={setValue} data-autofocus="" />
-        <Select
-          label="Saiu da conta"
-          options={options}
-          value={account}
-          onChange={setAccount}
-          placeholder="Nenhuma conta"
-        />
-        <Caption>Um aporte é capital que passa a estar no investimento; não é rendimento.</Caption>
+        <Select label="Saiu da conta (opcional)" options={options} value={account} onChange={setAccount} />
+        <Caption>
+          Um aporte é capital que passa a estar no investimento; não é rendimento. Escolha uma conta só se o dinheiro
+          saiu dela: o saldo dela diminui.
+        </Caption>
       </FormGrid>
     </FormDialog>
   );

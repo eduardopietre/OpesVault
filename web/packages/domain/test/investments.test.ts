@@ -249,3 +249,18 @@ describe("investment acceptance", () => {
     expect(() => simulate(f.ledger, pos.id, d("2026-06-30"), "12000", rule)).toThrow(DomainError);
   });
 });
+
+describe("contribution without a cash account", () => {
+  it("comes from outside the project: cost and value grow, no cash account changes, nothing is income", () => {
+    const f = family();
+    const pos = cdb(f);
+    const bank = queries.balance(f.ledger, f.bank);
+    const event = inv.contribute(f.ledger, pos.id, "2000.00", d("2026-02-10"), null);
+    expect(event.cash_account_id).toBeNull();
+    expect(inv.remainingCost(f.ledger, pos.id).eq("12000")).toBe(true);
+    expect(queries.balance(f.ledger, f.bank).eq(bank)).toBe(true);
+    expect(queries.incomeStatement(f.ledger, { year: 2026, month: 2 }).totalIncome.isZero()).toBe(true);
+    inv.addValuation(f.ledger, pos.id, d("2026-03-31"), "12100", ValueNature.GROSS);
+    expect(eq(periodResult(f.ledger, pos.id, d("2026-01-01"), d("2026-03-31")).value, "100.00")).toBe(true);
+  });
+});

@@ -212,6 +212,7 @@ describe("Aportes, proventos e resgates", () => {
     const id = cdbOf(ledger);
     const before = snapshot(ledger);
     const costBefore = service.remainingCost(ledger, id);
+    const bankBefore = queries.balance(ledger, cashOf(ledger));
     await menu(user, "Registrar", "Aporte…");
     const box = await dialog(/Aporte — CDB Banco X 2028/);
     await fill(user, box, "Valor", "250,00");
@@ -223,8 +224,24 @@ describe("Aportes, proventos e resgates", () => {
     expect(await screen.findByText("Aporte registrado.")).toBeTruthy();
     // it shows in Movimentos
     expect(flat(rowOf(await table("Movimentos"), "R$ 250,00").textContent)).toContain("Aporte");
+    // without an account chosen, the money comes from outside the project: no cash account changes
+    expect(event.cash_account_id).toBeNull();
+    expect(queries.balance(ledger, cashOf(ledger)).eq(bankBefore)).toBe(true);
     undoOnce(workspace);
     expect(snapshot(ledger)).toBe(before);
+  });
+
+  it("takes a contribution out of a cash account only when one is chosen", async () => {
+    const { user, ledger } = await openInvestimentos();
+    const bank = cashOf(ledger);
+    const bankBefore = queries.balance(ledger, bank);
+    await menu(user, "Registrar", "Aporte…");
+    const box = await dialog(/Aporte — CDB Banco X 2028/);
+    await fill(user, box, "Valor", "250,00");
+    await choose(user, "Saiu da conta (opcional)", ledger.accounts.get(bank)!.name, box);
+    await submit(user, box, "Registrar");
+    await closed(/Aporte/);
+    expect(queries.balance(ledger, bank).eq(bankBefore.sub(Dec.from(250)))).toBe(true);
   });
 
   it("refuses a contribution without a value, inside the dialog", async () => {

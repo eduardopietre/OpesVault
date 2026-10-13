@@ -5,6 +5,7 @@
  */
 import { compareLabels } from "@opesvault/ui";
 import {
+  AccountSubtype,
   AccountType,
   Dec,
   dom,
@@ -17,6 +18,7 @@ import {
   ymOf,
   ymParse,
   ymStr,
+  sortedBy,
   type Id,
   type IsoDate,
   type Ledger,
@@ -152,18 +154,44 @@ export interface CategoryRow {
   kind: string;
   parent: string;
   deductible: string;
+  archived: boolean;
 }
 
-export function categoryRows(ledger: Ledger): CategoryRow[] {
+/** Expense categories, then income ones, by name; the archived ones only when asked. */
+export function categoryRows(ledger: Ledger, withArchived = false): CategoryRow[] {
   return [AccountType.EXPENSE, AccountType.INCOME].flatMap((kind) =>
-    ledger.categories(kind).map((a) => ({
+    sortedBy(
+      [...ledger.accounts.values()].filter((a) => a.type === kind && (withArchived || !a.archived)),
+      (a) => a.name,
+    ).map((a) => ({
       id: a.id,
       name: a.name,
       kind: kind === AccountType.INCOME ? "Receita" : "Despesa",
       parent: (a.parent_id !== null ? ledger.accounts.get(a.parent_id)?.name : undefined) ?? "",
       deductible: deductibleLabel(ledger, a),
+      archived: a.archived,
     })),
   );
+}
+
+/** Categories a merge may move `sourceId` into: active, of the same kind, not itself nor one inside it. */
+export function mergeTargets(ledger: Ledger, sourceId: Id): { id: Id; label: string }[] {
+  const source = ledger.accounts.get(sourceId);
+  if (source === undefined) return [];
+  const inside = (id: Id): boolean => {
+    const seen = new Set<Id>();
+    let cursor = ledger.accounts.get(id)?.parent_id ?? null;
+    while (cursor !== null && !seen.has(cursor)) {
+      if (cursor === sourceId) return true;
+      seen.add(cursor);
+      cursor = ledger.accounts.get(cursor)?.parent_id ?? null;
+    }
+    return false;
+  };
+  return ledger
+    .categories(source.type)
+    .filter((a) => a.subtype === AccountSubtype.CATEGORY && a.id !== sourceId && !inside(a.id))
+    .map((a) => ({ id: a.id, label: a.name }));
 }
 
 /** The line under the title. */

@@ -17,7 +17,24 @@ import { AccountType, cashDate, type Operation } from "./model.ts";
 import { roundMoney, ZERO } from "./money.ts";
 import { ForecastDecision, Frequency, links, type RecurrenceRule, rules } from "./recurrence.ts";
 
-export const PER_YEAR: Readonly<Record<Frequency, number>> = { monthly: 12, weekly: 52, yearly: 1 };
+/** Occurrences per year of each fixed frequency; `every_n_months` is 12 / n (`perYear`). */
+export const PER_YEAR: Readonly<Record<Exclude<Frequency, "every_n_months">, number>> = {
+  monthly: 12,
+  weekly: 52,
+  yearly: 1,
+  semimonthly: 24,
+  quarterly: 4,
+  last_business_day: 12,
+};
+
+/** What a rule costs in a year, in cents (ROUND_HALF_UP when 12 / n months is not whole). */
+export function perYear(rule: RecurrenceRule): Dec {
+  if (rule.frequency === Frequency.EVERY_N_MONTHS) {
+    const months = rule.interval_months ?? 1;
+    return roundMoney(rule.amount.mul(12).div(months), undefined, "ROUND_HALF_UP");
+  }
+  return rule.amount.mul(PER_YEAR[rule.frequency]);
+}
 export const CANDIDATE_MONTHS = 3; // months in a row with the same charge before suggesting it
 export const CANDIDATE_SPREAD = Dec.from("0.15"); // charges may vary 15% around the typical value
 
@@ -80,13 +97,7 @@ export function commitments(ledger: Ledger): Commitment[] {
     const last = history.length ? history[history.length - 1]! : null;
     const previous = history.length > 1 ? history[history.length - 2]! : null;
     out.push(
-      new Commitment(
-        rule,
-        rule.amount.mul(PER_YEAR[rule.frequency]),
-        last ? last[1] : null,
-        last ? last[0] : null,
-        previous ? previous[1] : null,
-      ),
+      new Commitment(rule, perYear(rule), last ? last[1] : null, last ? last[0] : null, previous ? previous[1] : null),
     );
   }
   return sortedBy(out, (c) => c.perYear, true);

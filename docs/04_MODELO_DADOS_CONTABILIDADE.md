@@ -18,8 +18,9 @@ Um cofre tem identificador, versão de formato, revisão e moeda de apresentaç�
 | Item extraído | Valor original, normalização, status e correções |
 | Operação | Tipo, datas, moeda, descrição, origem e versão |
 | Partida | Operação, conta contábil, débito/crédito e valor exato |
-| Categoria/rateio | Hierarquia, participação e soma controlada |
-| Recorrência | Regra, vigência, calendário, tolerâncias e exceções |
+| Categoria/rateio | Hierarquia, participação e soma controlada. Renomear e arquivar deixam histórico; mesclar move todas as referências da origem para o destino (partidas das operações ativas, subcategorias, orçamentos, recorrências, regras, itens em revisão, planos de parcelas e de financiamento, filtros salvos e registros fiscais por categoria) e arquiva a origem |
+| Recorrência | Regra, vigência, calendário (mensal, quinzenal, trimestral, a cada N meses, anual, semanal ou último dia útil do mês), tolerâncias e exceções. Esquema 3: intervalo em meses (só “a cada N meses”); excluir uma regra apaga as previsões decididas dela, e os lançamentos vinculados continuam |
+| Linha de orçamento | Categoria de despesa, mês, valor planejado e se a sobra vai para o mês seguinte (esquema 3; estouro não passa adiante) |
 | Parcela | Compra-mãe, número, total, vencimento e fatura |
 | Conciliação | Itens relacionados, método, diferença e decisão |
 | Fechamento | Ano/mês, regime, revisão, pendências e reaberturas |

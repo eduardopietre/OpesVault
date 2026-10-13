@@ -34,6 +34,7 @@ import { CANDIDATE_COLUMNS, COMMITMENT_COLUMNS, FORECAST_COLUMNS, RULE_COLUMNS }
 import { EditButton, usePick } from "../../components/list_parts.tsx";
 import { lockEntries, useLock } from "../../data/read_only.ts";
 import { useDialog } from "../../data/dialog.ts";
+import { plural } from "../../data/text.ts";
 
 type Rule = dom.recurrence.RecurrenceRule;
 type Forecast = dom.recurrence.Forecast;
@@ -122,17 +123,46 @@ export function Page() {
     if (rule) void toggleRule(rule);
   };
 
-  /** A rule's context menu (Regras and Assinaturas e contas fixas): edit it, pause or resume it. */
+  /** Deleting takes the rule and its resolved forecasts away; the entries stay in Livro. Asks first. */
+  const removeRule = async (rule: Rule) => {
+    const linked = [...dom.recurrence.links(workspace.ledger).values()].filter(
+      (l) => l.rule_id === rule.id && l.operation_id !== null,
+    ).length;
+    const ok = await confirm({
+      title: `Excluir “${rule.description}”?`,
+      text: `A regra e as previsões dela deixam de existir${linked ? `; ${plural(linked, "lançamento vinculado continua", "lançamentos vinculados continuam")} no Livro` : ""}. Para só interromper as previsões, use Pausar. Dá para desfazer logo em seguida.`,
+      confirmLabel: "Excluir",
+      danger: true,
+    });
+    if (!ok) return;
+    const removed = act(
+      (ledger) => {
+        dom.recurrence.removeRule(ledger, rule.id);
+        return true;
+      },
+      { label: "excluir recorrência" },
+    );
+    if (removed === undefined) return;
+    setPickRule(null);
+    notify(`Recorrência “${rule.description}” excluída.`, { action: { label: "Desfazer", run: undo } });
+  };
+
+  const removeSelected = () => {
+    const rule = rulePick.need("Selecione uma regra.");
+    if (rule) void removeRule(rule);
+  };
+
+  /** A rule's context menu (Regras and Assinaturas e contas fixas): edit it, pause or resume it, delete it last. */
   const ruleMenu = (rule: Rule): MenuEntry[] =>
     lockEntries(
       [
         { id: "edit", label: "Editar…", onSelect: () => openRuleDialog(rule) },
+        ...(rule.paused ? [{ id: "toggle", label: "Retomar", onSelect: () => void toggleRule(rule) }] : []),
+        { kind: "separator" as const, id: "s1" },
         ...(rule.paused
-          ? [{ id: "toggle", label: "Retomar", onSelect: () => void toggleRule(rule) }]
-          : [
-              { kind: "separator" as const, id: "s1" },
-              { id: "toggle", label: "Pausar…", danger: true, onSelect: () => void toggleRule(rule) },
-            ]),
+          ? []
+          : [{ id: "toggle", label: "Pausar…", danger: true, onSelect: () => void toggleRule(rule) }]),
+        { id: "remove", label: "Excluir…", danger: true, onSelect: () => void removeRule(rule) },
       ],
       locked,
     );
@@ -367,6 +397,9 @@ export function Page() {
                   </EditButton>
                   <EditButton size="sm" onClick={toggle}>
                     {selectedRule ? (selectedRule.paused ? "Retomar" : "Pausar") : "Pausar ou retomar"}
+                  </EditButton>
+                  <EditButton size="sm" tone="negative" onClick={removeSelected}>
+                    Excluir…
                   </EditButton>
                 </>
               }

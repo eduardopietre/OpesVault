@@ -2,12 +2,14 @@
  * The three plain lists of Contas e cartões (desktop `AccountsPage._list_tab`): Cartões, Categorias and
  * Integrantes. Each is a table with its commands above; a double click or Enter edits the row.
  */
-import { AccountType, type Id } from "@opesvault/domain";
-import { Button, notify, type MenuEntry } from "@opesvault/ui";
+import { AccountType, dom, type Id, type LedgerAccount } from "@opesvault/domain";
+import { Button, Switch, confirm, notify, type MenuEntry } from "@opesvault/ui";
 import { useState } from "react";
-import { useLedger, useWorkspace } from "../../data/react.tsx";
+import { useAct, useLedger, useWorkspace } from "../../data/react.tsx";
+import { useUndo } from "../../shell/undo.tsx";
+import { plural } from "../../data/text.ts";
 import { CardDialog } from "../../dialogs/accounts_card.tsx";
-import { CategoryDialog } from "../../dialogs/accounts_category.tsx";
+import { CategoryDialog, MergeCategoryDialog, RenameCategoryDialog } from "../../dialogs/accounts_category.tsx";
 import { MemberDialog } from "../../dialogs/accounts_member.tsx";
 import { DeductibleDialog } from "../../dialogs/deductible.tsx";
 import { useGoTo } from "../../data/navigation.ts";
@@ -159,32 +161,117 @@ const CATEGORY_COLUMNS: TierColumn<CategoryRow>[] = [
     width: 160,
     tier: 2,
   },
+  {
+    id: "status",
+    header: "Situação",
+    cell: (r) => (r.archived ? "Arquivada" : "Ativa"),
+    sortValue: (r) => (r.archived ? 1 : 0),
+    width: 100,
+    tier: 2,
+  },
 ];
 
+type CategoryDialogSpec =
+  { kind: "new" } | { kind: "deductible"; id: Id } | { kind: "rename"; id: Id } | { kind: "merge"; id: Id };
+
 export function CategoriesTab() {
-  const ledger = useWorkspace().ledger;
+  const workspace = useWorkspace();
+  const ledger = workspace.ledger;
+  const act = useAct();
+  const { undo } = useUndo();
   const { locked } = useLock();
-  const rows = useLedger(categoryRows);
+  const [withArchived, setWithArchived] = useState(false);
+  const rows = useLedger((l) => categoryRows(l, withArchived), String(withArchived));
   const [pick, setPick] = useState<Id | null>(null);
-  const dialog = useDialog<{ kind: "new" } | { kind: "deductible"; id: Id }>();
+  const dialog = useDialog<CategoryDialogSpec>();
   const selected = rows.find((r) => r.id === pick) ?? null;
 
+  /** The category of the row (or of the selection), or a notice asking to select one. */
+  const need = (id: Id | null): LedgerAccount | null => {
+    const found = id === null ? undefined : ledger.accounts.get(id);
+    if (found === undefined) notify("Selecione uma categoria.");
+    return found ?? null;
+  };
+
   const markDeductible = (id: Id | null = pick) => {
-    if (id === null || !ledger.accounts.has(id)) {
-      notify("Selecione uma categoria.");
-      return;
-    }
-    if (ledger.account(id).type !== AccountType.EXPENSE) {
+    const category = need(id);
+    if (category === null) return;
+    if (category.type !== AccountType.EXPENSE) {
       notify("Só categorias de despesa podem ser dedutíveis.");
       return;
     }
-    dialog.show({ kind: "deductible", id });
+    dialog.show({ kind: "deductible", id: category.id });
   };
-  /** A category's context menu: only an expense category can be deductible; an income one has no command. */
+
+  const rename = (id: Id | null = pick) => {
+    const category = need(id);
+    if (category) dialog.show({ kind: "rename", id: category.id });
+  };
+
+  const merge = (id: Id | null = pick) => {
+    const category = need(id);
+    if (category === null) return;
+    if (category.archived) {
+      notify("Reative a categoria antes de mesclá-la.");
+      return;
+    }
+    dialog.show({ kind: "merge", id: category.id });
+  };
+
+  /** Archiving hides a category from the choices; its entries and reports stay. Reversible, so no question. */
+  const toggleArchived = (id: Id | null = pick) => {
+    const category = need(id);
+    if (category === null) return;
+    const archiving = !category.archived;
+    const done = act((l) => dom.categories.setArchived(l, category.id, archiving), {
+      label: archiving ? "arquivar categoria" : "reativar categoria",
+    });
+    if (done === undefined) return;
+    if (archiving && !withArchived) setPick(null);
+    notify(archiving ? `Categoria “${category.name}” arquivada.` : `Categoria “${category.name}” reativada.`, {
+      action: { label: "Desfazer", run: undo },
+    });
+  };
+
+  /** The merge, once a target is chosen: asks first, saying how many entries move, then one undo step. */
+  const runMerge = async (sourceId: Id, targetId: Id) => {
+    const source = ledger.account(sourceId);
+    const target = ledger.account(targetId);
+    const { operations } = dom.categories.previewMerge(ledger, sourceId, targetId);
+    const ok = await confirm({
+      title: `Mesclar “${source.name}” em “${target.name}”?`,
+      text: `${operations ? `${plural(operations, "lançamento passa", "lançamentos passam")} para “${target.name}”` : "Nenhum lançamento a mover"}, com subcategorias, orçamentos, recorrências e regras. “${source.name}” fica arquivada. Dá para desfazer logo em seguida.`,
+      confirmLabel: "Mesclar",
+      danger: true,
+    });
+    if (!ok) return;
+    const result = act((l) => dom.categories.mergeCategories(l, sourceId, targetId), {
+      label: "mesclar categorias",
+    });
+    if (result === undefined) return;
+    setPick(targetId);
+    notify(
+      `“${source.name}” mesclada em “${target.name}”: ${plural(result.operations, "lançamento movido", "lançamentos movidos")}.`,
+      { action: { label: "Desfazer", run: undo } },
+    );
+  };
+
+  /** A category's commands: rename it, mark it deductible (expense only); merging and archiving last. */
   const rowMenu = (row: CategoryRow): MenuEntry[] =>
-    ledger.accounts.get(row.id)?.type === AccountType.EXPENSE
-      ? lockEntries([{ id: "deductible", label: "Dedutível no IR…", onSelect: () => markDeductible(row.id) }], locked)
-      : [];
+    lockEntries(
+      [
+        { id: "rename", label: "Renomear…", onSelect: () => rename(row.id) },
+        ...(ledger.accounts.get(row.id)?.type === AccountType.EXPENSE
+          ? [{ id: "deductible", label: "Dedutível no IR…", onSelect: () => markDeductible(row.id) }]
+          : []),
+        { kind: "separator" as const, id: "s1" },
+        { id: "archive", label: row.archived ? "Reativar" : "Arquivar", onSelect: () => toggleArchived(row.id) },
+        ...(row.archived
+          ? []
+          : [{ id: "merge", label: "Mesclar com outra…", danger: true, onSelect: () => merge(row.id) }]),
+      ],
+      locked,
+    );
 
   return (
     <div className="flex flex-col gap-4">
@@ -192,7 +279,13 @@ export function CategoriesTab() {
         <EditButton variant="primary" onClick={() => dialog.show({ kind: "new" })}>
           Nova categoria…
         </EditButton>
+        <EditButton onClick={() => rename()}>Renomear…</EditButton>
         <EditButton onClick={() => markDeductible()}>Dedutível no IR…</EditButton>
+        <EditButton onClick={() => toggleArchived()}>
+          {selected ? (selected.archived ? "Reativar" : "Arquivar") : "Arquivar ou reativar"}
+        </EditButton>
+        <EditButton onClick={() => merge()}>Mesclar…</EditButton>
+        <Switch label="Mostrar arquivadas" checked={withArchived} onCheckedChange={setWithArchived} />
       </Toolbar>
       {rows.length ? (
         <ListTable
@@ -227,6 +320,27 @@ export function CategoriesTab() {
           onClose={dialog.close}
           categoryId={dialog.spec.id}
           onDone={(kind) => notify(kind ? "Categoria marcada como dedutível." : "A categoria deixou de ser dedutível.")}
+        />
+      ) : null}
+      {dialog.spec?.kind === "rename" && ledger.accounts.has(dialog.spec.id) ? (
+        <RenameCategoryDialog
+          key={dialog.key}
+          open={dialog.open}
+          onClose={dialog.close}
+          category={ledger.account(dialog.spec.id)}
+          onDone={(category) => notify(`Categoria renomeada para “${category.name}”.`)}
+        />
+      ) : null}
+      {dialog.spec?.kind === "merge" && ledger.accounts.has(dialog.spec.id) ? (
+        <MergeCategoryDialog
+          key={dialog.key}
+          open={dialog.open}
+          onClose={dialog.close}
+          category={ledger.account(dialog.spec.id)}
+          onChoose={(targetId) => {
+            const sourceId = dialog.spec?.kind === "merge" ? dialog.spec.id : null;
+            if (sourceId !== null) void runMerge(sourceId, targetId);
+          }}
         />
       ) : null}
     </div>

@@ -412,8 +412,8 @@ describe("Recorrências", () => {
     const names = within(opened)
       .getAllByRole("menuitem")
       .map((item) => item.textContent);
-    expect(names).toEqual(["Editar…", "Pausar…"]);
-    // pausing is destructive here: last, in red, and it asks first
+    expect(names).toEqual(["Editar…", "Pausar…", "Excluir…"]);
+    // pausing and deleting are destructive here: last, in red, and they ask first
     expect(within(opened).getByRole("menuitem", { name: "Pausar…" }).className).toContain("text-negative");
     await user.click(within(opened).getByRole("menuitem", { name: "Pausar…" }));
     const ask = await screen.findByRole("alertdialog", { name: "Pausar “Aluguel”?" });

@@ -12,7 +12,18 @@ export const FREQUENCY_LABELS: Readonly<Record<Frequency, string>> = {
   monthly: "Mensal",
   yearly: "Anual",
   weekly: "Semanal",
+  semimonthly: "Quinzenal",
+  quarterly: "Trimestral",
+  every_n_months: "A cada N meses",
+  last_business_day: "Último dia útil do mês",
 };
+
+/** The frequency of one rule in words: "a cada N meses" names its N. */
+export function frequencyLabel(rule: Rule): string {
+  return rule.frequency === "every_n_months" && rule.interval_months !== null
+    ? `A cada ${rule.interval_months} meses`
+    : FREQUENCY_LABELS[rule.frequency];
+}
 
 export const FORECAST_LABELS: Readonly<Record<ForecastStatus, string>> = {
   pending: "Prevista",
@@ -53,9 +64,16 @@ export function ruleRef(ruleId: string): string {
   return `rule:${ruleId}`;
 }
 
-/** The day column: a weekly rule repeats from its start date, so no day of the month applies. */
+/**
+ * The day column: a weekly rule repeats from its start date and the last business day moves with the
+ * calendar, so no day of the month applies; a semimonthly rule has two days, 15 apart.
+ */
 export function dayLabel(rule: Rule): string {
-  return rule.frequency === "weekly" ? "—" : String(rule.day);
+  if (rule.frequency === "weekly" || rule.frequency === "last_business_day") return "—";
+  if (rule.frequency === "semimonthly") {
+    return rule.day <= 15 ? `${rule.day} e ${rule.day + 15}` : `${rule.day - 15} e ${rule.day}`;
+  }
+  return String(rule.day);
 }
 
 /** What the charge of a commitment says, in words (the color only reinforces it). */

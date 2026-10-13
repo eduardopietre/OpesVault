@@ -22,7 +22,7 @@ import { Dec } from "../src/lib/dec.ts";
 import type { IsoDate } from "../src/lib/dates.ts";
 import { cmpStr } from "../src/lib/text.ts";
 import { items } from "../src/importing/store.ts";
-import { golden } from "./golden.ts";
+import { atGoldenSchema, golden } from "./golden.ts";
 
 const ORIGIN = "ollama:m:a1";
 const UUID_IN_TEXT = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g;
@@ -136,7 +136,9 @@ function stateOf(ledger: Ledger, known: ReadonlySet<string>): Json[] {
     if (v !== null && typeof v === "object") return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, norm(x)]));
     return v;
   };
-  const rows = ledger.toRecords().map((r) => ({ kind: r.kind, payload: norm(JSON.parse(JSON.stringify(r.payload))) }));
+  const rows = ledger
+    .toRecords()
+    .map((r) => ({ kind: r.kind, payload: atGoldenSchema(norm(JSON.parse(JSON.stringify(r.payload)))) }));
   return rows.sort((a, b) => cmpStr(canonical(a), canonical(b)));
 }
 

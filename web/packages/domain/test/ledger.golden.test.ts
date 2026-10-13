@@ -6,7 +6,7 @@ import { dump, isActive, type Operation, OperationKind } from "../src/domain/mod
 import * as queries from "../src/domain/queries.ts";
 import { findOperations, operationFilter, type OperationFilter } from "../src/domain/search.ts";
 import { type IsoDate, ymAdd, ymOf, ymParse } from "../src/lib/dates.ts";
-import { golden, j } from "./golden.ts";
+import { atGoldenSchema, golden, j } from "./golden.ts";
 
 interface Scenario {
   seed: number;
@@ -105,7 +105,7 @@ describe.each(scenarios)("ledger golden (seed $seed)", (s) => {
   const ledger = Ledger.fromRecords(s.records);
 
   it("round-trips the records exactly", () => {
-    const back = ledger.toRecords().map((r) => ({ id: r.id, kind: r.kind, payload: r.payload }));
+    const back = atGoldenSchema(ledger.toRecords().map((r) => ({ id: r.id, kind: r.kind, payload: r.payload })));
     const sortKey = (r: LedgerRecord) => `${r.kind}:${r.id}`;
     expect([...back].sort((x, y) => sortKey(x).localeCompare(sortKey(y)))).toEqual(
       [...s.records].sort((x, y) => sortKey(x).localeCompare(sortKey(y))),

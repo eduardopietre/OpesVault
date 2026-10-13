@@ -16,7 +16,7 @@ import type { Id } from "../src/lib/ids.ts";
 import { unrealized, valueAt } from "../src/investments/performance.ts";
 import { assets, positions, remainingCost } from "../src/investments/service.ts";
 import { cmpStr } from "../src/lib/text.ts";
-import { golden, j } from "./golden.ts";
+import { atGoldenSchema, golden, j } from "./golden.ts";
 import { extractor } from "./importing_helpers.ts";
 
 const UUID_TEXT = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g;
@@ -143,8 +143,10 @@ describe("the demo project", () => {
       sha: d.meta.sha256,
       size: d.meta.size,
     }));
-    expect(rowsOf(session.ledger)).toEqual(data.records);
-    expect(JSON.parse(JSON.stringify(summary(session.ledger, documents, data.today)))).toEqual(data.summary);
+    expect(atGoldenSchema(rowsOf(session.ledger))).toEqual(data.records);
+    expect(atGoldenSchema(JSON.parse(JSON.stringify(summary(session.ledger, documents, data.today))))).toEqual(
+      data.summary,
+    );
   });
 
   it("round-trips through toRecords and fromRecords", { timeout: 60_000 }, async () => {

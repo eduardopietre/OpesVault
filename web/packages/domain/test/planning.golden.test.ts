@@ -30,7 +30,7 @@ import * as tags from "../src/domain/tags.ts";
 import { addDays, DateError, type IsoDate, ymAdd, ymOf, ymParse, ymStr, type YearMonth } from "../src/lib/dates.ts";
 import { Dec } from "../src/lib/dec.ts";
 import { cmpKeys, cmpStr } from "../src/lib/text.ts";
-import { golden } from "./golden.ts";
+import { atGoldenSchema, golden } from "./golden.ts";
 import { anon, idSet, py, uuidsIn } from "./pyjson.ts";
 
 interface Scenario {
@@ -460,7 +460,7 @@ describe.each(G.scenarios)("planning golden (seed $seed)", (s) => {
   it("round-trips the records exactly", () => {
     const ledger = Ledger.fromRecords(s.records);
     const key = (r: LedgerRecord) => `${r.kind}:${r.id}`;
-    const back = ledger.toRecords().map((r) => ({ id: r.id, kind: r.kind, payload: r.payload }));
+    const back = atGoldenSchema(ledger.toRecords().map((r) => ({ id: r.id, kind: r.kind, payload: r.payload })));
     expect([...back].sort((x, y) => cmpStr(key(x), key(y)))).toEqual(
       [...s.records].sort((x, y) => cmpStr(key(x), key(y))),
     );
@@ -470,7 +470,7 @@ describe.each(G.scenarios)("planning golden (seed $seed)", (s) => {
     const ledger = Ledger.fromRecords(s.records);
     const q = queriesOf(ledger, s.names);
     for (const [name, expected] of Object.entries(s.queries)) {
-      expect(anon(q[name], known, new Map()), name).toEqual(expected);
+      expect(atGoldenSchema(anon(q[name], known, new Map())), name).toEqual(expected);
     }
     expect(Object.keys(q).sort()).toEqual(Object.keys(s.queries).sort());
   });
@@ -481,7 +481,7 @@ describe.each(G.scenarios)("planning golden (seed $seed)", (s) => {
     s.commands.forEach((c, i) => {
       let result: unknown;
       try {
-        result = { ok: anon(py(run(ledger, c.cmd, c.args)), known, seen) };
+        result = { ok: atGoldenSchema(anon(py(run(ledger, c.cmd, c.args)), known, seen)) };
       } catch (error) {
         if (!(error instanceof DomainError)) throw error;
         result = { error: error.message };
@@ -490,7 +490,7 @@ describe.each(G.scenarios)("planning golden (seed $seed)", (s) => {
     });
     const q = queriesOf(ledger, s.names);
     for (const [name, expected] of Object.entries(s.after)) {
-      expect(anon(q[name], known, seen), name).toEqual(expected);
+      expect(atGoldenSchema(anon(q[name], known, seen)), name).toEqual(expected);
     }
     expect(ledger.rowCounts()).toEqual(s.row_counts);
   });

@@ -41,7 +41,8 @@ import { DomainError, getOrThrow } from "./error.ts";
 import { migrate } from "./migrations.ts";
 import { HistoryList, type JournalEntry, MISSING, TrackedMap } from "./tracking.ts";
 
-export const SCHEMA_VERSION = 2; // 2: members have a role (domain/migrations)
+// 2: members have a role; 3: recurrence interval and budget carry-over (domain/migrations)
+export const SCHEMA_VERSION = 3;
 const META_NAMESPACE = "6f1c3d2a-1b7e-4b8e-9f00-0c0ffee0a001";
 export const META_ID: Id = uuid5(META_NAMESPACE, "ledger-meta");
 export const META_KIND = "ledger.meta";

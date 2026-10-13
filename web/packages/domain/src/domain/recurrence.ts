@@ -6,7 +6,18 @@
  */
 import { z } from "zod";
 
-import { addDays, daysBetween, daysInMonth, type IsoDate, makeDate, ymAdd, ymFirstDay, ymOf } from "../lib/dates.ts";
+import {
+  addDays,
+  daysBetween,
+  daysInMonth,
+  type IsoDate,
+  makeDate,
+  weekday,
+  type YearMonth,
+  ymAdd,
+  ymFirstDay,
+  ymOf,
+} from "../lib/dates.ts";
 import { Dec } from "../lib/dec.ts";
 import type { Id } from "../lib/ids.ts";
 import { KeyError } from "../lib/py.ts";
@@ -17,8 +28,28 @@ import { DomainError, Ledger } from "./ledger.ts";
 import { AccountType, cashDate, type Operation, zEntityId } from "./model.ts";
 import { ZERO } from "./money.ts";
 
-export const Frequency = { MONTHLY: "monthly", YEARLY: "yearly", WEEKLY: "weekly" } as const;
+/**
+ * How a rule repeats (schema 3 added the last four). `semimonthly` (quinzenal) is twice a month: on `day` and
+ * 15 days apart in the same month (5 and 20; 16 and 1), the later one clamped to the month's end, so a year
+ * has exactly 24. `quarterly` is every 3 months and `every_n_months` every `interval_months` months, both on
+ * `day` from the start month. `last_business_day` is the last Monday-to-Friday of each month: there is no
+ * holiday calendar, so a holiday on that day is not skipped.
+ */
+export const Frequency = {
+  MONTHLY: "monthly",
+  YEARLY: "yearly",
+  WEEKLY: "weekly",
+  SEMIMONTHLY: "semimonthly",
+  QUARTERLY: "quarterly",
+  EVERY_N_MONTHS: "every_n_months",
+  LAST_BUSINESS_DAY: "last_business_day",
+} as const;
 export type Frequency = (typeof Frequency)[keyof typeof Frequency];
+const FREQUENCIES = Object.values(Frequency) as [Frequency, ...Frequency[]];
+
+/** Bounds of `interval_months` (an `every_n_months` rule). */
+export const MIN_INTERVAL_MONTHS = 2;
+export const MAX_INTERVAL_MONTHS = 60;
 
 export const RecurrenceRuleSchema = z.strictObject({
   id: zEntityId,
@@ -27,7 +58,9 @@ export const RecurrenceRuleSchema = z.strictObject({
   counterpart_id: zId, // category or other account
   amount: zDec, // expected value, positive
   tolerance: zDec.default(() => Dec.from("0")), // accepted difference when matching
-  frequency: z.enum(["monthly", "yearly", "weekly"]).default(Frequency.MONTHLY),
+  frequency: z.enum(FREQUENCIES).default(Frequency.MONTHLY),
+  // months between occurrences of an `every_n_months` rule; null for every other frequency (schema 3)
+  interval_months: z.number().int().min(MIN_INTERVAL_MONTHS).max(MAX_INTERVAL_MONTHS).nullable().default(null),
   day: z.number().int().min(1).max(31),
   start: zDate,
   end: zDate.nullable().default(null),
@@ -66,12 +99,66 @@ export function addRule(ledger: Ledger, rule: RecurrenceRule): RecurrenceRule {
   }
   if (!rule.amount.isPositive()) throw new DomainError("Informe um valor esperado positivo.");
   if (rule.end !== null && rule.end < rule.start) throw new DomainError("Fim antes do início.");
+  checkInterval(rule);
   return ledger.put("recurrence_rule", rule);
 }
 
 export function updateRule(ledger: Ledger, rule: RecurrenceRule, reason: string): RecurrenceRule {
   if (!rules(ledger).has(rule.id)) throw new DomainError("Regra inexistente.");
+  checkInterval(rule);
   return ledger.put("recurrence_rule", rule, { reason });
+}
+
+/** An `every_n_months` rule says how many months; no other frequency has an interval. */
+function checkInterval(rule: RecurrenceRule): void {
+  if (rule.frequency === Frequency.EVERY_N_MONTHS) {
+    if (rule.interval_months === null) throw new DomainError("Informe a cada quantos meses a recorrência se repete.");
+  } else if (rule.interval_months !== null) {
+    throw new DomainError("Só a frequência “a cada N meses” tem intervalo em meses.");
+  }
+}
+
+/**
+ * Deletes a rule with its decided forecasts (realized or skipped). The operations that realized it stay as
+ * they are, still marked as coming from a commitment (`forecast_id`): they happened.
+ */
+export function removeRule(ledger: Ledger, ruleId: Id): void {
+  if (!rules(ledger).has(ruleId)) throw new DomainError("Regra inexistente.");
+  const decided = links(ledger);
+  for (const link of [...decided.values()]) if (link.rule_id === ruleId) decided.delete(link.id);
+  rules(ledger).delete(ruleId);
+}
+
+/** Months between two occurrences of a month-based rule. */
+function monthStep(rule: RecurrenceRule): number {
+  switch (rule.frequency) {
+    case Frequency.YEARLY:
+      return 12;
+    case Frequency.QUARTERLY:
+      return 3;
+    case Frequency.EVERY_N_MONTHS:
+      return rule.interval_months ?? 1;
+    default:
+      return 1;
+  }
+}
+
+/** The last Monday-to-Friday of a month. Holidays are not known: one on that day still counts. */
+export function lastBusinessDay(month: YearMonth): IsoDate {
+  let when = makeDate(month.year, month.month, daysInMonth(month.year, month.month));
+  while (weekday(when) >= 5) when = addDays(when, -1);
+  return when;
+}
+
+/** The dates a month-based rule falls on within one month, in order. */
+function datesIn(rule: RecurrenceRule, month: YearMonth): IsoDate[] {
+  const last = daysInMonth(month.year, month.month);
+  if (rule.frequency === Frequency.LAST_BUSINESS_DAY) return [lastBusinessDay(month)];
+  if (rule.frequency === Frequency.SEMIMONTHLY) {
+    const [first, second] = rule.day <= 15 ? [rule.day, rule.day + 15] : [rule.day - 15, rule.day];
+    return [makeDate(month.year, month.month, first), makeDate(month.year, month.month, Math.min(second, last))];
+  }
+  return [makeDate(month.year, month.month, Math.min(rule.day, last))];
 }
 
 /** +1 when money enters `account_id`, −1 when it leaves. */
@@ -89,12 +176,12 @@ export function occurrences(rule: RecurrenceRule, start: IsoDate, end: IsoDate):
       cursor = addDays(cursor, 7);
     }
   } else {
-    const step = rule.frequency === Frequency.YEARLY ? 12 : 1;
+    const step = monthStep(rule);
     let month = ymOf(rule.start);
     while (ymFirstDay(month) <= end) {
-      const day = Math.min(rule.day, daysInMonth(month.year, month.month));
-      const when = makeDate(month.year, month.month, day);
-      if (when >= rule.start && start <= when && when <= end) dates.push(when);
+      for (const when of datesIn(rule, month)) {
+        if (when >= rule.start && start <= when && when <= end) dates.push(when);
+      }
       month = ymAdd(month, step);
     }
   }

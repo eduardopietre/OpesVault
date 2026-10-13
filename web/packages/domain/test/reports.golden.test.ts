@@ -27,7 +27,7 @@ import { Dec } from "../src/lib/dec.ts";
 import { formatFixed, head } from "../src/lib/py.ts";
 import * as issues from "../src/tax/issues.ts";
 import * as statements from "../src/tax/statements.ts";
-import { golden, j, outcome } from "./golden.ts";
+import { atGoldenSchema, golden, j, jsonAtGoldenSchema, outcome } from "./golden.ts";
 import { py } from "./pyjson.ts";
 
 interface Call {
@@ -159,7 +159,7 @@ const RUN: Record<string, Run> = {
   returns_chart: (l, a) => chartAndTable(charts.returnsChart(l, a["position"] as string, dt(a["start"]), dt(a["end"]))),
   // exports
   ledger_csv: (l) => blob(ledgerCsv(l)),
-  interchange_json: (l) => blob(interchangeJson(l, data.exported_at)),
+  interchange_json: (l) => blob(jsonAtGoldenSchema(interchangeJson(l, data.exported_at))),
   monthly_report_html: (l, a) => blob(monthlyReportHtml(l, ym(a["month"]), dt(a["today"]), id(a["member"]))),
   annual_report_html: (l, a) => blob(annualReportHtml(l, a["year"] as number)),
   tax_report_html: (l, a) => blob(taxReportHtml(l, a["year"] as number, dt(a["today"]), id(a["declarant"]))),
@@ -184,7 +184,7 @@ describe("reports golden", () => {
       const wrong: string[] = [];
       for (const [index, call] of scenario.calls.entries()) {
         const run = RUN[call.fn]!;
-        const got = outcome(() => run(ledger, call.args)) as { ok?: unknown; error?: string };
+        const got = atGoldenSchema(outcome(() => run(ledger, call.args))) as { ok?: unknown; error?: string };
         const want = call.error !== undefined ? { error: call.error } : { ok: call.ok };
         try {
           expect(got).toEqual(want);

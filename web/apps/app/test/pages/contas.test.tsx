@@ -71,7 +71,7 @@ describe("Contas e cartões page", () => {
       ["Todas as contas", ["Nova conta…", "Editar…", "Conferir saldo…"]],
       ["Cartões", ["Novo cartão…", "Editar…"]],
       ["Financiamentos", ["Novo financiamento…", "Pagar parcela…"]],
-      ["Categorias", ["Nova categoria…", "Dedutível no IR…"]],
+      ["Categorias", ["Nova categoria…", "Renomear…", "Dedutível no IR…", "Arquivar ou reativar", "Mesclar…"]],
       ["Regras", ["Nova regra…", "Editar…", "Ativar ou desativar…"]],
       ["Integrantes", ["Novo integrante…", "Editar…"]],
     ] as const) {
@@ -520,18 +520,19 @@ describe("Menus de contexto das listas", () => {
     await wentTo(went, "/livro", { ref: `conta:${card.liability_account_id}` });
   });
 
-  it("Categorias: an expense category can be marked deductible; an income one keeps the browser's menu", async () => {
+  it("Categorias: rename, archive and merge any category; only an expense one can be deductible", async () => {
     const { user } = await openContas();
     await goTab(user, "Categorias");
     const grid = await table("Categorias");
     const opened = await rowMenu(user, grid, "Lazer");
-    expect(names(opened)).toEqual(["Dedutível no IR…"]);
+    expect(names(opened)).toEqual(["Renomear…", "Dedutível no IR…", "Arquivar", "Mesclar com outra…"]);
     await user.click(within(opened).getByRole("menuitem", { name: "Dedutível no IR…" }));
     const box = await dialog(/Despesa dedutível — Lazer/);
     await user.click(within(box).getByRole("button", { name: "Cancelar" }));
     await closed(/Despesa dedutível/);
-    await user.pointer({ keys: "[MouseRight]", target: rowOf(await table("Categorias"), "Salário") });
-    expect(screen.queryByRole("menu")).toBeNull();
+    const income = await rowMenu(user, await table("Categorias"), "Salário");
+    expect(names(income)).toEqual(["Renomear…", "Arquivar", "Mesclar com outra…"]);
+    await user.keyboard("{Escape}");
   });
 
   it("Todas as contas: the account's commands, then a new check from the checks table", async () => {

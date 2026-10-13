@@ -29,6 +29,7 @@ import {
   NumberTicker,
   PageHeader,
   Section,
+  Switch,
   formatDecimalBR,
   formatMonth,
   notify,
@@ -38,9 +39,10 @@ import {
   fitHeight,
   usePhone,
 } from "@opesvault/ui";
-import { CircleAlert, CircleCheck, TriangleAlert } from "lucide-react";
+import { CircleAlert, CircleCheck, CornerDownRight, TriangleAlert } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useRef } from "react";
+import { useRef, useState } from "react";
+import { PlannedCell } from "./planned_cell.tsx";
 import { BudgetDialog } from "../../dialogs/budget_dialog.tsx";
 import { BudgetGridDialog } from "../../dialogs/budget_grid_dialog.tsx";
 import {
@@ -127,16 +129,75 @@ function StateLabel({ row }: { row: Row }) {
   );
 }
 
-const COLUMNS: DataColumn<Row>[] = [
-  { id: "category", header: "Categoria", cell: (row) => row.name, sortValue: (row) => row.name, grow: 2, width: 160 },
-  {
-    id: "planned",
-    header: "Planejado",
-    cell: (row) => money(row.planned),
-    sortValue: (row) => cents(row.planned),
-    align: "end",
-    width: 130,
-  },
+/** How the Planejado cell is edited in place: which row, and what to do with the typed value. */
+interface PlannedEditing {
+  editingId: string | null;
+  locked: boolean;
+  start: (id: string) => void;
+  save: (id: string, amount: Dec) => boolean;
+  cancel: () => void;
+}
+
+/** The leftover a category brought from the month before (only when its line carries over). */
+function CarriedCell({ row }: { row: Row }) {
+  if (row.carried.isZero()) return <span className="text-tertiary">—</span>;
+  return <span className="money text-positive">+{money(row.carried)}</span>;
+}
+
+function columnsFor(editing: PlannedEditing): DataColumn<Row>[] {
+  return [
+    {
+      id: "category",
+      header: "Categoria",
+      cell: (row) =>
+        row.carryOver ? (
+          <span className="inline-flex min-w-0 items-center gap-1.5">
+            <span className="truncate">{row.name}</span>
+            <span title="Leva a sobra para o mês seguinte" className="inline-flex shrink-0">
+              <CornerDownRight aria-hidden="true" className="size-3.5 text-secondary" />
+              <span className="sr-only">(leva a sobra para o mês seguinte)</span>
+            </span>
+          </span>
+        ) : (
+          row.name
+        ),
+      sortValue: (row) => row.name,
+      grow: 2,
+      width: 160,
+    },
+    {
+      id: "planned",
+      header: "Planejado",
+      cell: (row) => (
+        <PlannedCell
+          name={row.name}
+          planned={row.planned}
+          editing={editing.editingId === row.categoryId}
+          locked={editing.locked}
+          onStart={() => editing.start(row.categoryId)}
+          onSave={(amount) => editing.save(row.categoryId, amount)}
+          onCancel={editing.cancel}
+        />
+      ),
+      sortValue: (row) => cents(row.planned),
+      align: "end",
+      width: 140,
+    },
+    {
+      id: "carried",
+      header: "Sobra anterior",
+      cell: (row) => <CarriedCell row={row} />,
+      sortValue: (row) => cents(row.carried),
+      align: "end",
+      width: 130,
+      priority: 2,
+    },
+    ...FIGURE_COLUMNS,
+  ];
+}
+
+/** The columns after Planejado and Sobra anterior: what was spent and how it stands. */
+const FIGURE_COLUMNS: DataColumn<Row>[] = [
   {
     id: "actual",
     header: "Realizado",
@@ -203,10 +264,56 @@ export function Page() {
   const one = useDialog<OneDialog>();
   const grid = useDialog<GridDialog>();
 
-  const remaining = status.totalPlanned.sub(status.totalActual);
+  const remaining = status.totalAvailable.sub(status.totalActual);
   const today = ymOf(workspace.today());
+  const next = ymAdd(month, 1);
 
   // ── actions ─────────────────────────────────────
+
+  // The Planejado cell edited in place (Enter or double click on the row); the dialog stays for the rest.
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const startEditing = (id: string) => {
+    if (locked) return;
+    setPick(id);
+    setEditingId(id);
+  };
+  const saveInline = (id: string, amount: Dec): boolean => {
+    const saved = act((ledger) => dom.budget.setBudget(ledger, id, month, amount), {
+      done: `Orçamento de ${lower(month)} atualizado.`,
+      label: `orçamento de ${lower(month)}`,
+    });
+    if (saved === undefined) return false;
+    setEditingId(null);
+    return true;
+  };
+  // A short table (one row per budgeted category): its columns are rebuilt on each render.
+  const columns = columnsFor({
+    editingId,
+    locked,
+    start: startEditing,
+    save: saveInline,
+    cancel: () => setEditingId(null),
+  });
+
+  /** The leftover of this month goes to the next one, or stops going. Only a planned line carries over. */
+  const toggleCarry = (id: string) => {
+    const line = dom.budget.lineFor(workspace.ledger, id, month);
+    if (line === null) {
+      notify(`Defina o valor de ${lower(month)} antes de levar a sobra.`);
+      return;
+    }
+    const carry = !line.carry_over;
+    const saved = act((ledger) => dom.budget.setCarryOver(ledger, id, month, carry), {
+      label: carry ? "levar a sobra ao mês seguinte" : "não levar a sobra",
+    });
+    if (saved === undefined) return;
+    notify(
+      carry
+        ? `A sobra de ${lower(month)} vai para ${lower(next)}. Gasto acima do planejado não passa adiante.`
+        : `A sobra de ${lower(month)} deixa de ir para ${lower(next)}.`,
+      { action: { label: "Desfazer", run: undo } },
+    );
+  };
 
   /** The one-value dialog: a given category is edited, without one the user chooses it. */
   const define = (categoryId: string | null, at: YearMonth = month) => {
@@ -293,7 +400,13 @@ export function Page() {
   const rowMenu = (row: Row): MenuEntry[] =>
     lockEntries(
       [
+        { id: "inline", label: "Alterar aqui", onSelect: () => startEditing(row.categoryId) },
         { id: "edit", label: "Alterar valor…", onSelect: () => define(row.categoryId) },
+        {
+          id: "carry",
+          label: row.carryOver ? `Não levar a sobra para ${lower(next)}` : `Levar a sobra para ${lower(next)}`,
+          onSelect: () => toggleCarry(row.categoryId),
+        },
         { kind: "separator", id: "s1" },
         { id: "entries", label: "Ver lançamentos", onSelect: () => entriesOf(row.categoryId) },
         { kind: "separator", id: "s2" },
@@ -360,7 +473,14 @@ export function Page() {
   const figures: { label: string; value: Dec; tone?: "negative"; note?: string }[] = [
     { label: "Planejado", value: status.totalPlanned },
     { label: "Realizado", value: status.totalActual },
-    { label: "Restante", value: remaining, ...(remaining.isNegative() ? { tone: "negative" as const } : {}) },
+    {
+      label: "Restante",
+      value: remaining,
+      ...(remaining.isNegative() ? { tone: "negative" as const } : {}),
+      ...(status.totalCarried.isPositive()
+        ? { note: `Inclui ${money(status.totalCarried)} de sobra de ${lower(previous)}` }
+        : {}),
+    },
     { label: "Gasto fora do plano", value: status.unbudgeted, note: "Despesas do mês em categorias sem orçamento" },
   ];
 
@@ -395,18 +515,27 @@ export function Page() {
             <DataTable
               label="Orçamento por categoria"
               rows={status.rows}
-              columns={COLUMNS}
+              columns={columns}
               getRowId={(row) => row.categoryId}
               selectedId={selected?.categoryId ?? null}
-              onSelect={setPick}
+              onSelect={(id) => {
+                if (id !== editingId) setEditingId(null);
+                setPick(id);
+              }}
               rowMenu={rowMenu}
               rowMenuLabel={(row) => `Ações de ${row.name}`}
               onActivate={(id) => {
                 setPick(id);
-                if (!locked) define(id);
+                startEditing(id);
               }}
               height={fitHeight(status.rows.length, 16, phone)}
             />
+            <p className="mt-2 text-caption text-secondary">
+              {locked
+                ? "Projeto somente leitura: os valores não podem ser alterados."
+                : "Enter ou duplo clique na linha (ou um clique no valor) altera o planejado na própria tabela: Enter salva, Esc cancela."}{" "}
+              A sobra levada ao mês seguinte é só o que não foi gasto; gasto acima do planejado não passa adiante.
+            </p>
             <AnimatePresence initial={false}>
               {selected ? (
                 <motion.div
@@ -423,6 +552,12 @@ export function Page() {
                   <EditButton size="sm" onClick={editSelected}>
                     Alterar valor…
                   </EditButton>
+                  <Switch
+                    label={`Levar a sobra para ${lower(next)}`}
+                    checked={selected.carryOver}
+                    onCheckedChange={() => toggleCarry(selected.categoryId)}
+                    disabled={locked}
+                  />
                   <EditButton size="sm" onClick={removeSelected} tone="negative">
                     Remover do orçamento
                   </EditButton>

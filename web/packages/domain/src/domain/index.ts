@@ -7,6 +7,7 @@ export * as balanceChecks from "./balance_checks.ts";
 export * as banking from "./banking.ts";
 export * as budget from "./budget.ts";
 export * as cards from "./cards.ts";
+export * as categories from "./categories.ts";
 export * as comparisons from "./comparisons.ts";
 export * as deductibles from "./deductibles.ts";
 export * as goals from "./goals.ts";

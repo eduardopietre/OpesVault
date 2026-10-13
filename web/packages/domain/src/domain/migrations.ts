@@ -20,7 +20,25 @@ function membersGetARole(meta: Meta, rows: LedgerRecord[]): [Meta, LedgerRecord[
   ];
 }
 
-export const STEPS = new Map<number, Step>([[1, membersGetARole]]);
+/** Fills `field` with `value` in the payloads of `kind` that lack it. */
+function fill(rows: LedgerRecord[], kind: string, field: string, value: unknown): LedgerRecord[] {
+  return rows.map((r) =>
+    r.kind === kind && !(field in r.payload) ? { ...r, payload: { ...r.payload, [field]: value } } : r,
+  );
+}
+
+/**
+ * 2 → 3: recurrences gain an interval in months (only `every_n_months` uses it) and budget lines a carry-over
+ * switch; every existing rule and line keeps behaving as before (no interval, no carry-over).
+ */
+function recurrenceIntervalAndBudgetCarry(meta: Meta, rows: LedgerRecord[]): [Meta, LedgerRecord[]] {
+  return [meta, fill(fill(rows, "recurrence_rule", "interval_months", null), "budget_line", "carry_over", false)];
+}
+
+export const STEPS = new Map<number, Step>([
+  [1, membersGetARole],
+  [2, recurrenceIntervalAndBudgetCarry],
+]);
 
 export function migrate(meta: Meta, rows: LedgerRecord[]): [Meta, LedgerRecord[]] {
   let version = Number(meta["schema_version"] ?? 0);

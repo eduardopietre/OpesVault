@@ -10,7 +10,7 @@ import {
   type Ledger,
   type YearMonth,
 } from "@opesvault/domain";
-import { tableRows as chartRows, type ChartData } from "@opesvault/ui";
+import { formatMonth, tableRows as chartRows, type ChartData } from "@opesvault/ui";
 import { act as reactAct, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
@@ -291,7 +291,13 @@ describe("Orçamento", () => {
       within(opened)
         .getAllByRole("menuitem")
         .map((item) => item.textContent),
-    ).toEqual(["Alterar valor…", "Ver lançamentos", "Remover do orçamento"]);
+    ).toEqual([
+      "Alterar aqui",
+      "Alterar valor…",
+      `Levar a sobra para ${formatMonth(ymAdd(now, 1))}`,
+      "Ver lançamentos",
+      "Remover do orçamento",
+    ]);
     expect(within(opened).getByRole("menuitem", { name: "Remover do orçamento" }).className).toContain("text-negative");
     await user.click(within(opened).getByRole("menuitem", { name: "Alterar valor…" }));
     const dialog = await screen.findByRole("dialog", { name: /Orçamento de/ });

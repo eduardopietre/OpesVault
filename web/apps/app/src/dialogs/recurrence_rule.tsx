@@ -26,9 +26,34 @@ type Frequency = Rule["frequency"];
 
 const FREQUENCIES: readonly SelectOption[] = [
   { id: "monthly", label: "Mensal" },
+  { id: "semimonthly", label: "Quinzenal (duas vezes por mês)" },
+  { id: "quarterly", label: "Trimestral" },
+  { id: "every_n_months", label: "A cada N meses" },
   { id: "yearly", label: "Anual" },
   { id: "weekly", label: "Semanal" },
+  { id: "last_business_day", label: "Último dia útil do mês" },
 ];
+
+/** What the day field says for each frequency: where it does not apply, why. */
+function dayHint(frequency: string, day: string): string | undefined {
+  const n = Number(day);
+  switch (frequency) {
+    case "weekly":
+      return "Semanal: repete a cada 7 dias a partir do início.";
+    case "last_business_day":
+      return "Último dia de segunda a sexta de cada mês. Feriados não são considerados: um feriado nesse dia conta como dia útil.";
+    case "semimonthly":
+      return Number.isInteger(n) && n >= 1 && n <= 31
+        ? `Quinzenal: dias ${n <= 15 ? `${n} e ${n + 15}` : `${n - 15} e ${n}`} de cada mês (no fim do mês, o último dia).`
+        : "Quinzenal: no dia informado e 15 dias depois (ou antes), no mesmo mês.";
+    case "quarterly":
+      return "Trimestral: a cada 3 meses, a partir do mês de início.";
+    case "every_n_months":
+      return "Repete nesse dia, a partir do mês de início.";
+    default:
+      return undefined;
+  }
+}
 
 /** Income and expense categories in one list, each labelled by its kind. */
 function categoryChoices(ledger: Ledger): SelectOption[] {
@@ -78,7 +103,11 @@ export function RecurrenceRuleDialog({
   const [day, setDay] = useState(String(rule?.day ?? suggestion?.day ?? 5));
   const [start, setStart] = useState(dateText(rule?.start ?? (`${workspace.today().slice(0, 8)}01` as IsoDate)));
   const [end, setEnd] = useState(optionalDateValue(rule?.end ?? null));
-  const weekly = frequency === "weekly";
+  const [everyMonths, setEveryMonths] = useState(String(rule?.interval_months ?? 2));
+  // weekly repeats from the start date and the last business day moves: no day of the month applies
+  const noDay = frequency === "weekly" || frequency === "last_business_day";
+  const everyN = frequency === "every_n_months";
+  const { MIN_INTERVAL_MONTHS: minMonths, MAX_INTERVAL_MONTHS: maxMonths } = dom.recurrence;
 
   const confirm = () => {
     const name = description.trim();
@@ -88,8 +117,12 @@ export function RecurrenceRuleDialog({
     const expected = readMoney(amount).abs();
     const accepted = (readMoney(tolerance, { allowEmpty: true }) ?? ZERO).abs();
     const number = Number(day);
-    if (!weekly && (!/^\d+$/.test(day.trim()) || number < 1 || number > 31)) {
+    if (!noDay && (!/^\d+$/.test(day.trim()) || number < 1 || number > 31)) {
       throw new DomainError("O dia do vencimento vai de 1 a 31.");
+    }
+    const months = Number(everyMonths);
+    if (everyN && (!/^\d+$/.test(everyMonths.trim()) || months < minMonths || months > maxMonths)) {
+      throw new DomainError(`O intervalo vai de ${minMonths} a ${maxMonths} meses.`);
     }
     const first = readDate(start, "O início");
     const last = readOptionalDate(end, "O fim");
@@ -100,7 +133,8 @@ export function RecurrenceRuleDialog({
       amount: expected,
       tolerance: accepted,
       frequency: frequency as Frequency,
-      day: weekly ? (rule?.day ?? 1) : number,
+      interval_months: everyN ? months : null,
+      day: noDay ? (rule?.day ?? 1) : number,
       start: first,
       end: last,
     };
@@ -160,12 +194,26 @@ export function RecurrenceRuleDialog({
           inputMode="numeric"
           min={1}
           max={31}
-          value={weekly ? "" : day}
+          value={noDay ? "" : day}
           onChange={setDay}
-          disabled={weekly}
-          placeholder={weekly ? "a cada 7 dias" : undefined}
-          hint={weekly ? "Semanal: repete a cada 7 dias a partir do início." : undefined}
+          disabled={noDay}
+          placeholder={
+            frequency === "weekly" ? "a cada 7 dias" : frequency === "last_business_day" ? "último dia útil" : undefined
+          }
+          hint={dayHint(frequency, day)}
         />
+        {everyN ? (
+          <TextField
+            label="A cada quantos meses"
+            type="number"
+            inputMode="numeric"
+            min={minMonths}
+            max={maxMonths}
+            value={everyMonths}
+            onChange={setEveryMonths}
+            hint={`De ${minMonths} a ${maxMonths} meses.`}
+          />
+        ) : null}
         <DateField label="Início" value={start} onChange={setStart} />
         <OptionalDateField label="Fim" value={end} onChange={setEnd} />
         <FullRow>

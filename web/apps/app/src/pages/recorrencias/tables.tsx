@@ -6,7 +6,7 @@ import { formatBrl, formatDateBr, type dom } from "@opesvault/domain";
 import { Badge, ElidedText, type BadgeTone, type DataColumn } from "@opesvault/ui";
 import { CircleAlert, CircleCheck, CircleDashed, SkipForward, TriangleAlert } from "lucide-react";
 import type { ReactNode } from "react";
-import { FORECAST_LABELS, FREQUENCY_LABELS, dayLabel, situationLabel } from "./rows.ts";
+import { FORECAST_LABELS, dayLabel, frequencyLabel, situationLabel } from "./rows.ts";
 import { cents } from "../../data/money.ts";
 
 type Rule = dom.recurrence.RecurrenceRule;
@@ -59,12 +59,13 @@ export const RULE_COLUMNS: DataColumn<Rule>[] = [
   {
     id: "frequencia",
     header: "Frequência",
-    cell: (r) => FREQUENCY_LABELS[r.frequency],
-    sortValue: (r) => FREQUENCY_LABELS[r.frequency],
-    width: 100,
+    cell: (r) => frequencyLabel(r),
+    sortValue: (r) => frequencyLabel(r),
+    width: 120,
+    grow: 1,
     priority: 2,
   },
-  { id: "dia", header: "Dia", cell: (r) => dayLabel(r), align: "end", width: 56, priority: 2 },
+  { id: "dia", header: "Dia", cell: (r) => dayLabel(r), align: "end", width: 72, priority: 2 },
   {
     id: "situacao",
     header: "Situação",
@@ -134,9 +135,10 @@ export const COMMITMENT_COLUMNS: DataColumn<Commitment>[] = [
   {
     id: "frequencia",
     header: "Frequência",
-    cell: (c) => FREQUENCY_LABELS[c.rule.frequency],
-    sortValue: (c) => FREQUENCY_LABELS[c.rule.frequency],
-    width: 100,
+    cell: (c) => frequencyLabel(c.rule),
+    sortValue: (c) => frequencyLabel(c.rule),
+    width: 120,
+    grow: 1,
     priority: 2,
   },
   {

@@ -22,6 +22,40 @@ export function j(value: unknown): unknown {
   return value;
 }
 
+/**
+ * Schema 3 (docs/18 §10, 13/10/2026) added fields the Python never had: a recurrence's `interval_months`, a
+ * budget line's `carry_over` and, in the budget status, what a line carried from the month before. The frozen
+ * reference files are at schema 2, so a comparison with them drops these fields and reads schema 3 as 2. Only
+ * the new fields go: everything the Python computed is still compared.
+ */
+const SCHEMA_3_FIELDS = new Set([
+  "interval_months",
+  "carry_over",
+  "carried",
+  "available",
+  "carryOver",
+  "totalCarried",
+  "total_carried",
+]);
+const SCHEMA_FIELDS = new Set(["schema_version", "versao_esquema"]);
+
+export function atGoldenSchema<T>(value: T): T {
+  if (Array.isArray(value)) return value.map(atGoldenSchema) as T;
+  if (value === null || typeof value !== "object" || value instanceof Dec) return value;
+  const out: Record<string, unknown> = {};
+  for (const [key, inner] of Object.entries(value as Record<string, unknown>)) {
+    if (SCHEMA_3_FIELDS.has(key)) continue;
+    out[key] = SCHEMA_FIELDS.has(key) && inner === 3 ? 2 : atGoldenSchema(inner);
+  }
+  return out as T;
+}
+
+/** An exported JSON file (`JSON.stringify(…, null, 1)`) as it would read at schema 2. */
+export function jsonAtGoldenSchema(bytes: Uint8Array): Uint8Array {
+  const parsed = JSON.parse(new TextDecoder().decode(bytes)) as unknown;
+  return new TextEncoder().encode(JSON.stringify(atGoldenSchema(parsed), null, 1));
+}
+
 export type Outcome = { ok: unknown } | { error: string };
 
 export function outcome(fn: () => unknown): Outcome {

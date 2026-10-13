@@ -2,19 +2,33 @@
  * Chart and table of the same values (docs/16 §3, rule 9): each in a Collapsible, side by side from 1000 px
  * of panel (chart 3/5, values 2/5), never in tabs. Choosing a row points at the value in the chart; clicking
  * the chart selects the row. ECharts is loaded on demand, themed from the tokens, animated on entry and when
- * the data changes (not when the user asks for less motion), with a tooltip, an optional right scale and
- * "Exportar imagem".
+ * the data changes (not when the user asks for less motion), with a tooltip that says where each value comes from
+ * and how good it is (docs/07 §5: origin, nature, method, quality, when the series carries them), an optional right
+ * scale, zoom along the categories by explicit action (Ampliar, Reduzir, Redefinir escala; Ctrl + wheel inside the
+ * chart, a slider to move while zoomed), "Exportar imagem" and "Exportar valores" (CSV), each asked first: the file
+ * leaves the project without encryption (docs/19 §12).
  */
-import { ImageDown } from "lucide-react";
+import { Download, ImageDown, RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import { cn } from "../cn.ts";
 import { saveFile } from "../download.ts";
 import type { ChartOption } from "../chart/echarts.ts";
-import { formatValue, tableRows, type ChartData, type ChartUnit } from "../chart/model.ts";
+import {
+  chartCsv,
+  chartFileName,
+  detailLines,
+  formatValue,
+  tableRows,
+  type ChartData,
+  type ChartUnit,
+} from "../chart/model.ts";
+import { CSV_TYPE } from "../download.ts";
 import { useReduceMotion } from "../motion.tsx";
 import { useResolvedTheme } from "../preferences.tsx";
 import { CHART_SERIES_VARS, cssVar } from "../tokens.ts";
-import { Button } from "./Button.tsx";
+import { Button, IconButton } from "./Button.tsx";
+import { confirm } from "./Dialog.tsx";
+import { notify } from "./Toast.tsx";
 import { Collapsible } from "./Collapsible.tsx";
 import { Adaptive, Skeleton, type AdaptiveAt } from "./layout.tsx";
 
@@ -38,8 +52,47 @@ function axisLabel(unit: ChartUnit | undefined) {
         : compact.format(value);
 }
 
-/** Builds the ECharts option from the data and the current tokens. */
-export function chartOption(whole: ChartData, reduceMotion: boolean): ChartOption {
+/** The categories shown while zoomed, by index (both ends included); null is the whole chart. */
+export interface ZoomWindow {
+  from: number;
+  to: number;
+}
+
+/** From this many categories a chart can be zoomed; the narrowest window shows two. */
+export const ZOOM_MIN_CATEGORIES = 4;
+const MIN_SPAN = 2;
+
+export const zoomable = (chart: ChartData) => chart.categories.length >= ZOOM_MIN_CATEGORIES;
+
+function placed(center: number, span: number, count: number): ZoomWindow | null {
+  if (span >= count) return null;
+  const from = Math.min(Math.max(Math.round(center - (span - 1) / 2), 0), count - span);
+  return { from, to: from + span - 1 };
+}
+
+/** Half the categories in view, around `focus` (the chosen one) or the middle of what is shown. */
+export function zoomIn(current: ZoomWindow | null, count: number, focus: number | null = null): ZoomWindow | null {
+  const { from, to } = current ?? { from: 0, to: count - 1 };
+  const span = Math.max(MIN_SPAN, Math.ceil((to - from + 1) / 2));
+  return placed(focus ?? (from + to) / 2, span, count);
+}
+
+/** Twice the categories in view; the whole chart once they all fit. */
+export function zoomOut(current: ZoomWindow | null, count: number): ZoomWindow | null {
+  if (current === null) return null;
+  return placed((current.from + current.to) / 2, (current.to - current.from + 1) * 2, count);
+}
+
+/** The window moved just enough to show `index` (a value chosen in the table). */
+export function showing(current: ZoomWindow | null, index: number): ZoomWindow | null {
+  if (current === null || (index >= current.from && index <= current.to)) return current;
+  const span = current.to - current.from + 1;
+  const from = index < current.from ? index : index - span + 1;
+  return { from, to: from + span - 1 };
+}
+
+/** Builds the ECharts option from the data, the current tokens and the zoom window. */
+export function chartOption(whole: ChartData, reduceMotion: boolean, zoom: ZoomWindow | null = null): ChartOption {
   // Series marked `hidden` live only in the table of values.
   const chart = { ...whole, series: whole.series.filter((series) => !series.hidden) };
   const text = cssVar("--ov-text") || "#1d1d1f";
@@ -49,6 +102,10 @@ export function chartOption(whole: ChartData, reduceMotion: boolean): ChartOptio
   const separator = cssVar("--ov-separator") || "#dcdce0";
   const font = cssVar("--ov-font-sans") || "sans-serif";
   const colors = CHART_SERIES_VARS.map((name) => cssVar(name) || "#2a78d6");
+  const accentSoft = cssVar("--ov-accent-soft") || "#e6effa";
+  const canZoom = zoomable(chart);
+  const zoomed = canZoom && zoom !== null;
+  const range = zoomed ? { startValue: zoom.from, endValue: zoom.to } : { start: 0, end: 100 };
   const right = chart.series.some((series) => series.axis === "right");
   // Many named items (categories, merchants): every name is shown, tilted and shortened, instead of every other one.
   const named = chart.categories.length > 5 && chart.categories.some((label) => label.length > 9);
@@ -69,7 +126,47 @@ export function chartOption(whole: ChartData, reduceMotion: boolean): ChartOptio
     animationDurationUpdate: 320,
     animationEasing: "cubicOut",
     textStyle: { fontFamily: font, color: text },
-    grid: { left: 8, right: right ? 8 : 16, top: chart.series.length > 1 ? 40 : 16, bottom: 8, containLabel: true },
+    grid: {
+      left: 8,
+      right: right ? 8 : 16,
+      top: chart.series.length > 1 ? 40 : 16,
+      bottom: zoomed ? 40 : 8,
+      containLabel: true,
+    },
+    // Zoom only by an explicit gesture (Ctrl + wheel) or the panel's buttons: a plain wheel or a finger keeps
+    // scrolling the page. The slider appears while zoomed, to move along the categories.
+    dataZoom: canZoom
+      ? [
+          {
+            type: "inside",
+            xAxisIndex: 0,
+            ...range,
+            minValueSpan: MIN_SPAN - 1,
+            zoomOnMouseWheel: "ctrl",
+            moveOnMouseWheel: "shift",
+            moveOnMouseMove: false,
+            preventDefaultMouseMove: false,
+          },
+          {
+            type: "slider",
+            xAxisIndex: 0,
+            ...range,
+            minValueSpan: MIN_SPAN - 1,
+            show: zoomed,
+            height: 18,
+            bottom: 6,
+            showDetail: false,
+            showDataShadow: false,
+            brushSelect: false,
+            borderColor: separator,
+            backgroundColor: "transparent",
+            fillerColor: accentSoft,
+            handleStyle: { color: raised, borderColor: secondary },
+            moveHandleStyle: { color: separator },
+            textStyle: { color: secondary, fontFamily: font, fontSize: 11 },
+          },
+        ]
+      : [],
     legend:
       chart.series.length > 1
         ? {
@@ -99,13 +196,17 @@ export function chartOption(whole: ChartData, reduceMotion: boolean): ChartOptio
         const first = list[0];
         if (!first) return "";
         const lines = [chart.categories[first.dataIndex] ?? ""];
+        const shown: number[] = [];
         for (const item of list) {
           const series = chart.series[item.seriesIndex];
           if (!series) continue;
           // markers exist only on their own dates: a line "Aporte: —" on every other date is noise
           if (series.kind === "scatter" && (series.values[item.dataIndex] ?? null) === null) continue;
           lines.push(`${series.name}: ${formatValue(series.values[item.dataIndex] ?? null, unitOf(series.axis))}`);
+          shown.push(item.seriesIndex);
         }
+        // where the values come from and how good they are, once per line even when series share them
+        lines.push(...detailLines(chart, first.dataIndex, shown));
         return lines.join("\n");
       },
     },
@@ -176,13 +277,36 @@ export interface ChartViewProps {
   selected?: number | null;
   onSelect?: (index: number) => void;
   height?: number;
+  /** The categories in view (null: all of them). */
+  zoom?: ZoomWindow | null;
+  /** Called when the person zooms or moves inside the chart (Ctrl + wheel, the slider). */
+  onZoom?: (zoom: ZoomWindow | null) => void;
   /** Receives the instance (for export). */
   onReady?: (instance: Instance | null) => void;
   className?: string | undefined;
 }
 
+/** The window ECharts shows after a gesture in the chart, read back from its option. */
+function windowOf(instance: Instance, count: number): ZoomWindow | null {
+  const option = instance.getOption?.() as { dataZoom?: { startValue?: unknown; endValue?: unknown }[] } | undefined;
+  const zoom = option?.dataZoom?.[0];
+  if (!zoom || typeof zoom.startValue !== "number" || typeof zoom.endValue !== "number") return null;
+  const from = Math.max(0, Math.round(zoom.startValue));
+  const to = Math.min(count - 1, Math.round(zoom.endValue));
+  return from <= 0 && to >= count - 1 ? null : { from, to };
+}
+
 /** The chart alone; prefer ChartPanel, which always shows the table of the same values. */
-export function ChartView({ chart, selected = null, onSelect, height = 280, onReady, className }: ChartViewProps) {
+export function ChartView({
+  chart,
+  selected = null,
+  onSelect,
+  height = 280,
+  zoom = null,
+  onZoom,
+  onReady,
+  className,
+}: ChartViewProps) {
   const host = useRef<HTMLDivElement>(null);
   const instance = useRef<Instance | null>(null);
   const [ready, setReady] = useState(false);
@@ -191,9 +315,13 @@ export function ChartView({ chart, selected = null, onSelect, height = 280, onRe
   const theme = useResolvedTheme();
   const select = useRef(onSelect);
   const ready_ = useRef(onReady);
+  const zoomed = useRef(onZoom);
+  const count = useRef(chart.categories.length);
   useEffect(() => {
     select.current = onSelect;
     ready_.current = onReady;
+    zoomed.current = onZoom;
+    count.current = chart.categories.length;
   });
 
   useEffect(() => {
@@ -207,6 +335,7 @@ export function ChartView({ chart, selected = null, onSelect, height = 280, onRe
         chartInstance.on("click", (event: { dataIndex?: number }) => {
           if (typeof event.dataIndex === "number") select.current?.(event.dataIndex);
         });
+        chartInstance.on("datazoom", () => zoomed.current?.(windowOf(chartInstance, count.current)));
         if (typeof ResizeObserver !== "undefined") {
           observer = new ResizeObserver(() => chartInstance.resize());
           observer.observe(host.current);
@@ -228,15 +357,19 @@ export function ChartView({ chart, selected = null, onSelect, height = 280, onRe
 
   useEffect(() => {
     if (!ready || !instance.current) return;
-    instance.current.setOption(chartOption(chart, reduce), { notMerge: false, replaceMerge: ["series", "yAxis"] });
-  }, [ready, chart, reduce, theme]);
+    instance.current.setOption(chartOption(chart, reduce, zoom), {
+      notMerge: false,
+      replaceMerge: ["series", "yAxis", "dataZoom"],
+    });
+  }, [ready, chart, reduce, theme, zoom]);
 
   useEffect(() => {
     if (!ready || !instance.current || selected === null) return;
     instance.current.dispatchAction({ type: "showTip", seriesIndex: 0, dataIndex: selected });
   }, [ready, selected]);
 
-  const summary = `${chart.title}: gráfico com ${chart.series.map((s) => s.name).join(", ")} por ${chart.categories.length} períodos. Os valores estão na tabela.`;
+  const shown = zoom ? ` (mostrando ${chart.categories[zoom.from]} a ${chart.categories[zoom.to]})` : "";
+  const summary = `${chart.title}: gráfico com ${chart.series.map((s) => s.name).join(", ")} por ${chart.categories.length} períodos${shown}. Os valores estão na tabela.`;
   return (
     <div className={cn("relative", className)} style={{ height }}>
       <div ref={host} role="img" aria-label={summary} className="absolute inset-0" />
@@ -266,11 +399,26 @@ export interface ChartPanelProps {
   /** Actions on the title line of the values (an export of the table). */
   valuesActions?: ReactNode;
   /**
-   * The page owns the image export (it asks first): the panel stores here the function that downloads the
-   * image, returning false when the chart is not on screen (its section folded), and drops its own button.
+   * The page owns the exports (it asks first, with its own file names): the panel stores here the function that
+   * downloads the image, returning false when the chart is not on screen (its section folded), and drops its own
+   * "Exportar imagem" and "Exportar valores" buttons.
    */
   exportRef?: RefObject<(() => boolean) | null>;
   className?: string | undefined;
+}
+
+const NOT_ENCRYPTED = "Guarde-o com cuidado: ele não é cifrado.";
+
+/** Asks before a file leaves the project without encryption (docs/19 §12), saves it and says so. */
+async function askAndSave(what: "imagem" | "valores", save: () => boolean, done: string): Promise<void> {
+  const image = what === "imagem";
+  const yes = await confirm({
+    title: image ? "Exportar imagem sem criptografia?" : "Exportar valores sem criptografia?",
+    text: `${image ? "A imagem" : "O arquivo CSV"} será gravad${image ? "a" : "o"} fora do projeto, na pasta de downloads deste aparelho, sem criptografia.`,
+    confirmLabel: "Exportar",
+  });
+  if (!yes || !save()) return;
+  notify(`${done} ${NOT_ENCRYPTED}`);
 }
 
 export function ChartPanel({
@@ -289,9 +437,20 @@ export function ChartPanel({
   const instance = useRef<Instance | null>(null);
   const rows = useMemo(() => tableRows(chart), [chart]);
   const [tableOpen, setTableOpen] = useState(true);
+  // The zoom belongs to the categories it was made on: other data (another month, another account) starts whole.
+  const categories = chart.categories.join("\u0000");
+  const [zoomState, setZoomState] = useState<{ of: string; window: ZoomWindow | null }>({ of: "", window: null });
+  const zoom = zoomState.of === categories ? zoomState.window : null;
+  const setZoom = (window: ZoomWindow | null) => setZoomState({ of: categories, window });
+  const count = chart.categories.length;
+  const canZoom = zoomable(chart);
 
   const choose = (index: number | null) => {
     setSelected(index);
+    if (index !== null) {
+      const moved = showing(zoom, index);
+      if (moved !== zoom) setZoom(moved);
+    }
     onSelect?.(index);
   };
 
@@ -301,14 +460,11 @@ export function ChartPanel({
     const url = current.getDataURL({ type: "png", pixelRatio: 2, backgroundColor: cssVar("--ov-content") || "#fff" });
     // a file of its own (not the data address): the browser keeps the name given here
     const bytes = Uint8Array.from(atob(url.slice(url.indexOf(",") + 1)), (char) => char.charCodeAt(0));
-    // without accents or reserved characters: every browser and file system takes the name as it is
-    const name = chart.title
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/[^\w .()-]+/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
-    saveFile(`${name || "grafico"}.png`, bytes, "image/png");
+    saveFile(chartFileName(chart.title, "png"), bytes, "image/png");
+    return true;
+  };
+  const exportValues = (): boolean => {
+    saveFile(chartFileName(chart.title, "csv"), chartCsv(chart, firstColumn), CSV_TYPE);
     return true;
   };
   useEffect(() => {
@@ -319,22 +475,77 @@ export function ChartPanel({
     };
   });
 
+  const chartActions = (
+    <>
+      {canZoom ? (
+        <div role="group" aria-label={`Escala de ${chart.title}`} className="flex items-center gap-0.5">
+          <IconButton
+            size="sm"
+            label="Ampliar"
+            icon={<ZoomIn className="size-4" />}
+            disabled={zoom !== null && zoom.to - zoom.from + 1 <= MIN_SPAN}
+            onClick={() => setZoom(zoomIn(zoom, count, selected))}
+          />
+          <IconButton
+            size="sm"
+            label="Reduzir"
+            icon={<ZoomOut className="size-4" />}
+            disabled={zoom === null}
+            onClick={() => setZoom(zoomOut(zoom, count))}
+          />
+          <IconButton
+            size="sm"
+            label="Redefinir escala"
+            icon={<RotateCcw className="size-4" />}
+            disabled={zoom === null}
+            onClick={() => setZoom(null)}
+          />
+        </div>
+      ) : null}
+      {exportRef ? null : (
+        <Button
+          size="sm"
+          variant="ghost"
+          icon={<ImageDown className="size-4" />}
+          onClick={() =>
+            void askAndSave(
+              "imagem",
+              () => {
+                if (exportImage()) return true;
+                notify("O gráfico ainda não está desenhado.");
+                return false;
+              },
+              "Imagem do gráfico gerada.",
+            )
+          }
+        >
+          Exportar imagem…
+        </Button>
+      )}
+    </>
+  );
+  const tableActions =
+    valuesActions || !exportRef ? (
+      <>
+        {valuesActions}
+        {exportRef ? null : (
+          <Button
+            size="sm"
+            variant="ghost"
+            icon={<Download className="size-4" />}
+            title="Grava a tabela em CSV, fora do projeto"
+            onClick={() => void askAndSave("valores", exportValues, "Arquivo CSV gerado.")}
+          >
+            Exportar valores…
+          </Button>
+        )}
+      </>
+    ) : null;
+
   return (
     <div className={cn("min-w-0", className)}>
       <Adaptive at={at} columns={columns} gap={24}>
-        <Collapsible
-          title={chart.title}
-          {...(prefKey ? { prefKey: `${prefKey}/grafico` } : {})}
-          {...(exportRef
-            ? {}
-            : {
-                actions: (
-                  <Button size="sm" variant="ghost" icon={<ImageDown className="size-4" />} onClick={exportImage}>
-                    Exportar imagem
-                  </Button>
-                ),
-              })}
-        >
+        <Collapsible title={chart.title} {...(prefKey ? { prefKey: `${prefKey}/grafico` } : {})} actions={chartActions}>
           <ChartView
             chart={chart}
             selected={selected}
@@ -343,6 +554,8 @@ export function ChartPanel({
               setTableOpen(true);
             }}
             height={height}
+            zoom={zoom}
+            onZoom={setZoom}
             onReady={(value) => (instance.current = value)}
           />
           {chart.note ? <p className="mt-2 text-caption text-secondary">{chart.note}</p> : null}
@@ -351,7 +564,7 @@ export function ChartPanel({
           title="Valores"
           open={tableOpen}
           onOpenChange={setTableOpen}
-          {...(valuesActions ? { actions: valuesActions } : {})}
+          {...(tableActions ? { actions: tableActions } : {})}
           {...(prefKey ? { prefKey: `${prefKey}/valores` } : {})}
         >
           <div className="max-h-[360px] overflow-auto">

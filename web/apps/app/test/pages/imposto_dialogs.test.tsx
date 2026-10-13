@@ -15,7 +15,7 @@ const LINK = `/imposto-de-renda?ref=year:${YEAR}`;
 describe("Declarantes e dependentes", () => {
   it("lists the members with their CPF and who declares them, and edits one: masked, checked, undone", async () => {
     const { user, ledger, workspace } = await openImposto(LINK);
-    await menu(user, "Cadastros", "Declarantes e dependentes…");
+    await user.click(screen.getByRole("button", { name: "Declarantes e dependentes…" }));
     const people = await dialog("Declarantes e dependentes");
     const grid = within(people).getByRole("grid", { name: "Integrantes" });
     expect(flat(rowOf(grid, "Ana").textContent)).toContain("529.982.247-25");
@@ -53,7 +53,7 @@ describe("Declarantes e dependentes", () => {
   it("makes a member a dependent: who declares comes from the other active members", async () => {
     const { user, ledger } = await openImposto(LINK);
     const ana = memberNamed(ledger, "Ana");
-    await menu(user, "Cadastros", "Declarantes e dependentes…");
+    await user.click(screen.getByRole("button", { name: "Declarantes e dependentes…" }));
     const people = await dialog("Declarantes e dependentes");
     await clickRow(user, within(people).getByRole("grid", { name: "Integrantes" }), "Ana");
     await user.click(within(people).getByRole("button", { name: "Editar…" }));
@@ -67,7 +67,7 @@ describe("Declarantes e dependentes", () => {
 
   it("asks to register members first when there are none", async () => {
     const { user } = await openImposto("/imposto-de-renda", { project: "blank" });
-    await menu(user, "Cadastros", "Declarantes e dependentes…");
+    await user.click(screen.getByRole("button", { name: "Declarantes e dependentes…" }));
     expect(await screen.findByText("Cadastre os integrantes em Contas e cartões › Integrantes.")).toBeTruthy();
     expect(screen.queryByRole("dialog")).toBeNull();
   });
@@ -77,7 +77,7 @@ describe("Tabela e limites do ano", () => {
   it("starts empty, refuses a typo naming the row, and with the user's table the simulation shows the tax", async () => {
     const { user, ledger, workspace } = await openImposto(LINK);
     const before = taxSnapshot(ledger);
-    await menu(user, "Cadastros", "Tabela e limites do ano…");
+    await user.click(screen.getByRole("button", { name: "Tabela e limites do ano…" }));
     const box = await dialog("Tabela e limites de 2026");
     for (const name of ["Faixa 1: base anual até", "Faixa 1: alíquota (%)", "Faixa 5: parcela a deduzir"]) {
       expect((within(box).getByLabelText(name) as HTMLInputElement).value).toBe("");
@@ -111,7 +111,7 @@ describe("Tabela e limites do ano", () => {
     expect(screen.queryByText(/Falta informar a tabela anual/)).toBeNull();
     expect(screen.getByText(/menos imposto|Falta informar/)).toBeTruthy();
     // reopened, the table comes back as typed
-    await menu(user, "Cadastros", "Tabela e limites do ano…");
+    await user.click(screen.getByRole("button", { name: "Tabela e limites do ano…" }));
     const again = await dialog("Tabela e limites de 2026");
     expect((within(again).getByLabelText("Faixa 1: base anual até") as HTMLInputElement).value).toBe("30.000,00");
     expect((within(again).getByLabelText("Faixa 2: alíquota (%)") as HTMLInputElement).value).toBe("20");
@@ -135,7 +135,7 @@ describe("Bem (imóvel, veículo)", () => {
   it("includes a good at acquisition cost, edits it from the sheet, and each is one undo", async () => {
     const { user, ledger, workspace } = await openImposto(LINK);
     const before = taxSnapshot(ledger);
-    await menu(user, "Cadastros", "Novo bem (imóvel, veículo)…");
+    await menu(user, "Mais", "Novo bem (imóvel, veículo)…");
     const box = await dialog("Novo bem");
     await submit(user, box, "Salvar");
     expect(await within(box).findByText("Informe o nome do bem.")).toBeTruthy();

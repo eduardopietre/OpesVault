@@ -6,6 +6,7 @@ import { YEAR, openImposto, seedRent, seedVariableIncome, taxSnapshot } from "./
 import { accountNamed, memberNamed } from "../lookup.ts";
 import { choose, closed, dialog, fill, flat, clickRow, rowOf, submit, table, undoOnce } from "../dom.ts";
 import { addressSettles } from "../navigations.ts";
+import { parameterRows } from "../../src/pages/imposto/parameters.tsx";
 
 const LINK = `/imposto-de-renda?ref=year:${YEAR}`;
 const day = (m: number, d: number): IsoDate => makeDate(YEAR, m, d);
@@ -90,27 +91,94 @@ describe("the page", () => {
         expect(button.title).toMatch(/Outra aba ou aparelho está editando/);
       }
     }
-    await user.click(screen.getByRole("button", { name: "Cadastros" }));
-    await user.click(await screen.findByRole("menuitem", { name: "Tabela e limites do ano…" }));
+    // the parameters can be read, not edited
+    const parameters = screen.getByRole("list", { name: "Parâmetros do imposto" });
+    for (const name of [
+      "Declarantes e dependentes…",
+      "Natureza dos rendimentos…",
+      "Tabela e limites do ano…",
+      "Regras de renda variável…",
+    ]) {
+      const button = within(parameters).getByRole("button", { name }) as HTMLButtonElement;
+      expect(button.disabled, name).toBe(true);
+      expect(button.title).toMatch(/Outra aba ou aparelho está editando/);
+    }
+    await user.click(screen.getByRole("button", { name: "Mais" }));
+    const item = await screen.findByRole("menuitem", { name: "Novo bem (imóvel, veículo)…" });
+    expect(item.getAttribute("aria-disabled")).toBe("true");
+    await user.keyboard("{Escape}");
     expect(screen.queryByRole("dialog")).toBeNull();
-    expect(await screen.findByText(/Outra aba ou aparelho está editando/)).toBeTruthy();
     expect(taxSnapshot(ledger)).toBe(before);
   });
 });
 
-describe("the menus", () => {
-  it("Cadastros opens each registration and Mais the informe without a file", async () => {
+describe("the parameters and the menu", () => {
+  it("shows on the page what is informed and what is missing, without any value of its own", async () => {
+    const { ledger } = await openImposto(LINK);
+    expect(screen.queryByRole("button", { name: "Cadastros" })).toBeNull();
+    const rows = parameterRows(ledger, YEAR);
+    expect(rows.map((row) => row.command)).toEqual([
+      "Declarantes e dependentes…",
+      "Natureza dos rendimentos…",
+      "Tabela e limites do ano…",
+      "Regras de renda variável…",
+    ]);
+    const list = screen.getByRole("list", { name: "Parâmetros do imposto" });
+    const items = within(list).getAllByRole("listitem");
+    rows.forEach((row, index) => {
+      expect(flat(items[index]!.textContent)).toContain(row.status);
+      expect(flat(items[index]!.textContent).includes("A informar")).toBe(row.missing);
+    });
+    const missing = rows.filter((row) => row.missing).length;
+    expect(
+      screen.getByRole("button", { name: missing ? `Parâmetros · ${missing} a informar` : "Parâmetros" }),
+    ).toBeTruthy();
+  });
+
+  it("says what each parameter holds once informed, and what is still missing", async () => {
+    const { ledger, workspace } = await openImposto(LINK);
+    const blank = parameterRows(ledger, YEAR);
+    reactAct(
+      () =>
+        void workspace.act((l) =>
+          tax.records.setParameters(
+            l,
+            tax.model.TaxParametersSchema.parse({
+              year: YEAR,
+              brackets: [
+                { up_to: "1000.00", rate: "0", deduction: "0" },
+                { up_to: null, rate: "0.1", deduction: "100" },
+              ],
+              source: "tabela copiada",
+            }),
+          ),
+        ),
+    );
+    const after = parameterRows(ledger, YEAR);
+    expect(blank.find((row) => row.id === "params")!.missing).toBe(true);
+    const params = after.find((row) => row.id === "params")!;
+    expect(params.missing).toBe(false);
+    expect(params.status).toBe(`${YEAR}: 2 faixas informadas; fonte: tabela copiada.`);
+    expect(await screen.findByText(params.status)).toBeTruthy();
+  });
+
+  it("each parameter opens its dialog; Mais keeps the actions", async () => {
     const { user } = await openImposto(LINK);
     for (const [button, item, title] of [
-      ["Cadastros", "Declarantes e dependentes…", "Declarantes e dependentes"],
-      ["Cadastros", "Natureza dos rendimentos…", "Natureza dos rendimentos"],
-      ["Cadastros", "Novo bem (imóvel, veículo)…", "Novo bem"],
-      ["Cadastros", "Tabela e limites do ano…", "Tabela e limites de 2026"],
-      ["Cadastros", "Regras de renda variável…", "Regras de renda variável"],
+      [null, "Declarantes e dependentes…", "Declarantes e dependentes"],
+      [null, "Natureza dos rendimentos…", "Natureza dos rendimentos"],
+      ["Mais", "Novo bem (imóvel, veículo)…", "Novo bem"],
+      [null, "Tabela e limites do ano…", "Tabela e limites de 2026"],
+      [null, "Regras de renda variável…", "Regras de renda variável"],
       ["Mais", "Novo informe sem arquivo…", "Informe de rendimentos"],
     ] as const) {
-      await user.click(screen.getByRole("button", { name: button }));
-      await user.click(await screen.findByRole("menuitem", { name: item }));
+      if (button) {
+        await user.click(screen.getByRole("button", { name: button }));
+        await user.click(await screen.findByRole("menuitem", { name: item }));
+      } else {
+        const list = screen.getByRole("list", { name: "Parâmetros do imposto" });
+        await user.click(within(list).getByRole("button", { name: item }));
+      }
       const box = await dialog(title);
       await user.click(
         within(box)

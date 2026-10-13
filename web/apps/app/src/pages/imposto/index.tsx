@@ -5,6 +5,10 @@
  * with its reason. The nature of each income, the group and code of each asset and every CPF/CNPJ are the
  * person's choices; the page may suggest, marked as such, and never saves on its own.
  *
+ * What the person informs once (who declares, the nature of each income, the year's table and limits, the
+ * rules of variable income) is in "Parâmetros", on the page itself, each with what is still missing; the header's
+ * menu keeps only actions.
+ *
  * A pending item leads straight to the dialog that resolves it. A link from another screen (a DARF reminder,
  * the declaration season) opens the year, the month and, with an action, the payment.
  */
@@ -32,6 +36,7 @@ import { declarantChoices, namesOf, yearData } from "./data.ts";
 import { DialogHost, type Spec } from "./host.tsx";
 import { useReportImport, type ParsedProps, type ReportSourcePick } from "./import_flow.tsx";
 import { IssueList } from "./issues.tsx";
+import { ParametersSection, type ParameterId } from "./parameters.tsx";
 import { initialYear, parseReveal, summaryLine, yearOptions } from "./rows.ts";
 import {
   AssetsSection,
@@ -44,7 +49,7 @@ import {
   VariableSection,
 } from "./sections.tsx";
 import { useDialog } from "../../data/dialog.ts";
-import { useLock } from "../../data/read_only.ts";
+import { lockEntries, useLock } from "../../data/read_only.ts";
 
 const PROJECT = "__project";
 
@@ -342,6 +347,15 @@ export function Page() {
     });
   };
 
+  // ── parameters ────────────────────
+
+  const editParameter = (id: ParameterId) => {
+    if (id === "people") peopleDialog();
+    else if (id === "nature") show({ kind: "nature", focus: null });
+    else if (id === "params") show({ kind: "params", year });
+    else show({ kind: "rules" });
+  };
+
   // ── a pending item leads to what resolves it ────
 
   const showDocuments = () => {
@@ -459,35 +473,26 @@ export function Page() {
         actions={
           <>
             <MenuButton
-              label="Cadastros"
-              items={[
-                { id: "people", label: "Declarantes e dependentes…", onSelect: () => peopleDialog() },
-                {
-                  id: "nature",
-                  label: "Natureza dos rendimentos…",
-                  onSelect: () => show({ kind: "nature", focus: null }),
-                },
-                {
-                  id: "asset",
-                  label: "Novo bem (imóvel, veículo)…",
-                  onSelect: () => show({ kind: "asset", assetId: null }),
-                },
-                { kind: "separator", id: "sep" },
-                { id: "params", label: "Tabela e limites do ano…", onSelect: () => show({ kind: "params", year }) },
-                { id: "rules", label: "Regras de renda variável…", onSelect: () => show({ kind: "rules" }) },
-              ]}
-            />
-            <MenuButton
               label="Mais"
-              items={[
-                { id: "new-report", label: "Novo informe sem arquivo…", onSelect: newReport },
-                {
-                  id: "pdf",
-                  label: "Relatório para a declaração (PDF)…",
-                  icon: <FileDown />,
-                  onSelect: printReport,
-                },
-              ]}
+              items={lockEntries(
+                [
+                  { id: "new-report", label: "Novo informe sem arquivo…", onSelect: newReport },
+                  {
+                    id: "asset",
+                    label: "Novo bem (imóvel, veículo)…",
+                    onSelect: () => show({ kind: "asset", assetId: null }),
+                  },
+                  { kind: "separator", id: "sep" },
+                  {
+                    id: "pdf",
+                    label: "Relatório para a declaração (PDF)…",
+                    icon: <FileDown />,
+                    onSelect: printReport,
+                  },
+                ],
+                locked,
+                ["pdf"],
+              )}
             />
           </>
         }
@@ -615,6 +620,8 @@ export function Page() {
           }
         />
       )}
+
+      <ParametersSection year={year} onEdit={editParameter} />
 
       <DialogHost
         spec={dialog.spec}

@@ -30,8 +30,10 @@ forEachScreen(({ size, suffix }) => {
     await page.keyboard.press("Escape");
     await taxId.waitFor({ state: "hidden" });
 
-    await page.getByRole("button", { name: "Cadastros" }).click();
-    await page.getByRole("menuitem", { name: "Tabela e limites do ano…" }).click();
+    await page
+      .getByRole("list", { name: "Parâmetros do imposto" })
+      .getByRole("button", { name: "Tabela e limites do ano…", exact: true })
+      .click();
     const params = page.getByRole("dialog", { name: "Tabela e limites de 2026" });
     await params.waitFor();
     await settle(page);
@@ -49,8 +51,10 @@ forEachScreen(({ size, suffix }) => {
     await page.keyboard.press("Escape");
     await report.waitFor({ state: "hidden" });
 
-    await page.getByRole("button", { name: "Cadastros" }).click();
-    await page.getByRole("menuitem", { name: "Natureza dos rendimentos…" }).click();
+    await page
+      .getByRole("list", { name: "Parâmetros do imposto" })
+      .getByRole("button", { name: "Natureza dos rendimentos…", exact: true })
+      .click();
     const nature = page.getByRole("dialog", { name: "Natureza dos rendimentos" });
     await nature.waitFor();
     await settle(page);

@@ -93,6 +93,11 @@ export function monthWeeks(month: YearMonth, events: readonly AgendaEvent[], tod
   return weeks;
 }
 
+/** The entries already late ("Só atrasados"): due and not paid, realized nor skipped. */
+export function lateOnly(events: readonly AgendaEvent[]): AgendaEvent[] {
+  return events.filter((e) => e.state === EventState.LATE);
+}
+
 /** The entries of one day, or of the whole month when no day is chosen. */
 export function entriesOf(events: readonly AgendaEvent[], day: IsoDate | null): AgendaEvent[] {
   return events.filter((e) => day === null || e.on === day);

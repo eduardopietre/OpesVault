@@ -470,12 +470,16 @@ for (const size of TEST_SIZES) {
         await expect(pay.first()).toBeVisible();
         const count = await pay.count();
         expect(count).toBeGreaterThan(0);
-        for (let index = 0; index < count; index++) {
+        // The calendar pays right there; its "Abrir…" (wide layouts) opens Contas ready to pay.
+        for (let index = 0; index < (phone ? 0 : count); index++) {
           await openDemo(page, "/calendario");
-          await page
-            .getByRole("button", { name: /^Pagar…: / })
-            .nth(index)
-            .click();
+          const payable = page
+            .getByRole("grid", { name: "Vencimentos" })
+            .getByRole("row")
+            .filter({ has: page.getByRole("button", { name: /^Pagar…: / }) })
+            .nth(index);
+          await payable.getByRole("gridcell").first().click();
+          await page.getByRole("button", { name: "Abrir…" }).click();
           await expect(page).toHaveURL(/\/contas/);
           // the payment of the bill or installment opens at once, on the right tab
           const dialog = page.getByRole("dialog", { name: /^Pagar (fatura|parcela)/ });

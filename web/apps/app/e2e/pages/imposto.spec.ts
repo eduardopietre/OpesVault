@@ -16,6 +16,11 @@ import {
 import { menu } from "../ui.ts";
 
 /** The demonstration project on the year its tax data is in. */
+/** A parameter's command, in the "Parâmetros" section of the page. */
+async function parameter(page: Page, name: string): Promise<void> {
+  await page.getByRole("list", { name: "Parâmetros do imposto" }).getByRole("button", { name, exact: true }).click();
+}
+
 async function open(page: Page) {
   await page.goto("/imposto-de-renda?demo&ref=year:2026");
   await expect(page.getByRole("heading", { level: 1, name: "Imposto de renda" })).toBeVisible();
@@ -111,8 +116,8 @@ for (const size of TEST_SIZES) {
         await expect(box).toBeHidden();
         await expect(page.getByText("Bem classificado.")).toBeVisible();
 
-        // ── Cadastros ──
-        await menu(page, "Cadastros", "Declarantes e dependentes…");
+        // ── Parâmetros (on the page) ──
+        await parameter(page, "Declarantes e dependentes…");
         box = page.getByRole("dialog", { name: "Declarantes e dependentes" });
         await tableOf(page, "Integrantes").getByText("Bruno").click();
         await box.getByRole("button", { name: "Editar…" }).click();
@@ -126,7 +131,7 @@ for (const size of TEST_SIZES) {
         await expect(box.getByText("Dados fiscais salvos.")).toBeVisible();
         await leave(page, "Declarantes e dependentes");
 
-        await menu(page, "Cadastros", "Natureza dos rendimentos…");
+        await parameter(page, "Natureza dos rendimentos…");
         box = page.getByRole("dialog", { name: "Natureza dos rendimentos" });
         await box.getByRole("combobox", { name: "Natureza: Outras receitas" }).click();
         await page.getByRole("option", { name: /Isento e não tributável/ }).click();
@@ -136,7 +141,7 @@ for (const size of TEST_SIZES) {
         await expect(box).toBeHidden();
         await expect(page.getByText("Natureza dos rendimentos salva.")).toBeVisible();
 
-        await menu(page, "Cadastros", "Novo bem (imóvel, veículo)…");
+        await menu(page, "Mais", "Novo bem (imóvel, veículo)…");
         box = page.getByRole("dialog", { name: "Novo bem" });
         await box.getByLabel(/^Nome do bem/).fill("Carro");
         await box.getByRole("combobox", { name: "Tipo (grupo e código do IRPF)" }).fill("02.01");
@@ -148,7 +153,7 @@ for (const size of TEST_SIZES) {
         await expect(box).toBeHidden();
         await expect(tableOf(page, "Bens e direitos")).toContainText("Carro");
 
-        await menu(page, "Cadastros", "Tabela e limites do ano…");
+        await parameter(page, "Tabela e limites do ano…");
         box = page.getByRole("dialog", { name: "Tabela e limites de 2026" });
         await box.getByLabel("Faixa 1: base anual até").fill("30000");
         await box.getByLabel("Faixa 1: alíquota (%)").fill("10");
@@ -163,7 +168,7 @@ for (const size of TEST_SIZES) {
         await expect(page.getByText("Tabela do ano salva.")).toBeVisible();
         await expect(page.getByText(/Falta informar a tabela anual de 2026/)).toHaveCount(0);
 
-        await menu(page, "Cadastros", "Regras de renda variável…");
+        await parameter(page, "Regras de renda variável…");
         box = page.getByRole("dialog", { name: "Regras de renda variável" });
         await box.getByLabel("Operações comuns (ações e ETF) (%)").fill("15");
         await box.getByLabel("Fonte", { exact: true }).fill("Receita Federal");

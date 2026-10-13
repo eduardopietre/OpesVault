@@ -26,7 +26,7 @@ for (const size of TEST_SIZES) {
         await expect(page.getByRole("heading", { level: 1, name: "Calendário" })).toBeVisible();
         await expect(page.getByText(/vencimento\(s\) em/)).toBeVisible();
         if (size.width >= 640) {
-          await expect(page.getByRole("table", { name: "Dias do mês" })).toBeVisible();
+          await expect(page.getByRole("grid", { name: "Dias do mês" })).toBeVisible();
           await expect(page.getByRole("grid", { name: "Vencimentos" })).toBeVisible();
         } else {
           await expect(page.getByRole("list", { name: "Dias com vencimentos" })).toBeVisible();
@@ -48,13 +48,13 @@ test.describe("calendário: every action", () => {
   test("chooses days, opens entries from the table and the Abrir… button, changes month", async ({ page }) => {
     const errors = watchErrors(page);
     await openDemo(page, "/calendario");
-    const grid = page.getByRole("table", { name: "Dias do mês" });
-    const days = grid.getByRole("button");
+    const grid = page.getByRole("grid", { name: "Dias do mês" });
+    const days = grid.getByRole("gridcell", { name: /, [1-9]\d* vencimentos?/ });
     const withEntries = await days.count();
     expect(withEntries).toBeGreaterThan(0);
     // A day shows only its entries; the same day again, or "Mês inteiro", shows the month.
     await days.first().click();
-    await expect(days.first()).toHaveAttribute("aria-pressed", "true");
+    await expect(days.first()).toHaveAttribute("aria-selected", "true");
     await expect(page.getByRole("heading", { name: /Vencimentos de \d\d\/\d\d\/\d{4}/ })).toBeVisible();
     await page.getByRole("button", { name: "Mês inteiro" }).click();
     await expect(page.getByRole("heading", { name: "Vencimentos do mês" })).toBeVisible();
@@ -69,15 +69,26 @@ test.describe("calendário: every action", () => {
     await table.getByRole("row").nth(1).click();
     await page.getByRole("button", { name: "Abrir…" }).click();
     await expect(page).not.toHaveURL(/\/calendario/);
-    // The row's own button: a bill or installment opens ready to pay.
+    // The row's own button: a bill or installment is paid right here, with the form of Contas.
     await openDemo(page, "/calendario");
     await page
       .getByRole("button", { name: /^Pagar…: / })
       .first()
       .click();
-    await expect(page).toHaveURL(/\/contas/);
-    // "ready to pay": Contas consumes the link's act=pagar at once and opens the payment form.
-    await expect(page.getByRole("dialog", { name: /^Pagar (fatura|parcela)/ })).toBeVisible();
+    const pay = page.getByRole("dialog", { name: /^Pagar (fatura|parcela)/ });
+    await expect(pay).toBeVisible();
+    await expect(page).toHaveURL(/\/calendario/);
+    await pay.getByRole("button", { name: "Cancelar" }).click();
+    await expect(pay).toBeHidden();
+    // The keyboard walks the days: one day in the tab order, the arrows move it.
+    const today = grid.locator('[role="gridcell"][tabindex="0"]');
+    await today.focus();
+    const start = await today.getAttribute("data-date");
+    await page.keyboard.press("ArrowRight");
+    await expect(grid.locator('[role="gridcell"][tabindex="0"]')).not.toHaveAttribute("data-date", start ?? "");
+    await expect(grid.locator('[role="gridcell"][tabindex="0"]')).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("heading", { name: /Vencimentos de \d\d\/\d\d\/\d{4}/ })).toBeVisible();
     // Double click opens too.
     await openDemo(page, "/calendario");
     await page.getByRole("grid", { name: "Vencimentos" }).getByRole("row").nth(1).dblclick();
@@ -103,7 +114,10 @@ test.describe("calendário: every action", () => {
     await openDemo(page, "/calendario");
     const list = page.getByRole("list", { name: "Dias com vencimentos" });
     await expect(list.getByRole("heading", { level: 3 }).first()).toBeVisible();
-    await list.getByRole("button").first().click();
+    await list
+      .getByRole("button", { name: /^Abrir em / })
+      .first()
+      .click();
     await expect(page).not.toHaveURL(/\/calendario/);
     // Next month's entries, from the picker.
     await openDemo(page, "/calendario");

@@ -3,7 +3,11 @@
  * Values are exact decimal strings; null is "unknown", shown as "—" and never drawn as zero.
  * The domain's charts/data (when ported) produces this shape.
  */
+import { exporting } from "@opesvault/domain";
 import { formatDecimalBR, meanDecimals, sumDecimals } from "../format.ts";
+
+/** What the tooltip says about a value besides the number (docs/07 §5): its origin, nature, method, quality… */
+export type PointDetails = Readonly<Record<string, string>>;
 
 export type ChartUnit = "money" | "percent" | "number";
 
@@ -23,6 +27,11 @@ export interface ChartSeries {
   hidden?: boolean;
   /** False for positions (a balance): the table gives no total or mean for it, even in a flow chart. */
   summable?: boolean;
+  /**
+   * Per category, aligned with `values`: where the value comes from and how good it is ("fonte", "origem",
+   * "qualidade", "método"…), shown in the tooltip. A category without details has null or nothing.
+   */
+  details?: readonly (PointDetails | null | undefined)[];
 }
 
 export interface ChartData {
@@ -87,4 +96,64 @@ export function tableRows(chart: ChartData): TableRow[] {
     });
   }
   return rows;
+}
+
+/** "qualidade" → "Qualidade": the key of a detail as a label. */
+const detailLabel = (key: string) => key.charAt(0).toUpperCase() + key.slice(1);
+
+/**
+ * The details of the values of one category, as "Rótulo: valor" lines, without repeating a line that several
+ * series share (a chart whose series have the same provenance shows it once).
+ */
+export function detailLines(chart: ChartData, index: number, seriesIndexes?: readonly number[]): string[] {
+  const lines: string[] = [];
+  const indexes = seriesIndexes ?? chart.series.map((_, at) => at);
+  for (const at of indexes) {
+    const details = chart.series[at]?.details?.[index];
+    if (!details) continue;
+    for (const [key, value] of Object.entries(details)) {
+      if (!value) continue;
+      const line = `${detailLabel(key)}: ${value}`;
+      if (!lines.includes(line)) lines.push(line);
+    }
+  }
+  return lines;
+}
+
+/** One CSV field: quoted when it holds ';', '"' or a line break (as the Livro's and the Relatórios' exports). */
+function csvField(text: string): string {
+  return /[;"\n\r]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+}
+
+/**
+ * The chart's values as CSV (';' between fields, decimals with '.', a BOM for spreadsheets): one row per
+ * category, one column per series (hidden ones included, as in the table), unknown values empty, never zero.
+ * Labels and names are free text: one a spreadsheet could run as a formula gets a leading "'" (docs/19 achado
+ * 12); the value columns are written as they are.
+ */
+export function chartCsv(chart: ChartData, firstColumn = "Período"): string {
+  const text = exporting.spreadsheetText;
+  const suffix = (series: ChartSeries) => {
+    const unit = series.axis === "right" ? (chart.rightUnit ?? chart.unit) : chart.unit;
+    return unit === "percent" ? " (%)" : unit === "money" ? " (R$)" : "";
+  };
+  const rows = [
+    [text(firstColumn), ...chart.series.map((series) => text(series.name + suffix(series)))],
+    ...chart.categories.map((label, index) => [
+      text(label),
+      ...chart.series.map((series) => series.values[index] ?? ""),
+    ]),
+  ];
+  return String.fromCharCode(0xfeff) + rows.map((row) => row.map(csvField).join(";") + "\n").join("");
+}
+
+/** A chart's title as a file name: without accents or reserved characters, so every system keeps it as given. */
+export function chartFileName(title: string, extension: string): string {
+  const name = title
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\w .()-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return `${name || "grafico"}.${extension}`;
 }

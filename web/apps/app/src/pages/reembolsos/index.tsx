@@ -544,7 +544,7 @@ export function Page() {
 
       {receive ? (
         <SharingReceiveDialog
-          key={receiveSlot.key}
+          key={`receive-${receiveSlot.key}`}
           open={receiveSlot.open}
           onClose={receiveSlot.close}
           reimbursementId={receive.id}
@@ -553,7 +553,7 @@ export function Page() {
       ) : null}
       {settle ? (
         <SharingSettleDialog
-          key={settleSlot.key}
+          key={`settle-${settleSlot.key}`}
           open={settleSlot.open}
           onClose={settleSlot.close}
           debtorId={settle.debtorId}
@@ -565,7 +565,7 @@ export function Page() {
       ) : null}
       {requestSlot.spec ? (
         <ReimbursementDialog
-          key={requestSlot.key}
+          key={`request-${requestSlot.key}`}
           open={requestSlot.open}
           onClose={requestSlot.close}
           onDone={() => notify("Reembolso registrado: fica em Reembolsos até ser recebido.")}
@@ -573,7 +573,7 @@ export function Page() {
       ) : null}
       {deny ? (
         <OverviewReasonDialog
-          key={denySlot.key}
+          key={`deny-${denySlot.key}`}
           open={denySlot.open}
           onOpenChange={(open) => !open && denySlot.close()}
           title="Reembolso negado"

@@ -367,6 +367,20 @@ describe("Reembolsos e acertos", () => {
     expect(snapshot(ledger)).toEqual(before);
   });
 
+  it("each dialog of the page is its own: a settlement after a cancelled reimbursement opens and closes once", async () => {
+    // The dialogs used to share keys ("1" for the first of each), which duplicated a form once two had opened.
+    const { ledger, user } = await open();
+    await user.click(screen.getByRole("button", { name: "Novo reembolso…" }));
+    await submit(user, await dialog("Reembolso a receber"), "Cancelar");
+    await closed("Reembolso a receber");
+    await user.click(screen.getByRole("button", { name: "Registrar acerto…" }));
+    const box = await dialog("Registrar acerto");
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+    await submit(user, box, "Registrar");
+    await closed("Registrar acerto");
+    expect(sharing.settlements(ledger).size).toBe(1);
+  });
+
   it("corrects and undoes a recorded settlement from Acertos registrados, each one undo step", async () => {
     const { ledger, workspace, user } = await open("/reembolsos", {
       prepare: (w) => {

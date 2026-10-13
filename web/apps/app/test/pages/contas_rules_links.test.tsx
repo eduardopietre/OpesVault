@@ -272,7 +272,7 @@ describe("Links into Contas e cartões", () => {
     expect(await dialog("Pagar fatura — Cartão X")).toBeTruthy();
     await tabSelected("Faturas");
     expect(flat(screen.getByRole("dialog").textContent)).toContain(`Vencimento ${formatDateBr(bill.cycle.due)}`);
-    await addressSettles(router, {});
+    await addressSettles(router, { aba: "faturas" });
     // the bill is selected behind the dialog
     expect(selectedRow(await table("Faturas do cartão"))!.getAttribute("data-row-id")).toBe(monthKey(bill.cycle.month));
   });
@@ -289,7 +289,7 @@ describe("Links into Contas e cartões", () => {
     const grid = await table("Faturas do cartão");
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(selectedRow(grid)!.getAttribute("data-row-id")).toBe(monthKey(bill.cycle.month));
-    await addressSettles(router, {});
+    await addressSettles(router, { aba: "faturas" });
   });
 
   it("a bill that is already paid says so instead of opening the payment", async () => {
@@ -344,6 +344,23 @@ describe("Links into Contas e cartões", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
+  it("keeps the chosen tab in the address; a reload and a return to the screen show it again", async () => {
+    const { router, user } = await openContas("/contas?aba=categorias");
+    await tabSelected("Categorias");
+    await goTab(user, "Cartões");
+    await addressSettles(router, { aba: "cartoes" });
+    // leaving and coming back without aba (the sidebar) shows Cartões again
+    await reactAct(() => router.navigate({ to: "/visao-geral" }));
+    await screen.findByRole("heading", { level: 1, name: "Visão geral" });
+    await reactAct(() => router.navigate({ to: "/contas" }));
+    await screen.findByRole("heading", { level: 1, name: "Contas e cartões" });
+    await tabSelected("Cartões");
+    await addressSettles(router, { aba: "cartoes" });
+    // the back button to an address with another tab
+    await reactAct(() => router.navigate({ to: "/contas", search: { aba: "integrantes" } as never }));
+    await tabSelected("Integrantes");
+  });
+
   it("'conta:' selects the account and 'cartao:' the card, each in its own tab", async () => {
     const { ledger, router } = await openContas();
     const account = accountNamed(ledger, "Conjunta");
@@ -365,7 +382,7 @@ describe("Links into Contas e cartões", () => {
     await tabSelected("Faturas");
     expect(await table("Faturas do cartão")).toBeTruthy();
     await follow(router, "nao-existe:2026-13", "pagar");
-    await addressSettles(router, {});
+    await addressSettles(router, { aba: "faturas" });
     expect(screen.getByRole("tab", { name: "Faturas" }).getAttribute("aria-selected")).toBe("true");
     expect(screen.queryByRole("dialog")).toBeNull();
   });

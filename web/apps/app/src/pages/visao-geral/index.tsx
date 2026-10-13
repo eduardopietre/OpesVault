@@ -3,18 +3,33 @@
  * What needs attention leads (every notice goes to the place and action where it is solved), then cash,
  * competence result and net worth, the accounts and the spending, the indicators, the comparison with
  * previous months and the months side by side. The month can be closed (with a reason when items are
- * pending) and reopened (always with a reason); the report of the month is printed from here.
+ * pending, after a confirmation otherwise) and reopened (always with a reason); the report of the month is printed
+ * from here. A project without operations yet shows the first steps above its (empty) figures.
  */
-import { charts, dom, formatDateBr, newId, ymAdd, ymLastDay, ymStr, type Id, type YearMonth } from "@opesvault/domain";
+import {
+  OperationKind,
+  charts,
+  dom,
+  formatDateBr,
+  newId,
+  ymAdd,
+  ymLastDay,
+  ymStr,
+  type Id,
+  type Ledger,
+  type YearMonth,
+} from "@opesvault/domain";
 import {
   Adaptive,
   Button,
   ChartPanel,
   Collapsible,
+  EmptyState,
   MonthPicker,
   PageHeader,
   Section,
   Select,
+  confirm,
   menuButton,
   useMotionPreset,
   usePreferences,
@@ -22,7 +37,7 @@ import {
 } from "@opesvault/ui";
 import { useNavigate } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "motion/react";
-import { CalendarCheck, Lock, LockOpen } from "lucide-react";
+import { CalendarCheck, FolderInput, Landmark, Lock, LockOpen, Plus, Rocket } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { toChartData } from "../../data/chart_data.ts";
 import { filterRef, type Link } from "../../data/links.ts";
@@ -67,6 +82,12 @@ function openingOf(workspace: Workspace): string {
 
 /** The months already placed on the latest activity (once per opening, so a month the user picks stays). */
 const placed = new WeakSet<Workspace>();
+
+/** No operation of the person's yet (opening balances, from the first-run assistant, do not count). */
+export function hasNoOperations(ledger: Ledger): boolean {
+  for (const op of ledger.operations.values()) if (op.kind !== OperationKind.OPENING_BALANCE) return false;
+  return true;
+}
 
 /** What blocks closing the month: a notice of the domain, with the place where it is solved when there is one. */
 function pendingLink(item: string): Link | null {
@@ -158,9 +179,17 @@ export function Page() {
       done: `${monthName} reaberto.`,
       label: `reabrir ${monthName.toLowerCase()}`,
     });
-  const askClose = () => {
-    if (pending.length) setDialog("close");
-    else closeMonth(null);
+  const askClose = async () => {
+    if (pending.length) {
+      setDialog("close");
+      return;
+    }
+    const sure = await confirm({
+      title: `Fechar ${monthName.toLowerCase()}?`,
+      text: "O mês fechado não aceita lançamentos nem alterações. Para mudar algo depois, é preciso reabri-lo, com um motivo que fica no histórico.",
+      confirmLabel: "Fechar mês",
+    });
+    if (sure) closeMonth(null);
   };
 
   const printReport = () =>
@@ -170,6 +199,7 @@ export function Page() {
     });
 
   const readOnly = workspace.readOnly;
+  const firstSteps = useLedger(hasNoOperations);
   const showAlerts = alerts.length > 0 && !hidden;
   const hiddenNote = alerts.length > 0 && hidden;
   const railEmpty = !showAlerts && !hiddenNote && pending.length === 0;
@@ -234,8 +264,31 @@ export function Page() {
     </div>
   );
 
+  const steps = (
+    <EmptyState
+      framed
+      icon={<Rocket />}
+      title="Primeiros passos"
+      description="O projeto ainda não tem lançamentos. Comece pelas contas e cartões, importe um extrato ou uma fatura, ou registre um lançamento à mão. A visão do mês aparece aqui assim que houver movimento."
+      actions={
+        <>
+          <Button icon={<Landmark />} onClick={() => go("contas", { aba: "contas" })}>
+            Cadastrar contas
+          </Button>
+          <Button variant="primary" icon={<FolderInput />} onClick={() => go("importar")}>
+            Importar um extrato
+          </Button>
+          <Button icon={<Plus />} disabled={readOnly} onClick={() => go("livro", { act: "novo" })}>
+            Registrar um lançamento
+          </Button>
+        </>
+      }
+    />
+  );
+
   const main = (
     <div className="flex min-w-0 flex-col gap-6">
+      {firstSteps ? steps : null}
       <Adaptive at={720} columns="1fr 1fr" gap={24}>
         <FigureCard
           index={0}
@@ -322,6 +375,11 @@ export function Page() {
         context={closed ? "Mês fechado" : "Mês aberto"}
         actions={
           <>
+            {readOnlyWrap(
+              <Button icon={<Plus />} disabled={readOnly} onClick={() => go("livro", { act: "novo" })}>
+                Novo lançamento
+              </Button>,
+            )}
             {menuButton("Mais", [
               { id: "report", label: "Relatório do mês em PDF…", onSelect: printReport },
               {
@@ -343,7 +401,7 @@ export function Page() {
           closed
             ? undefined
             : readOnlyWrap(
-                <Button variant="primary" icon={<Lock />} disabled={readOnly} onClick={askClose}>
+                <Button variant="primary" icon={<Lock />} disabled={readOnly} onClick={() => void askClose()}>
                   Fechar mês…
                 </Button>,
               )

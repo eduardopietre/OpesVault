@@ -354,3 +354,39 @@ export function settle(
     }),
   );
 }
+
+/** Corrects a recorded settlement (who, to whom, how much, when, the note); the change stays in the history. */
+export function updateSettlement(
+  ledger: Ledger,
+  settlementId: Id,
+  debtorId: Id,
+  creditorId: Id,
+  amount: unknown,
+  on: IsoDate,
+  note: string | null = null,
+): MemberSettlement {
+  const current = getOrThrow(settlements(ledger), settlementId, "Acerto inexistente.");
+  if (debtorId === creditorId) throw new DomainError("Escolha dois integrantes diferentes.");
+  if (!ledger.members.has(debtorId) || !ledger.members.has(creditorId))
+    throw new DomainError("Integrante inexistente.");
+  const value = toDecimal(amount);
+  if (!value.isPositive() || !isCents(value)) throw new DomainError("Informe um valor positivo em reais e centavos.");
+  return ledger.put(
+    "member_settlement",
+    MemberSettlementSchema.parse({
+      id: current.id,
+      debtor_id: debtorId,
+      creditor_id: creditorId,
+      amount: value,
+      on,
+      note: note || null,
+    }),
+    { reason: "acerto corrigido" },
+  );
+}
+
+/** Undoes a recorded settlement: the balance between the two members goes back to what it was without it. */
+export function removeSettlement(ledger: Ledger, settlementId: Id): void {
+  getOrThrow(settlements(ledger), settlementId, "Acerto inexistente.");
+  settlements(ledger).delete(settlementId);
+}

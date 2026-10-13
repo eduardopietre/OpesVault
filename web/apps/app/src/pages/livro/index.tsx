@@ -827,9 +827,12 @@ export function Page() {
         title="Nenhum lançamento ainda"
         description="Importe uma fatura ou um extrato em “Importar e revisar”, ou registre uma operação em Novo lançamento."
         actions={
-          <Button variant="primary" onClick={() => goTo("importar")}>
-            Importar e revisar
-          </Button>
+          <>
+            <Button variant="primary" onClick={() => goTo("importar")}>
+              Importar e revisar
+            </Button>
+            <MenuButton label="Novo lançamento" icon={<Plus />} align="start" items={newEntries} />
+          </>
         }
       />
     ) : monthOnly(filters) ? (
@@ -1050,7 +1053,8 @@ export function Page() {
         host={host}
         onCreated={(id) => {
           if (id === null) return;
-          // The new entry may be outside the filters: show it, so the person sees where it went.
+          // The new entry may be outside the filters: show it, so the person sees where it went, and say so,
+          // with the way back to the filters that were on.
           setCurrent(id);
           const op = workspace.ledger.operations.get(id);
           if (
@@ -1060,7 +1064,12 @@ export function Page() {
               op,
             )
           ) {
+            const previous = filters;
             applyFilters(EMPTY_FILTERS);
+            notify("Os filtros foram limpos para mostrar o novo lançamento.", {
+              action: { label: "Restaurar filtros", run: () => applyFilters(previous) },
+              duration: 10_000,
+            });
           }
         }}
       />

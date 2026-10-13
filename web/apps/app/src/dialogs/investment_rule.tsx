@@ -21,9 +21,11 @@ export interface InvestmentRuleDialogProps {
   open: boolean;
   onClose: () => void;
   onDone?: (ruleId: Id) => void;
+  /** Opened by the simulator, which needs a rule first: says so, and the simulator opens after Salvar. */
+  forSimulation?: boolean;
 }
 
-export function InvestmentRuleDialog({ open, onClose, onDone }: InvestmentRuleDialogProps) {
+export function InvestmentRuleDialog({ open, onClose, onDone, forSimulation = false }: InvestmentRuleDialogProps) {
   const act = useFormAct();
   const [name, setName] = useState("");
   const [kind, setKind] = useState<string>(model.TaxRuleKind.RATE_ON_POSITIVE_GAIN);
@@ -62,6 +64,13 @@ export function InvestmentRuleDialog({ open, onClose, onDone }: InvestmentRuleDi
       onConfirm={confirm}
     >
       <FormGrid>
+        {forSimulation ? (
+          <FullRow>
+            <Caption>
+              Para simular um resgate, cadastre antes uma regra de imposto. Ao salvar, o simulador abre.
+            </Caption>
+          </FullRow>
+        ) : null}
         <FullRow>
           <TextField
             label="Nome"

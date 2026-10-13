@@ -1,15 +1,18 @@
 /**
  * Welcome, sign in and sign up (docs/18 §6, "Início, login e criação"). The forms validate as the user
  * types and call the session actions; the password is checked against its confirmation before the button
- * enables (docs/16 §3). Errors from the services appear inside the form.
+ * enables (docs/16 §3). Errors from the services appear inside the form. Every password field can show what was
+ * typed. "Esqueci a senha da conta" explains what can be done: the server has no e-mail and cannot reset an
+ * account password, and the data stays behind the project password anyway (docs/19 §5, §13).
  */
-import { Button, TextField } from "@opesvault/ui";
+import { Button, Dialog, TextField } from "@opesvault/ui";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { USE_FAKE_SERVICES } from "../flags.ts";
 import { DEMO_ACCOUNT as DEMO } from "../services/demo_account.ts";
 import { useSessionActions } from "../session.tsx";
 import { AuthLayout } from "./AuthLayout.tsx";
+import { PasswordField } from "./password_field.tsx";
 
 export const MIN_PASSWORD = 10;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -39,6 +42,44 @@ export function WelcomeScreen() {
   );
 }
 
+/** What someone who forgot the account password can do: short and factual (docs/19 §5 and §13). */
+export function ForgotAccountPasswordDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => !next && onClose()}
+      title="Esqueci a senha da conta"
+      size="sm"
+      footer={
+        <Button variant="primary" onClick={onClose}>
+          Entendi
+        </Button>
+      }
+    >
+      <div className="flex flex-col gap-3 text-body">
+        <p>
+          A senha da conta não pode ser redefinida: o servidor não envia e-mails e não guarda nada que permita trocá-la.
+        </p>
+        <p>
+          A senha da conta não é a senha do projeto. Os dados continuam protegidos pela senha do projeto, que não muda.
+        </p>
+        <p>O que fazer:</p>
+        <ul className="list-disc space-y-1 pl-5">
+          <li>Crie uma conta nova, com outro e-mail.</li>
+          <li>
+            Peça ao dono do projeto que adicione esse e-mail como integrante. Depois, abra o projeto com a senha do
+            projeto.
+          </li>
+          <li>
+            Se você é o único dono, um arquivo de backup (Configurações › Backup) pode ser restaurado num projeto novo
+            na conta nova, com a senha do projeto.
+          </li>
+        </ul>
+      </div>
+    </Dialog>
+  );
+}
+
 export function SignInScreen() {
   const actions = useSessionActions();
   const navigate = useNavigate();
@@ -47,6 +88,7 @@ export function SignInScreen() {
   const [tried, setTried] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [forgot, setForgot] = useState(false);
   const emailError = tried && !EMAIL.test(email.trim()) ? "Digite um e-mail válido." : null;
   const passwordError = tried && !password ? "Digite a senha da conta." : null;
 
@@ -83,14 +125,19 @@ export function SignInScreen() {
             error={emailError}
             autoFocus
           />
-          <TextField
+          <PasswordField
             label="Senha da conta"
-            type="password"
+            revealLabel="Mostrar a senha"
             autoComplete="current-password"
             value={password}
             onChange={setPassword}
             error={passwordError}
           />
+          <div className="-mt-2 flex justify-end">
+            <Button variant="ghost" size="sm" onClick={() => setForgot(true)}>
+              Esqueci a senha da conta
+            </Button>
+          </div>
         </div>
         {error ? (
           <p role="alert" className="mt-4 rounded-md bg-negative-soft px-3 py-2 text-body text-negative">
@@ -114,6 +161,7 @@ export function SignInScreen() {
           </p>
         ) : null}
       </form>
+      <ForgotAccountPasswordDialog open={forgot} onClose={() => setForgot(false)} />
     </AuthLayout>
   );
 }
@@ -169,18 +217,18 @@ export function SignUpScreen() {
             onChange={setEmail}
             error={emailError}
           />
-          <TextField
+          <PasswordField
             label="Senha da conta"
-            type="password"
+            revealLabel="Mostrar a senha"
             autoComplete="new-password"
             value={password}
             onChange={setPassword}
             hint={`Pelo menos ${MIN_PASSWORD} caracteres. Uma frase longa é mais fácil de lembrar.`}
             error={short ? `Use pelo menos ${MIN_PASSWORD} caracteres.` : null}
           />
-          <TextField
+          <PasswordField
             label="Confirme a senha"
-            type="password"
+            revealLabel="Mostrar a confirmação"
             autoComplete="new-password"
             value={confirm}
             onChange={setConfirm}

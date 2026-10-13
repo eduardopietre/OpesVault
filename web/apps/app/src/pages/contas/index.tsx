@@ -2,12 +2,13 @@
  * Contas e cartões (desktop `ui/pages/accounts/`): bank accounts, every ledger account, cards, bills,
  * financings, categories, categorization rules and members. Tabs separate different objects; inside a tab a
  * chart and the table of its values sit together. A link from another screen opens the tab of its object,
- * selects it and, with an action, starts it ("pagar" a bill or an installment).
+ * selects it and, with an action, starts it ("pagar" a bill or an installment). The chosen tab stays in the
+ * address (`?aba=`), so a reload, the back button and coming back to the screen keep it.
  */
 import { Tabs, PageHeader, useMotionPreset, type TabItem } from "@opesvault/ui";
 import { motion } from "motion/react";
 import { useRef, useState, type ReactNode } from "react";
-import { useReveal } from "../../data/navigation.ts";
+import { useReveal, useTab } from "../../data/navigation.ts";
 import { useLedger, useWorkspace } from "../../data/react.tsx";
 import { AccountsTab, type AccountReveal } from "./accounts.tsx";
 import { BankTab, type BankReveal } from "./bank.tsx";
@@ -31,8 +32,9 @@ function TabPanel({ children }: { children: ReactNode }) {
 }
 
 export function Page() {
-  const ledger = useWorkspace().ledger;
-  const [tab, setTab] = useState<TabId>("bancarias");
+  const workspace = useWorkspace();
+  const ledger = workspace.ledger;
+  const [tab, setTab] = useTab<TabId>(workspace, TAB_IDS, "bancarias");
   const [pending, setPending] = useState<Pending | null>(null);
   const counter = useRef(0);
   const summary = useLedger(summaryLine);

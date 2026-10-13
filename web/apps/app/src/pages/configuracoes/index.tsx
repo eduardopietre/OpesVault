@@ -2,12 +2,14 @@
  * Configurações (desktop `ui/pages/settings_page.py`, adapted to the web): what belongs to the project (it is
  * the same for everyone and syncs) and what belongs to this device (written at once, outside the project).
  * Each block says which it is. Tabs separate different objects: the project, the local AI, security, the backup
- * and this device. A link from another screen opens its section ("ia", "seguranca", "backup", "privacidade").
+ * and this device. A link from another screen opens its section (`aba`, or the older `ref`: "ia", "seguranca",
+ * "backup", "privacidade"); the chosen tab stays in the address.
  */
 import { PageHeader, Tabs, useMotionPreset, type TabItem } from "@opesvault/ui";
 import { motion } from "motion/react";
-import { useState, type ReactNode } from "react";
-import { useReveal } from "../../data/navigation.ts";
+import { type ReactNode } from "react";
+import { useReveal, useTab } from "../../data/navigation.ts";
+import { useWorkspace } from "../../data/react.tsx";
 import { AiTab } from "./ai.tsx";
 import { BackupTab } from "./backup.tsx";
 import { PrivacyTab } from "./privacy.tsx";
@@ -22,7 +24,7 @@ function TabPanel({ children }: { children: ReactNode }) {
 }
 
 export function Page() {
-  const [tab, setTab] = useState<TabId>("projeto");
+  const [tab, setTab] = useTab<TabId>(useWorkspace(), TAB_IDS, "projeto");
   useReveal((ref) => {
     const target = parseTab(ref);
     if (target) setTab(target);

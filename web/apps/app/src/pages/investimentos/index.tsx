@@ -19,7 +19,7 @@ import {
 import { useNavigate } from "@tanstack/react-router";
 import { Table2 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { InvestmentDialog } from "../../dialogs/bank_investment.tsx";
 import { InvestmentBenchmarkDialog } from "../../dialogs/investment_benchmark.tsx";
 import {
@@ -69,7 +69,9 @@ type Spec =
   | { kind: "redeem"; positionId: Id; prefill: RedemptionPrefill | null }
   | { kind: "complete"; eventId: Id }
   | { kind: "trade"; trade: TradeKind; positionId: Id }
-  | { kind: "tax" | "rule" | "benchmark" };
+  | { kind: "tax" | "benchmark" }
+  /** `then`: the simulator asked for the rule first; it opens on this position once the rule is saved. */
+  | { kind: "rule"; then?: Id };
 
 export function Page() {
   const workspace = useWorkspace();
@@ -84,6 +86,7 @@ export function Page() {
   const summary = useLedger((l) => summaryLine(l));
   const notes = useLedger((l) => noteRows(l));
   const dialog = useDialog<Spec>();
+  const ruleSaved = useRef(false);
 
   const { setPick, selected, need: needRow } = usePick(rows, (r) => r.id, { first: true });
   // the rows chosen in the tables of the detail belong to one investment
@@ -130,8 +133,9 @@ export function Page() {
 
   const simulate = (positionId: Id | null = need()) => {
     if (!positionId) return;
+    // The application brings no rule: the simulator needs one of the person's own, so that comes first.
     if (ledger.entities("tax_rule").size === 0) {
-      notify("Cadastre antes uma regra de imposto (Mais › Regra de imposto…).");
+      dialog.show({ kind: "rule", then: positionId });
       return;
     }
     dialog.show({ kind: "simulate", positionId });
@@ -619,8 +623,17 @@ export function Page() {
         <InvestmentRuleDialog
           key={dialog.key}
           open={dialog.open}
-          onClose={close}
-          onDone={() => notify("Regra salva.")}
+          onClose={() => {
+            close();
+            // Saved for the simulator: it opens next, on the position that asked for it.
+            if (spec.then !== undefined && ruleSaved.current) dialog.show({ kind: "simulate", positionId: spec.then });
+            ruleSaved.current = false;
+          }}
+          forSimulation={spec.then !== undefined}
+          onDone={() => {
+            ruleSaved.current = true;
+            notify("Regra salva.");
+          }}
         />
       ) : null}
       {spec?.kind === "benchmark" ? (

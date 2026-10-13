@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { alertLink, filterRef } from "../../src/data/links.ts";
 import { pageById } from "../../src/pages.tsx";
-import { ALERTS_HIDDEN_KEY } from "../../src/pages/visao-geral/index.tsx";
+import { ALERTS_HIDDEN_KEY, hasNoOperations } from "../../src/pages/visao-geral/index.tsx";
 import { cellText, monthlyReportData } from "../../src/pages/visao-geral/report.ts";
 import { backupNotices } from "../../src/pages/configuracoes/backup_state.ts";
 import { MAX_VISIBLE } from "../../src/pages/visao-geral/alerts_panel.tsx";
@@ -153,13 +153,23 @@ describe("Visão geral", () => {
   });
 
   describe("closing and reopening the month", () => {
-    it("closes a month without pending items at once, and one undo reopens it", async () => {
+    it("closes a month without pending items after a confirmation, and one undo reopens it", async () => {
       const user = userEvent.setup();
       const { workspace } = await mountApp("/visao-geral", { project: "blank" });
       await heading();
       const month = ymOf(workspace.today());
       expect(screen.queryByRole("region", { name: "Antes de fechar o mês" })).toBeNull();
+      // Cancelar keeps it open
       await user.click(screen.getByRole("button", { name: "Fechar mês…" }));
+      let ask = await screen.findByRole("alertdialog", { name: /^Fechar .+\?$/ });
+      expect(within(ask).getByText(/O mês fechado não aceita lançamentos nem alterações/)).toBeTruthy();
+      await user.click(within(ask).getByRole("button", { name: "Cancelar" }));
+      await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+      expect(dom.periods.isClosed(workspace.ledger, month)).toBe(false);
+      expect(workspace.undoStack.canUndo()).toBe(false);
+      await user.click(screen.getByRole("button", { name: "Fechar mês…" }));
+      ask = await screen.findByRole("alertdialog", { name: /^Fechar .+\?$/ });
+      await user.click(within(ask).getByRole("button", { name: "Fechar mês" }));
       await waitFor(() => expect(dom.periods.isClosed(workspace.ledger, month)).toBe(true));
       expect(await screen.findByText("Mês fechado")).toBeTruthy();
       expect(screen.queryByRole("button", { name: "Fechar mês…" })).toBeNull();
@@ -335,6 +345,48 @@ describe("Visão geral", () => {
       expect(screen.queryByRole("region", { name: "Atenção" })).toBeNull();
       expect(screen.getAllByText("R$ 0,00").length).toBeGreaterThan(0);
     });
+
+    it("shows the first steps, each leading to its place, until there is an operation", async () => {
+      const user = userEvent.setup();
+      const { router, workspace } = await mountApp("/visao-geral", { project: "blank" });
+      await heading();
+      expect(await screen.findByRole("heading", { name: "Primeiros passos" })).toBeTruthy();
+      const seen = navigations(router);
+      await user.click(screen.getByRole("button", { name: "Cadastrar contas" }));
+      await wentTo(seen, "/contas", { aba: "contas" });
+      await screen.findByRole("heading", { level: 1, name: "Contas e cartões" });
+      await waitFor(() =>
+        expect(screen.getByRole("tab", { name: "Todas as contas" }).getAttribute("aria-selected")).toBe("true"),
+      );
+      await router.navigate({ to: "/visao-geral" });
+      await heading();
+      await user.click(screen.getByRole("button", { name: "Importar um extrato" }));
+      await wentTo(seen, "/importar", {});
+      await screen.findByRole("heading", { level: 1, name: "Importar e revisar" });
+      await router.navigate({ to: "/visao-geral" });
+      await heading();
+      await user.click(screen.getByRole("button", { name: "Registrar um lançamento" }));
+      await wentTo(seen, "/livro", { act: "novo" });
+      expect(await screen.findByRole("dialog", { name: "Despesa" })).toBeTruthy();
+      // following the steps wrote nothing
+      expect(hasNoOperations(workspace.ledger)).toBe(true);
+    });
+
+    it("is gone in a project with operations", async () => {
+      await mountApp("/visao-geral");
+      await heading();
+      expect(screen.queryByRole("heading", { name: "Primeiros passos" })).toBeNull();
+    });
+  });
+
+  it("Novo lançamento opens the new expense in the Livro", async () => {
+    const user = userEvent.setup();
+    const { router } = await mountApp("/visao-geral");
+    await heading();
+    const seen = navigations(router);
+    await user.click(screen.getByRole("button", { name: "Novo lançamento" }));
+    await wentTo(seen, "/livro", { act: "novo" });
+    expect(await screen.findByRole("dialog", { name: "Despesa" })).toBeTruthy();
   });
 });
 

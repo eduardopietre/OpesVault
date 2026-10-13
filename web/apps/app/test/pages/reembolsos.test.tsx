@@ -1,9 +1,9 @@
-import { dom, formatBrl, type Ledger } from "@opesvault/domain";
+import { dom, formatBrl, type IsoDate, type Ledger } from "@opesvault/domain";
 import { act as reactAct, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { findReimbursement, sharingView, summaryLine } from "../../src/pages/reembolsos/rows.ts";
 import { openAt, shareExpenses } from "./sharing_docs_harness.tsx";
-import { flat, clickInTable, fromRowMenu, rowMenu, table, undoOnce } from "../dom.ts";
+import { closed, dialog, fill, flat, clickInTable, fromRowMenu, rowMenu, submit, table, undoOnce } from "../dom.ts";
 import { type MountOptions } from "../mount.tsx";
 import { addressSettles, navigations, wentTo } from "../navigations.ts";
 
@@ -340,6 +340,98 @@ describe("Reembolsos e acertos", () => {
     const grid = await table("Reembolsos");
     await user.dblClick(within(grid).getByText("Consulta pediatra"));
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("creates a reimbursement here (Novo reembolso…): picks the expense, starts at its total, one undo reverts it", async () => {
+    const { ledger, workspace, user } = await open();
+    const before = snapshot(ledger);
+    await user.click(screen.getByRole("button", { name: "Novo reembolso…" }));
+    const box = await dialog("Reembolso a receber");
+    // nothing chosen yet: it asks for the expense
+    await submit(user, box, "Registrar");
+    expect(within(box).getByText("Escolha o lançamento a reembolsar.")).toBeTruthy();
+    // the expense that already has one is not offered
+    await user.click(within(box).getByRole("combobox", { name: "Lançamento a reembolsar" }));
+    expect(screen.queryByRole("option", { name: /Consulta pediatra/ })).toBeNull();
+    await user.click(await screen.findByRole("option", { name: /Material escolar/ }));
+    expect((within(box).getByLabelText("Valor esperado") as HTMLInputElement).value).toBe("120,00");
+    await fill(user, box, "Quem reembolsa", "Escola");
+    await submit(user, box, "Registrar");
+    await closed("Reembolso a receber");
+    const created = [...sharing.reimbursements(ledger).values()].find((r) => r.payer === "Escola")!;
+    expect(ledger.operations.get(created.operation_id)!.description).toBe("Material escolar");
+    expect(created.expected.eq("120")).toBe(true);
+    expect(flat((await table("Reembolsos")).textContent)).toContain("Escola");
+    expect(workspace.undoStack.undoLabel()).toBe("pedir reembolso");
+    undoOnce(workspace);
+    expect(snapshot(ledger)).toEqual(before);
+  });
+
+  it("each dialog of the page is its own: a settlement after a cancelled reimbursement opens and closes once", async () => {
+    // The dialogs used to share keys ("1" for the first of each), which duplicated a form once two had opened.
+    const { ledger, user } = await open();
+    await user.click(screen.getByRole("button", { name: "Novo reembolso…" }));
+    await submit(user, await dialog("Reembolso a receber"), "Cancelar");
+    await closed("Reembolso a receber");
+    await user.click(screen.getByRole("button", { name: "Registrar acerto…" }));
+    const box = await dialog("Registrar acerto");
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+    await submit(user, box, "Registrar");
+    await closed("Registrar acerto");
+    expect(sharing.settlements(ledger).size).toBe(1);
+  });
+
+  it("corrects and undoes a recorded settlement from Acertos registrados, each one undo step", async () => {
+    const { ledger, workspace, user } = await open("/reembolsos", {
+      prepare: (w) => {
+        shareExpenses(w);
+        w.act((l) => {
+          const balance = only(sharing.balances(l));
+          sharing.settle(l, balance.debtorId, balance.creditorId, "50.00", "2026-03-20" as IsoDate, "Pix");
+        });
+      },
+    });
+    const settlement = only(sharing.settlements(ledger).values());
+    const owed = only(sharing.balances(ledger)).amount;
+    // nothing selected: it asks for a row
+    await user.click(screen.getByRole("button", { name: "Corrigir acerto…" }));
+    expect(await screen.findByText("Selecione um acerto na tabela Acertos registrados.")).toBeTruthy();
+
+    const history = await table("Acertos registrados");
+    await fromRowMenu(user, history, "Pix", "Corrigir acerto…");
+    let box = await dialog("Corrigir acerto");
+    expect((within(box).getByLabelText(/^Valor/) as HTMLInputElement).value).toBe("50,00");
+    expect((within(box).getByLabelText("Observação") as HTMLInputElement).value).toBe("Pix");
+    await fill(user, box, "Valor", "80,00");
+    await submit(user, box, "Salvar");
+    await closed("Corrigir acerto");
+    expect(sharing.settlements(ledger).size).toBe(1);
+    expect(sharing.settlements(ledger).get(settlement.id)!.amount.eq("80")).toBe(true);
+    expect(only(sharing.balances(ledger)).amount.eq(owed.sub("30"))).toBe(true);
+    expect(await screen.findByText("Acerto corrigido.")).toBeTruthy();
+    expect(workspace.undoStack.undoLabel()).toBe("corrigir acerto");
+    undoOnce(workspace);
+    expect(sharing.settlements(ledger).get(settlement.id)!.amount.eq("50")).toBe(true);
+
+    // Desfazer acerto… asks first; Cancelar keeps it
+    await clickInTable(user, "Acertos registrados", "Pix");
+    await user.click(screen.getByRole("button", { name: "Desfazer acerto…" }));
+    let ask = await screen.findByRole("alertdialog", { name: "Desfazer este acerto?" });
+    await user.click(within(ask).getByRole("button", { name: "Cancelar" }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(sharing.settlements(ledger).size).toBe(1);
+    await user.click(screen.getByRole("button", { name: "Desfazer acerto…" }));
+    ask = await screen.findByRole("alertdialog", { name: "Desfazer este acerto?" });
+    await user.click(within(ask).getByRole("button", { name: "Desfazer acerto" }));
+    await waitFor(() => expect(sharing.settlements(ledger).size).toBe(0));
+    expect(only(sharing.balances(ledger)).amount.eq(owed.add("50"))).toBe(true);
+    expect(await screen.findByText("Acerto desfeito.")).toBeTruthy();
+    await waitFor(() => expect(screen.queryByRole("grid", { name: "Acertos registrados" })).toBeNull());
+    expect(workspace.undoStack.undoLabel()).toBe("desfazer acerto");
+    undoOnce(workspace);
+    expect(sharing.settlements(ledger).get(settlement.id)!.amount.eq("50")).toBe(true);
+    box = await table("Acertos registrados");
+    expect(flat(box.textContent)).toContain("Pix");
   });
 
   it("builds the line under the title from what is open", async () => {

@@ -9,6 +9,7 @@ import { createAppRouter } from "../src/router.tsx";
 import { DEMO, createFakeServices } from "../src/services/fake.ts";
 import { SessionStore } from "../src/session.tsx";
 import { mountApp } from "./mount.tsx";
+import { navigations, wentTo } from "./navigations.ts";
 
 describe("screens before a project", () => {
   it("send a signed-out visitor to sign in, validate the form and open the projects", async () => {
@@ -25,6 +26,45 @@ describe("screens before a project", () => {
     expect(await screen.findByText("Casa")).toBeTruthy();
   });
 
+  it("shows and hides each password, and explains what to do when the account password is forgotten", async () => {
+    const user = userEvent.setup();
+    await mountApp("/entrar", { project: "signed-out" });
+    await screen.findByRole("heading", { name: "Entrar" });
+    const password = screen.getByLabelText("Senha da conta") as HTMLInputElement;
+    expect(password.type).toBe("password");
+    const reveal = screen.getByRole("button", { name: "Mostrar a senha" });
+    expect(reveal.getAttribute("aria-pressed")).toBe("false");
+    await user.click(reveal);
+    expect(password.type).toBe("text");
+    expect(reveal.getAttribute("aria-pressed")).toBe("true");
+    await user.click(reveal);
+    expect(password.type).toBe("password");
+
+    await user.click(screen.getByRole("button", { name: "Esqueci a senha da conta" }));
+    const box = await screen.findByRole("dialog", { name: "Esqueci a senha da conta" });
+    const text = box.textContent ?? "";
+    expect(text).toContain("não pode ser redefinida");
+    expect(text).toContain("não é a senha do projeto");
+    expect(text).toContain("Crie uma conta nova");
+    expect(text).toContain("adicione esse e-mail como integrante");
+    expect(text).toContain("backup");
+    await user.click(screen.getByRole("button", { name: "Entendi" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+
+  it("on sign up, the password and its confirmation each have their own show button", async () => {
+    const user = userEvent.setup();
+    await mountApp("/criar-conta", { project: "signed-out" });
+    await screen.findByRole("heading", { name: "Criar conta" });
+    const first = screen.getByLabelText("Senha da conta") as HTMLInputElement;
+    const second = screen.getByLabelText("Confirme a senha") as HTMLInputElement;
+    await user.click(screen.getByRole("button", { name: "Mostrar a confirmação" }));
+    expect(second.type).toBe("text");
+    expect(first.type).toBe("password");
+    await user.click(screen.getByRole("button", { name: "Mostrar a senha" }));
+    expect(first.type).toBe("text");
+  });
+
   it("enables Criar conta only when the passwords match", async () => {
     const user = userEvent.setup();
     await mountApp("/criar-conta", { project: "signed-out" });
@@ -38,6 +78,23 @@ describe("screens before a project", () => {
     expect(screen.getByText("As senhas não coincidem.")).toBeTruthy();
     await user.type(screen.getByLabelText("Confirme a senha"), " longa");
     expect(submit.disabled).toBe(false);
+  });
+});
+
+describe("the first-run assistant", () => {
+  it("ends where its last step points: Importar, or Visão geral with Abrir o projeto", async () => {
+    const user = userEvent.setup();
+    const { router } = await mountApp("/comecar", { project: "new" });
+    await screen.findByRole("heading", { name: "Primeiros passos" });
+    for (const next of ["Próximo: Contas", "Próximo: Cartões", "Próximo: Conclusão"]) {
+      await user.click(screen.getByRole("button", { name: next }));
+    }
+    expect(screen.getByText(/O próximo passo costuma ser importar um extrato/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Abrir o projeto" })).toBeTruthy();
+    const seen = navigations(router);
+    await user.click(screen.getByRole("button", { name: "Importar um extrato" }));
+    await wentTo(seen, "/importar", {});
+    await screen.findByRole("heading", { level: 1, name: "Importar e revisar" });
   });
 });
 

@@ -1,12 +1,14 @@
 /**
  * Reembolsos e acertos (desktop `ui/pages/sharing_page.py`): money others will pay back, and who owes whom
- * inside the project, with the expenses that form each balance and the settlements already recorded.
+ * inside the project, with the expenses that form each balance and the settlements already recorded. A new
+ * reimbursement starts here too (pick the expense), and a recorded settlement can be corrected or undone.
  */
 import { dom, formatBrl, type Dec, type Id } from "@opesvault/domain";
 import {
   Adaptive,
   Button,
   Collapsible,
+  confirm,
   DataTable,
   ElidedText,
   EmptyState,
@@ -19,13 +21,14 @@ import {
   type DataColumn,
   type MenuEntry,
 } from "@opesvault/ui";
-import { Ban, CircleCheck, Clock, Hourglass } from "lucide-react";
+import { Ban, CircleCheck, Clock, Hourglass, Plus } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useMemo, useRef, type ReactNode } from "react";
 import { useAct, useLedger } from "../../data/react.tsx";
 import { useGoTo, useReveal } from "../../data/navigation.ts";
 import { TableBox } from "../../data/table_box.tsx";
 import { OverviewReasonDialog } from "../../dialogs/overview_reason.tsx";
+import { ReimbursementDialog } from "../../dialogs/reimbursement.tsx";
 import { SharingReceiveDialog } from "../../dialogs/sharing_receive.tsx";
 import { SharingSettleDialog } from "../../dialogs/sharing_settle.tsx";
 import {
@@ -185,6 +188,8 @@ interface SettleOpening {
   debtorId: Id | null;
   creditorId: Id | null;
   amount: Dec | null;
+  /** A recorded settlement to correct. */
+  settlementId?: Id;
 }
 
 /** The bar that names what is selected and what can be done with it. */
@@ -219,10 +224,13 @@ export function Page() {
   const { selected: balance, setPick: setPickedBalance } = usePick(view.balances, (b) => b.id, { first: true });
   const shares = useMemo(() => sharesOf(balance), [balance]);
   const { selected: share, setPick: setPickedShare } = usePick(shares, (s) => s.id);
+  const settlementPick = usePick(view.settlements, (s) => s.id);
+  const { selected: settlement, setPick: setPickedSettlement } = settlementPick;
 
   const receiveSlot = useDialog<ReceiveOpening>();
   const settleSlot = useDialog<SettleOpening>();
   const denySlot = useDialog<ReceiveOpening>();
+  const requestSlot = useDialog<true>();
   const receive = receiveSlot.spec;
   const settle = settleSlot.spec;
   const deny = denySlot.spec;
@@ -259,6 +267,41 @@ export function Page() {
       amount: from?.amount ?? null,
     });
   };
+
+  const needsSettlement = () => settlementPick.need("Selecione um acerto na tabela Acertos registrados.");
+
+  const openFix = (row: SettlementRow | null = needsSettlement()) => {
+    if (!row) return;
+    settleSlot.show({ debtorId: null, creditorId: null, amount: null, settlementId: row.id });
+  };
+
+  /** Undoes a recorded settlement, after asking: the balance between the two comes back. */
+  const undoSettlement = async (row: SettlementRow | null = needsSettlement()) => {
+    if (!row) return;
+    const sure = await confirm({
+      title: "Desfazer este acerto?",
+      text: `${row.debtor} pagou ${money(row.amount)} a ${row.creditor} em ${dateOr(row.date)}. O acerto sai do projeto e o saldo entre os dois volta a contar esse valor.`,
+      confirmLabel: "Desfazer acerto",
+      danger: true,
+    });
+    if (!sure) return;
+    act((ledger) => dom.sharing.removeSettlement(ledger, row.id), {
+      done: "Acerto desfeito.",
+      label: "desfazer acerto",
+    });
+    setPickedSettlement(null);
+  };
+
+  /** A recorded settlement's context menu: correct it, and undo it apart and in red. */
+  const settlementMenu = (row: SettlementRow): MenuEntry[] =>
+    lockEntries(
+      [
+        { id: "fix", label: "Corrigir acerto…", onSelect: () => openFix(row) },
+        { kind: "separator", id: "s1" },
+        { id: "undo", label: "Desfazer acerto…", danger: true, onSelect: () => void undoSettlement(row) },
+      ],
+      locked,
+    );
 
   const seeOperationEntry = (id: Id): MenuEntry => ({
     id: "operation",
@@ -306,7 +349,15 @@ export function Page() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Reembolsos e acertos" context={summaryLine(view)} />
+      <PageHeader
+        title="Reembolsos e acertos"
+        context={summaryLine(view)}
+        primary={
+          <EditButton variant="primary" icon={<Plus />} onClick={() => requestSlot.show(true)}>
+            Novo reembolso…
+          </EditButton>
+        }
+      />
 
       {view.hasContent ? (
         <>
@@ -334,7 +385,7 @@ export function Page() {
               <Collapsible
                 title="Reembolsos"
                 prefKey="acertos/reembolsos"
-                description="Despesas que outra pessoa ou empresa vai devolver (plano de saúde, empresa). Marque no Livro financeiro: Ações › Reembolso a receber. O valor recebido entra como estorno das mesmas categorias, no mês do recebimento."
+                description="Despesas que outra pessoa ou empresa vai devolver (plano de saúde, empresa). Crie com Novo reembolso ou, no Livro financeiro, em Ações › Reembolso a receber. O valor recebido entra como estorno das mesmas categorias, no mês do recebimento."
                 actions={
                   <>
                     <EditButton variant="primary" onClick={() => openReceive()}>
@@ -439,7 +490,17 @@ export function Page() {
                 ) : null}
               </Collapsible>
               {view.settlements.length > 0 ? (
-                <Collapsible title="Acertos registrados" prefKey="acertos/historico">
+                <Collapsible
+                  title="Acertos registrados"
+                  prefKey="acertos/historico"
+                  description="Um acerto registrado por engano pode ser corrigido ou desfeito."
+                  actions={
+                    <>
+                      <EditButton onClick={() => openFix()}>Corrigir acerto…</EditButton>
+                      <EditButton onClick={() => void undoSettlement()}>Desfazer acerto…</EditButton>
+                    </>
+                  }
+                >
                   <TableBox rows={view.settlements.length} cap={8}>
                     {(height) => (
                       <DataTable
@@ -447,6 +508,14 @@ export function Page() {
                         rows={view.settlements}
                         columns={HISTORY_COLUMNS}
                         getRowId={(r) => r.id}
+                        selectedId={settlement?.id ?? null}
+                        onSelect={setPickedSettlement}
+                        rowMenu={settlementMenu}
+                        rowMenuLabel={(r) => `Ações do acerto de ${r.debtor} a ${r.creditor}`}
+                        onActivate={(id) => {
+                          setPickedSettlement(id);
+                          if (!locked) openFix(view.settlements.find((s) => s.id === id) ?? null);
+                        }}
                         cardTitle={(r) => text(`${r.debtor} pagou a ${r.creditor}`)}
                         height={height}
                       />
@@ -461,7 +530,7 @@ export function Page() {
         <EmptyState
           framed
           title="Nada a receber nem a acertar"
-          description="Marque uma despesa como reembolsável no Livro financeiro (Ações › Reembolso a receber) ou ratear despesas entre integrantes para ver aqui quem deve a quem."
+          description="Registre um reembolso a receber (Novo reembolso) ou rateie despesas entre integrantes no Livro financeiro para ver aqui quem deve a quem."
           actions={
             <>
               <EditButton onClick={() => openSettle(null)}>Registrar acerto…</EditButton>
@@ -475,7 +544,7 @@ export function Page() {
 
       {receive ? (
         <SharingReceiveDialog
-          key={receiveSlot.key}
+          key={`receive-${receiveSlot.key}`}
           open={receiveSlot.open}
           onClose={receiveSlot.close}
           reimbursementId={receive.id}
@@ -484,18 +553,27 @@ export function Page() {
       ) : null}
       {settle ? (
         <SharingSettleDialog
-          key={settleSlot.key}
+          key={`settle-${settleSlot.key}`}
           open={settleSlot.open}
           onClose={settleSlot.close}
           debtorId={settle.debtorId}
           creditorId={settle.creditorId}
           amount={settle.amount}
-          onDone={() => notify("Acerto registrado.")}
+          settlementId={settle.settlementId ?? null}
+          onDone={() => notify(settle.settlementId ? "Acerto corrigido." : "Acerto registrado.")}
+        />
+      ) : null}
+      {requestSlot.spec ? (
+        <ReimbursementDialog
+          key={`request-${requestSlot.key}`}
+          open={requestSlot.open}
+          onClose={requestSlot.close}
+          onDone={() => notify("Reembolso registrado: fica em Reembolsos até ser recebido.")}
         />
       ) : null}
       {deny ? (
         <OverviewReasonDialog
-          key={denySlot.key}
+          key={`deny-${denySlot.key}`}
           open={denySlot.open}
           onOpenChange={(open) => !open && denySlot.close()}
           title="Reembolso negado"

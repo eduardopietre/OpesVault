@@ -131,9 +131,13 @@ export function Page() {
     return () => window.removeEventListener("keydown", onKey);
   });
 
-  // An import notice: the document waiting for review, ready for Ctrl+Enter.
-  useReveal((ref) => {
-    if (!ref) return;
+  // An import notice: the document waiting for review, ready for Ctrl+Enter. "arquivo" (the palette's
+  // Importar arquivo) opens the file picker, as Ctrl+I does.
+  useReveal((ref, act) => {
+    if (!ref) {
+      if (act === "arquivo") choose();
+      return;
+    }
     if (!importing.pipeline.batches(workspace.ledger).has(ref)) {
       notify("Esse documento não existe mais.");
       return;

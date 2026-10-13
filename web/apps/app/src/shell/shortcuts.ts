@@ -17,10 +17,24 @@ export interface ShortcutHandlers {
   redo(): void;
   toggleSidebar(): void;
   lock(): void;
+  /** A new lançamento (the Livro's form), from any screen. */
+  newEntry(): void;
 }
 
 export type ShortcutId =
-  keyof ShortcutHandlers | "month" | "row-menu" | "livro-search" | "livro-mark" | "import" | "approve";
+  | keyof ShortcutHandlers
+  | "month"
+  | "row-menu"
+  | "livro-search"
+  | "livro-mark"
+  | "import"
+  | "approve"
+  | "review-mark"
+  | "review-correct"
+  | "review-category"
+  | "review-keep"
+  | "review-rule"
+  | "review-reject";
 
 export interface Shortcut {
   id: ShortcutId;
@@ -78,6 +92,7 @@ export const SHORTCUTS: readonly Shortcut[] = [
     what: "Ações da linha de uma tabela (no celular, toque longo na linha)",
     where: "geral",
   },
+  { id: "newEntry", keys: ["N"], aria: "N", what: "Novo lançamento (abre o Livro financeiro)", where: "geral" },
   { id: "help", keys: ["F1"], aria: "F1", what: "Ajuda desta tela", where: "geral" },
   { id: "shortcuts", keys: ["?"], aria: "?", what: "Esta lista de atalhos", where: "geral" },
   { id: "livro-search", keys: ["/"], what: "Buscar nos lançamentos", where: "Livro financeiro" },
@@ -86,9 +101,16 @@ export const SHORTCUTS: readonly Shortcut[] = [
   {
     id: "approve",
     keys: ["Ctrl+Enter", "Ctrl+Shift+Enter"],
-    what: "Aprovar os itens marcados / todos os prontos",
+    what: "Aprovar os itens marcados (ou o selecionado) / todos os prontos",
     where: "Importar e revisar",
   },
+  // The review's keys work with the focus on the list of items.
+  { id: "review-mark", keys: ["Espaço"], what: "Marcar ou desmarcar o item atual", where: "Importar e revisar" },
+  { id: "review-correct", keys: ["F2", "Enter"], what: "Corrigir o item atual", where: "Importar e revisar" },
+  { id: "review-category", keys: ["C"], what: "Escolher a categoria do item atual", where: "Importar e revisar" },
+  { id: "review-keep", keys: ["M"], what: "Manter separado (um item tido como repetido)", where: "Importar e revisar" },
+  { id: "review-rule", keys: ["R"], what: "Criar regra a partir do item atual", where: "Importar e revisar" },
+  { id: "review-reject", keys: ["Del"], what: "Rejeitar o item atual (com motivo)", where: "Importar e revisar" },
 ];
 
 export function shortcut(id: ShortcutId): Shortcut {
@@ -185,6 +207,10 @@ export function useShortcuts(handlers: ShortcutHandlers, enabled = true): void {
         return;
       }
       pendingG = 0;
+      if (key === "n" && !event.shiftKey) {
+        event.preventDefault();
+        h.newEntry();
+      }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);

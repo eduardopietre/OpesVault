@@ -1,7 +1,8 @@
 /**
  * Short feedback (docs/16 §4 rules 2 and 14): what an action did, in one line, without a dialog. Toasts are
  * read by screen readers through a polite live region, stay while hovered or focused and may offer one
- * action ("Desfazer").
+ * action ("Desfazer"). The tab keeps the latest ones in memory ("Avisos recentes"), never in storage: their text
+ * can name project data (docs/19 §12).
  */
 import { AnimatePresence, motion } from "motion/react";
 import { CircleAlert, CircleCheck, Info, TriangleAlert, X } from "lucide-react";
@@ -26,10 +27,22 @@ export interface ToastItem extends Required<Pick<ToastOptions, "tone" | "duratio
   action?: ToastOptions["action"];
 }
 
+/** A toast as the history keeps it: the text and when it showed. Its action is not kept (it goes stale). */
+export interface ToastRecord {
+  id: number;
+  message: string;
+  tone: ToastTone;
+  /** Milliseconds since the epoch. */
+  at: number;
+}
+
 let toasts: ToastItem[] = [];
+let history: readonly ToastRecord[] = [];
 let next = 0;
 const listeners = new Set<() => void>();
 const MAX_VISIBLE = 3;
+/** How many past toasts the tab remembers. */
+export const TOAST_HISTORY_SIZE = 50;
 
 function emit() {
   for (const listener of listeners) listener();
@@ -41,6 +54,7 @@ export function notify(message: string, options: ToastOptions = {}): number {
   const item: ToastItem = { id, message, tone: options.tone ?? "info", duration: options.duration ?? 5000 };
   if (options.action) item.action = options.action;
   toasts = [...toasts, item].slice(-MAX_VISIBLE);
+  history = [{ id, message, tone: item.tone, at: Date.now() }, ...history].slice(0, TOAST_HISTORY_SIZE);
   emit();
   return id;
 }
@@ -50,14 +64,31 @@ export function dismissToast(id: number) {
   emit();
 }
 
+/** Closes every toast and forgets the history (locking or closing the project). */
 export function clearToasts() {
   toasts = [];
+  history = [];
   emit();
+}
+
+/** The toasts of this tab, newest first. */
+export function toastHistory(): readonly ToastRecord[] {
+  return history;
 }
 
 function subscribe(listener: () => void) {
   listeners.add(listener);
   return () => listeners.delete(listener);
+}
+
+/** The toasts of this tab, newest first, re-rendering when one arrives. */
+export function useToastHistory(): readonly ToastRecord[] {
+  return useSyncExternalStore(subscribe, toastHistory, toastHistory);
+}
+
+/** The icon of a tone (the history shows the same ones). */
+export function ToastIcon({ tone }: { tone: ToastTone }) {
+  return icons[tone];
 }
 
 const icons: Record<ToastTone, ReactNode> = {

@@ -30,7 +30,7 @@ import { ReasonDialog } from "../../dialogs/livro_prompts.tsx";
 import { goalColumns } from "./columns.tsx";
 import { goalExample, goalRows, reachedLabel, summaryLine, type GoalExample } from "./rows.ts";
 import { EditButton, usePick } from "../../components/list_parts.tsx";
-import { lockEntries, useLock } from "../../data/read_only.ts";
+import { READ_ONLY_TIP, lockEntries, useLock } from "../../data/read_only.ts";
 import { useDialog } from "../../data/dialog.ts";
 import { moneyOr, dateOr } from "../../data/money.ts";
 
@@ -94,8 +94,14 @@ export function Page() {
       locked,
     );
 
-  // A link from another page: the goal opens, selected, with its chart; "editar" also opens the form.
+  // A link from another page: the goal opens, selected, with its chart; "editar" also opens the form. "nova"
+  // without a goal (the palette's Nova meta) opens the form of a new one.
   useReveal((ref, action) => {
+    if (ref === undefined && action === "nova") {
+      if (locked) notify(READ_ONLY_TIP, { tone: "warning" });
+      else openEdit(null);
+      return;
+    }
     const row = rows.find((r) => r.id === ref);
     if (!row) return;
     setPick(row.id);

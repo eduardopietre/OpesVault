@@ -1,6 +1,7 @@
 /**
  * The top bar (docs/16 §1, docs/18 §6 Shell): which project is open, the sync state (dot and text), undo,
- * help, lock and the account menu with the operator and the theme. On phones only the essentials stay.
+ * help, recent notices, lock and the account menu with the operator and the theme. On phones undo, redo, help
+ * and the notices go into one "Mais ações" menu, so the bar never scrolls sideways.
  */
 import {
   ElidedText,
@@ -12,7 +13,7 @@ import {
   type SyncState,
   type ThemeChoice,
 } from "@opesvault/ui";
-import { CircleHelp, Lock, PanelLeft, PanelLeftClose, Redo2, Search, Undo2 } from "lucide-react";
+import { Bell, CircleHelp, Ellipsis, Lock, PanelLeft, PanelLeftClose, Redo2, Search, Undo2 } from "lucide-react";
 import type { Account, OpenProject } from "../services/types.ts";
 import { THEME_LABELS } from "../theme.tsx";
 import { LogoMark } from "./Logo.tsx";
@@ -33,6 +34,7 @@ export interface TopBarProps {
   onPalette(): void;
   onHelp(): void;
   onShortcuts(): void;
+  onNotices(): void;
   onLock(): void;
   onSwitchProject(): void;
   onSignOut(): void;
@@ -77,6 +79,14 @@ export function TopBar(props: TopBarProps) {
     { id: "shortcuts", label: "Atalhos de teclado", shortcut: tip("shortcuts"), onSelect: props.onShortcuts },
     { id: "switch", label: "Trocar de projeto", onSelect: props.onSwitchProject },
     { id: "signout", label: "Sair da conta", onSelect: props.onSignOut },
+  ];
+  // Phones: what the bar has no room for, in the order of the wider bar.
+  const overflow: MenuEntry[] = [
+    { id: "undo", label: undo.undoLabel, icon: <Undo2 />, shortcut: tip("undo"), onSelect: undo.undo },
+    { id: "redo", label: undo.redoLabel, icon: <Redo2 />, shortcut: tip("redo"), onSelect: undo.redo },
+    { kind: "separator", id: "s1" },
+    { id: "notices", label: "Avisos recentes", icon: <Bell />, onSelect: props.onNotices },
+    { id: "help", label: "Ajuda desta tela", icon: <CircleHelp />, shortcut: tip("help"), onSelect: props.onHelp },
   ];
   const operator = members.find((member) => member.id === operatorId);
 
@@ -126,6 +136,13 @@ export function TopBar(props: TopBarProps) {
             icon={<Search />}
             onClick={props.onPalette}
           />
+        ) : null}
+        {phone ? (
+          <MenuButton
+            label="Mais ações"
+            items={overflow}
+            trigger={<IconButton label="Mais ações" icon={<Ellipsis />} />}
+          />
         ) : (
           <>
             <span aria-hidden="true" className="mx-1 h-5 w-px bg-separator" />
@@ -146,6 +163,7 @@ export function TopBar(props: TopBarProps) {
               onClick={undo.redo}
             />
             <IconButton label="Ajuda desta tela" shortcut={tip("help")} icon={<CircleHelp />} onClick={props.onHelp} />
+            <IconButton label="Avisos recentes" icon={<Bell />} onClick={props.onNotices} />
           </>
         )}
         <IconButton label="Bloquear o projeto" shortcut={tip("lock")} icon={<Lock />} onClick={props.onLock} />

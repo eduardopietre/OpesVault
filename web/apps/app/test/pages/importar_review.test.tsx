@@ -503,6 +503,38 @@ describe("Importar e revisar: teclado", () => {
     expect(screen.getAllByRole("dialog")).toHaveLength(1);
   });
 
+  it("Space and the checkbox mark items; Ctrl+Enter approves the marked ones in one step", async () => {
+    const o = await openImport();
+    const before = operations(o);
+    await pickItem(o, "Padaria");
+    const grid = (await itemsTable()) as HTMLElement;
+    grid.focus();
+    fireEvent.keyDown(grid, { key: " " });
+    expect((within(grid).getByRole("checkbox", { name: "Marcar Padaria" }) as HTMLElement).dataset["state"]).toBe(
+      "checked",
+    );
+    // the checkbox marks without moving the current row
+    await o.user.click(within(grid).getByRole("checkbox", { name: "Marcar Loja Eletro" }));
+    expect(rowWith(grid, "Padaria").getAttribute("aria-selected")).toBe("true");
+    expect(button("Aprovar marcados (2)")).toBeTruthy();
+    // Space again unmarks, and marks again
+    grid.focus();
+    fireEvent.keyDown(grid, { key: " " });
+    expect(screen.getByRole("button", { name: "Aprovar marcados (1)" })).toBeTruthy();
+    fireEvent.keyDown(grid, { key: " " });
+    fireEvent.keyDown(grid, { key: "Enter", ctrlKey: true });
+    const reason = await dialog("Aprovação parcial");
+    await type(o.user, field(reason, /Motivo/), "Só as duas conferidas");
+    await o.user.click(within(reason).getByRole("button", { name: "Aprovar" }));
+    await waitFor(() => expect(operations(o)).toBe(before + 2));
+    expect(item(o, "Padaria").status).toBe(ItemStatus.APPROVED);
+    expect(item(o, "Loja Eletro").status).toBe(ItemStatus.APPROVED);
+    expect(await screen.findByRole("button", { name: "Aprovar selecionado" })).toBeTruthy();
+    // one undo takes both back
+    o.workspace.undo();
+    expect(operations(o)).toBe(before);
+  });
+
   it("C opens the category of the selected item", async () => {
     const o = await openImport();
     await pickItem(o, "Loja Eletro");

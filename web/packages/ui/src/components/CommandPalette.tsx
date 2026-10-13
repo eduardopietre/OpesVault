@@ -1,9 +1,11 @@
 /**
  * The command palette (docs/18 §5.1, Ctrl+K / ⌘K): every destination and command of the app, found by
  * typing part of the name without accents. It replaces the desktop's menus; each entry shows its shortcut.
+ * `search` adds what the app finds for the text (records), after the commands; it runs on a deferred copy of
+ * the text, so typing never waits for it.
  */
 import { CornerDownLeft, Search } from "lucide-react";
-import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { useDeferredValue, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { cn } from "../cn.ts";
 import { searchKey } from "../format.ts";
 import { Overlay } from "./Overlay.tsx";
@@ -11,6 +13,8 @@ import { Overlay } from "./Overlay.tsx";
 export interface Command {
   id: string;
   label: string;
+  /** Secondary text after the label ("R$ 120,00 · 05/10/2026"). */
+  detail?: string;
   /** Group heading ("Ir para", "Projeto", "Editar", "Exibir", "Ajuda"). */
   group: string;
   run: () => void;
@@ -27,6 +31,8 @@ export interface CommandPaletteProps {
   onOpenChange: (open: boolean) => void;
   commands: readonly Command[];
   placeholder?: string;
+  /** More results for the text typed (records found in the project), listed after the commands. */
+  search?: ((query: string) => readonly Command[]) | undefined;
 }
 
 export function filterCommands(commands: readonly Command[], query: string): Command[] {
@@ -39,7 +45,7 @@ export function filterCommands(commands: readonly Command[], query: string): Com
   });
 }
 
-export function CommandPalette({ open, onOpenChange, commands, placeholder }: CommandPaletteProps) {
+export function CommandPalette({ open, onOpenChange, commands, placeholder, search }: CommandPaletteProps) {
   return (
     <Overlay
       open={open}
@@ -48,7 +54,7 @@ export function CommandPalette({ open, onOpenChange, commands, placeholder }: Co
       label="Paleta de comandos"
       panelClassName="overflow-hidden"
     >
-      <PaletteBody commands={commands} placeholder={placeholder} onDone={() => onOpenChange(false)} />
+      <PaletteBody commands={commands} placeholder={placeholder} search={search} onDone={() => onOpenChange(false)} />
     </Overlay>
   );
 }
@@ -56,17 +62,21 @@ export function CommandPalette({ open, onOpenChange, commands, placeholder }: Co
 function PaletteBody({
   commands,
   placeholder,
+  search,
   onDone,
 }: {
   commands: readonly Command[];
   placeholder: string | undefined;
+  search: CommandPaletteProps["search"];
   onDone: () => void;
 }) {
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
   const listId = useId();
   const list = useRef<HTMLDivElement>(null);
-  const results = useMemo(() => filterCommands(commands, query), [commands, query]);
+  const deferred = useDeferredValue(query);
+  const found = useMemo(() => (search ? search(deferred) : []), [search, deferred]);
+  const results = useMemo(() => [...filterCommands(commands, query), ...found], [commands, query, found]);
   const groups = useMemo(() => {
     const map = new Map<string, Command[]>();
     for (const command of results) map.set(command.group, [...(map.get(command.group) ?? []), command]);
@@ -104,7 +114,7 @@ function PaletteBody({
           autoFocus
           autoComplete="off"
           spellCheck={false}
-          placeholder={placeholder ?? "Buscar seção ou comando…"}
+          placeholder={placeholder ?? (search ? "Buscar seção, comando ou registro…" : "Buscar seção ou comando…")}
           value={query}
           onChange={(event) => {
             setQuery(event.target.value);
@@ -130,7 +140,9 @@ function PaletteBody({
       </div>
       <div ref={list} id={listId} role="listbox" aria-label="Resultados" className="min-h-0 flex-1 overflow-y-auto p-2">
         {results.length === 0 ? (
-          <p className="px-3 py-6 text-center text-body text-secondary">Nada encontrado para “{query}”.</p>
+          <p className="px-3 py-6 text-center text-body text-secondary">
+            {deferred === query ? `Nada encontrado para “${query}”.` : "Buscando…"}
+          </p>
         ) : (
           groups.map(([group, items]) => (
             <div key={group} role="group" aria-label={group} className="mb-1">
@@ -163,6 +175,16 @@ function PaletteBody({
                       {command.icon}
                     </span>
                     <span className="min-w-0 flex-1 truncate">{command.label}</span>
+                    {command.detail ? (
+                      <span
+                        className={cn(
+                          "max-w-[45%] shrink-0 truncate text-caption",
+                          selected ? "text-accent-text" : "text-secondary",
+                        )}
+                      >
+                        {command.detail}
+                      </span>
+                    ) : null}
                     {command.shortcut ? (
                       <kbd
                         className={cn(

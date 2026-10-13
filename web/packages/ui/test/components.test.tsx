@@ -18,7 +18,11 @@ import {
   memoryPreferences,
   Select,
   StatusPill,
+  Tabs,
   Toaster,
+  TOAST_HISTORY_SIZE,
+  clearToasts,
+  toastHistory,
   type DataColumn,
 } from "../src/index.ts";
 
@@ -131,6 +135,73 @@ describe("notify", () => {
     });
     await user.click(screen.getByRole("button", { name: "Desfazer" }));
     expect(undo).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("toast history", () => {
+  it("keeps the latest toasts of the tab, newest first, without their action, and forgets them on clear", () => {
+    act(() => {
+      notify("Primeiro.");
+      notify("Segundo.", { tone: "positive", action: { label: "Desfazer", run: () => undefined } });
+    });
+    expect(toastHistory().map((item) => [item.message, item.tone])).toEqual([
+      ["Segundo.", "positive"],
+      ["Primeiro.", "info"],
+    ]);
+    expect(toastHistory()[0]).not.toHaveProperty("action");
+    act(() => {
+      for (let i = 0; i < TOAST_HISTORY_SIZE + 5; i++) notify(`Aviso ${i}`);
+    });
+    expect(toastHistory()).toHaveLength(TOAST_HISTORY_SIZE);
+    expect(toastHistory()[0]?.message).toBe(`Aviso ${TOAST_HISTORY_SIZE + 4}`);
+    act(() => clearToasts());
+    expect(toastHistory()).toEqual([]);
+  });
+});
+
+describe("Tabs", () => {
+  const TABS = ["Contas bancárias", "Todas as contas", "Cartões", "Faturas"].map((label) => ({
+    id: label,
+    label,
+    content: <p>{`Conteúdo de ${label}`}</p>,
+  }));
+
+  function Harness() {
+    const [value, setValue] = useState("Contas bancárias");
+    return <Tabs tabs={TABS} value={value} onValueChange={setValue} label="Cadastros" />;
+  }
+
+  it("shows an arrow on each side with more tabs, out of the Tab order, that scrolls the row", async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    const list = screen.getByRole("tablist", { name: "Cadastros" });
+    // all tabs fit: no arrows
+    expect(screen.queryByRole("button", { name: "Mais abas" })).toBeNull();
+    // a narrow row: 300 px showing of 900
+    let left = 0;
+    Object.defineProperty(list, "clientWidth", { configurable: true, get: () => 300 });
+    Object.defineProperty(list, "scrollWidth", { configurable: true, get: () => 900 });
+    Object.defineProperty(list, "scrollLeft", {
+      configurable: true,
+      get: () => left,
+      set: (value: number) => (left = value),
+    });
+    const scrollBy = vi.fn((options: ScrollToOptions) => {
+      left += options.left ?? 0;
+      fireEvent.scroll(list);
+    });
+    list.scrollBy = scrollBy as unknown as typeof list.scrollBy;
+    fireEvent.scroll(list);
+    const more = await screen.findByRole("button", { name: "Mais abas" });
+    expect(more.tabIndex).toBe(-1);
+    expect(screen.queryByRole("button", { name: "Abas anteriores" })).toBeNull();
+    await user.click(more);
+    expect(scrollBy).toHaveBeenCalledWith(expect.objectContaining({ left: 210 }));
+    expect(await screen.findByRole("button", { name: "Abas anteriores" })).toBeTruthy();
+    // the keyboard still goes from tab to tab
+    act(() => screen.getByRole("tab", { name: "Contas bancárias" }).focus());
+    await user.keyboard("{ArrowRight}");
+    expect(document.activeElement?.textContent).toBe("Todas as contas");
   });
 });
 

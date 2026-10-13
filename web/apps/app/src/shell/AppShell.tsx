@@ -25,20 +25,26 @@ import {
 import { Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { motion } from "motion/react";
 import {
+  Bell,
   CircleHelp,
+  FilePlus2,
+  FileText,
   FileUp,
+  Goal,
+  Landmark,
   Keyboard,
   Lock,
   LogOut,
   Monitor,
   Moon,
   PanelLeft,
+  ReceiptText,
   Redo2,
   Repeat2,
   Sun,
   Undo2,
 } from "lucide-react";
-import { useEffect, useRef, useState, type DragEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type DragEvent, type ReactNode } from "react";
 import { BOTTOM_NAV, PAGES, SECTIONS, pageById, pageByPath, shortcutOf, type PageDef } from "../pages.tsx";
 import { SIDEBAR_KEY } from "../preferences.ts";
 import { syncStateOf, useSession, useSessionActions } from "../session.tsx";
@@ -54,6 +60,22 @@ import { TopBar } from "./TopBar.tsx";
 import { useUndo } from "./undo.tsx";
 import { Wordmark } from "./Logo.tsx";
 import { SHOW_CATALOG } from "../flags.ts";
+import { useGoTo } from "../data/navigation.ts";
+import { useOptionalWorkspace } from "../data/react.tsx";
+import { READ_ONLY_TIP } from "../data/read_only.ts";
+import { findRecords, type RecordHit } from "./record_search.ts";
+import { RecentNotices } from "./RecentNotices.tsx";
+
+const HIT_GROUPS: Readonly<Record<RecordHit["kind"], string>> = {
+  operation: "Lançamentos",
+  account: "Contas",
+  document: "Documentos",
+};
+const HIT_ICONS: Readonly<Record<RecordHit["kind"], ReactNode>> = {
+  operation: <ReceiptText />,
+  account: <Landmark />,
+  document: <FileText />,
+};
 
 const EMPTY_ATTENTION: Readonly<Record<string, number>> = {};
 
@@ -86,6 +108,9 @@ export function AppShell() {
   const [palette, setPalette] = useState(false);
   const [help, setHelp] = useState(false);
   const [keys, setKeys] = useState(false);
+  const [notices, setNotices] = useState(false);
+  const workspace = useOptionalWorkspace();
+  const goTo = useGoTo();
   const [dragging, setDragging] = useState(false);
 
   // Opening the project and unlocking it replace what had focus (a dialog, the lock screen): without this,
@@ -128,6 +153,29 @@ export function AppShell() {
   const lock = () => void actions.lock();
   const switchProject = () => void actions.closeProject().then(() => navigate({ to: "/projetos" }));
   const signOut = () => void actions.signOut().then(() => navigate({ to: "/boas-vindas" }));
+  /** A create action through the address, consumed by the destination's `useReveal`; refused while read-only. */
+  const create = (pageId: string, act: string) => {
+    if (workspace?.readOnly) {
+      notify(READ_ONLY_TIP, { tone: "warning" });
+      return;
+    }
+    goTo(pageId, { act });
+  };
+  const searchRecords = useCallback(
+    (query: string): Command[] =>
+      workspace
+        ? findRecords(workspace.ledger, workspace.session.documents, query).map((hit) => ({
+            id: `${hit.kind}-${hit.id}`,
+            label: hit.label,
+            detail: hit.detail,
+            group: HIT_GROUPS[hit.kind],
+            icon: HIT_ICONS[hit.kind],
+            run: () => goTo(hit.page, { ref: hit.ref }),
+            preview: () => void preloadPage(hit.page),
+          }))
+        : [],
+    [workspace, goTo],
+  );
   const toggleSidebar = () => {
     if (band === "tablet") setDrawer((value) => !value);
     else if (band !== "phone") setCollapsed(!collapsed);
@@ -152,11 +200,37 @@ export function AppShell() {
       redo: undo.redo,
       toggleSidebar,
       lock,
+      newEntry: () => create("livro", "novo"),
     },
     !session.locked,
   );
 
   const commands: Command[] = [
+    {
+      id: "new-entry",
+      label: "Novo lançamento",
+      group: "Criar",
+      icon: <FilePlus2 />,
+      keywords: "despesa receita adicionar registrar",
+      shortcut: tip("newEntry"),
+      run: () => create("livro", "novo"),
+    },
+    {
+      id: "new-import",
+      label: "Importar arquivo",
+      group: "Criar",
+      icon: <FileUp />,
+      keywords: "extrato fatura pdf ofx csv",
+      run: () => create("importar", "arquivo"),
+    },
+    {
+      id: "new-goal",
+      label: "Nova meta",
+      group: "Criar",
+      icon: <Goal />,
+      keywords: "objetivo reserva",
+      run: () => create("metas", "nova"),
+    },
     ...PAGES.map((page) => ({
       id: `go-${page.id}`,
       label: page.title,
@@ -217,6 +291,14 @@ export function AppShell() {
       icon: <CircleHelp />,
       shortcut: tip("help"),
       run: () => setHelp(true),
+    },
+    {
+      id: "notices",
+      label: "Avisos recentes",
+      group: "Ajuda",
+      icon: <Bell />,
+      keywords: "notificacoes historico mensagens",
+      run: () => setNotices(true),
     },
     {
       id: "shortcuts",
@@ -305,6 +387,7 @@ export function AppShell() {
         onPalette={() => setPalette(true)}
         onHelp={() => setHelp(true)}
         onShortcuts={() => setKeys(true)}
+        onNotices={() => setNotices(true)}
         onLock={lock}
         onSwitchProject={switchProject}
         onSignOut={signOut}
@@ -385,9 +468,10 @@ export function AppShell() {
           label="Todas as seções"
         />
       </Sheet>
-      <CommandPalette open={palette} onOpenChange={setPalette} commands={commands} />
+      <CommandPalette open={palette} onOpenChange={setPalette} commands={commands} search={searchRecords} />
       <HelpDialog open={help} onOpenChange={setHelp} page={current} />
       <ShortcutsDialog open={keys} onOpenChange={setKeys} />
+      <RecentNotices open={notices} onOpenChange={setNotices} />
       {dragging ? (
         <div
           aria-hidden="true"

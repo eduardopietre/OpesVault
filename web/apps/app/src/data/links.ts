@@ -12,6 +12,9 @@
  *   recorrencias  "<ruleId>:<YYYY-MM-DD>"         the forecast of a rule on its due date  act "vincular" (late only)
  *                 "rule:<ruleId>"                 a rule whose price changed              (no act)
  *   importar      "<batchId>"                     the batch with items to review
+ *                 (no ref)                        act "arquivo": the file picker (the palette's Importar arquivo)
+ *   livro         (no ref)                        act "novo": the new operation form (the `n` key, the palette)
+ *   metas         (no ref)                        act "nova": the new goal form (the palette's Nova meta)
  *   orcamento     "<categoryId>:<YYYY-MM>"        a category over or near its budget
  *   relatorios    "projected_balance"             the projected balance report
  *                 "comparison"                    the comparison with previous months

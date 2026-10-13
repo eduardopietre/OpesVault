@@ -206,6 +206,7 @@ describe("keyboard shortcuts", () => {
       redo: vi.fn(),
       toggleSidebar: vi.fn(),
       lock: vi.fn(),
+      newEntry: vi.fn(),
     }) as never;
 
   it("each shell entry of the list is a key the handler answers", () => {
@@ -223,7 +224,18 @@ describe("keyboard shortcuts", () => {
     press({ key: "y", ctrlKey: true });
     press({ key: "B", ctrlKey: true, shiftKey: true });
     press({ key: "L", ctrlKey: true, shiftKey: true });
-    for (const id of ["palette", "help", "shortcuts", "goIndex", "goLetter", "undo", "toggleSidebar", "lock"]) {
+    press({ key: "n" });
+    for (const id of [
+      "palette",
+      "help",
+      "shortcuts",
+      "goIndex",
+      "goLetter",
+      "undo",
+      "toggleSidebar",
+      "lock",
+      "newEntry",
+    ]) {
       expect(h[id], id).toHaveBeenCalledTimes(1);
     }
     expect(h["redo"]).toHaveBeenCalledTimes(2);

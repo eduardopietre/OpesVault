@@ -3,13 +3,15 @@
  * the document says (facts, the check of each total, warnings), the account or card it belongs to, the layout
  * when none was recognized, and the items it was read into, each with the category the family would give it.
  * Extracted data is not approved data (docs/00 §4.1): nothing becomes an operation until the person approves it,
- * item by item or the ready ones together, with a reason when the approval is partial or the total diverges.
+ * item by item, the marked ones (a checkbox or Space on the list) or the ready ones together, with a reason when
+ * the approval is partial or the total diverges.
  * Every command that changes the project is one `act()`: one undo step.
  */
 import { AccountSubtype, DomainError, importing, type Id } from "@opesvault/domain";
 import {
   Badge,
   Button,
+  Checkbox,
   DataTable,
   ElidedText,
   MenuButton,
@@ -52,6 +54,7 @@ const { BatchStatus, ItemKind, ItemStatus } = importing.importModel;
 /** Below this width the items are cards: the columns that always show need about 550 px. */
 const CARDS_BELOW = 560;
 const NO_SELECTION = "Selecione um item da lista.";
+const NO_MARKS: ReadonlySet<Id> = new Set();
 
 const STATUS_TONE: Record<string, "neutral" | "accent" | "positive" | "negative" | "warning"> = {
   [ItemStatus.NEEDS_REVIEW]: "warning",
@@ -116,6 +119,7 @@ export function Review({ batchId, selected, onSelect, queue, ai }: ReviewProps) 
   const [ruling, setRuling] = useState<ItemRow | null>(null);
   const [offer, setOffer] = useState<RuleOffer | null>(null);
   const [layout, setLayout] = useState<string | null>(null);
+  const [marked, setMarked] = useState<ReadonlySet<Id>>(NO_MARKS);
 
   const parsers = useMemo(
     () => importing.parsers.PARSERS.filter((p) => batch !== null && p.doc_format === batch.doc_format),
@@ -127,9 +131,25 @@ export function Review({ batchId, selected, onSelect, queue, ai }: ReviewProps) 
   const open = rows.filter((row) => isOpen(row.item));
   const approvable = !needsLayout(batch) && batch.status !== BatchStatus.REJECTED && open.length > 0;
   const targetValue = batch.card_id ? `card:${batch.card_id}` : batch.account_id ? `account:${batch.account_id}` : null;
+  // Only items still to decide can be marked; an item approved or rejected meanwhile drops out.
+  const markedOpen = open.filter((row) => marked.has(row.id));
   const layoutId = layout ?? batch.candidates.find((id) => parsers.some((p) => p.id === id)) ?? parsers[0]?.id ?? null;
 
   // ── commands ───────────────────────────────────
+
+  const mark = (id: Id, value: boolean) =>
+    setMarked((set) => {
+      const next = new Set(set);
+      if (value) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+
+  const toggleCurrent = () => {
+    if (!current) return notify(NO_SELECTION);
+    if (!isOpen(current.item)) return notify("Só os itens pendentes podem ser marcados.");
+    mark(current.id, !marked.has(current.id));
+  };
 
   /** After acting on an item, the next one is selected, so the review goes on from the keyboard. */
   const advance = (from: Id) => {
@@ -235,6 +255,14 @@ export function Review({ batchId, selected, onSelect, queue, ai }: ReviewProps) 
     if (readOnly) return;
     if (!current) return notify(NO_SELECTION);
     await approveRow(current);
+  };
+
+  /** Ctrl+Enter: the marked items when there are any, otherwise the selected one. */
+  const approveMarkedOrSelected = async () => {
+    if (readOnly) return;
+    if (!markedOpen.length) return approveSelected();
+    if (!approvable) return;
+    if (await approve(markedOpen.map((row) => row.id))) setMarked(NO_MARKS);
   };
 
   const correct = () => {
@@ -364,12 +392,13 @@ export function Review({ batchId, selected, onSelect, queue, ai }: ReviewProps) 
     if (mod && event.key === "Enter") {
       event.preventDefault();
       if (event.shiftKey) approveReady();
-      else void approveSelected();
+      else void approveMarkedOrSelected();
       return;
     }
     const grid = table.current?.querySelector('[role="grid"],[role="listbox"]');
     if (event.target !== grid || mod || event.altKey) return;
     const keys: Record<string, () => void> = {
+      " ": toggleCurrent,
       F2: correct,
       Delete: () => void reject(),
       m: () => void keepSeparate(),
@@ -386,7 +415,25 @@ export function Review({ batchId, selected, onSelect, queue, ai }: ReviewProps) 
   // ── the items ──────────────────────────────────
 
   // The description leads: it is the title of the card on a narrow screen, and the row is told apart by it.
+  const markBox = (row: ItemRow) => (
+    // The checkbox is not the row: ticking must not move the current row or open the correction.
+    <span
+      className="inline-flex"
+      onClick={(event) => event.stopPropagation()}
+      onDoubleClick={(event) => event.stopPropagation()}
+    >
+      <Checkbox
+        label={<span className="sr-only">Marcar {row.description}</span>}
+        checked={marked.has(row.id) && isOpen(row.item)}
+        onCheckedChange={(value) => mark(row.id, value)}
+        disabled={!isOpen(row.item)}
+      />
+    </span>
+  );
+
   const columns: DataColumn<ItemRow>[] = [
+    // On a phone each item is a card whose title carries the checkbox.
+    ...(cards ? [] : [{ id: "mark", header: "Marcar", cell: markBox, width: 72 }]),
     {
       id: "description",
       header: "Descrição",
@@ -554,13 +601,23 @@ export function Review({ batchId, selected, onSelect, queue, ai }: ReviewProps) 
         >
           Aprovar prontos
         </Button>
-        <Button
-          onClick={() => void approveSelected()}
-          disabled={readOnly || !current || !approvable}
-          title={readOnlyTip ?? "Ctrl+Enter"}
-        >
-          Aprovar selecionado
-        </Button>
+        {markedOpen.length ? (
+          <Button
+            onClick={() => void approveMarkedOrSelected()}
+            disabled={readOnly || !approvable}
+            title={readOnlyTip ?? "Ctrl+Enter"}
+          >
+            {`Aprovar marcados (${markedOpen.length})`}
+          </Button>
+        ) : (
+          <Button
+            onClick={() => void approveSelected()}
+            disabled={readOnly || !current || !approvable}
+            title={readOnlyTip ?? "Ctrl+Enter"}
+          >
+            Aprovar selecionado
+          </Button>
+        )}
         <Button
           icon={<Pencil />}
           onClick={correct}
@@ -662,7 +719,12 @@ export function Review({ batchId, selected, onSelect, queue, ai }: ReviewProps) 
           onActivate={() => correct()}
           rowHeight={48}
           height="max(22rem, calc(100dvh - 24rem))"
-          cardTitle={(row) => <ElidedText>{row.description}</ElidedText>}
+          cardTitle={(row) => (
+            <span className="flex min-w-0 items-center gap-2">
+              {markBox(row)}
+              <ElidedText>{row.description}</ElidedText>
+            </span>
+          )}
           empty={
             <div className="flex flex-col items-center gap-2 px-4 py-10 text-center">
               <FileSearch aria-hidden="true" className="size-7 text-secondary" />

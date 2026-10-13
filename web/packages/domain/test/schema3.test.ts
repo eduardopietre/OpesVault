@@ -55,6 +55,23 @@ describe("categories: rename and archive", () => {
   });
 });
 
+describe("categories the investments find by name", () => {
+  it("keep their name, are not archived and are not merged away; others may be merged into them", () => {
+    const f = family();
+    const income = categories.INVESTMENT_CATEGORIES.income;
+    const yields = [...f.ledger.accounts.values()].find((a) => a.name === income && a.type === AccountType.INCOME)!.id;
+    expect(() => categories.renameCategory(f.ledger, yields, "Juros")).toThrow(/investimentos/);
+    expect(() => categories.setArchived(f.ledger, yields, true)).toThrow(/investimentos/);
+    expect(() => categories.previewMerge(f.ledger, yields, f.salary)).toThrow(/investimentos/);
+    expect(categories.previewMerge(f.ledger, f.salary, yields).operations).toBeGreaterThanOrEqual(0);
+    // An expense category of the same name as an income one is not theirs.
+    const sameName = f.ledger.addAccount(
+      LedgerAccountSchema.parse({ name: income, type: AccountType.EXPENSE, subtype: AccountSubtype.CATEGORY }),
+    ).id;
+    expect(categories.renameCategory(f.ledger, sameName, "Outra").name).toBe("Outra");
+  });
+});
+
 describe("categories: merge", () => {
   it("moves postings, sub-categories, budgets, recurrences and rules, then archives the source", () => {
     const f = family();

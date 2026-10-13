@@ -14,11 +14,36 @@ import type { Id } from "../lib/ids.ts";
 import { type YearMonth, ymBr, ymCompare, ymEq } from "../lib/dates.ts";
 import { casefold } from "../lib/text.ts";
 import { DomainError, type Ledger } from "./ledger.ts";
-import { AccountSubtype, type LedgerAccount, type Operation, type Posting } from "./model.ts";
+import { AccountSubtype, AccountType, type LedgerAccount, type Operation, type Posting } from "./model.ts";
 import { isClosed, monthsOf } from "./periods.ts";
 import { ZERO } from "./money.ts";
 
 export const MERGE_REASON = "categorias mescladas";
+
+/**
+ * Categories the investments find by name (`investments/service.ts`, a port of the Python): renamed, archived or
+ * merged away, the next automatic entry would create another one with the original name. They keep theirs.
+ */
+export const INVESTMENT_CATEGORIES = {
+  income: "Rendimentos de investimentos",
+  loss: "Perdas em investimentos",
+  tax: "Impostos e taxas",
+  fee: "Custos de investimentos",
+} as const;
+
+function isReserved(account: LedgerAccount): boolean {
+  const { income, loss, tax, fee } = INVESTMENT_CATEGORIES;
+  if (account.type === AccountType.INCOME) return account.name === income;
+  return account.type === AccountType.EXPENSE && [loss, tax, fee].includes(account.name as typeof loss);
+}
+
+function refuseReserved(account: LedgerAccount, action: string): void {
+  if (isReserved(account)) {
+    throw new DomainError(
+      `“${account.name}” é usada pelos investimentos para os lançamentos automáticos e não pode ser ${action}.`,
+    );
+  }
+}
 
 function category(ledger: Ledger, id: Id): LedgerAccount {
   const account = ledger.accounts.get(id);
@@ -47,6 +72,7 @@ export function renameCategory(ledger: Ledger, id: Id, name: string): LedgerAcco
   if (!title) throw new DomainError("Informe o nome.");
   if (title.length > 120) throw new DomainError("Use até 120 caracteres no nome.");
   if (title === current.name) return current;
+  refuseReserved(current, "renomeada");
   if (sameName(ledger, current, title)) {
     throw new DomainError(`Já existe a categoria “${title}”. Para juntar as duas, use Mesclar.`);
   }
@@ -65,6 +91,7 @@ export function activeChildren(ledger: Ledger, id: Id): LedgerAccount[] {
 export function setArchived(ledger: Ledger, id: Id, archived: boolean): LedgerAccount {
   const current = category(ledger, id);
   if (current.archived === archived) return current;
+  if (archived) refuseReserved(current, "arquivada");
   if (archived && activeChildren(ledger, id).length) {
     throw new DomainError(`Arquive ou mescle antes as subcategorias de “${current.name}”.`);
   }
@@ -105,6 +132,7 @@ export function previewMerge(ledger: Ledger, sourceId: Id, targetId: Id): MergeP
   const source = category(ledger, sourceId);
   const target = category(ledger, targetId);
   if (sourceId === targetId) throw new DomainError("Escolha outra categoria de destino.");
+  refuseReserved(source, "mesclada em outra (outras podem ser mescladas nela)");
   if (source.type !== target.type)
     throw new DomainError("Só se mesclam categorias do mesmo tipo (receita ou despesa).");
   if (target.archived) throw new DomainError("A categoria de destino está arquivada. Reative-a antes.");

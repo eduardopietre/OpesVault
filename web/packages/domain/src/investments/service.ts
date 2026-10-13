@@ -5,6 +5,7 @@
  * Every money movement is a ledger operation (postings on the position's cost
  * account); valuations live apart and never create flows (docs/04 §3).
  */
+import { INVESTMENT_CATEGORIES } from "../domain/categories.ts";
 import { getOrThrow } from "../domain/error.ts";
 import { DomainError, type Ledger } from "../domain/ledger.ts";
 import {
@@ -41,10 +42,10 @@ import {
 } from "./model.ts";
 import { valueAt } from "./performance.ts";
 
-export const INCOME_CATEGORY = "Rendimentos de investimentos";
-export const LOSS_CATEGORY = "Perdas em investimentos";
-export const TAX_CATEGORY = "Impostos e taxas";
-export const FEE_CATEGORY = "Custos de investimentos";
+export const INCOME_CATEGORY = INVESTMENT_CATEGORIES.income;
+export const LOSS_CATEGORY = INVESTMENT_CATEGORIES.loss;
+export const TAX_CATEGORY = INVESTMENT_CATEGORIES.tax;
+export const FEE_CATEGORY = INVESTMENT_CATEGORIES.fee;
 export const TAX_PAYABLE = "Imposto a pagar";
 export const SUSPENSE = "Resgates a discriminar";
 

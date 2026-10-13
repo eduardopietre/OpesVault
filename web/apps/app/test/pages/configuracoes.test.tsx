@@ -1,6 +1,6 @@
 /** Configurações: the sections, the project, the local AI, security, links and the read-only state. */
 import { dom } from "@opesvault/domain";
-import { screen, waitFor, within } from "@testing-library/react";
+import { act as reactAct, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AI_PORT_KEY, setAiTransport } from "../../src/data/ai.ts";
 import { DEMO } from "../../src/services/fake.ts";
@@ -40,10 +40,39 @@ describe("Configurações page", () => {
     ] as const) {
       const { router } = await openSettings(`/configuracoes?ref=${ref}`);
       await waitFor(() => expect(screen.getByRole("tab", { name: tab }).getAttribute("aria-selected")).toBe("true"));
-      // the ref is consumed: the URL is clean again
-      await addressSettles(router, {});
+      // the ref is consumed: the address keeps only the tab (none for the first one)
+      await addressSettles(router, ref === "projeto" ? {} : { aba: ref });
       document.body.innerHTML = "";
     }
+  });
+
+  it("keeps the chosen tab in the address: a link with aba opens it, and coming back shows it again", async () => {
+    const { router, user } = await openSettings("/configuracoes?aba=seguranca");
+    await waitFor(() =>
+      expect(screen.getByRole("tab", { name: "Segurança" }).getAttribute("aria-selected")).toBe("true"),
+    );
+    await goTab(user, "Backup e salvamento");
+    await addressSettles(router, { aba: "backup" });
+    // the back and forward buttons: an address with another tab shows it
+    await reactAct(() => router.navigate({ to: "/configuracoes", search: { aba: "ia" } as never }));
+    await waitFor(() =>
+      expect(screen.getByRole("tab", { name: "IA local" }).getAttribute("aria-selected")).toBe("true"),
+    );
+    // leaving and coming back by the sidebar (no aba) shows the same tab
+    await reactAct(() => router.navigate({ to: "/livro" }));
+    await screen.findByRole("heading", { level: 1, name: "Livro financeiro" });
+    await reactAct(() => router.navigate({ to: "/configuracoes" }));
+    await screen.findByRole("heading", { level: 1, name: "Configurações" });
+    await waitFor(() =>
+      expect(screen.getByRole("tab", { name: "IA local" }).getAttribute("aria-selected")).toBe("true"),
+    );
+    await addressSettles(router, { aba: "ia" });
+  });
+
+  it("ignores an aba it does not know", async () => {
+    const { router } = await openSettings("/configuracoes?aba=nada");
+    expect(screen.getByRole("tab", { name: "Projeto" }).getAttribute("aria-selected")).toBe("true");
+    await addressSettles(router, { aba: "nada" });
   });
 
   it("ignores a ref it does not know", async () => {

@@ -459,11 +459,24 @@ describe("Aportes, proventos e resgates", () => {
 });
 
 describe("Simulador de resgate", () => {
-  it("asks for a tax rule first (the application brings none)", async () => {
-    const { user } = await openInvestimentos();
+  it("opens the tax rule first (the application brings none), then the simulator on the same position", async () => {
+    const { user, ledger } = await openInvestimentos();
     await menu(user, "Registrar", "Simular resgate (não grava)…");
-    expect(await screen.findByText("Cadastre antes uma regra de imposto (Mais › Regra de imposto…).")).toBeTruthy();
+    let box = await dialog("Regra de imposto (simulação)");
+    expect(within(box).getByText(/Para simular um resgate, cadastre antes uma regra de imposto/)).toBeTruthy();
+    // Cancelar leaves without a rule and without the simulator
+    await user.click(within(box).getByRole("button", { name: "Cancelar" }));
+    await closed("Regra de imposto (simulação)");
     expect(screen.queryByRole("dialog")).toBeNull();
+    expect(ledger.entities("tax_rule").size).toBe(0);
+
+    await menu(user, "Registrar", "Simular resgate (não grava)…");
+    box = await dialog("Regra de imposto (simulação)");
+    await fill(user, box, "Nome", "Regra fictícia 15%");
+    await fill(user, box, "Alíquota (%)", "15");
+    await submit(user, box, "Salvar");
+    expect(ledger.entities("tax_rule").size).toBe(1);
+    expect(await dialog(/Simular resgate — CDB Banco X 2028/)).toBeTruthy();
   });
 
   it("creates a rule, simulates with every field and the estimated ones named, writes nothing, and opens the redemption filled", async () => {

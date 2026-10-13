@@ -23,6 +23,7 @@ import {
   type ScriptedModel,
 } from "./assistente_harness.tsx";
 import { undoOnce } from "../dom.ts";
+import { navigations, wentTo } from "../navigations.ts";
 import { categoryNamed } from "../lookup.ts";
 
 let model: ScriptedModel;
@@ -350,14 +351,25 @@ describe("Assistente: cancel and leaving", () => {
     expect((screen.getByRole("button", { name: "Enviar" }) as HTMLButtonElement).disabled).toBe(false);
   });
 
-  it("Nova conversa forgets everything, but not while the model works", async () => {
+  it("Nova conversa forgets everything after asking, but not while the model works", async () => {
     const o = await openAssistente();
+    // nothing to lose yet: no question
+    await o.user.click(screen.getByRole("button", { name: "Nova conversa" }));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
     model.turns.push({ content: "Primeira resposta." });
     await ask(o, "Primeira pergunta");
     expect(await said("Primeira resposta.")).toBeTruthy();
     await idle();
+    // Cancelar keeps the conversation
     await o.user.click(screen.getByRole("button", { name: "Nova conversa" }));
-    expect(within(log()).queryByText("Primeira resposta.")).toBeNull();
+    let confirm = await screen.findByRole("alertdialog", { name: "Começar outra conversa?" });
+    await o.user.click(within(confirm).getByRole("button", { name: "Cancelar" }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(within(log()).getByText("Primeira resposta.")).toBeTruthy();
+    await o.user.click(screen.getByRole("button", { name: "Nova conversa" }));
+    confirm = await screen.findByRole("alertdialog", { name: "Começar outra conversa?" });
+    await o.user.click(within(confirm).getByRole("button", { name: "Apagar e começar outra" }));
+    await waitFor(() => expect(within(log()).queryByText("Primeira resposta.")).toBeNull());
     expect(screen.getByRole("group", { name: "Perguntas de exemplo" })).toBeTruthy();
     // a new question does not carry the old one
     model.turns.push({ content: "Segunda resposta." });
@@ -420,8 +432,13 @@ describe("Assistente: the AI is not available", () => {
     expect(await screen.findByRole("heading", { name: "Assistente desligado" })).toBeTruthy();
     expect(screen.queryByRole("textbox", { name: "Pergunta ao assistente" })).toBeNull();
     expect(screen.getByText(/O aplicativo funciona inteiro sem ela/)).toBeTruthy();
+    const seen = navigations(o.router);
     await o.user.click(screen.getByRole("button", { name: "Abrir Configurações" }));
-    await waitFor(() => expect(o.router.state.location.pathname).toBe("/configuracoes"));
+    await wentTo(seen, "/configuracoes", { aba: "ia" });
+    // it lands on the IA local tab
+    await waitFor(() =>
+      expect(screen.getByRole("tab", { name: "IA local" }).getAttribute("aria-selected")).toBe("true"),
+    );
     expect(model.chats).toHaveLength(0);
   });
 

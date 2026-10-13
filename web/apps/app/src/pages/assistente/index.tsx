@@ -5,7 +5,16 @@
  * model as an error, three in a row stop the question. The conversation lives only in memory (`chat.ts`).
  */
 import { assistant } from "@opesvault/domain";
-import { Button, EmptyState, PageHeader, TextField, notify, usePreferences, useMotionPreset } from "@opesvault/ui";
+import {
+  Button,
+  EmptyState,
+  PageHeader,
+  TextField,
+  confirm,
+  notify,
+  usePreferences,
+  useMotionPreset,
+} from "@opesvault/ui";
 import { Bot, Plus, SendHorizontal, Sparkles } from "lucide-react";
 import { motion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
@@ -98,11 +107,24 @@ export function Page() {
     void chat.ask(asked, deps());
   };
 
-  const newConversation = () => {
+  const newConversation = async () => {
     if (chat.busy) {
       notify("Aguarde a resposta ou cancele antes de começar outra conversa.");
       return;
     }
+    // Only a conversation with something in it is lost: ask first.
+    if (
+      chat.items.length > 0 &&
+      !(await confirm({
+        title: "Começar outra conversa?",
+        text: "A conversa atual some: ela fica só na memória desta aba. O que já foi aprovado continua no projeto.",
+        confirmLabel: "Apagar e começar outra",
+        danger: true,
+      }))
+    ) {
+      return;
+    }
+    if (chat.busy) return;
     chat.reset();
     setQuestion("");
     input.current?.focus();
@@ -114,7 +136,7 @@ export function Page() {
       context="IA local com ferramentas: consulta o projeto e propõe mudanças que você aprova"
       actions={
         on ? (
-          <Button icon={<Plus />} onClick={newConversation} title="Esquece a conversa atual">
+          <Button icon={<Plus />} onClick={() => void newConversation()} title="Esquece a conversa atual">
             Nova conversa
           </Button>
         ) : undefined
@@ -131,7 +153,7 @@ export function Page() {
           icon={<Bot />}
           title="Assistente desligado"
           description="Ligue a IA local e escolha um modelo que aceite ferramentas em Configurações › IA local. O aplicativo funciona inteiro sem ela."
-          actions={<Button onClick={() => goTo("configuracoes")}>Abrir Configurações</Button>}
+          actions={<Button onClick={() => goTo("configuracoes", { aba: "ia" })}>Abrir Configurações</Button>}
         />
       </div>
     );
@@ -151,7 +173,7 @@ export function Page() {
           <Transcript
             items={chat.items}
             onLink={(ref) => goTo("livro", { ref })}
-            onSettings={() => goTo("configuracoes")}
+            onSettings={() => goTo("configuracoes", { aba: "ia" })}
             onRetry={chat.canResume ? () => void chat.resume(deps()) : undefined}
           />
         ) : (

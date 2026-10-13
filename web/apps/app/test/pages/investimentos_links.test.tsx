@@ -4,7 +4,7 @@ import { act as reactAct, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { alertLink, eventLink } from "../../src/data/links.ts";
 import { cdbOf, openInvestimentos } from "./investimentos_harness.tsx";
-import { dialog, rowOf, selectedRow, table } from "../dom.ts";
+import { closed, dialog, rowOf, selectedRow, table } from "../dom.ts";
 import { addressSettles, navigations } from "../navigations.ts";
 
 const { service, model, profile, trades } = investments;
@@ -54,8 +54,9 @@ describe("Links into Investimentos", () => {
     const opened = await openInvestimentos();
     const id = cdbOf(opened.ledger);
     await follow(opened.router, id, "simular");
-    expect(await screen.findByText("Cadastre antes uma regra de imposto (Mais › Regra de imposto…).")).toBeTruthy();
-    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(await dialog("Regra de imposto (simulação)")).toBeTruthy();
+    await opened.user.click(screen.getByRole("button", { name: "Cancelar" }));
+    await closed("Regra de imposto (simulação)");
     opened.workspace.act((l) =>
       l.put(
         "tax_rule",

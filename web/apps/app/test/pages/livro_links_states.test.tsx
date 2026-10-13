@@ -5,7 +5,7 @@
 import { LedgerAccountSchema, dom } from "@opesvault/domain";
 import { act, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { count, grid, openLivro, rowsWith, type Opened, selectOperation } from "./livro_harness.tsx";
+import { count, grid, openLivro, rowsWith, type Opened, selectOperation, typeInto } from "./livro_harness.tsx";
 import { accountNamed, categoryNamed, memberNamed } from "../lookup.ts";
 import { dialog, menu } from "../dom.ts";
 import { addressSettles } from "../navigations.ts";
@@ -119,6 +119,36 @@ describe("Livro: vindo de outras páginas (useReveal)", () => {
 });
 
 describe("Livro: estados", () => {
+  it("offers Novo lançamento in the empty state, as its text says", async () => {
+    const o = await openLivro("/livro", { project: "new" });
+    const empty = (await screen.findByText("Nenhum lançamento ainda")).parentElement!.parentElement!;
+    await o.user.click(within(empty).getByRole("button", { name: "Novo lançamento" }));
+    await o.user.click(await screen.findByRole("menuitem", { name: "Receita" }));
+    expect(await dialog("Receita")).toBeTruthy();
+  });
+
+  it("a new entry the filters hide clears them, says so and offers them back", async () => {
+    const o = await openLivro();
+    await goToLivro(o, { ref: "marcador:Viagem Serra 2026" });
+    await waitFor(() =>
+      expect(screen.getByRole("combobox", { name: "Marcador" }).textContent).toContain("Viagem Serra 2026"),
+    );
+    const filtered = rowCount();
+    await menu(o.user, "Novo lançamento", "Despesa");
+    const d = await dialog("Despesa");
+    await typeInto(o.user, d, "Descrição", "Padaria fora do filtro");
+    await typeInto(o.user, d, "Valor", "12,50");
+    await o.user.click(within(d).getByRole("button", { name: "Registrar" }));
+    expect(await screen.findByText("Os filtros foram limpos para mostrar o novo lançamento.")).toBeTruthy();
+    await waitFor(() => expect(rowsWith("Padaria fora do filtro").length).toBe(1));
+    expect(screen.getByRole("combobox", { name: "Marcador" }).textContent).not.toContain("Viagem Serra 2026");
+    await o.user.click(screen.getByRole("button", { name: "Restaurar filtros" }));
+    await waitFor(() =>
+      expect(screen.getByRole("combobox", { name: "Marcador" }).textContent).toContain("Viagem Serra 2026"),
+    );
+    expect(rowCount()).toBe(filtered);
+  });
+
   it("shows an empty project without crashing (TA-31)", async () => {
     const o = await openLivro("/livro", { project: "new" });
     expect(await screen.findByText("Nenhum lançamento ainda")).toBeTruthy();

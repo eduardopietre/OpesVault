@@ -164,11 +164,10 @@ for (const size of TEST_SIZES) {
         await openDemo(page, "/investimentos");
         await expect(tableAt(page, "Avaliações", phone)).toBeVisible();
 
-        // no rule yet: the application brings none
+        // no rule yet: the application brings none, so the simulator opens the rule first
         await menu(page, "Registrar", /Simular resgate/);
-        await expect(notice(page, /Cadastre antes uma regra de imposto/)).toBeVisible();
-        await menu(page, "Mais", "Regra de imposto…");
         let dialog = await openDialog(page, "Regra de imposto (simulação)", "regra de imposto");
+        await expect(dialog.getByText(/Para simular um resgate, cadastre antes uma regra/)).toBeVisible();
         await submit(dialog, "Salvar");
         await expect(dialog.getByText("Informe o nome.")).toBeVisible();
         await field(dialog, "Nome").fill("Regra fictícia 15%");
@@ -176,9 +175,7 @@ for (const size of TEST_SIZES) {
         await expect(dialog.getByText(/Informe a alíquota/)).toBeVisible();
         await field(dialog, "Alíquota (%)").fill("15");
         await submit(dialog, "Salvar");
-        await expect(dialog).toBeHidden();
-
-        await menu(page, "Registrar", /Simular resgate/);
+        // saved: the simulator follows on the same position
         dialog = await openDialog(page, /Simular resgate — CDB Banco X 2028/, "simulador");
         await submit(dialog, "Simular");
         await expect(dialog.getByText("Informe o valor.")).toBeVisible();

@@ -285,9 +285,28 @@ test.describe("links and the rest of the flow", () => {
     ] as const) {
       await page.goto(`/configuracoes?demo&ref=${ref}`);
       await expect(page.getByRole("tab", { name: tab, exact: true })).toHaveAttribute("aria-selected", "true");
-      // the page consumed the ref: the address has no search left
-      await expect(page).toHaveURL(/\/configuracoes$/);
+      // the page consumed the ref: the address keeps only the tab (none for the first one)
+      await expect(page).toHaveURL(ref === "projeto" ? /\/configuracoes$/ : new RegExp(`/configuracoes\\?aba=${ref}$`));
     }
+  });
+
+  test("the chosen tab stays in the address: a reload and the back button keep it", async ({ page }) => {
+    await openDemo(page, "/configuracoes");
+    await page.getByRole("tab", { name: "Segurança", exact: true }).click();
+    await expect(page).toHaveURL(/\/configuracoes\?aba=seguranca$/);
+    // in-app navigation away and back (a page load would lock the project)
+    await page.getByRole("link", { name: "Livro financeiro", exact: true }).first().click();
+    await expect(page.getByRole("heading", { level: 1, name: "Livro financeiro" })).toBeVisible();
+    await page.goBack();
+    await expect(page.getByRole("tab", { name: "Segurança", exact: true })).toHaveAttribute("aria-selected", "true");
+    await page.getByRole("link", { name: "Livro financeiro", exact: true }).first().click();
+    await expect(page.getByRole("heading", { level: 1, name: "Livro financeiro" })).toBeVisible();
+    await page
+      .getByRole("link", { name: /^Configurações/ })
+      .first()
+      .click();
+    await expect(page.getByRole("tab", { name: "Segurança", exact: true })).toHaveAttribute("aria-selected", "true");
+    await expect(page).toHaveURL(/\/configuracoes\?aba=seguranca$/);
   });
 
   test("the backup reminder in the Visão geral leads to the Backup section", async ({ page }) => {

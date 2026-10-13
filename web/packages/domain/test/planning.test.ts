@@ -279,6 +279,39 @@ describe("reimbursements and settling up", () => {
     expect(sharing.balances(f.ledger).map((b) => [b.debtorId, fx(b.amount)])).toEqual([[f.ana, "40.00"]]);
     expect(() => sharing.settle(f.ledger, f.ana, f.ana, "1.00", d("2026-03-22"))).toThrow(DomainError);
   });
+
+  it("a recorded settlement can be corrected or undone, and the balance follows", () => {
+    const f = family();
+    f.ledger.recordCardPurchase(f.card, f.groceries, "100.00", d("2026-03-03"), "Lanche", null, { member_id: f.bruno });
+    const settled = sharing.settle(f.ledger, f.bruno, f.ana, "30.00", d("2026-03-20"), "pix");
+    expect(sharing.balances(f.ledger).map((b) => fx(b.amount))).toEqual(["70.00"]);
+
+    const fixed = sharing.updateSettlement(f.ledger, settled.id, f.bruno, f.ana, "40.00", d("2026-03-21"), "dinheiro");
+    expect(fixed.id).toBe(settled.id);
+    expect(sharing.settlements(f.ledger).size).toBe(1);
+    expect(fx(sharing.settlements(f.ledger).get(settled.id)!.amount)).toBe("40.00");
+    expect(sharing.settlements(f.ledger).get(settled.id)!.note).toBe("dinheiro");
+    expect(sharing.balances(f.ledger).map((b) => fx(b.amount))).toEqual(["60.00"]);
+    expect(f.ledger.historyOf(settled.id).map((h) => h.reason)).toContain("acerto corrigido");
+
+    expect(() => sharing.updateSettlement(f.ledger, settled.id, f.ana, f.ana, "1.00", d("2026-03-21"))).toThrow(
+      DomainError,
+    );
+    expect(() => sharing.updateSettlement(f.ledger, settled.id, f.bruno, f.ana, "0", d("2026-03-21"))).toThrow(
+      DomainError,
+    );
+    expect(() => sharing.updateSettlement(f.ledger, settled.id, f.bruno, f.ana, "1.005", d("2026-03-21"))).toThrow(
+      DomainError,
+    );
+    expect(() => sharing.updateSettlement(f.ledger, "nao-existe", f.bruno, f.ana, "1.00", d("2026-03-21"))).toThrow(
+      DomainError,
+    );
+
+    sharing.removeSettlement(f.ledger, settled.id);
+    expect(sharing.settlements(f.ledger).size).toBe(0);
+    expect(sharing.balances(f.ledger).map((b) => fx(b.amount))).toEqual(["100.00"]);
+    expect(() => sharing.removeSettlement(f.ledger, settled.id)).toThrow(DomainError);
+  });
 });
 
 describe("bank checks", () => {

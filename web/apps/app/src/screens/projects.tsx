@@ -573,12 +573,13 @@ export function SetupScreen() {
     ...allAccounts.filter((a) => a.name.trim()).map((a) => ({ id: a.name.trim(), label: a.name.trim() })),
   ];
 
-  const leave = (message: string) => {
+  /** Leaves the assistant for Visão geral or, as the last step suggests, for Importar. */
+  const leave = (message: string, to: "/visao-geral" | "/importar" = "/visao-geral") => {
     notify(message, { tone: "positive" });
-    void navigate({ to: "/visao-geral" });
+    void navigate({ to });
   };
 
-  const finish = () => {
+  const finish = (to: "/visao-geral" | "/importar" = "/visao-geral") => {
     const workspace = session.open?.workspace;
     if (!workspace) return;
     try {
@@ -589,7 +590,7 @@ export function SetupScreen() {
         result.accounts ? `${result.accounts} conta(s)` : "",
         result.cards ? `${result.cards} cartão(ões)` : "",
       ].filter(Boolean);
-      leave(parts.length ? `Projeto pronto: ${parts.join(", ")}. Bom começo!` : "Projeto pronto. Bom começo!");
+      leave(parts.length ? `Projeto pronto: ${parts.join(", ")}. Bom começo!` : "Projeto pronto. Bom começo!", to);
     } catch (failure) {
       if (failure instanceof DomainError) setError(failure.message);
       else throw failure;
@@ -858,9 +859,12 @@ export function SetupScreen() {
             Próximo: {STEPS[step + 1]}
           </Button>
         ) : (
-          <Button variant="primary" onClick={finish}>
-            Abrir o projeto
-          </Button>
+          <div className="flex flex-col-reverse gap-2 tablet:flex-row">
+            <Button onClick={() => finish("/visao-geral")}>Abrir o projeto</Button>
+            <Button variant="primary" onClick={() => finish("/importar")}>
+              Importar um extrato
+            </Button>
+          </div>
         )}
       </div>
     </AuthLayout>

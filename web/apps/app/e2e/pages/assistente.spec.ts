@@ -125,8 +125,11 @@ for (const size of TEST_SIZES) {
         await idle(page);
         await expect(log(page).getByText("Esta resposta chega tarde demais.")).toHaveCount(0);
 
-        // Nova conversa forgets everything
+        // Nova conversa forgets everything, after asking
         await page.getByRole("button", { name: "Nova conversa" }).click();
+        const decision = page.getByRole("alertdialog", { name: "Começar outra conversa?" });
+        await expect(decision).toBeVisible();
+        await decision.getByRole("button", { name: "Apagar e começar outra" }).click();
         await expect(page.getByRole("group", { name: "Perguntas de exemplo" })).toBeVisible();
         await expect(log(page).getByText("Feito: o aluguel agora está em Lazer.")).toHaveCount(0);
 

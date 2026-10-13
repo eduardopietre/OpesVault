@@ -25,6 +25,10 @@ export interface PrintSheetProps {
   onAutoPrinted: () => void;
   /** Data attributes of the sheet (what it shows), for tests and screenshots. */
   sheet?: Record<`data-${string}`, string>;
+  /** The download button's label; an HTML file by default. */
+  downloadLabel?: string;
+  /** A wide table: the sheet takes the screen's width and prints in landscape. */
+  wide?: boolean;
   children: ReactNode;
 }
 
@@ -35,6 +39,8 @@ export function PrintSheet({
   autoPrint,
   onAutoPrinted,
   sheet,
+  downloadLabel = "Baixar como arquivo HTML",
+  wide = false,
   children,
 }: PrintSheetProps) {
   const { theme } = useTheme();
@@ -58,13 +64,18 @@ export function PrintSheet({
 
   return (
     <div className="min-h-dvh bg-window px-2 py-4 text-text min-[480px]:px-4 print:min-h-0 print:bg-transparent print:p-0 tablet:px-6">
-      <div className="mx-auto mb-4 flex max-w-[820px] flex-wrap items-center justify-between gap-2 print:hidden">
+      <div
+        className={cn(
+          "mx-auto mb-4 flex flex-wrap items-center justify-between gap-2 print:hidden",
+          wide ? "max-w-[1440px]" : "max-w-[820px]",
+        )}
+      >
         <Button variant="ghost" icon={<ArrowLeft />} onClick={onBack}>
           {backLabel}
         </Button>
         <div className="flex flex-wrap items-center gap-2">
           <Button icon={<FileDown />} onClick={onDownload}>
-            Baixar como arquivo HTML
+            {downloadLabel}
           </Button>
           <Button variant="primary" icon={<Printer />} onClick={print}>
             Imprimir ou salvar em PDF
@@ -73,7 +84,11 @@ export function PrintSheet({
       </div>
       <article
         {...sheet}
-        className="mx-auto max-w-[820px] rounded-xl border border-separator bg-raised p-4 shadow-md min-[480px]:p-6 print:max-w-none print:rounded-none print:border-0 print:p-0 print:shadow-none tablet:p-10"
+        {...(wide ? { "data-print-page": "landscape" } : {})}
+        className={cn(
+          "mx-auto rounded-xl border border-separator bg-raised p-4 shadow-md min-[480px]:p-6 print:max-w-none print:rounded-none print:border-0 print:p-0 print:shadow-none",
+          wide ? "max-w-[1440px] tablet:p-6" : "max-w-[820px] tablet:p-10",
+        )}
       >
         {children}
       </article>

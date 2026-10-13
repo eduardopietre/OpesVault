@@ -246,7 +246,7 @@ describe("Menu de contexto da carteira", () => {
     const { user } = await openInvestimentos();
     const grid = await table("Investimentos");
     const opened = await rowMenu(user, grid, "CDB Banco X 2028");
-    expect(opened.getAttribute("aria-label")).toBe("Ações de CDB Banco X 2028");
+    expect(opened.getAttribute("aria-label")).toBe("Ações de CDB Banco X 2028 (Itaú da Ana)");
     const names = within(opened)
       .getAllByRole("menuitem")
       .map((item) => item.textContent);
@@ -399,7 +399,7 @@ describe("Aportes, proventos e resgates", () => {
     await submit(user, total, "Registrar");
     await closed(/Resgate/);
     expect(service.position(ledger, id).closed).toBe(true);
-    expect(await screen.findByText(/CDB Banco X 2028 \(encerrado\)/)).toBeTruthy();
+    expect(await screen.findByText(/CDB Banco X 2028 \(Itaú da Ana\) \(encerrado\)/)).toBeTruthy();
     undoOnce(workspace);
     expect(snapshot(ledger)).toBe(before);
   });

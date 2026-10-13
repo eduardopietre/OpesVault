@@ -16,6 +16,8 @@ import {
   useMotionPreset,
   type MenuEntry,
 } from "@opesvault/ui";
+import { useNavigate } from "@tanstack/react-router";
+import { Table2 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import { InvestmentDialog } from "../../dialogs/bank_investment.tsx";
@@ -74,6 +76,7 @@ export function Page() {
   const ledger = workspace.ledger;
   const act = useAct();
   const goTo = useGoTo();
+  const navigate = useNavigate();
   const { locked } = useLock();
   const preset = useMotionPreset();
   const today = workspace.today();
@@ -287,6 +290,9 @@ export function Page() {
       }
       actions={
         <>
+          <Button icon={<Table2 />} onClick={() => void navigate({ to: "/imprimir/investimentos" })}>
+            Tabela completa
+          </Button>
           <MenuButton
             label="Registrar"
             items={lock([

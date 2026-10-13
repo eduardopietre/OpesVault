@@ -63,7 +63,13 @@ describe("the shell", () => {
 describe("views outside the shell", () => {
   // Found by the every-screen e2e: a locked project has no workspace, and these views read it, so they left a
   // blank page with no way to unlock. They show the lock screen like the shell does.
-  for (const path of ["/imprimir/relatorio-mensal", "/imprimir/relatorio-anual", "/imprimir/imposto", "/comecar"]) {
+  for (const path of [
+    "/imprimir/relatorio-mensal",
+    "/imprimir/relatorio-anual",
+    "/imprimir/imposto",
+    "/imprimir/investimentos",
+    "/comecar",
+  ]) {
     it(`${path} shows the lock screen while the project is locked, and the view after unlocking`, async () => {
       const user = userEvent.setup();
       const { services, session } = await mountApp(path);

@@ -77,6 +77,18 @@ export interface PortfolioRow {
   savings: boolean;
 }
 
+/** The bank account where a position is held, from its characteristics; null when none was said. */
+export function heldAt(ledger: Ledger, positionId: Id): dom.banking.BankAccount | null {
+  const bankId = prof.profileOf(ledger, positionId)?.bank_account_id ?? null;
+  return bankId ? (banking.bankAccounts(ledger).get(bankId) ?? null) : null;
+}
+
+/** "CDB Banco X 2028 (Itaú da Ana)": the investment and, when known, the bank account that holds it. */
+export function positionName(ledger: Ledger, positionId: Id, assetName: string): string {
+  const bank = heldAt(ledger, positionId);
+  return bank ? `${assetName} (${bank.name})` : assetName;
+}
+
 export function portfolioRows(ledger: Ledger, today: IsoDate): PortfolioRow[] {
   const assets = service.assets(ledger);
   const out: PortfolioRow[] = [];
@@ -88,7 +100,7 @@ export function portfolioRows(ledger: Ledger, today: IsoDate): PortfolioRow[] {
     const cost = pos.cost_known ? service.remainingCost(ledger, pos.id) : null;
     out.push({
       id: pos.id,
-      name: asset.name + (pos.closed ? " (encerrado)" : ""),
+      name: positionName(ledger, pos.id, asset.name) + (pos.closed ? " (encerrado)" : ""),
       assetClass: model.ASSET_CLASS_LABELS[asset.asset_class],
       mode: pos.mode === model.TrackingMode.QUANTITY ? "Quantidade" : "Valor",
       cost: cost ? formatBrl(cost) : "desconhecido",

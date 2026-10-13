@@ -298,3 +298,14 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* A wide print sheet (a table of many columns, `PrintSheet wide`) prints on landscape pages. */
+@page landscape {
+  size: A4 landscape;
+  margin: 10mm;
+}
+@media print {
+  [data-print-page="landscape"] {
+    page: landscape;
+  }
+}

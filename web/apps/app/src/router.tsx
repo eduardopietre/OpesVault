@@ -22,6 +22,7 @@ import { preloadPage, screenLoader } from "./page_code.ts";
 import { PAGES } from "./pages.tsx";
 import { annualSearch } from "./pages/relatorios/annual_search.ts";
 import { taxReportSearch } from "./pages/imposto/report_search.ts";
+import { fullTableSearch } from "./pages/investimentos/full_table_search.ts";
 import { reportSearch } from "./pages/visao-geral/report_search.ts";
 import { SignInScreen, SignUpScreen, WelcomeScreen } from "./screens/auth.tsx";
 import { PlaceholderPage } from "./screens/PlaceholderPage.tsx";
@@ -192,6 +193,15 @@ export function createAppRouter({
     component: gated(lazyRouteComponent(() => import("./pages/imposto/report_page.tsx"), "TaxReportPage")),
   });
 
+  // Every investment with all its figures, to read and print (Investimentos › Tabela completa).
+  const investmentsTable = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/imprimir/investimentos",
+    beforeLoad: projectOpen,
+    validateSearch: fullTableSearch,
+    component: gated(lazyRouteComponent(() => import("./pages/investimentos/full_table_page.tsx"), "FullTablePage")),
+  });
+
   const children: AnyRoute[] = [
     index,
     welcome,
@@ -203,6 +213,7 @@ export function createAppRouter({
     monthlyReport,
     annualReport,
     taxReport,
+    investmentsTable,
     shell.addChildren(pages),
   ];
   if (SHOW_CATALOG) {

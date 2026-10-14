@@ -183,7 +183,7 @@ test.describe("visão geral: every action", () => {
     await expect(page.getByText("Mês fechado", { exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Reabrir mês…" })).toBeVisible();
     // One undo reverts the closing.
-    await page.getByRole("button", { name: /^Desfazer/ }).click();
+    await page.getByRole("button", { name: /^Desfazer:/ }).click();
     await expect(page.getByText("Mês aberto")).toBeVisible();
     // Close again, then reopen with a reason.
     await page.getByRole("button", { name: "Fechar mês…" }).click();
@@ -197,7 +197,7 @@ test.describe("visão geral: every action", () => {
     await reopen.getByLabel(/Motivo/).fill("Faltou um recibo");
     await reopen.getByRole("button", { name: "Reabrir mês" }).click();
     await expect(page.getByText("Mês aberto")).toBeVisible();
-    await page.getByRole("button", { name: /^Desfazer/ }).click();
+    await page.getByRole("button", { name: /^Desfazer:/ }).click();
     await expect(page.getByText("Mês fechado", { exact: true })).toBeVisible();
     expect(errors).toEqual([]);
   });

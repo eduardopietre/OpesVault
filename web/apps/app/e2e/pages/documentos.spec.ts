@@ -74,7 +74,7 @@ for (const size of TEST_SIZES) {
         await expect(page.getByRole("heading", { level: 1, name: "Documentos" })).toBeVisible();
 
         // a used document cannot be removed, and says why
-        await expect(page.getByRole("button", { name: "Remover…" })).toBeDisabled();
+        await expect(page.getByRole("button", { name: "Remover", exact: true })).toBeDisabled();
         await expect(page.getByText(/Em uso por uma importação/)).toBeVisible();
 
         // receipts attached in the Livro: an image, a PDF and a protected PDF
@@ -144,15 +144,12 @@ for (const size of TEST_SIZES) {
         await warning.getByRole("button", { name: "Salvar o original", exact: true }).click();
         expect((await download).suggestedFilename()).toBe("protegido.pdf");
 
-        // Desvincular…: the last use takes the file with it; Desfazer brings it back
+        // Desvincular: the last use takes the file with it, without asking; Desfazer brings it back
         await list.getByText("recibo-posto.png").click();
         await page.getByRole("button", { name: "Desvincular de Posto Shell" }).click();
-        const confirmation = page.getByRole("alertdialog", { name: "Desvincular o comprovante?" });
-        await expect(confirmation).toBeVisible();
-        await audit(page, "desvincular");
-        await confirmation.getByRole("button", { name: "Desvincular", exact: true }).click();
         await expect(list.getByText("recibo-posto.png")).toHaveCount(0);
-        await page.getByRole("button", { name: "Desfazer", exact: true }).click();
+        await audit(page, "desvinculado");
+        await page.getByRole("button", { name: "Desfazer", exact: true }).last().click();
         await expect(list.getByText("recibo-posto.png")).toBeVisible();
 
         await settle(page);

@@ -137,8 +137,15 @@ for (const size of TEST_SIZES) {
         await submit(dialog, "Registrar");
         await expect(dialog).toBeHidden();
         await expect(movements.getByText("a discriminar")).toBeVisible();
-        await menu(page, "Registrar", "Completar resgate…");
-        await expect(notice(page, "Selecione o resgate incompleto em Movimentos.")).toBeVisible();
+        // until the redemption is chosen, Completar resgate is disabled and says why
+        await page.getByRole("button", { name: "Registrar", exact: true }).click();
+        const complete = page.getByRole("menuitem", { name: "Completar resgate…" });
+        await expect(complete).toHaveAttribute("aria-disabled", "true");
+        await expect(complete).toHaveAttribute(
+          "aria-description",
+          "Selecione um resgate incompleto na tabela Movimentos.",
+        );
+        await page.keyboard.press("Escape");
         await movements.getByText("a discriminar").click();
         await page.getByRole("button", { name: "Completar resgate…" }).click();
         dialog = await openDialog(page, "Completar resgate", "completar resgate");
@@ -232,9 +239,15 @@ for (const size of TEST_SIZES) {
         const errors = watchErrors(page);
         await openDemo(page, "/investimentos");
         await expect(tableAt(page, "Avaliações", phone)).toBeVisible();
-        // a position tracked by value: trades are explained, not opened
-        await menu(page, "Negociação", "Compra…");
-        await expect(notice(page, /Negociações são para ativos acompanhados por quantidade/)).toBeVisible();
+        // a position tracked by value: trades are disabled, and say why
+        await page.getByRole("button", { name: "Negociação", exact: true }).click();
+        const buy = page.getByRole("menuitem", { name: "Compra…" });
+        await expect(buy).toHaveAttribute("aria-disabled", "true");
+        await expect(buy).toHaveAttribute(
+          "aria-description",
+          /^Negociações são para ativos acompanhados por quantidade/,
+        );
+        await page.keyboard.press("Escape");
 
         await page.getByRole("button", { name: "Novo investimento…" }).first().click();
         let dialog = await openDialog(page, "Novo investimento", "novo investimento");

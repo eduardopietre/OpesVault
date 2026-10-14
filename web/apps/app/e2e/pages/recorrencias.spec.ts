@@ -46,7 +46,7 @@ for (const size of TEST_SIZES) {
         await page.getByRole("button", { name: "Editar…" }).click();
         await expect(page.getByText("Selecione uma regra.").first()).toBeVisible();
         await page.getByRole("button", { name: "Vincular realizado…" }).click();
-        await expect(page.getByText("Selecione uma previsão.").first()).toBeVisible();
+        await expect(page.getByText("Selecione uma previsão na lista.").first()).toBeVisible();
         await expect(page.getByRole("dialog")).toHaveCount(0);
 
         // Editar…: the form starts from the rule; saving changes the table
@@ -65,7 +65,6 @@ for (const size of TEST_SIZES) {
 
         // Pausar / Retomar
         await page.getByRole("button", { name: "Pausar", exact: true }).click();
-        await page.getByRole("alertdialog").getByRole("button", { name: "Pausar", exact: true }).click();
         await expect(rules.getByText("Pausada").first()).toBeVisible();
         // the paused rule leaves the forecasts: the late ones were its own
         await expect(forecasts.getByText("Atrasada")).toHaveCount(0);
@@ -81,7 +80,7 @@ for (const size of TEST_SIZES) {
         // Mais: Pular previsão (with Desfazer), the single-candidate suggestions, the projection
         await menu(page, "Mais", "Pular previsão");
         await expect(forecasts.getByText("Pulada")).toBeVisible();
-        await page.getByRole("button", { name: "Desfazer", exact: true }).click();
+        await page.getByRole("button", { name: "Desfazer", exact: true }).last().click();
         await expect(forecasts.getByText("Pulada")).toHaveCount(0);
         // the condominium fee due today has one compatible entry: it is offered, and refusing links nothing
         await menu(page, "Mais", "Vincular sugestões únicas");

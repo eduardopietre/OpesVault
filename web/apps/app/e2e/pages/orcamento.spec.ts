@@ -54,11 +54,11 @@ for (const size of TEST_SIZES) {
         await expect(dialog).toBeHidden();
         await expect(table.getByText("R$ 700,00")).toBeVisible();
 
-        // Remover do orçamento, then Desfazer in the notice
+        // Remover do orçamento, without asking, then Desfazer in the notice
         await page.getByRole("button", { name: "Remover do orçamento" }).click();
-        await page.getByRole("alertdialog").getByRole("button", { name: "Remover", exact: true }).click();
+        await expect(page.getByRole("alertdialog")).toHaveCount(0);
         await expect(table.getByText("Alimentação")).toHaveCount(0);
-        await page.getByRole("button", { name: "Desfazer", exact: true }).click();
+        await page.getByRole("button", { name: "Desfazer", exact: true }).last().click();
         await expect(table.getByText("Alimentação").first()).toBeVisible();
 
         // Ver lançamentos goes to the ledger with the category and the month, and back
@@ -102,8 +102,7 @@ for (const size of TEST_SIZES) {
         await table.getByText("Moradia").first().click();
         await page.getByRole("button", { name: "Mais", exact: true }).click();
         await page.getByRole("menuitem", { name: "Remover do orçamento" }).click();
-        await page.getByRole("alertdialog").getByRole("button", { name: "Remover", exact: true }).click();
-        await page.getByRole("button", { name: "Desfazer", exact: true }).click();
+        await page.getByRole("button", { name: "Desfazer", exact: true }).last().click();
 
         // the whole month in the grid, copying from the previous month, then saving
         await page.getByRole("button", { name: "Mês anterior", exact: true }).click();

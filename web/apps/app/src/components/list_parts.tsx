@@ -15,7 +15,7 @@ import {
 } from "@opesvault/ui";
 import { TriangleAlert } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { useLock } from "../data/read_only.ts";
+import { READ_ONLY_TIP, useLock } from "../data/read_only.ts";
 import { CELL_PADDING, fitColumns, longestTexts, widenColumns, type TierColumn } from "./tier_columns.ts";
 
 /**
@@ -130,6 +130,16 @@ export function usePick<T>(rows: readonly T[], idOf: (row: T) => string, options
     return selected;
   };
   return { pick, setPick, selected, need };
+}
+
+/**
+ * The state of a menu command that acts on the selected row: disabled while nothing is selected, with `reason`
+ * ("Selecione uma meta na lista.") as its tip, or while the project is read-only (`locked`), saying so.
+ * Spread into the entry: `{ id, label, onSelect, ...forSelected(selected, "Selecione…", locked) }`.
+ */
+export function forSelected(selected: unknown, reason: string, locked = false): { disabled: boolean; reason?: string } {
+  if (locked) return { disabled: true, reason: READ_ONLY_TIP };
+  return selected === null || selected === undefined ? { disabled: true, reason } : { disabled: false };
 }
 
 /** What a link asks of a tab: made by the page, consumed once by the tab it names. */

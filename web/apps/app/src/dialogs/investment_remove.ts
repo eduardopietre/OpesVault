@@ -3,14 +3,13 @@
  * goes and what stays, then one action (one undo), and a notice that offers Desfazer.
  */
 import { investments, type Id } from "@opesvault/domain";
-import { confirm, notify } from "@opesvault/ui";
-import { useAct } from "../data/react.tsx";
-import { useUndo } from "../shell/undo.tsx";
+import { confirm } from "@opesvault/ui";
+import { useAct, useNotifyDone } from "../data/react.tsx";
 
 /** Asks first; resolves to whether the investment was removed. */
 export function useRemoveInvestment(): (positionId: Id, name: string) => Promise<boolean> {
   const act = useAct();
-  const { undo } = useUndo();
+  const notifyDone = useNotifyDone();
   return async (positionId, name) => {
     const ok = await confirm({
       title: `Excluir “${name}”?`,
@@ -30,7 +29,7 @@ export function useRemoveInvestment(): (positionId: Id, name: string) => Promise
       },
       { label: "excluir investimento" },
     );
-    if (removed) notify("Investimento excluído.", { action: { label: "Desfazer", run: undo } });
+    if (removed) notifyDone("Investimento excluído.");
     return removed;
   };
 }

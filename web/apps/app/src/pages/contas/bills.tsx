@@ -16,7 +16,7 @@ import {
   notify,
 } from "@opesvault/ui";
 import { useState } from "react";
-import { useLedger, useWorkspace } from "../../data/react.tsx";
+import { useLedger, useNotifyDone, useWorkspace } from "../../data/react.tsx";
 import { cardItems } from "../../dialogs/account_choices.ts";
 import { BillPaymentDialog, type BillSummary } from "../../dialogs/bill_payment.tsx";
 import { toChartData } from "../../data/chart_data.ts";
@@ -146,6 +146,7 @@ export function BillsTab({ reveal }: { reveal?: TabReveal<BillReveal> | null }) 
   const ledger = workspace.ledger;
   const today = workspace.today();
   const { locked, tip } = useLock();
+  const notifyDone = useNotifyDone();
   const options = cardItems(ledger);
   const [cardPick, setCardPick] = useState<Id | null>(null);
   const [pick, setPick] = useState<string | null>(null);
@@ -194,7 +195,7 @@ export function BillsTab({ reveal }: { reveal?: TabReveal<BillReveal> | null }) 
         {
           id: "pay",
           label: "Pagar…",
-          disabled: !row.remaining.isPositive(),
+          ...(row.remaining.isPositive() ? {} : { disabled: true, reason: "Esta fatura já está paga." }),
           onSelect: () => pay({ due: row.due, total: row.total, payments: row.paid, remaining: row.remaining }),
         },
       ],
@@ -288,7 +289,7 @@ export function BillsTab({ reveal }: { reveal?: TabReveal<BillReveal> | null }) 
           onClose={dialog.close}
           card={ledger.cards.get(dialog.spec.cardId)!}
           bill={dialog.spec.summary}
-          onDone={() => notify(`Pagamento da fatura de ${card.name} registrado.`)}
+          onDone={() => notifyDone(`Pagamento da fatura de ${card.name} registrado.`)}
         />
       ) : null}
     </div>

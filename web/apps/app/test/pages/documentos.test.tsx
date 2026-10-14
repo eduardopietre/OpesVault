@@ -184,33 +184,23 @@ describe("Documentos", () => {
     expect(document.body.innerHTML).not.toContain("segredo");
   });
 
-  it("removes a document nothing uses, after confirming, and one undo brings it back", async () => {
+  it("removes a document nothing uses without asking, and Desfazer or one undo brings it back", async () => {
     const { workspace, user } = await open();
     const before = documents(workspace);
     await pickDocument(user, "livre.pdf");
     expect(await screen.findByText("Nada usa este documento.")).toBeTruthy();
-    await user.click(screen.getByRole("button", { name: "Remover…" }));
-    let confirmation = await screen.findByRole("alertdialog", { name: "Remover o documento?" });
-    await user.click(within(confirmation).getByRole("button", { name: "Cancelar" }));
-    expect(documents(workspace)).toEqual(before);
-    await user.click(screen.getByRole("button", { name: "Remover…" }));
-    confirmation = await screen.findByRole("alertdialog", { name: "Remover o documento?" });
-    await user.click(within(confirmation).getByRole("button", { name: "Remover documento" }));
+    await user.click(screen.getByRole("button", { name: "Remover" }));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
     await waitFor(() => expect(documents(workspace)).not.toContain("livre.pdf"));
     expect(within(await list()).queryByText("livre.pdf")).toBeNull();
-    expect(await screen.findByText("Documento removido.")).toBeTruthy();
+    expect(await screen.findByText("“livre.pdf” removido do projeto.")).toBeTruthy();
     // Desfazer in the notice
     await user.click(await screen.findByRole("button", { name: "Desfazer" }));
     await waitFor(() => expect([...documents(workspace)].sort()).toEqual([...before].sort()));
     expect(within(await list()).getByText("livre.pdf")).toBeTruthy();
     // and once more by the project's own undo
     await pickDocument(user, "livre.pdf");
-    await user.click(screen.getByRole("button", { name: "Remover…" }));
-    await user.click(
-      within(await screen.findByRole("alertdialog", { name: "Remover o documento?" })).getByRole("button", {
-        name: "Remover documento",
-      }),
-    );
+    await user.click(screen.getByRole("button", { name: "Remover" }));
     await waitFor(() => expect(documents(workspace)).not.toContain("livre.pdf"));
     undoOnce(workspace);
     expect([...documents(workspace)].sort()).toEqual([...before].sort());
@@ -223,13 +213,11 @@ describe("Documentos", () => {
     const names = documents(workspace);
     await pickDocument(user, "nota-dividida.pdf");
     await user.click(await screen.findByRole("button", { name: "Desvincular de Mercado do mês" }));
-    const confirmation = await screen.findByRole("alertdialog", { name: "Desvincular o comprovante?" });
-    expect(within(confirmation).getByText(/O arquivo continua no projeto/)).toBeTruthy();
-    await user.click(within(confirmation).getByRole("button", { name: "Desvincular" }));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
     await waitFor(() => expect(attachments()).toBe(before - 1));
     expect(documents(workspace)).toEqual(names);
     expect(screen.queryByRole("button", { name: "Desvincular de Mercado do mês" })).toBeNull();
-    expect(await screen.findByText("Comprovante desvinculado.")).toBeTruthy();
+    expect(await screen.findByText("“nota-dividida.pdf” deixou de ser comprovante de “Mercado do mês”.")).toBeTruthy();
     undoOnce(workspace);
     expect(attachments()).toBe(before);
     expect(await screen.findByRole("button", { name: "Desvincular de Mercado do mês" })).toBeTruthy();
@@ -241,19 +229,15 @@ describe("Documentos", () => {
     const attachments = dom.attachments.attachments(ledger).size;
     await pickDocument(user, "recibo-posto.png");
     await user.click(await screen.findByRole("button", { name: "Desvincular de Posto Shell" }));
-    const confirmation = await screen.findByRole("alertdialog", { name: "Desvincular o comprovante?" });
-    expect(within(confirmation).getByText(/o arquivo sai do projeto/)).toBeTruthy();
-    await user.click(within(confirmation).getByRole("button", { name: "Cancelar" }));
-    expect(documents(workspace)).toEqual(before);
-    await user.click(screen.getByRole("button", { name: "Desvincular de Posto Shell" }));
-    await user.click(
-      within(await screen.findByRole("alertdialog", { name: "Desvincular o comprovante?" })).getByRole("button", {
-        name: "Desvincular",
-      }),
-    );
+    expect(screen.queryByRole("alertdialog")).toBeNull();
     await waitFor(() => expect(documents(workspace)).not.toContain("recibo-posto.png"));
     expect(within(await list()).queryByText("recibo-posto.png")).toBeNull();
-    expect(await screen.findByText("Comprovante desvinculado e arquivo removido.")).toBeTruthy();
+    expect(await screen.findByText(/saiu do projeto, porque nada mais o usa\.$/)).toBeTruthy();
+    // Desfazer in the notice brings both back
+    await user.click(await screen.findByRole("button", { name: "Desfazer" }));
+    expect([...documents(workspace)].sort()).toEqual([...before].sort());
+    expect(dom.attachments.attachments(ledger).size).toBe(attachments);
+    reactAct(() => void workspace.redo());
     undoOnce(workspace);
     expect([...documents(workspace)].sort()).toEqual([...before].sort());
     expect(dom.attachments.attachments(ledger).size).toBe(attachments);
@@ -270,9 +254,9 @@ describe("Documentos", () => {
   it("does not let a document in use be removed and says what uses it", async () => {
     const { workspace, user } = await open();
     await pickDocument(user, "recibo-posto.png");
-    const remove = (await screen.findByRole("button", { name: "Remover…" })) as HTMLButtonElement;
+    const remove = (await screen.findByRole("button", { name: "Remover" })) as HTMLButtonElement;
     expect(remove.disabled).toBe(true);
-    expect(screen.getByText(/Em uso por 1 lançamento\(s\) como comprovante/)).toBeTruthy();
+    expect(screen.getByText(/Em uso por 1 lançamento como comprovante/)).toBeTruthy();
     await pickDocument(user, "fatura-nubank-03.pdf");
     expect(screen.getByText(/Em uso por uma importação/)).toBeTruthy();
     expect(documents(workspace)).toContain("fatura-nubank-03.pdf");
@@ -300,7 +284,7 @@ describe("Documentos", () => {
     expect(await screen.findByText(/Arquivo salvo/)).toBeTruthy();
   });
 
-  it("opens a free document's commands on a right click, Remover apart and in red, still confirming", async () => {
+  it("opens a free document's commands on a right click, Remover apart and in red, with Desfazer", async () => {
     const { workspace, user } = await open();
     const before = documents(workspace);
     const opened = await rowMenu(user, await list(), "livre.pdf");
@@ -309,12 +293,12 @@ describe("Documentos", () => {
       within(opened)
         .getAllByRole("menuitem")
         .map((item) => item.textContent),
-    ).toEqual(["Salvar o original…", "Remover…"]);
-    expect(within(opened).getByRole("menuitem", { name: "Remover…" }).className).toContain("text-negative");
-    await user.click(within(opened).getByRole("menuitem", { name: "Remover…" }));
-    const confirmation = await screen.findByRole("alertdialog", { name: "Remover o documento?" });
-    await user.click(within(confirmation).getByRole("button", { name: "Cancelar" }));
-    expect(documents(workspace)).toEqual(before);
+    ).toEqual(["Salvar o original…", "Remover"]);
+    expect(within(opened).getByRole("menuitem", { name: "Remover" }).className).toContain("text-negative");
+    await user.click(within(opened).getByRole("menuitem", { name: "Remover" }));
+    await waitFor(() => expect(documents(workspace)).not.toContain("livre.pdf"));
+    await user.click(await screen.findByRole("button", { name: "Desfazer" }));
+    await waitFor(() => expect([...documents(workspace)].sort()).toEqual([...before].sort()));
   });
 
   it("saves the original from the menu after the same warning", async () => {
@@ -328,7 +312,7 @@ describe("Documentos", () => {
     expect(type).toBe("application/pdf");
   });
 
-  it("offers what uses a receipt: each operation and Desvincular in a cascade, with the confirmation", async () => {
+  it("offers what uses a receipt: each operation and Desvincular in a cascade, with Desfazer", async () => {
     const { ledger, workspace, user } = await open();
     const opened = await rowMenu(user, await list(), "nota-dividida.pdf");
     expect(
@@ -338,11 +322,11 @@ describe("Documentos", () => {
     ).toEqual(["Salvar o original…", "Ver lançamento", "Desvincular"]);
     await user.keyboard("{Escape}");
     const before = documents(workspace);
-    await fromRowMenu(user, await list(), "nota-dividida.pdf", "Mercado do mês…", "Desvincular");
-    const confirmation = await screen.findByRole("alertdialog", { name: "Desvincular o comprovante?" });
-    expect(within(confirmation).getByText(/O arquivo continua no projeto/)).toBeTruthy();
-    await user.click(within(confirmation).getByRole("button", { name: "Cancelar" }));
+    const id = workspace.session.documents.find((d) => d.meta.original_name === "nota-dividida.pdf")!.meta.id;
+    await fromRowMenu(user, await list(), "nota-dividida.pdf", "Mercado do mês", "Desvincular");
+    await waitFor(() => expect(dom.attachments.ofDocument(ledger, id)).toHaveLength(1));
     expect(documents(workspace)).toEqual(before);
+    await user.click(await screen.findByRole("button", { name: "Desfazer" }));
     expect(
       dom.attachments.ofDocument(
         ledger,
@@ -366,7 +350,7 @@ describe("Documentos", () => {
       within(opened).getByRole("menuitem", { name }).getAttribute("aria-disabled") === "true";
     expect(state("Salvar o original…")).toBe(false);
     expect(state("Ver lançamento")).toBe(false);
-    expect(state("Desvincular…")).toBe(true);
+    expect(state("Desvincular")).toBe(true);
     await user.keyboard("{Escape}");
     const went = navigations(router);
     const batch = [...importing.importStore.batches(workspace.ledger).values()][0]!;
@@ -418,12 +402,7 @@ describe("Documentos", () => {
     await screen.findByText("Nada usa este documento.");
     loads.length = 0;
     const livreId = workspace.session.documents.find((d) => d.meta.original_name === "livre.pdf")!.meta.id;
-    await user.click(screen.getByRole("button", { name: "Remover…" }));
-    await user.click(
-      within(await screen.findByRole("alertdialog", { name: "Remover o documento?" })).getByRole("button", {
-        name: "Remover documento",
-      }),
-    );
+    await user.click(screen.getByRole("button", { name: "Remover" }));
     await waitFor(() => expect(documents(workspace)).not.toContain("livre.pdf"));
     expect(loads[0]).toBe(livreId);
   });
@@ -446,12 +425,7 @@ describe("Documentos", () => {
     const before = documents(workspace);
     await pickDocument(user, "livre.pdf");
     await screen.findByText("Nada usa este documento.");
-    await user.click(screen.getByRole("button", { name: "Remover…" }));
-    await user.click(
-      within(await screen.findByRole("alertdialog", { name: "Remover o documento?" })).getByRole("button", {
-        name: "Remover documento",
-      }),
-    );
+    await user.click(screen.getByRole("button", { name: "Remover" }));
     expect((await screen.findAllByText("Sem conexão.")).length).toBeGreaterThan(0);
     expect(documents(workspace)).toEqual(before);
   });
@@ -478,7 +452,7 @@ describe("Documentos", () => {
     const { workspace, user } = await open();
     reactAct(() => workspace.setReadOnly(true));
     await pickDocument(user, "livre.pdf");
-    const remove = (await screen.findByRole("button", { name: "Remover…" })) as HTMLButtonElement;
+    const remove = (await screen.findByRole("button", { name: "Remover" })) as HTMLButtonElement;
     expect(remove.disabled).toBe(true);
     await waitFor(() =>
       expect((screen.getByRole("button", { name: "Salvar o original…" }) as HTMLButtonElement).disabled).toBe(false),

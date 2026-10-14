@@ -132,5 +132,17 @@ export async function menu(user: User, button: string | RegExp, item: string | R
   await user.click(await screen.findByRole("menuitem", { name: starts(item) }));
 }
 
+/**
+ * Opens a menu button and reads why one of its items is disabled (its `aria-description`), or null when the item is
+ * enabled; choosing a disabled item does nothing, so the menu is closed again with Escape.
+ */
+export async function menuReason(user: User, button: string | RegExp, item: string | RegExp): Promise<string | null> {
+  await user.click(screen.getByRole("button", { name: button }));
+  const entry = await screen.findByRole("menuitem", { name: starts(item) });
+  const reason = entry.getAttribute("aria-disabled") === "true" ? entry.getAttribute("aria-description") : null;
+  await user.keyboard("{Escape}");
+  return reason;
+}
+
 /** Undoes the last step of the project, as the shell's "Desfazer" does. */
 export const undoOnce = (workspace: { undo(): unknown }) => reactAct(() => void workspace.undo());

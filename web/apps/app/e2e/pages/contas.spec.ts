@@ -117,19 +117,12 @@ for (const size of TEST_SIZES) {
         await submit(dialog, "Salvar");
         await expect(dialog).toBeHidden();
 
-        // Mais → Encerrar conta bancária…: cancel, then confirm and undo from the notice
+        // Mais → Encerrar conta bancária: without asking, and undone from the notice
         await page.getByRole("button", { name: "Mais", exact: true }).click();
-        await page.getByRole("menuitem", { name: "Encerrar conta bancária…" }).click();
-        const ask = page.getByRole("alertdialog", { name: "Encerrar esta conta bancária?" });
-        await expect(ask).toBeVisible();
-        await audit(page, "encerrar conta bancária");
-        await ask.getByRole("button", { name: "Cancelar" }).click();
-        await expect(banks.getByText("Nubank conjunta")).toBeVisible();
-        await page.getByRole("button", { name: "Mais", exact: true }).click();
-        await page.getByRole("menuitem", { name: "Encerrar conta bancária…" }).click();
-        await ask.getByRole("button", { name: "Encerrar" }).click();
+        await page.getByRole("menuitem", { name: "Encerrar conta bancária" }).click();
         await expect(banks.getByText("Nubank conjunta")).toHaveCount(0);
-        await page.getByRole("button", { name: "Desfazer", exact: true }).click();
+        await audit(page, "conta bancária encerrada");
+        await page.getByRole("button", { name: "Desfazer", exact: true }).last().click();
         await expect(banks.getByText("Nubank conjunta")).toBeVisible();
 
         // every collapsible section opens and closes
@@ -400,7 +393,7 @@ for (const size of TEST_SIZES) {
         await expect(dialog.getByText("Escolha a categoria.")).toBeVisible();
         await dialog.getByLabel(/^A descrição contém\s*\*?$/).fill("Cinema Central");
         await choose(page, dialog, "Categoria", "Despesa: Lazer");
-        await expect(dialog.getByRole("status")).toContainText("item(ns) pendente(s) agora.");
+        await expect(dialog.getByRole("status")).toContainText(/(item pendente|itens pendentes) agora\./);
         await submit(dialog, "Criar regra");
         await expect(dialog).toBeHidden();
         await expect(rules.getByText("CINEMA CENTRAL")).toBeVisible();

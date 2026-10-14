@@ -15,7 +15,7 @@ import {
 import { fitHeight as tableHeight } from "@opesvault/ui";
 import { linkCount, openPage, rules, seedExpense, seedRepeatingCharge, seedRule } from "./recorrencias_harness.tsx";
 import { accountNamed } from "../lookup.ts";
-import { flat, clickInTable, fromRowMenu, rowById, rowMenu, undoOnce } from "../dom.ts";
+import { flat, clickInTable, fromRowMenu, menuReason, rowById, rowMenu, undoOnce } from "../dom.ts";
 
 const open = () => openPage("/recorrencias", "Recorrências");
 const day = (d: number): IsoDate => makeDate(2026, 10, d);
@@ -43,7 +43,7 @@ describe("Recorrências rows", () => {
     expect(dayLabel(rule)).toBe("12");
     expect(dayLabel({ ...rule, frequency: "weekly" })).toBe("—");
     const rows = [{ paused: false }, { paused: true }, { paused: false }] as dom.recurrence.RecurrenceRule[];
-    expect(summaryLine(rows, 3)).toBe("2 regra(s) ativa(s) · 3 previsão(ões) atrasada(s)");
+    expect(summaryLine(rows, 3)).toBe("2 regras ativas · 3 previsões atrasadas");
     expect(summaryLine([], 0)).toBe("");
     expect(tableHeight(0, 8)).toBe("74px");
     expect(tableHeight(20, 8)).toBe("326px");
@@ -76,13 +76,13 @@ describe("Recorrências", () => {
       expect(text).toContain(flat(formatBrl(forecast.amount)));
       expect(text).toContain(FORECAST_LABELS[forecast.status]);
     }
-    expect(screen.getByText("1 regra(s) ativa(s) · 3 previsão(ões) atrasada(s)")).toBeTruthy();
+    expect(screen.getByText("1 regra ativa · 3 previsões atrasadas")).toBeTruthy();
 
     // the rent is an expense: it is a commitment, with its yearly cost and no linked charge yet
     const commitments = screen.getByRole("grid", { name: "Assinaturas e contas fixas" });
     expect(flat(commitments.textContent)).toContain(flat(formatBrl(rule.amount.mul(12))));
     expect(flat(commitments.textContent)).toContain("Sem cobrança vinculada");
-    expect(screen.getByText(/1 compromisso\(s\) · .*28\.200,00 por ano/)).toBeTruthy();
+    expect(screen.getByText(/1 compromissos? · .*28\.200,00 por ano/)).toBeTruthy();
     // nothing looks recurring in the demonstration
     expect(screen.queryByRole("grid", { name: "Cobranças que parecem recorrentes" })).toBeNull();
   });
@@ -129,7 +129,7 @@ describe("Recorrências", () => {
     expect(await screen.findByText("Recorrência criada.")).toBeTruthy();
     const forecasts = screen.getByRole("grid", { name: "Previsões" });
     expect(rowById(forecasts, forecastId(made.id, day(15)))).toBeTruthy();
-    expect(screen.getByText("2 regra(s) ativa(s) · 3 previsão(ões) atrasada(s)")).toBeTruthy();
+    expect(screen.getByText("2 regras ativas · 3 previsões atrasadas")).toBeTruthy();
     undoOnce(workspace);
     expect(rules(ledger)).toHaveLength(before);
   });
@@ -185,16 +185,16 @@ describe("Recorrências", () => {
 
     await clickInTable(user, "Regras de recorrência", "Aluguel");
     await user.click(screen.getByRole("button", { name: "Pausar" }));
-    // pausing stops the forecasts: it asks first
-    const ask = await screen.findByRole("alertdialog", { name: "Pausar “Aluguel”?" });
-    await user.click(within(ask).getByRole("button", { name: "Pausar" }));
+    // pausing is fully undoable: it does not ask, the notice offers Desfazer
+    expect(screen.queryByRole("alertdialog")).toBeNull();
     await waitFor(() => expect(rules(ledger)[0]!.paused).toBe(true));
     expect(await screen.findByText("Recorrência “Aluguel” pausada.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Desfazer" })).toBeTruthy();
     const table = screen.getByRole("grid", { name: "Regras de recorrência" });
     expect(flat(rowById(table, rule.id).textContent)).toContain("Pausada");
     expect(screen.getByText(/Nenhuma previsão no período/)).toBeTruthy();
     expect(screen.queryByRole("grid", { name: "Assinaturas e contas fixas" })).toBeNull();
-    expect(screen.getByText("0 regra(s) ativa(s)")).toBeTruthy();
+    expect(screen.getByText("0 regras ativas")).toBeTruthy();
 
     await user.click(screen.getByRole("button", { name: "Retomar" }));
     expect(rules(ledger)[0]!.paused).toBe(false);
@@ -220,7 +220,7 @@ describe("Recorrências", () => {
     await waitFor(() => expect(rowById(forecasts, id)).toBeTruthy());
 
     await user.click(screen.getByRole("button", { name: "Vincular realizado…" }));
-    expect(await screen.findByText("Selecione uma previsão.")).toBeTruthy();
+    expect(await screen.findByText("Selecione uma previsão na lista.")).toBeTruthy();
 
     await user.click(within(rowById(forecasts, id)).getByText("Posto Shell"));
     await user.click(screen.getByRole("button", { name: "Vincular realizado…" }));
@@ -265,9 +265,7 @@ describe("Recorrências", () => {
   it("skips a forecast, offers Desfazer, and does not skip one already resolved", async () => {
     const { ledger, workspace, user } = await open();
     const rule = rules(ledger)[0]!;
-    await user.click(screen.getByRole("button", { name: "Mais" }));
-    await user.click(await screen.findByRole("menuitem", { name: "Pular previsão" }));
-    expect(await screen.findByText("Selecione uma previsão.")).toBeTruthy();
+    expect(await menuReason(user, "Mais", "Pular previsão")).toBe("Selecione uma previsão na lista.");
 
     const forecasts = await screen.findByRole("grid", { name: "Previsões" });
     await user.click(rowById(forecasts, forecastId(rule.id, day(10))));
@@ -312,7 +310,7 @@ describe("Recorrências", () => {
 
     await user.click(screen.getByRole("button", { name: "Mais" }));
     await user.click(await screen.findByRole("menuitem", { name: "Vincular sugestões únicas" }));
-    const ask = await screen.findByRole("alertdialog", { name: "Vincular 2 previsão(ões) aos lançamentos?" });
+    const ask = await screen.findByRole("alertdialog", { name: "Vincular 2 previsões aos lançamentos?" });
     expect(flat(ask.textContent)).toContain("06/10/2026 Posto Shell ← Posto Shell");
     expect(flat(ask.textContent)).toContain("06/10/2026 Mercado ← Mercado do mês");
     await user.click(within(ask).getByRole("button", { name: "Cancelar" }));
@@ -322,7 +320,7 @@ describe("Recorrências", () => {
     await user.click(await screen.findByRole("menuitem", { name: "Vincular sugestões únicas" }));
     await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Vincular" }));
     await waitFor(() => expect(linkCount(ledger)).toBe(2));
-    expect(await screen.findByText("2 previsão(ões) vinculada(s).")).toBeTruthy();
+    expect(await screen.findByText("2 previsões vinculadas.")).toBeTruthy();
     undoOnce(workspace);
     expect(linkCount(ledger)).toBe(0);
     for (const op of ledger.operations.values()) expect(op.forecast_id).toBeNull();
@@ -361,7 +359,7 @@ describe("Recorrências", () => {
     expect(row).toContain(
       `${formatBrl(dom.subscriptions.commitments(ledger).find((c) => c.rule.id === rule.id)!.lastPaid!)} em 06/10/2026`,
     );
-    expect(screen.getByText(/2 compromisso\(s\) · .*28\.560,00 por ano/)).toBeTruthy();
+    expect(screen.getByText(/2 compromissos? · .*28\.560,00 por ano/)).toBeTruthy();
     // selecting a commitment selects the same rule in the rules table
     await user.click(within(commitments).getByText("Streaming"));
     const rulesTable = screen.getByRole("grid", { name: "Regras de recorrência" });
@@ -412,12 +410,10 @@ describe("Recorrências", () => {
     const names = within(opened)
       .getAllByRole("menuitem")
       .map((item) => item.textContent);
-    expect(names).toEqual(["Editar…", "Pausar…", "Excluir…"]);
-    // pausing and deleting are destructive here: last, in red, and they ask first
-    expect(within(opened).getByRole("menuitem", { name: "Pausar…" }).className).toContain("text-negative");
-    await user.click(within(opened).getByRole("menuitem", { name: "Pausar…" }));
-    const ask = await screen.findByRole("alertdialog", { name: "Pausar “Aluguel”?" });
-    await user.click(within(ask).getByRole("button", { name: "Pausar" }));
+    expect(names).toEqual(["Editar…", "Pausar", "Excluir…"]);
+    // pausing and deleting are destructive here: last and in red; pausing needs no question, its notice offers Desfazer
+    expect(within(opened).getByRole("menuitem", { name: "Pausar" }).className).toContain("text-negative");
+    await user.click(within(opened).getByRole("menuitem", { name: "Pausar" }));
     await waitFor(() => expect(rules(ledger)[0]!.paused).toBe(true));
     expect(await screen.findByText("Recorrência “Aluguel” pausada.")).toBeTruthy();
     const again = await rowMenu(user, grid, "Aluguel");

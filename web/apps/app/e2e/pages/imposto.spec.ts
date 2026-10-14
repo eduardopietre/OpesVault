@@ -221,9 +221,7 @@ for (const size of TEST_SIZES) {
         await expect(box.getByText("Escolha de quem é o informe.")).toBeVisible();
         await leave(page, "Informe de rendimentos");
         await reports.getByRole("button", { name: "Remover" }).click();
-        const ask = page.getByRole("alertdialog", { name: "Remover este informe?" });
-        await ask.getByRole("button", { name: "Remover" }).click();
-        await expect(page.getByText("Informe removido.")).toBeVisible();
+        await expect(page.getByText("Informe removido. O arquivo original continua em Documentos.")).toBeVisible();
         await expect(page.getByText(/Nenhum informe deste ano/)).toBeVisible();
         await page.keyboard.press("Control+z");
         await expect(tableOf(page, "Informes de rendimentos")).toBeVisible();

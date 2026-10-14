@@ -224,7 +224,7 @@ test.describe("keyboard only", () => {
     await page.keyboard.type("Conferi este item pelo teclado");
     await page.keyboard.press("Enter");
     await expect(reason).toHaveCount(0);
-    await expect(notice(page, /operação\(ões\) criada\(s\)/)).toBeVisible();
+    await expect(notice(page, /operaç(ão|ões) criadas?/)).toBeVisible();
     await expectFocusVisible(page, "after approving");
 
     // ── pay a bill ───────────────────────────────────────────────────────────

@@ -10,7 +10,8 @@ import { AnimatePresence, motion } from "motion/react";
 import { FileText, LoaderCircle, TriangleAlert, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { READ_FAILED, ReadCancelled, parser } from "../../data/parser_client.ts";
-import { useWorkspace } from "../../data/react.tsx";
+import { notifyDone, useWorkspace } from "../../data/react.tsx";
+import { plural } from "../../data/text.ts";
 import { ImportPasswordDialog } from "../../dialogs/import_password.tsx";
 import type { ImportAi } from "./ai.tsx";
 import { READ_ONLY_TIP } from "../../data/read_only.ts";
@@ -185,11 +186,13 @@ export function useImportQueue({ ai, onImported }: { ai: ImportAi; onImported: (
         latest.current.onImported(batch.id);
         const count = importing.pipeline.itemsOf(workspace.ledger, batch.id).length;
         if (batch.status === importing.importModel.BatchStatus.IN_REVIEW) {
-          notify(`${file.name}: ${count} item(ns) para revisar.`);
+          notifyDone(workspace, `${file.name}: ${plural(count, "item", "itens")} para revisar.`);
         } else {
-          notify(`${file.name}: ${batch.warnings[0] ?? "o arquivo foi guardado, mas precisa de um layout."}`, {
-            tone: "warning",
-          });
+          notifyDone(
+            workspace,
+            `${file.name}: ${batch.warnings[0] ?? "o arquivo foi guardado, mas precisa de um layout."}`,
+            { tone: "warning" },
+          );
         }
       } catch (error) {
         if (error instanceof ReadCancelled) return drop(job.id);
@@ -288,7 +291,7 @@ export function useImportQueue({ ai, onImported }: { ai: ImportAi; onImported: (
         );
         waitingForAi.current.push(stored.id);
         latest.current.onImported(stored.id);
-        notify(`${name}: lido de novo com o layout ${parserId}.`);
+        notifyDone(workspace, `${name}: lido de novo com o layout ${parserId}.`);
       } catch (error) {
         if (error instanceof ReadCancelled) return;
         if (error instanceof PasswordGaveUp) {

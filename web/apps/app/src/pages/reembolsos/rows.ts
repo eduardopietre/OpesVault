@@ -3,6 +3,7 @@
  * the expenses behind a balance and the settlements, plus the line under the title.
  */
 import { Dec, ZERO, dom, type Id, type IsoDate, type Ledger } from "@opesvault/domain";
+import { plural } from "../../data/text.ts";
 
 const sharing = dom.sharing;
 
@@ -140,8 +141,8 @@ export function sharesOf(balance: BalanceRow | null): ShareRow[] {
 /** The line under the title: what is waiting, in words. */
 export function summaryLine(view: SharingView): string {
   const parts: string[] = [];
-  if (view.openCount) parts.push(`${view.openCount} reembolso(s) a receber`);
-  if (view.balances.length) parts.push(`${view.balances.length} acerto(s) pendente(s)`);
+  if (view.openCount) parts.push(`${plural(view.openCount, "reembolso", "reembolsos")} a receber`);
+  if (view.balances.length) parts.push(plural(view.balances.length, "acerto pendente", "acertos pendentes"));
   return parts.join(" · ");
 }
 

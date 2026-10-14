@@ -10,6 +10,7 @@ import {
   decide,
   DecisionHost,
   Dialog,
+  MenuButton,
   MoneyField,
   notify,
   NumberTicker,
@@ -202,6 +203,38 @@ describe("Tabs", () => {
     act(() => screen.getByRole("tab", { name: "Contas bancárias" }).focus());
     await user.keyboard("{ArrowRight}");
     expect(document.activeElement?.textContent).toBe("Todas as contas");
+  });
+});
+
+describe("MenuButton", () => {
+  it("keeps a disabled item with a reason reachable: dimmed, described, and choosing it does nothing", async () => {
+    const user = userEvent.setup();
+    const edit = vi.fn();
+    const add = vi.fn();
+    render(
+      <MenuButton
+        label="Mais"
+        items={[
+          { id: "add", label: "Nova meta…", onSelect: add },
+          { id: "edit", label: "Editar meta…", onSelect: edit, disabled: true, reason: "Selecione uma meta na lista." },
+          { id: "off", label: "Arquivar…", onSelect: edit, disabled: true },
+        ]}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Mais" }));
+    const item = await screen.findByRole("menuitem", { name: "Editar meta…" });
+    expect(item.getAttribute("aria-disabled")).toBe("true");
+    expect(item.getAttribute("aria-description")).toBe("Selecione uma meta na lista.");
+    expect(item.getAttribute("title")).toBe("Selecione uma meta na lista.");
+    expect(item.hasAttribute("data-disabled")).toBe(false);
+    // the arrow keys reach it (a plain disabled item is skipped)
+    await user.keyboard("{ArrowDown}{ArrowDown}");
+    expect(document.activeElement).toBe(item);
+    expect(screen.getByRole("menuitem", { name: "Arquivar…" }).hasAttribute("data-disabled")).toBe(true);
+    // choosing it (a tap on a phone, with no tooltip) tells why, and runs nothing
+    await user.keyboard("{Enter}");
+    expect(edit).not.toHaveBeenCalled();
+    expect(toastHistory()[0]?.message).toBe("Selecione uma meta na lista.");
   });
 });
 

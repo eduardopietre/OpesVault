@@ -18,7 +18,7 @@ import { chooseMonth } from "../../src/data/month.ts";
 import { toChartData } from "../../src/data/chart_data.ts";
 import { categoryRef, parseCategoryRef, summaryLine, usedPercent } from "../../src/pages/orcamento/rows.ts";
 import { addressSettles, navigations, wentTo } from "../navigations.ts";
-import { undoOnce, clickInTable, flat, fromRowMenu, rowMenu, table } from "../dom.ts";
+import { undoOnce, clickInTable, flat, fromRowMenu, menuReason, rowMenu, table } from "../dom.ts";
 import { accountNamed } from "../lookup.ts";
 import { mountApp } from "../mount.tsx";
 import { cents } from "../../src/data/money.ts";
@@ -200,21 +200,30 @@ describe("Orçamento", () => {
     const before = lines(ledger, now);
     await clickInTable(user, "Orçamento por categoria", "Alimentação");
     await user.click(screen.getByRole("button", { name: "Remover do orçamento" }));
-    // destructive: it asks first
-    const ask = await screen.findByRole("alertdialog", { name: "Remover “Alimentação” do orçamento?" });
-    await user.click(within(ask).getByRole("button", { name: "Remover" }));
+    // fully undoable: it does not ask, the notice offers Desfazer
+    expect(screen.queryByRole("alertdialog")).toBeNull();
     await waitFor(() => expect(dom.budget.lineFor(ledger, food, now)).toBeNull());
     expect(screen.queryByText("Selecionada:")).toBeNull();
+    expect(await screen.findByText("Categoria removida do orçamento.")).toBeTruthy();
     await user.click(await screen.findByRole("button", { name: "Desfazer" }));
     expect(lines(ledger, now)).toEqual(before);
   });
 
-  it("asks to select a category instead of opening a dialog when none is selected", async () => {
+  it("disables the commands on a category, saying what to select, while none is selected", async () => {
     const { user } = await openPage();
+    for (const item of ["Alterar valor…", "Remover do orçamento", "Ver lançamentos"]) {
+      expect(await menuReason(user, "Mais", item)).toBe("Selecione uma categoria na tabela.");
+    }
+    expect(await menuReason(user, "Mais", "Definir valor…")).toBeNull();
+    // the item stays reachable from the keyboard, and choosing it does nothing
     await user.click(screen.getByRole("button", { name: "Mais" }));
-    await user.click(await screen.findByRole("menuitem", { name: "Alterar valor…" }));
-    expect(await screen.findByText("Selecione uma categoria na tabela.")).toBeTruthy();
+    const item = await screen.findByRole("menuitem", { name: "Alterar valor…" });
+    expect(item.getAttribute("title")).toBe("Selecione uma categoria na tabela.");
+    await user.click(item);
     expect(screen.queryByRole("dialog")).toBeNull();
+    await user.keyboard("{Escape}");
+    await clickInTable(user, "Orçamento por categoria", "Alimentação");
+    expect(await menuReason(user, "Mais", "Alterar valor…")).toBeNull();
   });
 
   it("follows the shared month: the month picker moves it and the table follows", async () => {
@@ -315,8 +324,6 @@ describe("Orçamento", () => {
     const food = accountNamed(ledger, "Alimentação").id;
     const before = lines(ledger, now);
     await fromRowMenu(user, await table("Orçamento por categoria"), "Alimentação", "Remover do orçamento");
-    const ask = await screen.findByRole("alertdialog", { name: "Remover “Alimentação” do orçamento?" });
-    await user.click(within(ask).getByRole("button", { name: "Remover" }));
     await waitFor(() => expect(dom.budget.lineFor(ledger, food, now)).toBeNull());
     await user.click(await screen.findByRole("button", { name: "Desfazer" }));
     expect(lines(ledger, now)).toEqual(before);

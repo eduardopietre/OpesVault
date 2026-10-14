@@ -80,7 +80,7 @@ describe("Assistente: the conversation", () => {
     expect(await said("Há lançamentos de aluguel em vários meses.")).toBeTruthy();
     const tools = within(log()).getByRole("list", { name: "Ferramentas consultadas" });
     expect(within(tools).getByText("Busca de lançamentos")).toBeTruthy();
-    expect(within(tools).getByText(/encontrado\(s\)/)).toBeTruthy();
+    expect(within(tools).getByText(/encontrados?\b/)).toBeTruthy();
     expect(within(tools).getByText("Aluguel")).toBeTruthy(); // the argument: texto
     expect(within(tools).getByText(/texto:/)).toBeTruthy();
     expect(within(log()).getByText("Há lançamentos de Uber fora de Transporte?")).toBeTruthy();

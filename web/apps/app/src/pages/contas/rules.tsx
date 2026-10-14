@@ -8,7 +8,8 @@
 import { importing, type Id } from "@opesvault/domain";
 import { Collapsible, notify, type MenuEntry } from "@opesvault/ui";
 import { useState } from "react";
-import { useLedger, useWorkspace } from "../../data/react.tsx";
+import { useLedger, useNotifyDone, useWorkspace } from "../../data/react.tsx";
+import { plural } from "../../data/text.ts";
 import { ReasonDialog } from "../../dialogs/livro_prompts.tsx";
 import { useFormAct } from "../../dialogs/livro_form.tsx";
 import { RuleDialog } from "../../dialogs/rule_dialog.tsx";
@@ -86,6 +87,7 @@ type Spec =
 export function RulesTab({ reveal }: { reveal?: TabReveal<Id> | null }) {
   const ledger = useWorkspace().ledger;
   const act = useFormAct();
+  const notifyDone = useNotifyDone();
   const { locked } = useLock();
   const rows = useLedger(ruleRows);
   const proposals = useLedger(proposalRows);
@@ -207,8 +209,8 @@ export function RulesTab({ reveal }: { reveal?: TabReveal<Id> | null }) {
             : {})}
           onDone={(rule, changed) => {
             setPick(rule.id);
-            const pending = `${changed} item(ns) pendente(s) recategorizado(s).`;
-            notify(
+            const pending = `${plural(changed, "item pendente recategorizado", "itens pendentes recategorizados")}.`;
+            notifyDone(
               editing
                 ? "Regra alterada."
                 : dialog.spec?.kind === "rule" && dialog.spec.proposal
@@ -231,7 +233,9 @@ export function RulesTab({ reveal }: { reveal?: TabReveal<Id> | null }) {
               rules.setActive(l, toggling.id, !toggling.active, reason);
               return suggestions.applyRules(l);
             });
-            notify(`Regra ${toggling.active ? "desativada" : "ativada"}. ${changed} item(ns) pendente(s) revisto(s).`);
+            notifyDone(
+              `Regra ${toggling.active ? "desativada" : "ativada"}. ${plural(changed, "item pendente revisto", "itens pendentes revistos")}.`,
+            );
           }}
         />
       ) : null}

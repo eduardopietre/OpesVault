@@ -22,6 +22,8 @@ import { nameAction } from "./action_names.ts";
 import { READ_ONLY_TIP } from "./read_only.ts";
 
 type Session = sessions.Session;
+/** One user action in the undo history. */
+export type UndoStep = NonNullable<ReturnType<UndoStack["seal"]>>;
 type Document = sessions.Document;
 type DocumentMeta = sessions.DocumentMeta;
 
@@ -126,6 +128,8 @@ export class Workspace {
   readonly #toRetire = new Set<string>();
   /** A failure of the last hand-over to the vault (shown by the sync state until a hand-over succeeds). */
   stageError: unknown = null;
+  /** The undo step of the last action and the version it left, for the notice that offers to undo it. */
+  #lastAct: { step: UndoStep; version: number } | null = null;
 
   constructor(session: Session, options: WorkspaceOptions = {}, bytes: Map<string, Uint8Array> = new Map()) {
     this.#session = session;
@@ -237,10 +241,20 @@ export class Workspace {
       if (partial.length) this.#session.ledger.revert(partial);
       throw error;
     }
-    this.undoStack.seal(label ?? nameAction(journal));
+    const step = this.undoStack.seal(label ?? nameAction(journal));
     this.#flush();
     this.#changed();
+    this.#lastAct = step ? { step, version: this.#version } : null;
     return result;
+  }
+
+  /**
+   * The undo step of the action that just ran: null when it changed nothing, or when anything changed the project
+   * since (another action, an undo, a remote change). The notice after an action offers to undo this one step.
+   */
+  freshStep(): UndoStep | null {
+    const last = this.#lastAct;
+    return last && last.version === this.#version ? last.step : null;
   }
 
   undo(): string | null {

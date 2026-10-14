@@ -24,7 +24,7 @@ for (const size of TEST_SIZES) {
         const errors = watchErrors(page);
         await openDemo(page, "/calendario");
         await expect(page.getByRole("heading", { level: 1, name: "Calendário" })).toBeVisible();
-        await expect(page.getByText(/vencimento\(s\) em/)).toBeVisible();
+        await expect(page.getByText(/vencimentos? em/)).toBeVisible();
         if (size.width >= 640) {
           await expect(page.getByRole("grid", { name: "Dias do mês" })).toBeVisible();
           await expect(page.getByRole("grid", { name: "Vencimentos" })).toBeVisible();
@@ -97,10 +97,10 @@ test.describe("calendário: every action", () => {
     await openDemo(page, "/calendario");
     const picker = page.getByRole("group", { name: "Mês" });
     await picker.getByRole("button", { name: "Próximo mês" }).click();
-    await expect(page.getByText(/vencimento\(s\) em novembro de 2026/)).toBeVisible();
+    await expect(page.getByText(/vencimentos? em novembro de 2026/)).toBeVisible();
     await picker.getByRole("button", { name: "Mês anterior" }).click();
     await picker.getByRole("button", { name: "Mês anterior" }).click();
-    await expect(page.getByText(/vencimento\(s\) em setembro de 2026/)).toBeVisible();
+    await expect(page.getByText(/vencimentos? em setembro de 2026/)).toBeVisible();
     // Sorting the list by a column.
     await table.getByRole("button", { name: "Valor", exact: true }).click();
     await page.getByRole("button", { name: "Vencimentos do mês" }).click(); // folds the list
@@ -122,7 +122,7 @@ test.describe("calendário: every action", () => {
     // Next month's entries, from the picker.
     await openDemo(page, "/calendario");
     await page.getByRole("button", { name: "Próximo mês" }).click();
-    await expect(page.getByText(/vencimento\(s\) em novembro de 2026/)).toBeVisible();
+    await expect(page.getByText(/vencimentos? em novembro de 2026/)).toBeVisible();
     expect(errors).toEqual([]);
   });
 });

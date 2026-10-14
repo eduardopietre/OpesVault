@@ -110,7 +110,7 @@ export function DocumentPanel({
                   title={tip}
                   onClick={() => onDetach(row, use)}
                 >
-                  Desvincular…
+                  Desvincular
                 </Button>
               </span>
             }
@@ -139,7 +139,7 @@ export function DocumentPanel({
           title={tip ?? removeNote ?? undefined}
           onClick={() => onRemove(row)}
         >
-          Remover…
+          Remover
         </Button>
       </div>
       {removeNote ? <p className="-mt-2 text-caption text-secondary">{removeNote}</p> : null}

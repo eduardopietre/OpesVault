@@ -15,7 +15,7 @@ export function useLock(): { locked: boolean; tip: string | undefined } {
 
 /**
  * A menu (a header menu or a row's context menu) with every command disabled while the project is read-only,
- * submenus included, except the ids in `free` (commands that only read: open, see, export).
+ * submenus included, except the ids in `free` (commands that only read: open, see, export). Each says why.
  */
 export function lockEntries(items: readonly MenuEntry[], locked: boolean, free: readonly string[] = []): MenuEntry[] {
   if (!locked) return [...items];
@@ -24,6 +24,6 @@ export function lockEntries(items: readonly MenuEntry[], locked: boolean, free: 
       return item;
     }
     if (item.kind === "submenu") return { ...item, items: lockEntries(item.items, locked, free) };
-    return { ...item, disabled: true };
+    return { ...item, disabled: true, reason: READ_ONLY_TIP };
   });
 }

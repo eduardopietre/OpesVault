@@ -8,6 +8,7 @@ import { DropdownMenu } from "radix-ui";
 import type { ReactNode } from "react";
 import { cn } from "../cn.ts";
 import { Button, type ButtonVariant } from "./Button.tsx";
+import { notify } from "./Toast.tsx";
 import { usePortalContainer } from "./portal.ts";
 
 export type MenuEntry =
@@ -20,6 +21,12 @@ export type MenuEntry =
       shortcut?: string;
       danger?: boolean;
       disabled?: boolean;
+      /**
+       * Why it is disabled ("Selecione uma meta na lista."). With a reason, a disabled item stays reachable by
+       * the arrow keys (`aria-disabled`, nothing happens on Enter or click), its tooltip says why and screen
+       * readers read the reason as its description.
+       */
+      reason?: string;
     }
   | { kind: "separator"; id: string }
   /** A cascade: its entries open beside it (hover, click or the right arrow key). */
@@ -43,6 +50,11 @@ const itemClass = `${itemBase} text-text data-[highlighted]:bg-selection data-[h
  * another. It never gets the normal text color too: in the generated CSS that one would win.
  */
 const dangerClass = `${itemBase} text-negative data-[highlighted]:bg-negative-soft data-[highlighted]:text-negative`;
+/**
+ * A disabled command with a reason: dimmed like a disabled one, but focusable so its reason can be read; choosing it
+ * shows the reason in a notice instead of running the command.
+ */
+const unavailableClass = `${itemBase} text-tertiary data-[highlighted]:bg-hover`;
 const contentClass =
   "z-50 max-h-(--radix-dropdown-menu-content-available-height) min-w-[200px] max-w-[min(320px,calc(100vw-16px))] " +
   "overflow-y-auto origin-[var(--radix-dropdown-menu-content-transform-origin)] rounded-lg border border-separator " +
@@ -99,12 +111,15 @@ function Entries({ items, container }: { items: readonly MenuEntry[]; container?
         </DropdownMenu.Sub>
       );
     }
+    const unavailable = entry.disabled && entry.reason ? entry.reason : null;
     return (
       <DropdownMenu.Item
         key={entry.id}
-        onSelect={entry.onSelect}
-        disabled={entry.disabled ?? false}
-        className={entry.danger ? dangerClass : itemClass}
+        // Choosing it says why it is off: on a phone there is no pointer to show the tooltip.
+        onSelect={unavailable ? () => notify(unavailable) : entry.onSelect}
+        disabled={(entry.disabled ?? false) && !unavailable}
+        {...(unavailable ? { "aria-disabled": true, "aria-description": unavailable, title: unavailable } : {})}
+        className={unavailable ? unavailableClass : entry.danger ? dangerClass : itemClass}
       >
         {entry.icon ? <span aria-hidden="true">{entry.icon}</span> : null}
         <span className="min-w-0 flex-1 truncate">{entry.label}</span>

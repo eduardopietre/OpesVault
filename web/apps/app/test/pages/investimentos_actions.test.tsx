@@ -11,6 +11,7 @@ import {
   flat,
   fromRowMenu,
   menu,
+  menuReason,
   rowMenu,
   rowOf,
   submit,
@@ -422,9 +423,10 @@ describe("Aportes, proventos e resgates", () => {
     // the portfolio flags the incomplete realized result instead of showing it as complete
     expect(flat(rowOf(await table("Investimentos"), "CDB").textContent)).toContain("(incompleto)");
 
-    // asking to complete without choosing the redemption explains
-    await menu(user, "Registrar", "Completar resgate…");
-    expect(await screen.findByText("Selecione o resgate incompleto em Movimentos.")).toBeTruthy();
+    // without the redemption chosen, completing it is disabled and says what to choose
+    expect(await menuReason(user, "Registrar", "Completar resgate…")).toBe(
+      "Selecione um resgate incompleto na tabela Movimentos.",
+    );
     await user.click(rowOf(grid, "Resgate"));
     await menu(user, "Registrar", "Completar resgate…");
     const complete = await dialog("Completar resgate");
@@ -560,8 +562,9 @@ describe("Negociação", () => {
   it("explains that trades are for assets tracked by quantity", async () => {
     const { user, ledger } = await openInvestimentos();
     const before = snapshot(ledger);
-    await menu(user, "Negociação", "Compra…");
-    expect(await screen.findByText(/Negociações são para ativos acompanhados por quantidade/)).toBeTruthy();
+    expect(await menuReason(user, "Negociação", "Compra…")).toMatch(
+      /^Negociações são para ativos acompanhados por quantidade/,
+    );
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(snapshot(ledger)).toBe(before);
   });

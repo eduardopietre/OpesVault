@@ -5,8 +5,7 @@
 import { AccountType, dom, type Id, type LedgerAccount } from "@opesvault/domain";
 import { Button, Switch, confirm, notify, type MenuEntry } from "@opesvault/ui";
 import { useState } from "react";
-import { useAct, useLedger, useWorkspace } from "../../data/react.tsx";
-import { useUndo } from "../../shell/undo.tsx";
+import { useAct, useLedger, useNotifyDone, useWorkspace } from "../../data/react.tsx";
 import { plural } from "../../data/text.ts";
 import { CardDialog } from "../../dialogs/accounts_card.tsx";
 import { CategoryDialog, MergeCategoryDialog, RenameCategoryDialog } from "../../dialogs/accounts_category.tsx";
@@ -58,6 +57,7 @@ const CARD_COLUMNS: TierColumn<CardRow>[] = [
 
 export function CardsTab({ reveal }: { reveal?: TabReveal<Id> | null }) {
   const ledger = useWorkspace().ledger;
+  const notifyDone = useNotifyDone();
   const go = useGoTo();
   const { locked } = useLock();
   const rows = useLedger(cardRows);
@@ -131,7 +131,7 @@ export function CardsTab({ reveal }: { reveal?: TabReveal<Id> | null }) {
           {...(dialog.spec.id ? { card: ledger.cards.get(dialog.spec.id)! } : {})}
           onDone={(card, created) => {
             setPick(card.id);
-            notify(created ? "Cartão cadastrado." : "Cartão salvo.");
+            notifyDone(created ? "Cartão cadastrado." : "Cartão salvo.");
           }}
         />
       ) : null}
@@ -179,7 +179,7 @@ export function CategoriesTab() {
   const workspace = useWorkspace();
   const ledger = workspace.ledger;
   const act = useAct();
-  const { undo } = useUndo();
+  const notifyDone = useNotifyDone();
   const { locked } = useLock();
   const [withArchived, setWithArchived] = useState(false);
   const rows = useLedger((l) => categoryRows(l, withArchived), String(withArchived));
@@ -229,9 +229,7 @@ export function CategoriesTab() {
     });
     if (done === undefined) return;
     if (archiving && !withArchived) setPick(null);
-    notify(archiving ? `Categoria “${category.name}” arquivada.` : `Categoria “${category.name}” reativada.`, {
-      action: { label: "Desfazer", run: undo },
-    });
+    notifyDone(archiving ? `Categoria “${category.name}” arquivada.` : `Categoria “${category.name}” reativada.`);
   };
 
   /** The merge, once a target is chosen: asks first, saying how many entries move, then one undo step. */
@@ -251,9 +249,8 @@ export function CategoriesTab() {
     });
     if (result === undefined) return;
     setPick(targetId);
-    notify(
+    notifyDone(
       `“${source.name}” mesclada em “${target.name}”: ${plural(result.operations, "lançamento movido", "lançamentos movidos")}.`,
-      { action: { label: "Desfazer", run: undo } },
     );
   };
 
@@ -311,7 +308,7 @@ export function CategoriesTab() {
           onClose={dialog.close}
           onDone={(category) => {
             setPick(category.id);
-            notify("Categoria criada.");
+            notifyDone("Categoria criada.");
           }}
         />
       ) : null}
@@ -321,7 +318,9 @@ export function CategoriesTab() {
           open={dialog.open}
           onClose={dialog.close}
           categoryId={dialog.spec.id}
-          onDone={(kind) => notify(kind ? "Categoria marcada como dedutível." : "A categoria deixou de ser dedutível.")}
+          onDone={(kind) =>
+            notifyDone(kind ? "Categoria marcada como dedutível." : "A categoria deixou de ser dedutível.")
+          }
         />
       ) : null}
       {dialog.spec?.kind === "rename" && ledger.accounts.has(dialog.spec.id) ? (
@@ -359,6 +358,7 @@ const MEMBER_COLUMNS: TierColumn<MemberRow>[] = [
 
 export function MembersTab() {
   const ledger = useWorkspace().ledger;
+  const notifyDone = useNotifyDone();
   const { locked } = useLock();
   const rows = useLedger(memberRows);
   const [pick, setPick] = useState<Id | null>(null);
@@ -409,7 +409,7 @@ export function MembersTab() {
           {...(dialog.spec.id ? { member: ledger.members.get(dialog.spec.id)! } : {})}
           onDone={(member, created) => {
             setPick(member.id);
-            notify(created ? "Integrante adicionado." : "Integrante salvo.");
+            notifyDone(created ? "Integrante adicionado." : "Integrante salvo.");
           }}
         />
       ) : null}

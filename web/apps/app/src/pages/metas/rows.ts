@@ -7,7 +7,7 @@ import { Dec, addMonthsClamped, dom, queries, ymAdd, ymOf, type IsoDate, type Ye
 import { formatMonthShort } from "@opesvault/ui";
 import { usedPercent } from "../orcamento/rows.ts";
 import { cents, DASH } from "../../data/money.ts";
-import { monthLabel } from "../../data/text.ts";
+import { plural, monthLabel } from "../../data/text.ts";
 
 type Goal = dom.goals.Goal;
 
@@ -52,7 +52,7 @@ export function sortCents(value: Dec | null): bigint | null {
 export function summaryLine(goals: readonly Goal[]): string {
   if (!goals.length) return "";
   const active = goals.filter((g) => !g.archived).length;
-  return `${active} meta(s) ativa(s)`;
+  return plural(active, "meta ativa", "metas ativas");
 }
 
 /** What the "Defina uma meta" form starts with: an example the person can keep or change. */

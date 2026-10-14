@@ -118,7 +118,7 @@ for (const size of TEST_SIZES) {
 
         // the check: version, models and how much of the model fits in the GPU
         await press(page, "Verificar Ollama");
-        await expect(page.getByText(/Ollama 0\.35\.1 respondeu: 2 modelo\(s\) instalado\(s\)\./)).toBeVisible();
+        await expect(page.getByText(/Ollama 0\.35\.1 respondeu: 2 modelos? instalados?\./)).toBeVisible();
         await expect(page.getByText(/Só 50% do modelo coube na GPU/)).toBeVisible();
         await page.getByRole("combobox", { name: "Modelo instalado" }).click();
         await page.getByRole("option", { name: "gemma4:12b" }).click();

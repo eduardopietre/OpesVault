@@ -24,7 +24,7 @@ import {
 import { Ban, CircleCheck, Clock, Hourglass, Plus } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useMemo, useRef, type ReactNode } from "react";
-import { useAct, useLedger } from "../../data/react.tsx";
+import { useAct, useLedger, useNotifyDone } from "../../data/react.tsx";
 import { useGoTo, useReveal } from "../../data/navigation.ts";
 import { TableBox } from "../../data/table_box.tsx";
 import { OverviewReasonDialog } from "../../dialogs/overview_reason.tsx";
@@ -213,6 +213,7 @@ function SelectionBar({ label, children }: { label: string; children: ReactNode 
 
 export function Page() {
   const act = useAct();
+  const notifyDone = useNotifyDone();
   const goTo = useGoTo();
   const { locked } = useLock();
   const tableBox = useRef<HTMLDivElement>(null);
@@ -552,7 +553,7 @@ export function Page() {
           open={receiveSlot.open}
           onClose={receiveSlot.close}
           reimbursementId={receive.id}
-          onDone={() => notify("Reembolso recebido: a despesa líquida foi reduzida.")}
+          onDone={() => notifyDone("Reembolso recebido: a despesa líquida foi reduzida.")}
         />
       ) : null}
       {settle ? (
@@ -564,7 +565,7 @@ export function Page() {
           creditorId={settle.creditorId}
           amount={settle.amount}
           settlementId={settle.settlementId ?? null}
-          onDone={() => notify(settle.settlementId ? "Acerto corrigido." : "Acerto registrado.")}
+          onDone={() => notifyDone(settle.settlementId ? "Acerto corrigido." : "Acerto registrado.")}
         />
       ) : null}
       {requestSlot.spec ? (
@@ -572,7 +573,7 @@ export function Page() {
           key={`request-${requestSlot.key}`}
           open={requestSlot.open}
           onClose={requestSlot.close}
-          onDone={() => notify("Reembolso registrado: fica em Reembolsos até ser recebido.")}
+          onDone={() => notifyDone("Reembolso registrado: fica em Reembolsos até ser recebido.")}
         />
       ) : null}
       {deny ? (

@@ -48,7 +48,7 @@ describe("Livro: IA local", () => {
     expect(await within(d).findByText("Marque ao menos uma sugestão, ou feche sem aplicar.")).toBeTruthy();
     await o.user.click(within(d).getByRole("checkbox", { name: "Aluguel" }));
     const lines = within(table).getAllByRole("row").length - 1;
-    expect(within(d).getByText(`1 de ${lines} marcada(s)`)).toBeTruthy();
+    expect(within(d).getByText(`1 de ${lines} ${lines === 1 ? "marcada" : "marcadas"}`)).toBeTruthy();
     await submit(o.user, d, "Reclassificar marcadas");
     await waitFor(() => expect(inCategory(o, lazer)).toBe(before + 3));
     const rent = [...o.workspace.ledger.operations.values()].find((op) => op.description === "Aluguel")!;

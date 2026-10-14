@@ -27,11 +27,12 @@ import { AnimatePresence, motion } from "motion/react";
 import { Check, ExternalLink, FileSearch, Pencil, ScanSearch, Sparkles, TriangleAlert } from "lucide-react";
 import { useCallback, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { useGoTo } from "../../data/navigation.ts";
-import { useLedger, useWorkspace } from "../../data/react.tsx";
+import { useLedger, useNotifyDone, useWorkspace } from "../../data/react.tsx";
 import { liquidAccounts } from "../../dialogs/account_choices.ts";
 import { ImportItemDialog } from "../../dialogs/import_item.tsx";
 import { RuleDialog } from "../../dialogs/rule_dialog.tsx";
-import { useUndo } from "../../shell/undo.tsx";
+import { forSelected } from "../../components/list_parts.tsx";
+import { plural } from "../../data/text.ts";
 import type { ImportAi } from "./ai.tsx";
 import { actionName } from "../../data/action_names.ts";
 import { useReasonPrompt } from "./prompts.tsx";
@@ -81,7 +82,7 @@ interface RuleOffer {
 export function Review({ batchId, selected, onSelect, queue, ai }: ReviewProps) {
   const workspace = useWorkspace();
   const goTo = useGoTo();
-  const { undo } = useUndo();
+  const notifyDone = useNotifyDone();
   const preset = useMotionPreset();
   const readOnly = workspace.readOnly;
   const prompts = useReasonPrompt();
@@ -163,7 +164,7 @@ export function Review({ batchId, selected, onSelect, queue, ai }: ReviewProps) 
   const attempt = <T,>(action: () => T, done?: string): T | undefined => {
     try {
       const result = action();
-      if (done) notify(done);
+      if (done) notifyDone(done);
       return result;
     } catch (error) {
       if (error instanceof DomainError) {
@@ -236,9 +237,9 @@ export function Review({ batchId, selected, onSelect, queue, ai }: ReviewProps) 
       ),
     );
     if (result === undefined) return false;
-    notify(`${result.created} operação(ões) criada(s), ${result.linked} evidência(s) vinculada(s).`, {
-      action: { label: "Desfazer", run: undo },
-    });
+    notifyDone(
+      `${plural(result.created, "operação criada", "operações criadas")}, ${plural(result.linked, "evidência vinculada", "evidências vinculadas")}.`,
+    );
     return true;
   };
 
@@ -290,6 +291,7 @@ export function Review({ batchId, selected, onSelect, queue, ai }: ReviewProps) 
         () =>
           workspace.act((ledger) => importing.pipeline.keepSeparate(ledger, id, reason), "manter item separado") ??
           true,
+        "Item mantido separado: vira um lançamento novo ao ser aprovado.",
       )
     ) {
       advance(id);
@@ -315,6 +317,7 @@ export function Review({ batchId, selected, onSelect, queue, ai }: ReviewProps) 
         () =>
           workspace.act((ledger) => importing.pipeline.rejectItems(ledger, [id], reason), "rejeitar item importado") ??
           true,
+        "Item rejeitado: não vira lançamento.",
       )
     ) {
       advance(id);
@@ -341,9 +344,7 @@ export function Review({ batchId, selected, onSelect, queue, ai }: ReviewProps) 
     );
     if (done === undefined) return;
     setMarked(NO_MARKS);
-    notify(`${ids.length === 1 ? "1 item rejeitado" : `${ids.length} itens rejeitados`}.`, {
-      action: { label: "Desfazer", run: undo },
-    });
+    notifyDone(`${plural(ids.length, "item rejeitado", "itens rejeitados")}.`);
   };
 
   const createRule = (row: ItemRow | null) => {
@@ -530,14 +531,16 @@ export function Review({ batchId, selected, onSelect, queue, ai }: ReviewProps) 
       label: "Manter separado…",
       shortcut: "M",
       onSelect: () => void keepSeparate(),
-      disabled: readOnly || current?.item.status !== ItemStatus.DUPLICATE,
+      ...(current && current.item.status !== ItemStatus.DUPLICATE && !readOnly
+        ? { disabled: true, reason: "Só um item marcado como repetição pode ser mantido separado." }
+        : forSelected(current, NO_SELECTION, readOnly)),
     },
     {
       id: "create-rule",
       label: "Criar regra a partir do item…",
       shortcut: "R",
       onSelect: () => createRule(current),
-      disabled: readOnly,
+      ...forSelected(current, NO_SELECTION, readOnly),
     },
     { kind: "separator", id: "sep" },
     {
@@ -546,7 +549,7 @@ export function Review({ batchId, selected, onSelect, queue, ai }: ReviewProps) 
       shortcut: "Del",
       danger: true,
       onSelect: () => void reject(),
-      disabled: readOnly,
+      ...forSelected(current, NO_SELECTION, readOnly),
     },
   ];
   const aiCount = ai.client !== null ? ai.pendingCount(batch.id) : 0;
@@ -573,7 +576,8 @@ export function Review({ batchId, selected, onSelect, queue, ai }: ReviewProps) 
         ) : null}
         {batch.unmapped_lines ? (
           <p className="text-caption text-secondary">
-            {batch.unmapped_lines} linha(s) não mapeada(s) preservadas no original.
+            {plural(batch.unmapped_lines, "linha não mapeada preservada", "linhas não mapeadas preservadas")} no
+            original.
           </p>
         ) : null}
         {batch.warnings.length ? (
@@ -774,7 +778,7 @@ export function Review({ batchId, selected, onSelect, queue, ai }: ReviewProps) 
           open
           item={editing.item}
           onClose={() => setEditing(null)}
-          onDone={() => notify("Item corrigido.", { action: { label: "Desfazer", run: undo } })}
+          onDone={() => notifyDone("Item corrigido.")}
         />
       ) : null}
       {ruling ? (
@@ -786,9 +790,9 @@ export function Review({ batchId, selected, onSelect, queue, ai }: ReviewProps) 
           fromItem={ruling.id}
           onClose={() => setRuling(null)}
           onDone={(_rule, changed) =>
-            notify(`Regra criada. ${changed} item(ns) pendente(s) recategorizado(s).`, {
-              action: { label: "Desfazer", run: undo },
-            })
+            notifyDone(
+              `Regra criada. ${plural(changed, "item pendente recategorizado", "itens pendentes recategorizados")}.`,
+            )
           }
         />
       ) : null}

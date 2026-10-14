@@ -3,6 +3,7 @@
  * references other pages use to reach a forecast or a rule, and the lines of the summary.
  */
 import { addDays, type dom, type IsoDate } from "@opesvault/domain";
+import { plural } from "../../data/text.ts";
 
 type Rule = dom.recurrence.RecurrenceRule;
 type Frequency = Rule["frequency"];
@@ -91,7 +92,7 @@ export function candidateKey(candidate: dom.subscriptions.Candidate): string {
 /** The line under the title. */
 export function summaryLine(rules: readonly Rule[], late: number): string {
   const parts: string[] = [];
-  if (rules.length) parts.push(`${rules.filter((r) => !r.paused).length} regra(s) ativa(s)`);
-  if (late) parts.push(`${late} previsão(ões) atrasada(s)`);
+  if (rules.length) parts.push(plural(rules.filter((r) => !r.paused).length, "regra ativa", "regras ativas"));
+  if (late) parts.push(plural(late, "previsão atrasada", "previsões atrasadas"));
   return parts.join(" · ");
 }

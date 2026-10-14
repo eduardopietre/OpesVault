@@ -10,6 +10,7 @@ import { useWorkspace } from "../data/react.tsx";
 import { categoryItems } from "./account_choices.ts";
 import { Caption, FormDialog, useFormAct } from "./livro_form.tsx";
 import { actionName } from "../data/action_names.ts";
+import { plural } from "../data/text.ts";
 
 export interface ReclassifyDialogProps {
   open: boolean;
@@ -52,7 +53,8 @@ export function ReclassifyDialog({ open, onClose, operationIds, onDone }: Reclas
     >
       <div className="flex flex-col gap-4">
         <Caption>
-          {operationIds.length} lançamento(s) selecionado(s). Rateios com mais de uma categoria ficam como estão.
+          {plural(operationIds.length, "lançamento selecionado", "lançamentos selecionados")}. Rateios com mais de uma
+          categoria ficam como estão.
         </Caption>
         <Select label="Nova categoria" options={options} value={target} onChange={setTarget} />
         <TextField

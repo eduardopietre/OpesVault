@@ -21,7 +21,6 @@ import {
   MenuButton,
   PageHeader,
   Select,
-  confirm,
   notify,
   useStoredFlag,
   type SelectOption,
@@ -286,19 +285,17 @@ export function Page() {
       },
     });
   };
-  const removeReport = async () => {
+  /** Without asking: the notice's Desfazer brings the informe back. */
+  const removeReport = () => {
     const found = reportId ? tax.records.reports(ledger).get(reportId) : undefined;
     if (!found) {
       notify("Escolha um informe na tabela.");
       return;
     }
-    const yes = await confirm({
-      title: "Remover este informe?",
-      text: "O arquivo original continua em Documentos.",
-      confirmLabel: "Remover",
-      danger: true,
+    act((l) => tax.records.removeReport(l, found.id), {
+      done: "Informe removido. O arquivo original continua em Documentos.",
+      label: "excluir informe",
     });
-    if (yes) act((l) => tax.records.removeReport(l, found.id), { done: "Informe removido.", label: "excluir informe" });
   };
   const reportSaved = (saved: tax.model.IncomeReport) => {
     setReport(saved.id);
@@ -603,7 +600,7 @@ export function Page() {
                 selected={reportId}
                 onSelect={setReport}
                 onOpen={openReport}
-                onRemove={() => void removeReport()}
+                onRemove={removeReport}
               />
             </div>
           </Adaptive>

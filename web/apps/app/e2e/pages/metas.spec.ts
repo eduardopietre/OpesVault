@@ -58,7 +58,7 @@ for (const size of TEST_SIZES) {
         await expect(dialog).toBeHidden();
         await expect(table.getByText("Viagem").first()).toBeVisible();
         await expect(page.getByRole("table", { name: "Valores de Meta: Viagem" })).toBeVisible();
-        await expect(page.getByText("2 meta(s) ativa(s)")).toBeVisible();
+        await expect(page.getByText("2 metas ativas")).toBeVisible();
 
         // select the other goal: its chart and details follow
         await table.getByText("Reserva de emergência").first().click();
@@ -89,11 +89,11 @@ for (const size of TEST_SIZES) {
         await audit(page, "arquivar meta com erro");
         await giveReason(dialog, "Concluída", "Arquivar");
         await expect(table.getByText("arquivada").first()).toBeVisible();
-        await expect(page.getByText("1 meta(s) ativa(s)")).toBeVisible();
+        await expect(page.getByText("1 meta ativa")).toBeVisible();
         await page.getByRole("button", { name: "Reativar…" }).click();
         dialog = dialogOf(page, "Reativar meta");
         await giveReason(dialog, "Voltou", "Reativar");
-        await expect(page.getByText("2 meta(s) ativa(s)")).toBeVisible();
+        await expect(page.getByText("2 metas ativas")).toBeVisible();
 
         // every collapsible part of the chart opens and closes
         const toggles = page.locator("button[aria-expanded]");

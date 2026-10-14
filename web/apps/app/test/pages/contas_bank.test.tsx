@@ -447,22 +447,16 @@ describe("Contas bancárias", () => {
     expect(snapshot(ledger)).toBe(before);
   });
 
-  it("closes a bank account after a confirmation, offers Desfazer, and keeps the ledger accounts", async () => {
+  it("closes a bank account without asking, offers Desfazer, and keeps the ledger accounts", async () => {
     const { ledger, user, grid } = await openBank();
     const nubank = bankByName(ledger, "Nubank do Bruno");
     const accounts = ledger.accounts.size;
     await clickRow(user, grid, "Nubank do Bruno");
     await user.click(screen.getByRole("button", { name: "Mais" }));
-    await user.click(await screen.findByRole("menuitem", { name: "Encerrar conta bancária…" }));
-    // cancel keeps it
-    const ask = await screen.findByRole("alertdialog", { name: "Encerrar esta conta bancária?" });
-    await user.click(within(ask).getByRole("button", { name: "Cancelar" }));
-    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
-    expect(banking.bankAccounts(ledger).get(nubank.id)!.archived).toBe(false);
-    await user.click(screen.getByRole("button", { name: "Mais" }));
-    await user.click(await screen.findByRole("menuitem", { name: "Encerrar conta bancária…" }));
-    await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Encerrar" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Encerrar conta bancária" }));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
     await waitFor(() => expect(banking.bankAccounts(ledger).get(nubank.id)!.archived).toBe(true));
+    expect(await screen.findByText(/^Conta bancária encerrada\. As contas e os lançamentos continuam/)).toBeTruthy();
     expect(within(await table("Contas bancárias")).queryByText("Nubank do Bruno")).toBeNull();
     expect(ledger.accounts.size).toBe(accounts);
     await user.click(await screen.findByRole("button", { name: "Desfazer" }));
@@ -478,7 +472,15 @@ describe("Contas bancárias", () => {
     await user.click(screen.getByRole("button", { name: "Valores em uma data…" }));
     expect(await screen.findByText("Escolha a conta bancária.")).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Editar…" }));
-    expect(await screen.findByText("Selecione uma conta bancária.")).toBeTruthy();
+    expect(await screen.findByText("Selecione uma conta bancária na lista.")).toBeTruthy();
+    // with nothing to close, Encerrar is disabled and says why; choosing it only repeats the reason
+    await user.click(screen.getByRole("button", { name: "Mais" }));
+    const close = await screen.findByRole("menuitem", { name: "Encerrar conta bancária" });
+    expect(close.getAttribute("aria-disabled")).toBe("true");
+    expect(close.getAttribute("aria-description")).toBe("Selecione uma conta bancária na lista.");
+    await user.click(close);
+    expect(screen.queryByRole("menuitem", { name: "Encerrar conta bancária" })).toBeNull();
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
   it("goes back to the tab after using another one: the list and the composition are still there", async () => {
@@ -498,13 +500,8 @@ describe("Menu de contexto das contas bancárias", () => {
   it("opens a bank account's commands on a right click, Encerrar apart and in red", async () => {
     const { user, grid } = await openBank();
     const opened = await rowMenu(user, grid, "Nubank do Bruno");
-    expect(names(opened)).toEqual([
-      "Editar…",
-      "Valores em uma data…",
-      "Novo investimento…",
-      "Encerrar conta bancária…",
-    ]);
-    expect(within(opened).getByRole("menuitem", { name: "Encerrar conta bancária…" }).className).toContain(
+    expect(names(opened)).toEqual(["Editar…", "Valores em uma data…", "Novo investimento…", "Encerrar conta bancária"]);
+    expect(within(opened).getByRole("menuitem", { name: "Encerrar conta bancária" }).className).toContain(
       "text-negative",
     );
     await user.click(within(opened).getByRole("menuitem", { name: "Editar…" }));
@@ -512,17 +509,13 @@ describe("Menu de contexto das contas bancárias", () => {
     expect((within(box).getByLabelText("Nome da conta") as HTMLInputElement).value).toBe("Nubank do Bruno");
   });
 
-  it("closes the bank account of the row only after the same confirmation", async () => {
+  it("closes the bank account of the row, with the same Desfazer", async () => {
     const { ledger, user, grid } = await openBank();
     const nubank = bankByName(ledger, "Nubank do Bruno");
-    await fromRowMenu(user, grid, "Nubank do Bruno", "Encerrar conta bancária…");
-    const ask = await screen.findByRole("alertdialog", { name: "Encerrar esta conta bancária?" });
-    await user.click(within(ask).getByRole("button", { name: "Cancelar" }));
-    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
-    expect(banking.bankAccounts(ledger).get(nubank.id)!.archived).toBe(false);
-    await fromRowMenu(user, await table("Contas bancárias"), "Nubank do Bruno", "Encerrar conta bancária…");
-    await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Encerrar" }));
+    await fromRowMenu(user, grid, "Nubank do Bruno", "Encerrar conta bancária");
     await waitFor(() => expect(banking.bankAccounts(ledger).get(nubank.id)!.archived).toBe(true));
+    await user.click(await screen.findByRole("button", { name: "Desfazer" }));
+    expect(banking.bankAccounts(ledger).get(nubank.id)!.archived).toBe(false);
   });
 
   it("offers an investment of the composition its commands, Excluir apart, in red and confirmed", async () => {

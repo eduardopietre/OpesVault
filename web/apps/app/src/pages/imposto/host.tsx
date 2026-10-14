@@ -2,7 +2,6 @@
  * The dialogs of the Imposto de renda page: one at a time, mounted with a fresh key so each leaves with its
  * content. Each says what happened in a notice when it is saved (the desktop's `TaxCommands._run` messages).
  */
-import { notify } from "@opesvault/ui";
 import { Fragment } from "react";
 import type { Dec, Id, YearMonth, tax } from "@opesvault/domain";
 import { DeclaredAssetDialog } from "../../dialogs/tax_declared_asset.tsx";
@@ -16,6 +15,7 @@ import { PaymentDialog } from "../../dialogs/tax_payment.tsx";
 import { PeopleDialog } from "../../dialogs/tax_people.tsx";
 import { ReportDialog, type ReportDialogProps } from "../../dialogs/tax_report.tsx";
 import { VariableRulesDialog } from "../../dialogs/tax_rules.tsx";
+import { useNotifyDone } from "../../data/react.tsx";
 
 export type Spec =
   | { kind: "params"; year: number }
@@ -55,11 +55,12 @@ export function DialogHost({ spec, open, dialogKey, onClose, onReportSaved }: Di
 
 function Dialogs({ spec, open, onClose, onReportSaved }: Omit<DialogHostProps, "spec" | "dialogKey"> & { spec: Spec }) {
   const common = { open, onClose };
+  const notifyDone = useNotifyDone();
   switch (spec.kind) {
     case "params":
-      return <ParametersDialog {...common} year={spec.year} onDone={() => notify("Tabela do ano salva.")} />;
+      return <ParametersDialog {...common} year={spec.year} onDone={() => notifyDone("Tabela do ano salva.")} />;
     case "rules":
-      return <VariableRulesDialog {...common} onDone={() => notify("Regras de renda variável salvas.")} />;
+      return <VariableRulesDialog {...common} onDone={() => notifyDone("Regras de renda variável salvas.")} />;
     case "payment":
       return (
         <PaymentDialog
@@ -68,7 +69,7 @@ function Dialogs({ spec, open, onClose, onReportSaved }: Omit<DialogHostProps, "
           month={spec.month}
           memberId={spec.memberId}
           suggested={spec.suggested}
-          onDone={() => notify("Pagamento do DARF registrado.")}
+          onDone={() => notifyDone("Pagamento do DARF registrado.")}
         />
       );
     case "filing":
@@ -79,7 +80,7 @@ function Dialogs({ spec, open, onClose, onReportSaved }: Omit<DialogHostProps, "
           reference={spec.ref}
           name={spec.name}
           suggested={spec.suggested}
-          onDone={() => notify("Bem classificado.")}
+          onDone={() => notifyDone("Bem classificado.")}
         />
       );
     case "asset":
@@ -87,7 +88,7 @@ function Dialogs({ spec, open, onClose, onReportSaved }: Omit<DialogHostProps, "
         <DeclaredAssetDialog
           {...common}
           assetId={spec.assetId}
-          onDone={(created) => notify(created ? "Bem incluído." : "Bem salvo.")}
+          onDone={(created) => notifyDone(created ? "Bem incluído." : "Bem salvo.")}
         />
       );
     case "taxid":
@@ -97,15 +98,19 @@ function Dialogs({ spec, open, onClose, onReportSaved }: Omit<DialogHostProps, "
           subject={spec.subject}
           reference={spec.ref}
           label={spec.label}
-          onDone={() => notify("CPF/CNPJ salvo.")}
+          onDone={() => notifyDone("CPF/CNPJ salvo.")}
         />
       );
     case "member":
-      return <MemberTaxDialog {...common} memberId={spec.memberId} onDone={() => notify("Dados fiscais salvos.")} />;
+      return (
+        <MemberTaxDialog {...common} memberId={spec.memberId} onDone={() => notifyDone("Dados fiscais salvos.")} />
+      );
     case "people":
       return <PeopleDialog {...common} />;
     case "nature":
-      return <NatureDialog {...common} focus={spec.focus} onDone={() => notify("Natureza dos rendimentos salva.")} />;
+      return (
+        <NatureDialog {...common} focus={spec.focus} onDone={() => notifyDone("Natureza dos rendimentos salva.")} />
+      );
     case "operations":
       return <OperationsDialog {...common} operationIds={spec.ids} mode={spec.mode} />;
     case "report":
@@ -114,7 +119,7 @@ function Dialogs({ spec, open, onClose, onReportSaved }: Omit<DialogHostProps, "
           {...common}
           {...spec.props}
           onDone={(report) => {
-            notify(spec.message);
+            notifyDone(spec.message);
             onReportSaved(report);
           }}
         />

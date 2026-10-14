@@ -18,6 +18,7 @@ import {
   type YearMonth,
 } from "@opesvault/domain";
 import { moneyOr, dateOr, DASH } from "../../data/money.ts";
+import { plural } from "../../data/text.ts";
 
 export interface Row {
   id: string;
@@ -259,7 +260,7 @@ export function reportRows(ledger: Ledger, found: readonly tax.model.IncomeRepor
         source ? source.name : "?",
         taxId(report.payer_tax_id),
         String(report.lines.length),
-        diffs.length ? `${diffs.length} diferença(s)` : "confere",
+        diffs.length ? plural(diffs.length, "diferença", "diferenças") : "confere",
       ],
     };
   });

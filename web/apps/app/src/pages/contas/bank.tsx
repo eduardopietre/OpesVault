@@ -3,19 +3,27 @@
  * savings) and the investments held there; the composition of the selected one, values on a date and the
  * investments' characteristics. One holder or two (a joint account), kept through `dom.banking`.
  */
-import { confirm, Collapsible, MenuButton, notify, type MenuEntry } from "@opesvault/ui";
+import { Collapsible, MenuButton, notify, type MenuEntry } from "@opesvault/ui";
 import { dom, investments, type Id } from "@opesvault/domain";
 import { useState } from "react";
 import { useGoTo } from "../../data/navigation.ts";
-import { useAct, useLedger, useWorkspace } from "../../data/react.tsx";
+import { useAct, useLedger, useNotifyDone, useWorkspace } from "../../data/react.tsx";
 import { BankAccountDialog } from "../../dialogs/bank_account.tsx";
 import { InvestmentDialog } from "../../dialogs/bank_investment.tsx";
 import { InvestmentContributionDialog } from "../../dialogs/investment_flow.tsx";
 import { useRemoveInvestment } from "../../dialogs/investment_remove.ts";
 import { InvestmentValuationDialog } from "../../dialogs/investment_valuation.tsx";
 import { ValuesDialog } from "../../dialogs/bank_values.tsx";
-import { useUndo } from "../../shell/undo.tsx";
-import { type TabReveal, EditButton, Empty, ListTable, Toolbar, useTabReveal } from "../../components/list_parts.tsx";
+
+import {
+  type TabReveal,
+  EditButton,
+  Empty,
+  ListTable,
+  Toolbar,
+  forSelected,
+  useTabReveal,
+} from "../../components/list_parts.tsx";
 import type { TierColumn } from "../../components/tier_columns.ts";
 import { bankRows, partRows, whereLine, type BankRow, type PartRow } from "./rows.ts";
 import { useDialog } from "../../data/dialog.ts";
@@ -77,6 +85,8 @@ type Spec =
   | { kind: "investment"; bankId: Id | null; positionId: Id | null };
 
 /** A link to this tab: a bank account to select, or the new investment form (Investimentos' empty page). */
+const PICK_BANK = "Selecione uma conta bancária na lista.";
+
 export interface BankReveal {
   bankId: Id | null;
   newInvestment: boolean;
@@ -86,7 +96,7 @@ export function BankTab({ reveal }: { reveal?: TabReveal<BankReveal> | null }) {
   const workspace = useWorkspace();
   const ledger = workspace.ledger;
   const today = workspace.today();
-  const { undo } = useUndo();
+  const notifyDone = useNotifyDone();
   const { locked } = useLock();
   const act = useAct();
   const go = useGoTo();
@@ -128,7 +138,7 @@ export function BankTab({ reveal }: { reveal?: TabReveal<BankReveal> | null }) {
   });
   const edit = (id: Id | null = item?.id ?? null) => {
     if (id === null) {
-      notify("Selecione uma conta bancária.");
+      notify(PICK_BANK);
       return;
     }
     dialog.show({ kind: "bank", id });
@@ -175,21 +185,23 @@ export function BankTab({ reveal }: { reveal?: TabReveal<BankReveal> | null }) {
     const found = chosenInvestment();
     if (found) dialog.show({ kind: "contribution", positionId: found.id, name: found.label });
   };
-  const archive = async (id: Id | null = item?.id ?? null) => {
+  /** Without asking: the notice says what stays, and its Desfazer brings the bank account back. */
+  const archive = (id: Id | null = item?.id ?? null) => {
     if (id === null) {
-      notify("Selecione uma conta bancária.");
+      notify(PICK_BANK);
       return;
     }
-    const ok = await confirm({
-      title: "Encerrar esta conta bancária?",
-      text: "Ela sai da lista; as contas e os lançamentos continuam no livro e podem ser arquivados em Contas.",
-      confirmLabel: "Encerrar",
-      danger: true,
-    });
-    if (!ok) return;
-    act((l) => banking.archive(l, id), { label: "encerrar conta bancária" });
-    setPick(null);
-    notify("Conta bancária encerrada.", { action: { label: "Desfazer", run: undo } });
+    const done = act(
+      (l) => {
+        banking.archive(l, id);
+        return true;
+      },
+      {
+        done: "Conta bancária encerrada. As contas e os lançamentos continuam no livro e podem ser arquivados em Contas.",
+        label: "encerrar conta bancária",
+      },
+    );
+    if (done !== undefined) setPick(null);
   };
 
   /** A bank account's context menu: the toolbar's commands on that account, Encerrar apart and in red. */
@@ -204,7 +216,7 @@ export function BankTab({ reveal }: { reveal?: TabReveal<BankReveal> | null }) {
           onSelect: () => dialog.show({ kind: "investment", bankId: row.id, positionId: null }),
         },
         { kind: "separator", id: "s1" },
-        { id: "archive", label: "Encerrar conta bancária…", danger: true, onSelect: () => void archive(row.id) },
+        { id: "archive", label: "Encerrar conta bancária", danger: true, onSelect: () => archive(row.id) },
       ],
       locked,
     );
@@ -266,7 +278,12 @@ export function BankTab({ reveal }: { reveal?: TabReveal<BankReveal> | null }) {
         <MenuButton
           label="Mais"
           items={[
-            { id: "archive", label: "Encerrar conta bancária…", onSelect: () => void archive(), disabled: locked },
+            {
+              id: "archive",
+              label: "Encerrar conta bancária",
+              onSelect: () => archive(),
+              ...forSelected(item, PICK_BANK, locked),
+            },
           ]}
         />
       </Toolbar>
@@ -348,7 +365,7 @@ export function BankTab({ reveal }: { reveal?: TabReveal<BankReveal> | null }) {
           {...(dialog.spec.id ? { item: banking.bankAccounts(ledger).get(dialog.spec.id)! } : {})}
           onDone={(saved, created) => {
             setPick(saved.id);
-            notify(created ? "Conta bancária cadastrada." : "Conta bancária salva.");
+            notifyDone(created ? "Conta bancária cadastrada." : "Conta bancária salva.");
           }}
         />
       ) : null}
@@ -358,7 +375,7 @@ export function BankTab({ reveal }: { reveal?: TabReveal<BankReveal> | null }) {
           open={dialog.open}
           onClose={dialog.close}
           bankId={dialog.spec.id}
-          onDone={() => notify("Valores registrados.")}
+          onDone={() => notifyDone("Valores registrados.")}
         />
       ) : null}
       {dialog.spec?.kind === "investment" ? (
@@ -370,7 +387,7 @@ export function BankTab({ reveal }: { reveal?: TabReveal<BankReveal> | null }) {
           positionId={dialog.spec.positionId}
           onDone={(profile, created) => {
             setPart(profile.position_id);
-            notify(
+            notifyDone(
               created
                 ? "Investimento cadastrado. Para informar o valor dele numa data, selecione-o na composição e use Atualizar valor."
                 : "Características salvas.",
@@ -385,7 +402,7 @@ export function BankTab({ reveal }: { reveal?: TabReveal<BankReveal> | null }) {
           onClose={dialog.close}
           positionId={dialog.spec.positionId}
           name={dialog.spec.name}
-          onDone={() => notify("Valor registrado.")}
+          onDone={() => notifyDone("Valor registrado.")}
         />
       ) : null}
       {dialog.spec?.kind === "contribution" ? (
@@ -395,7 +412,7 @@ export function BankTab({ reveal }: { reveal?: TabReveal<BankReveal> | null }) {
           onClose={dialog.close}
           positionId={dialog.spec.positionId}
           name={dialog.spec.name}
-          onDone={() => notify("Aporte registrado.")}
+          onDone={() => notifyDone("Aporte registrado.")}
         />
       ) : null}
     </div>

@@ -6,13 +6,21 @@ import { charts, dom, type Id } from "@opesvault/domain";
 import { ChartView, Collapsible, MenuButton, notify, type MenuEntry } from "@opesvault/ui";
 import { useState } from "react";
 import { useGoTo } from "../../data/navigation.ts";
-import { useLedger, useWorkspace } from "../../data/react.tsx";
+import { useLedger, useNotifyDone, useWorkspace } from "../../data/react.tsx";
 import { LoanDialog } from "../../dialogs/loan_new.tsx";
 import { PayInstallmentDialog } from "../../dialogs/loan_pay.tsx";
 import { PrepaymentDialog } from "../../dialogs/loan_prepay.tsx";
 import { FigureCard, Money } from "../../components/figures.tsx";
 import { toChartData } from "../../data/chart_data.ts";
-import { type TabReveal, EditButton, Empty, ListTable, Toolbar, useTabReveal } from "../../components/list_parts.tsx";
+import {
+  type TabReveal,
+  EditButton,
+  Empty,
+  ListTable,
+  Toolbar,
+  forSelected,
+  useTabReveal,
+} from "../../components/list_parts.tsx";
 import type { TierColumn } from "../../components/tier_columns.ts";
 import { installmentRows, loanRows, nextInstallment, type InstallmentRow, type LoanRow } from "./rows.ts";
 import { useDialog } from "../../data/dialog.ts";
@@ -121,12 +129,15 @@ const SCHEDULE_COLUMNS: TierColumn<InstallmentRow>[] = [
 
 type Spec = { kind: "new" } | { kind: "pay"; planId: Id; number: number } | { kind: "prepay"; planId: Id };
 
+const PICK_PLAN = "Selecione um financiamento na lista.";
+
 export function LoansTab({ reveal }: { reveal?: TabReveal<LoanReveal> | null }) {
   const workspace = useWorkspace();
   const ledger = workspace.ledger;
   const today = workspace.today();
   const go = useGoTo();
   const { locked } = useLock();
+  const notifyDone = useNotifyDone();
   const rows = useLedger((l) => loanRows(l, today), today);
   const [planPick, setPlanPick] = useState<Id | null>(null);
   const [numberPick, setNumberPick] = useState<string | null>(null);
@@ -173,7 +184,7 @@ export function LoansTab({ reveal }: { reveal?: TabReveal<LoanReveal> | null }) 
         {
           id: "pay",
           label: "Pagar parcela…",
-          disabled: next === null,
+          ...(next === null ? { disabled: true, reason: "Todas as parcelas deste financiamento estão pagas." } : {}),
           onSelect: () => pay(next?.number ?? null, row.id),
         },
         {
@@ -203,7 +214,9 @@ export function LoansTab({ reveal }: { reveal?: TabReveal<LoanReveal> | null }) 
         {
           id: "pay",
           label: "Pagar parcela…",
-          disabled: row.state === loans.InstallmentState.PAID,
+          ...(row.state === loans.InstallmentState.PAID
+            ? { disabled: true, reason: "Esta parcela já está paga." }
+            : {}),
           onSelect: () => pay(row.number),
         },
       ],
@@ -226,17 +239,15 @@ export function LoansTab({ reveal }: { reveal?: TabReveal<LoanReveal> | null }) 
             {
               id: "prepay",
               label: "Simular ou registrar amortização antecipada…",
-              disabled: locked,
-              onSelect: () =>
-                planId ? dialog.show({ kind: "prepay", planId }) : notify("Selecione um financiamento."),
+              ...forSelected(planId, PICK_PLAN, locked),
+              onSelect: () => (planId ? dialog.show({ kind: "prepay", planId }) : notify(PICK_PLAN)),
             },
             {
               id: "ledger",
               label: "Ver lançamentos do financiamento",
+              ...forSelected(selectedPlan, PICK_PLAN),
               onSelect: () =>
-                selectedPlan
-                  ? go("livro", { ref: accountRef(selectedPlan.liability_account_id) })
-                  : notify("Selecione um financiamento."),
+                selectedPlan ? go("livro", { ref: accountRef(selectedPlan.liability_account_id) }) : notify(PICK_PLAN),
             },
           ]}
         />
@@ -316,7 +327,7 @@ export function LoansTab({ reveal }: { reveal?: TabReveal<LoanReveal> | null }) 
           onDone={(created) => {
             setPlanPick(created.id);
             setNumberPick(null);
-            notify("Financiamento criado. O cronograma foi calculado pelo contrato.");
+            notifyDone("Financiamento criado. O cronograma foi calculado pelo contrato.");
           }}
         />
       ) : null}
@@ -329,7 +340,7 @@ export function LoansTab({ reveal }: { reveal?: TabReveal<LoanReveal> | null }) 
           item={loans.planSchedule(ledger, paying.planId).find((i) => i.number === paying.number)!}
           onDone={() => {
             setNumberPick(null);
-            notify(`Parcela ${paying.number} registrada: amortização, juros e encargos separados.`);
+            notifyDone(`Parcela ${paying.number} registrada: amortização, juros e encargos separados.`);
           }}
         />
       ) : null}
@@ -339,7 +350,7 @@ export function LoansTab({ reveal }: { reveal?: TabReveal<LoanReveal> | null }) 
           open={dialog.open}
           onClose={dialog.close}
           plan={loans.plans(ledger).get(dialog.spec.planId)!}
-          onDone={() => notify("Amortização antecipada registrada; o cronograma foi recalculado.")}
+          onDone={() => notifyDone("Amortização antecipada registrada; o cronograma foi recalculado.")}
         />
       ) : null}
     </div>

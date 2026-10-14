@@ -370,7 +370,7 @@ test.describe("hostile strings in the other free-text places", () => {
         buffer: Buffer.from(`date,title,amount\n${rows}\n`),
       },
     ]);
-    await expect(page.getByText(/item\(ns\) para revisar|não foi possível|Não foi possível/i).first()).toBeVisible({
+    await expect(page.getByText(/ite(m|ns) para revisar|não foi possível|Não foi possível/i).first()).toBeVisible({
       timeout: 30_000,
     });
     await settle(page, 500);

@@ -93,7 +93,7 @@ describe("the queue", () => {
     });
     expect(rows[0]!.pending).toBe(rows[0]!.items);
     expect(waitingItems(session.ledger)).toBe(rows[0]!.pending);
-    expect(queueContext(rows, 8)).toBe("1 documento(s) · 8 item(ns) aguardando revisão");
+    expect(queueContext(rows, 8)).toBe("1 documento · 8 itens aguardando revisão");
     expect(queueContext([], 0)).toBe("");
   });
 

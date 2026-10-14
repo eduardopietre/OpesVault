@@ -89,7 +89,7 @@ describe("Calendário", () => {
     await heading();
     const events = monthEventsOf(workspace.ledger, workspace.today());
     expect(events.length).toBeGreaterThan(0);
-    expect(screen.getByText(new RegExp(`${events.length} vencimento\\(s\\) em outubro de 2026`))).toBeTruthy();
+    expect(screen.getByText(new RegExp(`${events.length} vencimentos? em outubro de 2026`))).toBeTruthy();
     const figures = agendaFigures(events);
     for (const value of [figures.toPay, figures.paid]) {
       expect(screen.getAllByText(formatBrl(value)).length).toBeGreaterThan(0);
@@ -168,14 +168,14 @@ describe("Calendário", () => {
     expect(cellOf("2026-10-17").getAttribute("aria-selected")).toBe("true");
     // Page Down: the same day of the next month, which the page now shows (and the other screens share)
     await user.keyboard("{PageDown}");
-    await screen.findByText(/vencimento\(s\) em novembro de 2026/);
+    await screen.findByText(/vencimentos? em novembro de 2026/);
     await waitFor(() => expect(focused().dataset["date"]).toBe("2026-11-17"));
     // across the start of the month with the arrows
     fireEvent.keyDown(cellOf("2026-11-01") ?? focused(), { key: "ArrowLeft" });
-    await screen.findByText(/vencimento\(s\) em outubro de 2026/);
+    await screen.findByText(/vencimentos? em outubro de 2026/);
     await waitFor(() => expect(focused().dataset["date"]).toBe("2026-10-31"));
     await user.keyboard("{PageUp}");
-    await screen.findByText(/vencimento\(s\) em setembro de 2026/);
+    await screen.findByText(/vencimentos? em setembro de 2026/);
     await waitFor(() => expect(focused().dataset["date"]).toBe("2026-09-30"));
     // Space opens the day too
     await user.keyboard(" ");
@@ -292,7 +292,7 @@ describe("Calendário", () => {
     // October has nothing late yet: the filter is off and disabled
     expect(screen.getByRole("button", { name: "Só atrasados (0)" })).toHaveProperty("disabled", true);
     await user.click(screen.getByRole("button", { name: "Mês anterior" }));
-    await screen.findByText(/vencimento\(s\) em setembro de 2026/);
+    await screen.findByText(/vencimentos? em setembro de 2026/);
     const september = dom.agenda.monthEvents(workspace.ledger, { year: 2026, month: 9 }, workspace.today());
     const late = lateOnly(september);
     expect(late.length).toBeGreaterThan(0);
@@ -320,11 +320,11 @@ describe("Calendário", () => {
     await user.click(screen.getByRole("button", { name: "Próximo mês" }));
     const next = ymAdd(ymOf(workspace.today()), 1);
     const events = dom.agenda.monthEvents(workspace.ledger, next, workspace.today());
-    await screen.findByText(new RegExp(`${events.length} vencimento\\(s\\) em novembro de 2026`));
+    await screen.findByText(new RegExp(`${events.length} vencimentos? em novembro de 2026`));
     // The shared month: the overview opens on it... after its own default placement, so look at the picker.
     await router.navigate({ to: "/livro" });
     await router.navigate({ to: "/calendario" });
-    await screen.findByText(new RegExp(`vencimento\\(s\\) em novembro de 2026`));
+    await screen.findByText(new RegExp(`vencimentos? em novembro de 2026`));
     expect(workspace.undoStack.canUndo()).toBe(false);
   });
 
@@ -375,7 +375,7 @@ describe("Calendário", () => {
   it("shows an empty month and an empty project without crashing (TA-31)", async () => {
     await mountApp("/calendario", { project: "blank" });
     await heading();
-    expect(screen.getByText(/0 vencimento\(s\) em/)).toBeTruthy();
+    expect(screen.getByText(/0 vencimentos? em/)).toBeTruthy();
     expect(screen.getByText("Nenhum vencimento neste período.")).toBeTruthy();
     expect(screen.getAllByText("R$ 0,00").length).toBeGreaterThan(0);
   });

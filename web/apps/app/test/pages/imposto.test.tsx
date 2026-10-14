@@ -254,7 +254,7 @@ describe("pending items lead to what resolves them", () => {
     );
     await user.upload(input, pdf);
     expect(await within(box).findByText("Comprovante anexado e guardado cifrado no projeto.")).toBeTruthy();
-    expect(flat(box.textContent)).toContain("1 anexo(s)");
+    expect(flat(box.textContent)).toContain("1 anexo");
     await user.click(within(box).getAllByRole("button", { name: "Fechar" }).at(-1)!);
     await closed("Comprovantes");
     expect(flat(rowOf(await table("Pagamentos efetuados"), "Consulta Pediatra").textContent)).toContain("1 de 1");
@@ -415,7 +415,7 @@ describe("pending items that need seeded data", () => {
           ),
         ),
     );
-    expect(flat(rowOf(await table("Informes de rendimentos"), "Banco A").textContent)).toContain("1 diferença(s)");
+    expect(flat(rowOf(await table("Informes de rendimentos"), "Banco A").textContent)).toContain("1 diferença");
     const checks = await table("Informe comparado com o registrado");
     expect(flat(rowOf(checks, "Saldo no fim do ano").textContent)).toContain("R$ 1.000,00R$ 16.052,00-R$ 15.052,00");
     await user.click(
@@ -429,18 +429,18 @@ describe("pending items that need seeded data", () => {
     expect(flat(rowOf(await table("Informes de rendimentos"), "Banco A").textContent)).toContain("confere");
   });
 
-  it("an informe is removed after a confirmation, and the original stays in Documentos", async () => {
+  it("an informe is removed without asking, Desfazer brings it back, and the original stays in Documentos", async () => {
     const { user, ledger, workspace } = await openImposto(LINK);
     const before = taxSnapshot(ledger);
     await user.click(screen.getByRole("button", { name: "Remover" }));
-    const ask = await screen.findByRole("alertdialog", { name: "Remover este informe?" });
-    expect(flat(ask.textContent)).toContain("O arquivo original continua em Documentos.");
-    await user.click(within(ask).getByRole("button", { name: "Cancelar" }));
-    expect(tax.records.reportsOf(ledger, YEAR)).toHaveLength(1);
-    await user.click(screen.getByRole("button", { name: "Remover" }));
-    await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Remover" }));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
     await waitFor(() => expect(tax.records.reportsOf(ledger, YEAR)).toHaveLength(0));
+    expect(await screen.findByText("Informe removido. O arquivo original continua em Documentos.")).toBeTruthy();
     expect(await screen.findByText(/Nenhum informe deste ano/)).toBeTruthy();
+    await user.click(await screen.findByRole("button", { name: "Desfazer" }));
+    expect(taxSnapshot(ledger)).toBe(before);
+    await user.click(await screen.findByRole("button", { name: "Remover" }));
+    await waitFor(() => expect(tax.records.reportsOf(ledger, YEAR)).toHaveLength(0));
     undoOnce(workspace);
     expect(taxSnapshot(ledger)).toBe(before);
   });

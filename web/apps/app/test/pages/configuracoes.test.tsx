@@ -183,7 +183,7 @@ describe("IA local", () => {
     await user.clear(screen.getByLabelText("Porta do Ollama"));
     await user.type(screen.getByLabelText("Porta do Ollama"), "11500");
     await user.click(screen.getByRole("button", { name: "Verificar Ollama" }));
-    const status = await screen.findByText(/Ollama 0\.35\.1 respondeu: 1 modelo\(s\) instalado\(s\)\./);
+    const status = await screen.findByText(/Ollama 0\.35\.1 respondeu: 1 modelos? instalados?\./);
     expect(status.textContent).not.toContain("GPU"); // the fake does not say where the model runs
     expect(urls.every((url) => url.startsWith("http://127.0.0.1:11500/"))).toBe(true);
     // the installed ones can be chosen

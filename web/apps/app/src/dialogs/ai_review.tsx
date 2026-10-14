@@ -10,6 +10,7 @@ import { Button, Checkbox, TextField } from "@opesvault/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { rememberModel } from "../data/ai.ts";
 import { Caption, FormDialog } from "./livro_form.tsx";
+import { plural } from "../data/text.ts";
 
 // ── the review ──────────────────────────────────
 
@@ -124,7 +125,7 @@ export function AiReviewDialog({
           </Button>
           <span className="ml-auto" aria-live="polite">
             <Caption>
-              {count} de {rows.length} marcada(s)
+              {count} de {plural(rows.length, "marcada", "marcadas")}
             </Caption>
           </span>
         </div>
@@ -148,13 +149,14 @@ export interface AiRunApi {
   /**
    * Runs `work(report, cancel)` in the background after checking the model: Ollama off or the model missing
    * fail at once, saying what to do. `done` gets the work's result or the `AiUnavailable`. False if busy.
-   * `total` 0 shows a busy bar and `unit` alone ("pensando…").
+   * `total` 0 shows a busy bar and `unit` alone ("pensando…"); a unit given as [one, many] agrees with the total
+   * ("3 de 10 descrições", "0 de 1 descrição").
    */
   start: <T>(
     client: ai.ollama.OllamaClient,
     work: (report: (handled: number, total: number) => void, cancel: AbortSignal) => Promise<T>,
     total: number,
-    unit: string,
+    unit: string | readonly [string, string],
     done: (result: T | unknown) => void,
   ) => boolean;
   cancel: () => void;
@@ -184,8 +186,9 @@ export function useAiRun(): AiRunApi {
     controller.current = mine;
     rememberModel(client);
     const prefix = `IA local (${client.model})`;
+    const word = (of: number) => (typeof unit === "string" ? unit : of === 1 ? unit[0] : unit[1]);
     const label = (handled: number, of: number) =>
-      of > 0 ? `${prefix}: ${handled} de ${of} ${unit}` : `${prefix}: ${unit}`;
+      of > 0 ? `${prefix}: ${handled} de ${of} ${word(of)}` : `${prefix}: ${word(of)}`;
     setState({ label: label(0, total), total, handled: 0, cancelling: false });
     void (async () => {
       let result: unknown;

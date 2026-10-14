@@ -7,6 +7,7 @@ import { compareLabels, Select, TextField } from "@opesvault/ui";
 import { useId, useMemo, useState } from "react";
 import { useWorkspace } from "../data/react.tsx";
 import { Caption, FormDialog, useFormAct } from "./livro_form.tsx";
+import { plural } from "../data/text.ts";
 
 const ACTIONS = [
   { id: "add", label: "Adicionar aos selecionados" },
@@ -45,8 +46,9 @@ export function TagDialog({ open, onClose, operationIds, onDone }: TagDialogProp
     <FormDialog open={open} onClose={onClose} title="Marcadores" confirmLabel="Aplicar" onConfirm={confirm}>
       <div className="flex flex-col gap-4">
         <Caption>
-          {operationIds.length} lançamento(s). Marcadores atuais: {current.join(", ") || "nenhum"}. Marcadores agrupam
-          lançamentos de várias categorias (uma viagem, uma reforma) e não mudam valores.
+          {plural(operationIds.length, "lançamento", "lançamentos")}. Marcadores atuais:{" "}
+          {current.join(", ") || "nenhum"}. Marcadores agrupam lançamentos de várias categorias (uma viagem, uma
+          reforma) e não mudam valores.
         </Caption>
         <TextField
           label="Marcador"

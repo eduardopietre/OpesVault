@@ -60,7 +60,7 @@ describe("Calendário", () => {
     await heading();
     const events = monthEventsOf(workspace.ledger, workspace.today());
     expect(events.length).toBeGreaterThan(0);
-    expect(screen.getByText(new RegExp(`${events.length} vencimento\\(s\\) em outubro de 2026`))).toBeTruthy();
+    expect(screen.getByText(new RegExp(`${events.length} vencimentos? em outubro de 2026`))).toBeTruthy();
     const figures = agendaFigures(events);
     for (const value of [figures.toPay, figures.paid]) {
       expect(screen.getAllByText(formatBrl(value)).length).toBeGreaterThan(0);
@@ -196,11 +196,11 @@ describe("Calendário", () => {
     await user.click(screen.getByRole("button", { name: "Próximo mês" }));
     const next = ymAdd(ymOf(workspace.today()), 1);
     const events = dom.agenda.monthEvents(workspace.ledger, next, workspace.today());
-    await screen.findByText(new RegExp(`${events.length} vencimento\\(s\\) em novembro de 2026`));
+    await screen.findByText(new RegExp(`${events.length} vencimentos? em novembro de 2026`));
     // The shared month: the overview opens on it... after its own default placement, so look at the picker.
     await router.navigate({ to: "/livro" });
     await router.navigate({ to: "/calendario" });
-    await screen.findByText(new RegExp(`vencimento\\(s\\) em novembro de 2026`));
+    await screen.findByText(new RegExp(`vencimentos? em novembro de 2026`));
     expect(workspace.undoStack.canUndo()).toBe(false);
   });
 
@@ -227,7 +227,7 @@ describe("Calendário", () => {
   it("shows an empty month and an empty project without crashing (TA-31)", async () => {
     await mountApp("/calendario", { project: "blank" });
     await heading();
-    expect(screen.getByText(/0 vencimento\(s\) em/)).toBeTruthy();
+    expect(screen.getByText(/0 vencimentos? em/)).toBeTruthy();
     expect(screen.getByText("Nenhum vencimento neste período.")).toBeTruthy();
     expect(screen.getAllByText("R$ 0,00").length).toBeGreaterThan(0);
   });

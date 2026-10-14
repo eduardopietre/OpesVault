@@ -5,7 +5,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { toInvestmentChart, toPercentChart } from "../../src/pages/investimentos/chart.ts";
 import { cdbOf, openInvestimentos, snapshot } from "./investimentos_harness.tsx";
-import { flat, rowOf, selectedRow, table } from "../dom.ts";
+import { flat, menuReason, rowOf, selectedRow, table } from "../dom.ts";
 import { accountNamed } from "../lookup.ts";
 
 const { performance, service, returns } = investments;
@@ -157,13 +157,13 @@ describe("Investimentos: poupança", () => {
     const figures = investments.savings.savingsFigures(ledger, savingsId, workspace.today());
     expect(demo).toContain("Poupança");
     expect(demo).toContain(formatBrl(figures.value));
-    // selecting it shows its own panel; the commands of an investment explain instead of failing
+    // selecting it shows its own panel; the commands of an investment are disabled and say why
     await user.click(within(rowOf(grid, "Poupança (Itaú da Ana)")).getAllByRole("gridcell")[0]!);
     expect(await screen.findByRole("heading", { level: 2, name: "Poupança (Itaú da Ana)" })).toBeTruthy();
     expect(screen.getByRole("toolbar", { name: "Comandos da poupança" })).toBeTruthy();
-    await user.click(screen.getByRole("button", { name: "Registrar" }));
-    await user.click(await screen.findByRole("menuitem", { name: "Atualizar valor…" }));
-    expect(await screen.findByText(/A poupança acompanha os lançamentos da conta/)).toBeTruthy();
+    expect(await menuReason(user, "Registrar", "Atualizar valor…")).toMatch(
+      /^A poupança acompanha os lançamentos da conta/,
+    );
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 });
@@ -175,10 +175,11 @@ describe("Investimentos: projeto vazio e somente leitura", () => {
     expect(screen.queryByRole("grid", { name: "Investimentos" })).toBeNull();
     expect(screen.getByText("0 em carteira")).toBeTruthy();
     expect(screen.getByText("Nenhuma nota de negociação")).toBeTruthy();
-    // the header menus answer instead of failing without a selection
-    await user.click(screen.getByRole("button", { name: "Registrar" }));
-    await user.click(await screen.findByRole("menuitem", { name: "Aporte…" }));
-    expect(await screen.findByText("Selecione um investimento.")).toBeTruthy();
+    // without a selection, the header menus' commands on an investment are disabled and say why
+    expect(await menuReason(user, "Registrar", "Aporte…")).toBe("Selecione um investimento na lista.");
+    expect(await menuReason(user, "Negociação", "Compra…")).toBe("Selecione um investimento na lista.");
+    expect(await menuReason(user, "Mais", "Excluir investimento…")).toBe("Selecione um investimento na lista.");
+    expect(await menuReason(user, "Registrar", "Pagamento de imposto…")).toBeNull();
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 

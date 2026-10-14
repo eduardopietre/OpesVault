@@ -4,6 +4,7 @@
  * guide with this app's exact origin, the backup status and the sizes and dates in Portuguese.
  */
 import { ai, daysBetween, formatDateBr, type IsoDate } from "@opesvault/domain";
+import { plural } from "../../data/text.ts";
 
 export const TAB_IDS = ["projeto", "ia", "seguranca", "backup", "privacidade"] as const;
 export type TabId = (typeof TAB_IDS)[number];
@@ -44,9 +45,9 @@ export function checkedText(chosen: string, info: ai.ollama.ServerInfo, placed: 
   } else if (chosen && info.installed(chosen) === null) {
     state = `o modelo ${chosen} não está instalado. Instale com “ollama pull ${chosen}”.`;
   } else if (recommended.length === 0) {
-    state = `${info.models.length} modelo(s) instalado(s); o indicado (${first}) não está entre eles.`;
+    state = `${plural(info.models.length, "modelo instalado", "modelos instalados")}; o indicado (${first}) não está entre eles.`;
   } else {
-    state = `${info.models.length} modelo(s) instalado(s).`;
+    state = `${plural(info.models.length, "modelo instalado", "modelos instalados")}.`;
   }
   return `Ollama ${info.version} respondeu: ${state}${placementText(placed)}`;
 }

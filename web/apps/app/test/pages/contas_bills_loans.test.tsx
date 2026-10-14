@@ -445,8 +445,15 @@ describe("Financiamentos", () => {
     await user.click(screen.getByRole("button", { name: "Pagar parcela…" }));
     expect(await screen.findByText("Selecione uma parcela.")).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Mais" }));
+    // the menu's commands on a contract are disabled and say why, instead of answering with a notice
+    for (const name of [/amortização antecipada/, "Ver lançamentos do financiamento"]) {
+      const item = await screen.findByRole("menuitem", { name });
+      expect(item.getAttribute("aria-disabled")).toBe("true");
+      expect(item.getAttribute("aria-description")).toBe("Selecione um financiamento na lista.");
+    }
     await user.click(await screen.findByRole("menuitem", { name: /amortização antecipada/ }));
-    expect(await screen.findByText("Selecione um financiamento.")).toBeTruthy();
+    expect(screen.queryByText("Selecione um financiamento na lista.")).toBeNull();
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 });
 

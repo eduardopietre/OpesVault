@@ -33,7 +33,6 @@ import {
   PageHeader,
   Sheet,
   TextField,
-  confirm,
   decide,
   formatBrDate,
   notify,
@@ -65,7 +64,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { useGoTo, useReveal } from "../../data/navigation.ts";
 import { useSharedMonth } from "../../data/month.ts";
-import { useAct, useLedger, useWorkspace } from "../../data/react.tsx";
+import { useAct, useLedger, useNotifyDone, useWorkspace } from "../../data/react.tsx";
 import { AiRunRow } from "../../dialogs/ai_review.tsx";
 import { OPERATION_KINDS, type OperationKindKey } from "../../dialogs/operation.tsx";
 import { isSimple } from "../../dialogs/operation_edit.tsx";
@@ -88,9 +87,12 @@ import {
 } from "./rows.ts";
 import { actionName } from "../../data/action_names.ts";
 import { exportUnencrypted } from "../../data/export_file.ts";
-import { monthLabel } from "../../data/text.ts";
+import { monthLabel, plural } from "../../data/text.ts";
+import { forSelected } from "../../components/list_parts.tsx";
 
 const HIDDEN_COLUMNS_KEY = "livro/colunas-ocultas";
+const PICK_ONE = "Selecione um lançamento na lista.";
+const PICK_SOME = "Selecione ou marque lançamentos na lista.";
 const EMPTY_SET: ReadonlySet<string> = new Set();
 
 function readHidden(raw: string | null): ReadonlySet<string> {
@@ -100,6 +102,7 @@ function readHidden(raw: string | null): ReadonlySet<string> {
 
 export function Page() {
   const workspace = useWorkspace();
+  const notifyDone = useNotifyDone();
   const goTo = useGoTo();
   const act = useAct();
   const band = useBand();
@@ -185,7 +188,7 @@ export function Page() {
   const show = (spec: DialogSpec) => host.show(spec);
   const needOne = (): Operation | null => {
     if (single === null) {
-      notify("Selecione um lançamento.");
+      notify(PICK_ONE);
       return null;
     }
     return single;
@@ -253,16 +256,9 @@ export function Page() {
     }
     const nameOf = (documentId: Id) =>
       workspace.session.documents.find((d) => d.meta.id === documentId)?.meta.original_name ?? "comprovante";
+    // One receipt goes without asking (the notice offers Desfazer); of several, the person picks which.
     let target = receipts[0]!;
-    if (receipts.length === 1) {
-      const ok = await confirm({
-        title: "Desvincular o comprovante?",
-        text: `“${nameOf(target.document_id)}” deixa de ser comprovante de “${op.description}”. Se nada mais usar o arquivo, ele sai do projeto. Dá para desfazer logo em seguida.`,
-        confirmLabel: "Desvincular",
-        danger: true,
-      });
-      if (!ok) return;
-    } else {
+    if (receipts.length > 1) {
       const choice = await decide({
         title: "Desvincular qual comprovante?",
         text: `“${op.description}” tem ${receipts.length} comprovantes. O arquivo só sai do projeto se nada mais o usar. Dá para desfazer logo em seguida.`,
@@ -286,7 +282,7 @@ export function Page() {
       return;
     }
     act((_ledger, session) => dom.attachments.detach(session, target.id), {
-      done: "Comprovante desvinculado. Ctrl+Z desfaz.",
+      done: `“${nameOf(target.document_id)}” deixou de ser comprovante de “${op.description}”. Se nada mais usava o arquivo, ele saiu do projeto.`,
       label: "desvincular comprovante",
     });
   };
@@ -309,7 +305,7 @@ export function Page() {
   const markReviewedIds = (ids: readonly Id[]) => {
     if (!ids.length) return;
     act((l) => ids.reduce((n, id) => n + dom.anomalies.markReviewed(l, id), 0), {
-      done: `${ids.length} lançamento(s) conferido(s); avisos de duplicidade ou valor silenciados.`,
+      done: `${plural(ids.length, "lançamento conferido", "lançamentos conferidos")}; avisos de duplicidade ou valor silenciados.`,
       label: actionName("conferir", ids.length, "lançamento", "lançamentos"),
     });
   };
@@ -379,45 +375,86 @@ export function Page() {
       id: "select-all",
       label: `Marcar os ${operations.length} exibidos`,
       onSelect: selectAllShown,
-      disabled: !operations.length,
+      ...(operations.length ? {} : { disabled: true, reason: "Nenhum lançamento exibido com estes filtros." }),
     },
     {
       id: "toggle-mark",
       label: current !== null && checked.has(current) ? "Desmarcar este lançamento" : "Marcar este lançamento",
       onSelect: () => current !== null && check(current, !checked.has(current)),
-      disabled: current === null,
+      ...forSelected(current, PICK_ONE),
     },
-    { id: "clear", label: "Limpar marcação", onSelect: () => setChecked(EMPTY_SET), disabled: !checked.size },
+    {
+      id: "clear",
+      label: "Limpar marcação",
+      onSelect: () => setChecked(EMPTY_SET),
+      ...(checked.size ? {} : { disabled: true, reason: "Nenhum lançamento marcado." }),
+    },
     { kind: "separator", id: "sep0" },
-    { id: "edit", label: "Corrigir…", onSelect: () => openEdit(), shortcut: "Enter", disabled: readOnly || !single },
-    { id: "postings", label: "Corrigir partidas…", onSelect: editPostings, disabled: readOnly || !single },
-    { id: "reclassify", label: "Reclassificar…", onSelect: reclassify, disabled: readOnly || !targets.length },
-    { id: "tags", label: "Marcadores…", onSelect: tag, disabled: readOnly || !targets.length },
-    { id: "attach", label: "Anexar comprovante…", onSelect: attach, disabled: readOnly || !single },
+    {
+      id: "edit",
+      label: "Corrigir…",
+      onSelect: () => openEdit(),
+      shortcut: "Enter",
+      ...forSelected(single, PICK_ONE, readOnly),
+    },
+    { id: "postings", label: "Corrigir partidas…", onSelect: editPostings, ...forSelected(single, PICK_ONE, readOnly) },
+    {
+      id: "reclassify",
+      label: "Reclassificar…",
+      onSelect: reclassify,
+      ...forSelected(targets.length ? targets : null, PICK_SOME, readOnly),
+    },
+    {
+      id: "tags",
+      label: "Marcadores…",
+      onSelect: tag,
+      ...forSelected(targets.length ? targets : null, PICK_SOME, readOnly),
+    },
+    { id: "attach", label: "Anexar comprovante…", onSelect: attach, ...forSelected(single, PICK_ONE, readOnly) },
     {
       id: "detach",
       label: "Desvincular comprovante…",
       onSelect: () => void detachReceipt(),
-      disabled: readOnly || !single,
+      ...forSelected(single, PICK_ONE, readOnly),
     },
-    { id: "income", label: "Detalhar rendimento (IR)…", onSelect: detailIncome, disabled: readOnly || !single },
-    { id: "merchant", label: "Nomear estabelecimento…", onSelect: nameMerchant, disabled: readOnly || !single },
-    { id: "reimbursement", label: "Reembolso a receber…", onSelect: reimbursement, disabled: readOnly || !single },
+    {
+      id: "income",
+      label: "Detalhar rendimento (IR)…",
+      onSelect: detailIncome,
+      ...forSelected(single, PICK_ONE, readOnly),
+    },
+    {
+      id: "merchant",
+      label: "Nomear estabelecimento…",
+      onSelect: nameMerchant,
+      ...forSelected(single, PICK_ONE, readOnly),
+    },
+    {
+      id: "reimbursement",
+      label: "Reembolso a receber…",
+      onSelect: reimbursement,
+      ...forSelected(single, PICK_ONE, readOnly),
+    },
     {
       id: "reviewed",
       label: "Está certo (silenciar aviso)",
       onSelect: markReviewed,
-      disabled: readOnly || !targets.length,
+      ...forSelected(targets.length ? targets : null, PICK_SOME, readOnly),
     },
-    { id: "reverse", label: "Estornar…", onSelect: reverse, disabled: readOnly || !single },
-    { id: "history", label: "Histórico", onSelect: showHistory, disabled: !single },
+    { id: "reverse", label: "Estornar…", onSelect: reverse, ...forSelected(single, PICK_ONE, readOnly) },
+    { id: "history", label: "Histórico", onSelect: showHistory, ...forSelected(single, PICK_ONE) },
     { kind: "separator", id: "sep1" },
-    { id: "balance", label: "Conferir saldo da conta…", onSelect: checkBalance, disabled: readOnly || !single },
+    {
+      id: "balance",
+      label: "Conferir saldo da conta…",
+      onSelect: checkBalance,
+      ...forSelected(single, PICK_ONE, readOnly),
+    },
     {
       id: "deductible",
       label: "Marcar categoria como dedutível…",
       onSelect: deductible,
-      disabled: readOnly || !single,
+      ...forSelected(single, PICK_ONE, readOnly),
     },
     ...(filters.tag !== null
       ? [
@@ -430,7 +467,13 @@ export function Page() {
         ]
       : []),
     { kind: "separator", id: "sep2" },
-    { id: "cancel", label: "Cancelar lançamento…", onSelect: cancel, danger: true, disabled: readOnly || !single },
+    {
+      id: "cancel",
+      label: "Cancelar lançamento…",
+      onSelect: cancel,
+      danger: true,
+      ...forSelected(single, PICK_ONE, readOnly),
+    },
   ];
 
   // ── the local AI: the ticked operations (two or more), or everything the filters show ──
@@ -610,7 +653,7 @@ export function Page() {
             disabled: readOnly,
             onSelect: () => {
               workspace.act((l) => dom.savedFilters.deleteFilter(l, f.id), "excluir filtro salvo");
-              notify("Filtro excluído. Ctrl+Z desfaz.");
+              notifyDone(`Filtro “${f.name}” excluído.`);
             },
           })),
         ] satisfies MenuEntry[])
@@ -627,7 +670,7 @@ export function Page() {
     }
     await exportUnencrypted({
       title: "Exportar sem criptografia?",
-      text: `${exporting.WARNING} O arquivo CSV (${rows.length} lançamento(s)) vai para a pasta de downloads deste aparelho.`,
+      text: `${exporting.WARNING} O arquivo CSV (${plural(rows.length, "lançamento", "lançamentos")}) vai para a pasta de downloads deste aparelho.`,
       confirmLabel: "Exportar CSV",
       save: () => {
         const bytes = everything ? exporting.ledgerCsv(ledger) : operationsCsv(ledger, rows);

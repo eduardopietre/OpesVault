@@ -400,7 +400,7 @@ for (const size of TEST_SIZES) {
         await expect(dialog.getByText("Escolha a categoria.")).toBeVisible();
         await dialog.getByLabel(/^A descrição contém\s*\*?$/).fill("Cinema Central");
         await choose(page, dialog, "Categoria", "Despesa: Lazer");
-        await expect(dialog.getByRole("status")).toContainText("item(ns) pendente(s) agora.");
+        await expect(dialog.getByRole("status")).toContainText(/(item pendente|itens pendentes) agora\./);
         await submit(dialog, "Criar regra");
         await expect(dialog).toBeHidden();
         await expect(rules.getByText("CINEMA CENTRAL")).toBeVisible();

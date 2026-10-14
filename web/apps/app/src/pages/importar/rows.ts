@@ -7,6 +7,7 @@ import { AccountType, importing, type Dec, type Id, type IsoDate, type Ledger, t
 import { compareLabels, type SelectOption } from "@opesvault/ui";
 import { categoryItems } from "../../dialogs/account_choices.ts";
 import { dateOr, moneyOr } from "../../data/money.ts";
+import { plural } from "../../data/text.ts";
 
 type Batch = importing.importModel.ImportBatch;
 type Item = importing.importModel.ExtractedItem;
@@ -116,14 +117,14 @@ export function batchRows(ledger: Ledger, documents: readonly session.Document[]
     });
 }
 
-/** The count of items waiting for review in every document ("3 documento(s) · 12 item(ns) aguardando revisão"). */
+/** The count of items waiting for review in every document ("3 documentos · 12 itens aguardando revisão"). */
 export function waitingItems(ledger: Ledger): number {
   return [...importing.pipeline.items(ledger).values()].filter(isPending).length;
 }
 
 export function queueContext(rows: readonly BatchRow[], waiting: number): string {
   if (!rows.length) return "";
-  return `${rows.length} documento(s) · ${waiting} item(ns) aguardando revisão`;
+  return `${plural(rows.length, "documento", "documentos")} · ${plural(waiting, "item", "itens")} aguardando revisão`;
 }
 
 // ── the facts of a document ─────────────────────────

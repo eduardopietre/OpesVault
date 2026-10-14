@@ -9,6 +9,7 @@ import { useMemo, useState } from "react";
 import { useWorkspace } from "../data/react.tsx";
 import { categoryItems } from "./account_choices.ts";
 import { Caption, FormDialog, FormGrid, FullRow, NONE, useFormAct } from "./livro_form.tsx";
+import { plural } from "../data/text.ts";
 
 const { rules, suggestions, importStore, importModel } = importing;
 
@@ -72,7 +73,7 @@ export function RuleDialog({
     );
     const manual = hits.filter((i) => i.target_account_id !== null && i.suggestion_source === null).length;
     return (
-      `Pega ${hits.length} item(ns) pendente(s) agora.` +
+      `Pega ${plural(hits.length, "item pendente", "itens pendentes")} agora.` +
       (manual ? ` ${manual} com categoria escolhida à mão continuam como estão.` : "")
     );
   }, [ledger, pattern, scope]);

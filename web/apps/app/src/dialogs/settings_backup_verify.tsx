@@ -12,6 +12,7 @@ import { Caption } from "./livro_form.tsx";
 import { progressText } from "./settings_backup_export.tsx";
 import { FilePicker } from "./settings_file.tsx";
 import { SettingsDialog } from "./settings_form.tsx";
+import { plural } from "../data/text.ts";
 
 /** The sentence that says whether a checked file is sound, and what is missing from it. */
 export function verdict(check: BackupCheck): { ok: boolean; text: string }[] {
@@ -46,7 +47,10 @@ export function verdict(check: BackupCheck): { ok: boolean; text: string }[] {
     });
   }
   if (check.orphans > 0)
-    lines.push({ ok: true, text: `${check.orphans} documento(s) no arquivo sem registro que os cite.` });
+    lines.push({
+      ok: true,
+      text: `${plural(check.orphans, "documento", "documentos")} no arquivo sem registro que ${check.orphans === 1 ? "o" : "os"} cite.`,
+    });
   return lines;
 }
 

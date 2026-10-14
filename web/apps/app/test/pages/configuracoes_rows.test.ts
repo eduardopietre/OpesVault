@@ -33,7 +33,7 @@ describe("where the model runs", () => {
 
   it("says what the check found for each situation", () => {
     const models = new ai.ollama.ServerInfo("0.35.1", ["gemma4:12b", "llama3.2:3b"], 0.1);
-    expect(checkedText("gemma4:12b", models, null)).toBe("Ollama 0.35.1 respondeu: 2 modelo(s) instalado(s).");
+    expect(checkedText("gemma4:12b", models, null)).toBe("Ollama 0.35.1 respondeu: 2 modelos instalados.");
     expect(checkedText("outro", models, null)).toContain(
       "o modelo outro não está instalado. Instale com “ollama pull outro”.",
     );

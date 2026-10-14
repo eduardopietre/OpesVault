@@ -39,9 +39,9 @@ import { InvestmentSimulateDialog } from "../../dialogs/investment_simulate.tsx"
 import { InvestmentTradeDialog, type TradeKind } from "../../dialogs/investment_trade.tsx";
 import { useRemoveInvestment } from "../../dialogs/investment_remove.ts";
 import { InvestmentFixDialog, InvestmentValuationDialog } from "../../dialogs/investment_valuation.tsx";
-import { useAct, useLedger, useWorkspace } from "../../data/react.tsx";
+import { useAct, useLedger, useNotifyDone, useWorkspace } from "../../data/react.tsx";
 import { useGoTo, useReveal } from "../../data/navigation.ts";
-import { Empty, EditButton, ListTable, Toolbar, usePick } from "../../components/list_parts.tsx";
+import { Empty, EditButton, ListTable, Toolbar, forSelected, usePick } from "../../components/list_parts.tsx";
 import { NOTE_COLUMNS, PORTFOLIO_COLUMNS } from "./columns.tsx";
 import { Detail } from "./detail.tsx";
 import { SavingsPanel } from "./savings_panel.tsx";
@@ -61,6 +61,12 @@ import { accountRef } from "../livro/rows.ts";
 
 const { service, model } = investments;
 
+const PICK_INVESTMENT = "Selecione um investimento na lista.";
+const PICK_INCOMPLETE = "Selecione um resgate incompleto na tabela Movimentos.";
+const SAVINGS_TIP = "A poupança acompanha os lançamentos da conta: registre depósitos, retiradas e juros no Livro.";
+const BY_VALUE_TIP =
+  "Negociações são para ativos acompanhados por quantidade; este investimento é acompanhado por valor.";
+
 type Spec =
   | { kind: "position" }
   | { kind: "valuation"; positionId: Id }
@@ -75,6 +81,7 @@ export function Page() {
   const workspace = useWorkspace();
   const ledger = workspace.ledger;
   const act = useAct();
+  const notifyDone = useNotifyDone();
   const goTo = useGoTo();
   const navigate = useNavigate();
   const { locked } = useLock();
@@ -105,13 +112,28 @@ export function Page() {
   // ── commands ─────────────────────────────────────
 
   const need = (): Id | null => {
-    const row = needRow("Selecione um investimento.");
+    const row = needRow(PICK_INVESTMENT);
     if (row?.savings) {
-      notify("A poupança acompanha os lançamentos da conta: registre depósitos, retiradas e juros no Livro.");
+      notify(SAVINGS_TIP);
       return null;
     }
     return row?.id ?? null;
   };
+
+  /** A header command on the selected investment: disabled, saying why, without one (or on a savings account). */
+  const onPosition = (): { disabled: boolean; reason?: string } =>
+    selected?.savings ? { disabled: true, reason: SAVINGS_TIP } : forSelected(selected, PICK_INVESTMENT);
+  const onQuantity = (): { disabled: boolean; reason?: string } => {
+    const state = onPosition();
+    if (state.disabled || !selected) return state;
+    return service.position(ledger, selected.id).mode === model.TrackingMode.QUANTITY
+      ? state
+      : { disabled: true, reason: BY_VALUE_TIP };
+  };
+  const incomplete =
+    eventPick && selected
+      ? (eventRows(ledger, selected.id).find((e) => e.id === eventPick)?.incomplete ?? false)
+      : false;
 
   const withPosition = (make: (positionId: Id) => Spec) => () => {
     const id = need();
@@ -122,7 +144,7 @@ export function Page() {
     const id = need();
     if (!id) return;
     if (service.position(ledger, id).mode !== model.TrackingMode.QUANTITY) {
-      notify("Negociações são para ativos acompanhados por quantidade; este investimento é acompanhado por valor.");
+      notify(BY_VALUE_TIP);
       return;
     }
     dialog.show({ kind: "trade", trade: kind, positionId: id });
@@ -164,7 +186,7 @@ export function Page() {
   const completeRedemption = () => {
     const found = eventPick && selected ? eventRows(ledger, selected.id).find((e) => e.id === eventPick) : undefined;
     if (!found || !found.incomplete) {
-      notify("Selecione o resgate incompleto em Movimentos.");
+      notify(PICK_INCOMPLETE);
       return;
     }
     dialog.show({ kind: "complete", eventId: found.id });
@@ -300,30 +322,40 @@ export function Page() {
                 id: "valuation",
                 label: "Atualizar valor…",
                 onSelect: withPosition((positionId) => ({ kind: "valuation", positionId })),
+                ...onPosition(),
               },
               { kind: "separator", id: "s1" },
               {
                 id: "contribution",
                 label: "Aporte…",
                 onSelect: withPosition((positionId) => ({ kind: "contribution", positionId })),
+                ...onPosition(),
               },
               {
                 id: "distribution",
                 label: "Provento…",
                 onSelect: withPosition((positionId) => ({ kind: "distribution", positionId })),
+                ...onPosition(),
               },
               {
                 id: "redeem",
                 label: "Resgate…",
                 onSelect: withPosition((positionId) => ({ kind: "redeem", positionId, prefill: null })),
+                ...onPosition(),
               },
-              { id: "simulate", label: "Simular resgate (não grava)…", onSelect: () => simulate() },
+              { id: "simulate", label: "Simular resgate (não grava)…", onSelect: () => simulate(), ...onPosition() },
               {
                 id: "netonly",
                 label: "Resgate só com o líquido…",
                 onSelect: withPosition((positionId) => ({ kind: "netonly", positionId })),
+                ...onPosition(),
               },
-              { id: "complete", label: "Completar resgate…", onSelect: completeRedemption },
+              {
+                id: "complete",
+                label: "Completar resgate…",
+                onSelect: completeRedemption,
+                ...(incomplete ? {} : { disabled: true, reason: PICK_INCOMPLETE }),
+              },
               { kind: "separator", id: "s2" },
               { id: "tax", label: "Pagamento de imposto…", onSelect: () => dialog.show({ kind: "tax" }) },
             ])}
@@ -331,12 +363,12 @@ export function Page() {
           <MenuButton
             label="Negociação"
             items={lock([
-              { id: "buy", label: "Compra…", onSelect: trade("buy") },
-              { id: "sell", label: "Venda…", onSelect: trade("sell") },
-              { id: "opening", label: "Posição inicial…", onSelect: trade("opening") },
+              { id: "buy", label: "Compra…", onSelect: trade("buy"), ...onQuantity() },
+              { id: "sell", label: "Venda…", onSelect: trade("sell"), ...onQuantity() },
+              { id: "opening", label: "Posição inicial…", onSelect: trade("opening"), ...onQuantity() },
               { kind: "separator", id: "s1" },
-              { id: "split", label: "Desdobramento ou grupamento…", onSelect: trade("split") },
-              { id: "bonus", label: "Bonificação…", onSelect: trade("bonus") },
+              { id: "split", label: "Desdobramento ou grupamento…", onSelect: trade("split"), ...onQuantity() },
+              { id: "bonus", label: "Bonificação…", onSelect: trade("bonus"), ...onQuantity() },
             ])}
           />
           <MenuButton
@@ -347,8 +379,9 @@ export function Page() {
                   id: "profile",
                   label: "Características (tipo, emissor, taxa, vencimento, tributação)…",
                   onSelect: profile,
+                  ...onPosition(),
                 },
-                { id: "remove", label: "Excluir investimento…", onSelect: () => void remove() },
+                { id: "remove", label: "Excluir investimento…", onSelect: () => void remove(), ...onPosition() },
                 { kind: "separator", id: "s1" },
                 {
                   id: "composition",
@@ -503,7 +536,7 @@ export function Page() {
           onClose={close}
           onDone={(id) => {
             setPick(id);
-            notify("Investimento criado. Descreva tipo, taxa e vencimento em Mais › Características.");
+            notifyDone("Investimento criado. Descreva tipo, taxa e vencimento em Mais › Características.");
           }}
         />
       ) : null}
@@ -515,7 +548,7 @@ export function Page() {
           positionId={spec.positionId}
           name={nameOf(spec.positionId)}
           onFix={(valuationId) => dialog.show({ kind: "fix", valuationId })}
-          onDone={() => notify("Avaliação registrada.")}
+          onDone={() => notifyDone("Avaliação registrada.")}
         />
       ) : null}
       {spec?.kind === "fix" ? (
@@ -524,7 +557,7 @@ export function Page() {
           open={dialog.open}
           onClose={close}
           valuationId={spec.valuationId}
-          onDone={() => notify("Observação corrigida; o histórico guarda o valor anterior.")}
+          onDone={() => notifyDone("Observação corrigida; o histórico guarda o valor anterior.")}
         />
       ) : null}
       {spec?.kind === "contribution" ? (
@@ -534,7 +567,7 @@ export function Page() {
           onClose={close}
           positionId={spec.positionId}
           name={nameOf(spec.positionId)}
-          onDone={() => notify("Aporte registrado.")}
+          onDone={() => notifyDone("Aporte registrado.")}
         />
       ) : null}
       {spec?.kind === "distribution" ? (
@@ -544,7 +577,7 @@ export function Page() {
           onClose={close}
           positionId={spec.positionId}
           name={nameOf(spec.positionId)}
-          onDone={() => notify("Provento registrado.")}
+          onDone={() => notifyDone("Provento registrado.")}
         />
       ) : null}
       {spec?.kind === "redeem" ? (
@@ -555,7 +588,7 @@ export function Page() {
           positionId={spec.positionId}
           name={nameOf(spec.positionId)}
           prefill={spec.prefill}
-          onDone={() => notify("Resgate registrado.")}
+          onDone={() => notifyDone("Resgate registrado.")}
         />
       ) : null}
       {spec?.kind === "netonly" ? (
@@ -565,7 +598,7 @@ export function Page() {
           onClose={close}
           positionId={spec.positionId}
           name={nameOf(spec.positionId)}
-          onDone={() => notify("Resgate registrado com deduções a discriminar.")}
+          onDone={() => notifyDone("Resgate registrado com deduções a discriminar.")}
         />
       ) : null}
       {spec?.kind === "complete" ? (
@@ -574,7 +607,7 @@ export function Page() {
           open={dialog.open}
           onClose={close}
           eventId={spec.eventId}
-          onDone={() => notify("Resgate completado.")}
+          onDone={() => notifyDone("Resgate completado.")}
         />
       ) : null}
       {spec?.kind === "tax" ? (
@@ -582,7 +615,7 @@ export function Page() {
           key={dialog.key}
           open={dialog.open}
           onClose={close}
-          onDone={() => notify("Pagamento de imposto registrado.")}
+          onDone={() => notifyDone("Pagamento de imposto registrado.")}
         />
       ) : null}
       {spec?.kind === "trade" ? (
@@ -593,7 +626,7 @@ export function Page() {
           kind={spec.trade}
           positionId={spec.positionId}
           name={nameOf(spec.positionId)}
-          onDone={() => notify("Negociação registrada.")}
+          onDone={() => notifyDone("Negociação registrada.")}
         />
       ) : null}
       {spec?.kind === "simulate" ? (
@@ -612,7 +645,7 @@ export function Page() {
           open={dialog.open}
           onClose={close}
           positionId={spec.positionId}
-          onDone={() => notify("Características salvas.")}
+          onDone={() => notifyDone("Características salvas.")}
         />
       ) : null}
       {spec?.kind === "rule" ? (
@@ -620,7 +653,7 @@ export function Page() {
           key={dialog.key}
           open={dialog.open}
           onClose={close}
-          onDone={() => notify("Regra salva.")}
+          onDone={() => notifyDone("Regra salva.")}
         />
       ) : null}
       {spec?.kind === "benchmark" ? (
@@ -628,7 +661,7 @@ export function Page() {
           key={dialog.key}
           open={dialog.open}
           onClose={close}
-          onDone={(_, name) => notify(`Índice ${name} importado.`)}
+          onDone={(_, name) => notifyDone(`Índice ${name} importado.`)}
         />
       ) : null}
     </div>

@@ -72,7 +72,7 @@ export async function dropOnApp(page: Page, files: TestFile[]): Promise<void> {
 
 /** The toast that says a document was read. */
 export const readNotice = (page: Page, name: string) =>
-  page.getByText(new RegExp(`^${name.replace(".", "\\.")}: (\\d+ item\\(ns\\) para revisar|.+)`)).first();
+  page.getByText(new RegExp(`^${name.replace(".", "\\.")}: (\\d+ ite(m|ns) para revisar|.+)`)).first();
 
 /** The workers the page starts, by address (the parser worker must start under the production CSP). */
 export function watchWorkers(page: Page): string[] {

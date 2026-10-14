@@ -21,6 +21,7 @@ import { AnimatePresence, motion } from "motion/react";
 import type { ReactNode } from "react";
 import type { Item } from "./chat.ts";
 import type { Problem } from "./reach.ts";
+import { plural } from "../../data/text.ts";
 
 export interface TranscriptProps {
   items: readonly Item[];
@@ -122,7 +123,7 @@ function Activity({ item }: { item: Extract<Item, { kind: "activity" }> }) {
           <Search aria-hidden="true" className="size-3.5 shrink-0" />
           <span>
             Consultou <span className="font-medium text-text">{call.label}</span>
-            {call.found !== null ? ` · ${call.found} encontrado(s)` : ""}
+            {call.found !== null ? ` · ${plural(call.found, "encontrado", "encontrados")}` : ""}
           </span>
           {call.args.length ? (
             <span className="flex min-w-0 flex-wrap gap-1">

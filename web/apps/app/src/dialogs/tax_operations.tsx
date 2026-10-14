@@ -11,6 +11,7 @@ import { Caption, FormDialog, useFormAct } from "./livro_form.tsx";
 import { IncomeDetailDialog } from "./income_detail.tsx";
 import { READ_ONLY_TIP } from "../data/read_only.ts";
 import { dateOr, moneyOr } from "../data/money.ts";
+import { plural } from "../data/text.ts";
 
 export type OperationsMode = "detail" | "receipts";
 
@@ -42,7 +43,7 @@ function operationLines(ledger: Ledger, ids: readonly Id[], mode: OperationsMode
         : "não detalhado";
     } else {
       const found = dom.attachments.ofOperation(ledger, id);
-      status = found.length ? `${found.length} anexo(s)` : "falta";
+      status = found.length ? plural(found.length, "anexo", "anexos") : "falta";
     }
     const day = cashDate(op);
     out.push({ id, date: dateOr(day), description: op.description, value: formatBrl(value), status });

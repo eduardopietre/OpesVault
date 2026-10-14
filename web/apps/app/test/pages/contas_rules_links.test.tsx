@@ -79,14 +79,16 @@ describe("Regras", () => {
     expect(within(box).getByRole("status").textContent).toBe("Digite ao menos 3 caracteres.");
     await fill(user, box, "A descrição contém", pattern);
     const hits = pending.filter((i) => rules.normalize(i.description).includes(rules.normalize(pattern)));
-    expect(within(box).getByRole("status").textContent).toContain(`Pega ${hits.length} item(ns) pendente(s) agora.`);
+    expect(within(box).getByRole("status").textContent).toContain(
+      `Pega ${hits.length} ${hits.length === 1 ? "item pendente" : "itens pendentes"} agora.`,
+    );
     await choose(user, "Categoria", "Despesa: Lazer", box);
     await submit(user, box, "Criar regra");
     await closed("Regra de categoria");
     const created = rulesOf(ledger).find((r) => r.pattern === rules.normalize(pattern))!;
     expect(created.target_account_id).toBe(category(ledger, "Lazer"));
     expect(created.account_id).toBeNull();
-    expect(await screen.findByText(/^Regra criada\. \d+ item\(ns\) pendente\(s\) recategorizado\(s\)\.$/)).toBeTruthy();
+    expect(await screen.findByText(/^Regra criada\. \d+ ite(m|ns) pendentes? recategorizados?\.$/)).toBeTruthy();
     // the rule is in the list and has been used by the items it caught (a person's own choice stays)
     expect(flat((await table("Regras de categoria")).textContent)).toContain(rules.normalize(pattern));
     const used = [...importing.importStore.items(ledger).values()].filter(
@@ -111,7 +113,7 @@ describe("Regras", () => {
     await user.click(within(box).getByRole("checkbox", { name: "Aplicar agora aos itens pendentes de revisão" }));
     await submit(user, box, "Criar regra");
     await closed("Regra de categoria");
-    expect(await screen.findByText(/Regra criada\. 0 item\(ns\) pendente\(s\) recategorizado\(s\)\./)).toBeTruthy();
+    expect(await screen.findByText(/Regra criada\. 0 ite(m|ns) pendentes? recategorizados?\./)).toBeTruthy();
     expect(JSON.stringify([...importing.importStore.items(ledger).values()].map((i) => i.target_account_id))).toBe(
       targets,
     );
@@ -169,7 +171,7 @@ describe("Regras", () => {
     await submit(user, box, "Desativar");
     await closed("Desativar regra");
     expect(rules.rules(ledger).get(rule.id)!.active).toBe(false);
-    expect(await screen.findByText(/^Regra desativada\. \d+ item\(ns\) pendente\(s\) revisto\(s\)\.$/)).toBeTruthy();
+    expect(await screen.findByText(/^Regra desativada\. \d+ ite(m|ns) pendentes? revistos?\.$/)).toBeTruthy();
     expect(flat(rowOf(await table("Regras de categoria"), rule.pattern).textContent)).toContain("Desativada");
     await user.click(screen.getByRole("button", { name: "Ativar ou desativar…" }));
     box = await dialog("Ativar regra");

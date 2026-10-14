@@ -4,6 +4,7 @@
  */
 import { cashDate, dom, importing, type Id, type IsoDate, type Ledger, type session } from "@opesvault/domain";
 import { formatBytes } from "@opesvault/ui";
+import { plural } from "../../data/text.ts";
 
 type Document = session.Document;
 
@@ -93,13 +94,13 @@ export function documentRows(ledger: Ledger, documents: readonly Document[]): Do
 /** The line under the title: how many files and how much room they take. */
 export function summaryLine(rows: readonly DocumentRow[]): string {
   if (!rows.length) return "";
-  return `${rows.length} arquivo(s) · ${formatBytes(rows.reduce((total, row) => total + row.size, 0))}`;
+  return `${plural(rows.length, "arquivo", "arquivos")} · ${formatBytes(rows.reduce((total, row) => total + row.size, 0))}`;
 }
 
 /** What uses a file, in words, for the tooltip of a disabled "Remover". */
 export function usedBy(row: DocumentRow): string {
   const parts: string[] = [];
   if (row.batchId) parts.push("uma importação");
-  if (row.receipts.length) parts.push(`${row.receipts.length} lançamento(s) como comprovante`);
+  if (row.receipts.length) parts.push(`${plural(row.receipts.length, "lançamento", "lançamentos")} como comprovante`);
   return parts.join(" e ");
 }

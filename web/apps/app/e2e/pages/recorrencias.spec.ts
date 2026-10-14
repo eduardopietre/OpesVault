@@ -37,7 +37,7 @@ for (const size of TEST_SIZES) {
         await expect(forecasts.getByText("Atrasada").first()).toBeVisible();
         await expect(forecasts.getByText("Prevista").first()).toBeVisible();
         await expect(tableOf(page, "Assinaturas e contas fixas")).toBeVisible();
-        await expect(page.getByText(/2 regra\(s\) ativa\(s\)/)).toBeVisible();
+        await expect(page.getByText(/2 regras? ativas?/)).toBeVisible();
         await settle(page);
         await expectNoHorizontalOverflow(page);
         await audit(page, "recorrências");
@@ -199,7 +199,7 @@ test.describe("recorrências: linking and the charges that repeat, on the web de
     await ask.getByRole("button", { name: "Cancelar" }).click();
     await menu(page, "Mais", "Vincular sugestões únicas");
     await page.getByRole("alertdialog").getByRole("button", { name: "Vincular", exact: true }).click();
-    await expect(page.getByText("1 previsão(ões) vinculada(s).").first()).toBeVisible();
+    await expect(page.getByText("1 previsão vinculada.").first()).toBeVisible();
     await expect(due.getByText("Realizada")).toBeVisible();
     await page
       .getByRole("button", { name: /^Desfazer/ })

@@ -5,7 +5,7 @@
 import { AccountType, type Id } from "@opesvault/domain";
 import { Button, notify, type MenuEntry } from "@opesvault/ui";
 import { useState } from "react";
-import { useLedger, useWorkspace } from "../../data/react.tsx";
+import { useLedger, useNotifyDone, useWorkspace } from "../../data/react.tsx";
 import { CardDialog } from "../../dialogs/accounts_card.tsx";
 import { CategoryDialog } from "../../dialogs/accounts_category.tsx";
 import { MemberDialog } from "../../dialogs/accounts_member.tsx";
@@ -56,6 +56,7 @@ const CARD_COLUMNS: TierColumn<CardRow>[] = [
 
 export function CardsTab({ reveal }: { reveal?: TabReveal<Id> | null }) {
   const ledger = useWorkspace().ledger;
+  const notifyDone = useNotifyDone();
   const go = useGoTo();
   const { locked } = useLock();
   const rows = useLedger(cardRows);
@@ -128,7 +129,7 @@ export function CardsTab({ reveal }: { reveal?: TabReveal<Id> | null }) {
           {...(dialog.spec.id ? { card: ledger.cards.get(dialog.spec.id)! } : {})}
           onDone={(card, created) => {
             setPick(card.id);
-            notify(created ? "Cartão cadastrado." : "Cartão salvo.");
+            notifyDone(created ? "Cartão cadastrado." : "Cartão salvo.");
           }}
         />
       ) : null}
@@ -163,6 +164,7 @@ const CATEGORY_COLUMNS: TierColumn<CategoryRow>[] = [
 
 export function CategoriesTab() {
   const ledger = useWorkspace().ledger;
+  const notifyDone = useNotifyDone();
   const { locked } = useLock();
   const rows = useLedger(categoryRows);
   const [pick, setPick] = useState<Id | null>(null);
@@ -216,7 +218,7 @@ export function CategoriesTab() {
           onClose={dialog.close}
           onDone={(category) => {
             setPick(category.id);
-            notify("Categoria criada.");
+            notifyDone("Categoria criada.");
           }}
         />
       ) : null}
@@ -226,7 +228,9 @@ export function CategoriesTab() {
           open={dialog.open}
           onClose={dialog.close}
           categoryId={dialog.spec.id}
-          onDone={(kind) => notify(kind ? "Categoria marcada como dedutível." : "A categoria deixou de ser dedutível.")}
+          onDone={(kind) =>
+            notifyDone(kind ? "Categoria marcada como dedutível." : "A categoria deixou de ser dedutível.")
+          }
         />
       ) : null}
     </div>
@@ -243,6 +247,7 @@ const MEMBER_COLUMNS: TierColumn<MemberRow>[] = [
 
 export function MembersTab() {
   const ledger = useWorkspace().ledger;
+  const notifyDone = useNotifyDone();
   const { locked } = useLock();
   const rows = useLedger(memberRows);
   const [pick, setPick] = useState<Id | null>(null);
@@ -292,7 +297,7 @@ export function MembersTab() {
           {...(dialog.spec.id ? { member: ledger.members.get(dialog.spec.id)! } : {})}
           onDone={(member, created) => {
             setPick(member.id);
-            notify(created ? "Integrante adicionado." : "Integrante salvo.");
+            notifyDone(created ? "Integrante adicionado." : "Integrante salvo.");
           }}
         />
       ) : null}

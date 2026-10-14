@@ -24,20 +24,23 @@ import {
 import { Repeat } from "lucide-react";
 import { motion } from "motion/react";
 import { useRef, useState } from "react";
-import { useAct, useLedger, useWorkspace } from "../../data/react.tsx";
+import { useAct, useLedger, useNotifyDone, useWorkspace } from "../../data/react.tsx";
 import { useGoTo, useReveal } from "../../data/navigation.ts";
 import { RecurrenceLinkDialog } from "../../dialogs/recurrence_link.tsx";
 import { RecurrenceRuleDialog } from "../../dialogs/recurrence_rule.tsx";
-import { useUndo } from "../../shell/undo.tsx";
+
 import { FORECAST_LABELS, candidateKey, forecastId, forecastWindow, parseRecurrenceRef, summaryLine } from "./rows.ts";
 import { CANDIDATE_COLUMNS, COMMITMENT_COLUMNS, FORECAST_COLUMNS, RULE_COLUMNS } from "./tables.tsx";
-import { EditButton, usePick } from "../../components/list_parts.tsx";
+import { EditButton, forSelected, usePick } from "../../components/list_parts.tsx";
+import { plural } from "../../data/text.ts";
 import { lockEntries, useLock } from "../../data/read_only.ts";
 import { useDialog } from "../../data/dialog.ts";
 
 type Rule = dom.recurrence.RecurrenceRule;
 type Forecast = dom.recurrence.Forecast;
 type Candidate = dom.subscriptions.Candidate;
+
+const PICK_FORECAST = "Selecione uma previsão na lista.";
 
 interface RuleDialogState {
   rule: Rule | null;
@@ -53,7 +56,7 @@ export function Page() {
   const workspace = useWorkspace();
   const act = useAct();
   const goTo = useGoTo();
-  const { undo } = useUndo();
+  const notifyDone = useNotifyDone();
   const preset = useMotionPreset();
   const phone = usePhone();
   const { locked } = useLock();
@@ -100,17 +103,8 @@ export function Page() {
     openRuleDialog(rule);
   };
 
-  /** Pausing stops a rule's forecasts, so it asks first; resuming does not. */
-  const toggleRule = async (rule: Rule) => {
-    if (!rule.paused) {
-      const ok = await confirm({
-        title: `Pausar “${rule.description}”?`,
-        text: "As próximas previsões dela deixam de aparecer até você retomar. Dá para desfazer logo em seguida.",
-        confirmLabel: "Pausar",
-        danger: true,
-      });
-      if (!ok) return;
-    }
+  /** Pausing stops a rule's forecasts until it is resumed; it does not ask, the notice offers Desfazer. */
+  const toggleRule = (rule: Rule) => {
     act((ledger) => dom.recurrence.updateRule(ledger, { ...rule, paused: !rule.paused }, "pausar/retomar"), {
       done: rule.paused ? `Recorrência “${rule.description}” retomada.` : `Recorrência “${rule.description}” pausada.`,
       label: rule.paused ? "retomar recorrência" : "pausar recorrência",
@@ -119,7 +113,7 @@ export function Page() {
 
   const toggle = () => {
     const rule = rulePick.need("Selecione uma regra.");
-    if (rule) void toggleRule(rule);
+    if (rule) toggleRule(rule);
   };
 
   /** A rule's context menu (Regras and Assinaturas e contas fixas): edit it, pause or resume it. */
@@ -128,10 +122,10 @@ export function Page() {
       [
         { id: "edit", label: "Editar…", onSelect: () => openRuleDialog(rule) },
         ...(rule.paused
-          ? [{ id: "toggle", label: "Retomar", onSelect: () => void toggleRule(rule) }]
+          ? [{ id: "toggle", label: "Retomar", onSelect: () => toggleRule(rule) }]
           : [
               { kind: "separator" as const, id: "s1" },
-              { id: "toggle", label: "Pausar…", danger: true, onSelect: () => void toggleRule(rule) },
+              { id: "toggle", label: "Pausar", danger: true, onSelect: () => toggleRule(rule) },
             ]),
       ],
       locked,
@@ -169,7 +163,7 @@ export function Page() {
   };
 
   const linkSelected = () => {
-    const forecast = forecastPick.need("Selecione uma previsão.");
+    const forecast = forecastPick.need(PICK_FORECAST);
     if (forecast) startLink(forecast);
   };
 
@@ -182,11 +176,11 @@ export function Page() {
       label: "pular previsão",
     });
     if (skipped === undefined) return;
-    notify(`Previsão de ${formatDateBr(forecast.dueOn)} pulada.`, { action: { label: "Desfazer", run: undo } });
+    notifyDone(`Previsão de ${formatDateBr(forecast.dueOn)} pulada.`);
   };
 
   const skipSelected = () => {
-    const forecast = forecastPick.need("Selecione uma previsão.");
+    const forecast = forecastPick.need(PICK_FORECAST);
     if (forecast) skip(forecast);
   };
 
@@ -209,7 +203,7 @@ export function Page() {
       return;
     }
     const ok = await confirm({
-      title: `Vincular ${pairs.length} previsão(ões) aos lançamentos?`,
+      title: `Vincular ${plural(pairs.length, "previsão", "previsões")} aos lançamentos?`,
       text: (
         <ul className="flex flex-col gap-1">
           {pairs.map(([forecast, op]) => (
@@ -238,9 +232,8 @@ export function Page() {
       return count;
     });
     if (linked === undefined) return;
-    notify(
-      `${linked} previsão(ões) vinculada(s)${refused ? `; ${refused} recusada(s) pelo livro` : ""}.`,
-      linked ? { action: { label: "Desfazer", run: undo } } : {},
+    notifyDone(
+      `${plural(linked, "previsão vinculada", "previsões vinculadas")}${refused ? `; ${plural(refused, "recusada", "recusadas")} pelo livro` : ""}.`,
     );
   };
 
@@ -291,7 +284,7 @@ export function Page() {
         }}
       >
         <p className="mb-2 text-body font-semibold">
-          {commitments.length} compromisso(s) · {formatBrl(total)} por ano
+          {plural(commitments.length, "compromisso", "compromissos")} · {formatBrl(total)} por ano
         </p>
         <DataTable
           label="Assinaturas e contas fixas"
@@ -406,7 +399,12 @@ export function Page() {
                           onSelect: () => void linkSuggestions(),
                           disabled: locked,
                         },
-                        { id: "skip", label: "Pular previsão", onSelect: skipSelected, disabled: locked },
+                        {
+                          id: "skip",
+                          label: "Pular previsão",
+                          onSelect: skipSelected,
+                          ...forSelected(selectedForecast, PICK_FORECAST, locked),
+                        },
                         { kind: "separator", id: "sep" },
                         {
                           id: "projection",
@@ -466,7 +464,7 @@ export function Page() {
           suggestion={ruleDialog.suggestion}
           onDone={(rule, created) => {
             setPickRule(rule.id);
-            notify(
+            notifyDone(
               created
                 ? ruleDialog.suggestion
                   ? "Recorrência criada a partir das cobranças repetidas."
@@ -483,7 +481,7 @@ export function Page() {
           onClose={linkSlot.close}
           forecast={linkDialog.forecast}
           candidates={linkDialog.candidates}
-          onDone={() => notify("Previsão vinculada ao lançamento.")}
+          onDone={() => notifyDone("Previsão vinculada ao lançamento.")}
         />
       ) : null}
     </div>

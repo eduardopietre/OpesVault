@@ -7,7 +7,7 @@ import { charts, dom, ymAdd, ymOf, type Id } from "@opesvault/domain";
 import { Button, ChartPanel, Collapsible, notify, type MenuEntry } from "@opesvault/ui";
 import { useState } from "react";
 import { useGoTo } from "../../data/navigation.ts";
-import { useLedger, useWorkspace } from "../../data/react.tsx";
+import { useLedger, useNotifyDone, useWorkspace } from "../../data/react.tsx";
 import { AccountDialog } from "../../dialogs/accounts_account.tsx";
 import { BalanceCheckDialog } from "../../dialogs/balance_check.tsx";
 import { toChartData } from "../../data/chart_data.ts";
@@ -98,6 +98,7 @@ export function AccountsTab({ reveal }: { reveal?: TabReveal<AccountReveal> | nu
   const workspace = useWorkspace();
   const go = useGoTo();
   const { locked } = useLock();
+  const notifyDone = useNotifyDone();
   const today = workspace.today();
   const rows = useLedger(accountRows);
   const [pick, setPick] = useState<Id | null>(null);
@@ -239,7 +240,7 @@ export function AccountsTab({ reveal }: { reveal?: TabReveal<AccountReveal> | nu
           {...(dialog.spec.id ? { account: workspace.ledger.account(dialog.spec.id) } : {})}
           onDone={(account, created) => {
             setPick(account.id);
-            notify(created ? "Conta cadastrada." : "Conta salva.");
+            notifyDone(created ? "Conta cadastrada." : "Conta salva.");
           }}
         />
       ) : null}
@@ -253,9 +254,9 @@ export function AccountsTab({ reveal }: { reveal?: TabReveal<AccountReveal> | nu
             const found = dom.balanceChecks
               .results(workspace.ledger, check.account_id)
               .find((r) => r.check.id === check.id);
-            if (found?.matches) notify("Saldo conferido: confere com o banco.");
+            if (found?.matches) notifyDone("Saldo conferido: confere com o banco.");
             else if (found) {
-              notify(`Saldo conferido: diferença de ${moneyOr(found.difference)}. Procure o lançamento.`, {
+              notifyDone(`Saldo conferido: diferença de ${moneyOr(found.difference)}. Procure o lançamento.`, {
                 tone: "warning",
               });
             }

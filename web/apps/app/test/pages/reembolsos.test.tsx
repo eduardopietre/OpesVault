@@ -49,7 +49,7 @@ describe("Reembolsos e acertos", () => {
     // figures and the line under the title
     expect(screen.getByText("A receber de reembolsos")).toBeTruthy();
     expect(screen.getByText("Acertos pendentes no projeto")).toBeTruthy();
-    expect(screen.getByText(/1 reembolso\(s\) a receber · 1 acerto\(s\) pendente\(s\)/)).toBeTruthy();
+    expect(screen.getByText(/1 reembolsos? a receber · 1 acertos? pendentes?/)).toBeTruthy();
     expect(screen.queryByRole("grid", { name: "Acertos registrados" })).toBeNull();
   });
 
@@ -137,7 +137,7 @@ describe("Reembolsos e acertos", () => {
     expect(flat((await table("Reembolsos")).textContent)).toContain("Negado");
     // nothing is waiting any more
     expect(sharingView(ledger).waiting.isZero()).toBe(true);
-    expect(screen.queryByText(/1 reembolso\(s\) a receber/)).toBeNull();
+    expect(screen.queryByText(/1 reembolsos? a receber/)).toBeNull();
     // a denied reimbursement takes no receipt
     await user.click(screen.getByRole("button", { name: "Registrar recebimento…" }));
     const receive = await screen.findByRole("dialog", { name: "Reembolso recebido" });
@@ -345,7 +345,7 @@ describe("Reembolsos e acertos", () => {
   it("builds the line under the title from what is open", async () => {
     const { ledger } = await open();
     const view = sharingView(ledger);
-    expect(summaryLine(view)).toBe("1 reembolso(s) a receber · 1 acerto(s) pendente(s)");
+    expect(summaryLine(view)).toBe("1 reembolso a receber · 1 acerto pendente");
     expect(summaryLine({ ...view, openCount: 0, balances: [] })).toBe("");
   });
 });

@@ -48,7 +48,7 @@ describe("Importar e revisar: o projeto", () => {
     // and the original document beside it
     expect(screen.getByRole("region", { name: "Documento original" })).toBeTruthy();
     expect(await screen.findByText(/Página 1 de 1/)).toBeTruthy();
-    expect(screen.getByText(/documento\(s\) · \d+ item\(ns\) aguardando revisão/)).toBeTruthy();
+    expect(screen.getByText(/documentos? · \d+ ite(m|ns) aguardando revisão/)).toBeTruthy();
   });
 });
 
@@ -72,7 +72,7 @@ describe("Importar e revisar: ler arquivos", () => {
     expect(importing.pipeline.itemsOf(o.ledger, batch.id)).toHaveLength(3);
     // the review follows the import
     expect(await screen.findByRole("heading", { level: 2, name: "fatura.csv" })).toBeTruthy();
-    expect(await screen.findByText("fatura.csv: 3 item(ns) para revisar.")).toBeTruthy();
+    expect(await screen.findByText("fatura.csv: 3 itens para revisar.")).toBeTruthy();
     // the strip of files in reading is gone once it is done
     expect(screen.queryByLabelText("Arquivos em leitura")).toBeNull();
     // a CSV has no page: the line of the file is the evidence
@@ -174,7 +174,7 @@ describe("Importar e revisar: sair da página", () => {
     release();
     // the document arrives in the project, and the notice follows the person to the page they are on
     await waitFor(() => expect(batches(o)).toHaveLength(2), { timeout: 20_000 });
-    expect(await screen.findByText("extrato.ofx: 2 item(ns) para revisar.")).toBeTruthy();
+    expect(await screen.findByText("extrato.ofx: 2 itens para revisar.")).toBeTruthy();
     // coming back, the document is there to review
     await o.router.navigate({ to: "/importar" });
     expect(await screen.findByRole("heading", { level: 2, name: "extrato.ofx" })).toBeTruthy();

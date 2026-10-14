@@ -593,7 +593,7 @@ describe("Livro: comprovantes", () => {
     expect(o.workspace.session.documents.length).toBe(documents - 1);
   });
 
-  it("unlinks a receipt from the Livro in one act, and undo puts the file back", async () => {
+  it("unlinks a receipt from the Livro in one act without asking, and Desfazer puts the file back", async () => {
     const o = await openLivro();
     const id = await selectOperation(o.user, "Aluguel");
     await openActions(o.user, "Desvincular comprovante…");
@@ -603,18 +603,12 @@ describe("Livro: comprovantes", () => {
     const documents = o.workspace.session.documents.length;
 
     await openActions(o.user, "Desvincular comprovante…");
-    const confirmation = await screen.findByRole("alertdialog", { name: "Desvincular o comprovante?" });
-    // refusing changes nothing
-    await o.user.click(within(confirmation).getByRole("button", { name: "Cancelar" }));
-    expect(dom.attachments.ofOperation(o.workspace.ledger, id).length).toBe(1);
-
-    await openActions(o.user, "Desvincular comprovante…");
-    const again = await screen.findByRole("alertdialog", { name: "Desvincular o comprovante?" });
-    await o.user.click(within(again).getByRole("button", { name: "Desvincular" }));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
     await waitFor(() => expect(dom.attachments.ofOperation(o.workspace.ledger, id).length).toBe(0));
     // a file nothing else uses leaves the project with its last receipt
     expect(o.workspace.session.documents.length).toBe(documents - 1);
-    o.workspace.undo();
+    expect(await screen.findByText(/deixou de ser comprovante de “Aluguel”/)).toBeTruthy();
+    await o.user.click(await screen.findByRole("button", { name: "Desfazer" }));
     expect(dom.attachments.ofOperation(o.workspace.ledger, id).length).toBe(1);
     expect(o.workspace.session.documents.length).toBe(documents);
   });

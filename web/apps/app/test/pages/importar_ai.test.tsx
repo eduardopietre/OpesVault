@@ -34,9 +34,7 @@ describe("Importar e revisar: IA local", () => {
     expect(item(o, "Uber *Trip").suggestion_source).toBe("rule");
     // nothing was approved, and the notice says to review
     expect(itemsOf(o, lastBatch(o).id).every((i) => i.status === ItemStatus.READY)).toBe(true);
-    expect(
-      await screen.findByText(/IA local: 1 categoria\(s\) sugerida\(s\)\. Revise antes de aprovar\./),
-    ).toBeTruthy();
+    expect(await screen.findByText(/IA local: 1 categorias? sugeridas?\. Revise antes de aprovar\./)).toBeTruthy();
     await pickItem(o, "Loja Z");
     expect(await screen.findAllByText(/sugestão \(IA local, gemma4:12b\)/)).not.toHaveLength(0);
     // only descriptions went to the model, never an amount or a date
@@ -62,7 +60,7 @@ describe("Importar e revisar: IA local", () => {
     });
     await importFiles(o, [file(NUBANK_CARD_CSV, "fatura.csv")]);
     const progress = await screen.findByRole("progressbar", { name: "Progresso da IA local" });
-    expect(within(progress.parentElement!).getByText(/IA local \(gemma4:12b\): 0 de 1 descrição\(ões\)/)).toBeTruthy();
+    expect(within(progress.parentElement!).getByText(/IA local \(gemma4:12b\): 0 de 1 descriç(ão|ões)/)).toBeTruthy();
     // the person picks the category before the model answers
     await o.user.click(screen.getByRole("combobox", { name: "Categoria ou conta de Loja Z" }));
     await o.user.click(await screen.findByRole("option", { name: "Moradia" }));
@@ -70,7 +68,7 @@ describe("Importar e revisar: IA local", () => {
     expect(await screen.findByText("Cancelando ao fim do lote atual…")).toBeTruthy();
     release();
     // the one batch was already asked, so nothing was left to interrupt; the person's choice stands
-    expect(await screen.findByText(/IA local: 0 categoria\(s\) sugerida\(s\)\./)).toBeTruthy();
+    expect(await screen.findByText(/IA local: 0 categorias? sugeridas?\./)).toBeTruthy();
     await waitFor(() => expect(screen.queryByRole("progressbar", { name: "Progresso da IA local" })).toBeNull());
     expect(o.ledger.accounts.get(item(o, "Loja Z").target_account_id!)?.name).toBe("Moradia");
     expect(item(o, "Loja Z").suggestion_source).toBeNull();
@@ -98,9 +96,7 @@ describe("Importar e revisar: IA local", () => {
     back = true;
     await o.user.click(screen.getByRole("button", { name: /^Sugerir com IA \(1\)/ }));
     await waitFor(() => expect(item(o, "Loja Z").target_account_id).not.toBeNull(), { timeout: 20_000 });
-    expect(
-      await screen.findByText(/IA local: 1 categoria\(s\) sugerida\(s\)\. Revise antes de aprovar\./),
-    ).toBeTruthy();
+    expect(await screen.findByText(/IA local: 1 categorias? sugeridas?\. Revise antes de aprovar\./)).toBeTruthy();
     // nothing left to ask about: the button says so
     await waitFor(() => {
       const done = screen.getByRole("button", { name: "Sugerir com IA" }) as HTMLButtonElement;

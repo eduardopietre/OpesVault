@@ -39,7 +39,7 @@ for (const size of TEST_SIZES) {
         await expect(log(page).getByText("Há lançamentos de aluguel em vários meses, todos em Moradia.")).toBeVisible();
         const tools = log(page).getByRole("list", { name: "Ferramentas consultadas" });
         await expect(tools.getByText("Busca de lançamentos")).toBeVisible();
-        await expect(tools.getByText(/encontrado\(s\)/)).toBeVisible();
+        await expect(tools.getByText(/encontrados?\b/)).toBeVisible();
         await idle(page);
         await expect(page.getByRole("group", { name: "Perguntas de exemplo" })).toHaveCount(0);
         await expectNoHorizontalOverflow(page);

@@ -93,7 +93,9 @@ export function annualReportData(ledger: Ledger, year: number): AnnualReportData
     income,
     investments,
     incomplete: summary.incompleteEvents
-      ? `${summary.incompleteEvents} resgate(s) sem valor bruto ou custo ficaram fora dos ganhos.`
+      ? summary.incompleteEvents === 1
+        ? "1 resgate sem valor bruto ou custo ficou fora dos ganhos."
+        : `${summary.incompleteEvents} resgates sem valor bruto ou custo ficaram fora dos ganhos.`
       : null,
     deductibleNotice: dom.deductibles.NOTICE,
     deductibles,

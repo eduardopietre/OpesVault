@@ -13,7 +13,6 @@ import {
   MenuButton,
   PageHeader,
   type MenuEntry,
-  notify,
   useElementWidth,
   useMotionPreset,
   fitHeight,
@@ -23,18 +22,21 @@ import { Goal as GoalIcon } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useMemo, useRef } from "react";
 import { toChartData } from "../../data/chart_data.ts";
-import { useLedger, useWorkspace } from "../../data/react.tsx";
+import { useLedger, useNotifyDone, useWorkspace } from "../../data/react.tsx";
 import { useReveal } from "../../data/navigation.ts";
 import { GoalDialog } from "../../dialogs/goal_dialog.tsx";
 import { ReasonDialog } from "../../dialogs/livro_prompts.tsx";
 import { goalColumns } from "./columns.tsx";
 import { goalExample, goalRows, reachedLabel, summaryLine, type GoalExample } from "./rows.ts";
-import { EditButton, usePick } from "../../components/list_parts.tsx";
+import { EditButton, forSelected, usePick } from "../../components/list_parts.tsx";
 import { lockEntries, useLock } from "../../data/read_only.ts";
 import { useDialog } from "../../data/dialog.ts";
 import { moneyOr, dateOr } from "../../data/money.ts";
+import { plural } from "../../data/text.ts";
 
 type Goal = dom.goals.Goal;
+
+const PICK_GOAL = "Selecione uma meta na lista.";
 
 interface EditState {
   goal: Goal | null;
@@ -49,6 +51,7 @@ export function Page() {
   const [measure, tableWidth] = useElementWidth<HTMLElement>();
   const columns = useMemo(() => goalColumns(tableWidth), [tableWidth]);
   const { locked } = useLock();
+  const notifyDone = useNotifyDone();
   const today = workspace.today();
 
   const rows = useLedger((ledger) => goalRows(ledger, today), today);
@@ -72,12 +75,12 @@ export function Page() {
   };
 
   const editSelected = () => {
-    const row = need("Selecione uma meta.");
+    const row = need(PICK_GOAL);
     if (row) openEdit(row.goal);
   };
 
   const archiveSelected = () => {
-    const row = need("Selecione uma meta.");
+    const row = need(PICK_GOAL);
     if (row) archiveDialog.show(row.goal);
   };
 
@@ -115,7 +118,7 @@ export function Page() {
         {
           label: "Falta por mês",
           value: moneyOr(p.neededPerMonth),
-          note: p.monthsLeft === null ? "Sem prazo" : `${p.monthsLeft} mês(es) até o prazo`,
+          note: p.monthsLeft === null ? "Sem prazo" : `${plural(p.monthsLeft, "mês", "meses")} até o prazo`,
         },
         { label: "Ritmo recente", value: moneyOr(p.pace), note: "Média por mês nos últimos meses com registros" },
         { label: "Alcança em", value: reachedLabel(p.reachedOnPace), note: "Se o ritmo recente continuar" },
@@ -133,8 +136,18 @@ export function Page() {
           <MenuButton
             label="Mais"
             items={[
-              { id: "edit", label: "Editar meta…", onSelect: editSelected, disabled: locked },
-              { id: "archive", label: "Arquivar ou reativar…", onSelect: archiveSelected, disabled: locked },
+              {
+                id: "edit",
+                label: "Editar meta…",
+                onSelect: editSelected,
+                ...forSelected(selected, PICK_GOAL, locked),
+              },
+              {
+                id: "archive",
+                label: "Arquivar ou reativar…",
+                onSelect: archiveSelected,
+                ...forSelected(selected, PICK_GOAL, locked),
+              },
             ]}
           />
         }
@@ -230,7 +243,7 @@ export function Page() {
           example={edit.spec.example ?? null}
           onDone={(goal, created) => {
             setPick(goal.id);
-            notify(created ? "Meta criada." : "Meta atualizada.");
+            notifyDone(created ? "Meta criada." : "Meta atualizada.");
           }}
         />
       ) : null}
@@ -252,7 +265,7 @@ export function Page() {
               (ledger) => dom.goals.updateGoal(ledger, { ...goal, archived: !goal.archived }, reason),
               goal.archived ? "reativar meta" : "arquivar meta",
             );
-            notify(goal.archived ? "Meta reativada." : "Meta arquivada.");
+            notifyDone(goal.archived ? "Meta reativada." : "Meta arquivada.");
           }}
         />
       ) : null}

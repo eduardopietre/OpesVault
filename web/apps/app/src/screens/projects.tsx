@@ -32,6 +32,7 @@ import { markScreenShown } from "../shell/entry_focus.ts";
 import { AuthLayout } from "./AuthLayout.tsx";
 import { MIN_PASSWORD, messageOf } from "./auth.tsx";
 import { readDate, readMoney } from "../dialogs/form_readers.ts";
+import { plural } from "../data/text.ts";
 
 function updated(iso: string): string {
   const date = new Date(iso);
@@ -585,9 +586,9 @@ export function SetupScreen() {
       const plan = setupPlanOf(existing, allMembers, allAccounts, allCards);
       const result = workspace.act((ledger) => dom.onboarding.applySetup(ledger, plan), "configurar o projeto");
       const parts = [
-        result.members ? `${result.members} integrante(s)` : "",
-        result.accounts ? `${result.accounts} conta(s)` : "",
-        result.cards ? `${result.cards} cartão(ões)` : "",
+        result.members ? plural(result.members, "integrante", "integrantes") : "",
+        result.accounts ? plural(result.accounts, "conta", "contas") : "",
+        result.cards ? plural(result.cards, "cartão", "cartões") : "",
       ].filter(Boolean);
       leave(parts.length ? `Projeto pronto: ${parts.join(", ")}. Bom começo!` : "Projeto pronto. Bom começo!");
     } catch (failure) {

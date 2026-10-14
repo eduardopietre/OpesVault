@@ -6,7 +6,8 @@
 import { dom, formatBrl, type Id, type Operation, edits } from "@opesvault/domain";
 import { decide, notify } from "@opesvault/ui";
 import type { DialogSlot } from "../../data/dialog.ts";
-import { useWorkspace } from "../../data/react.tsx";
+import { useNotifyDone, useWorkspace } from "../../data/react.tsx";
+import { plural } from "../../data/text.ts";
 import { BalanceCheckDialog } from "../../dialogs/balance_check.tsx";
 import { DeductibleDialog } from "../../dialogs/deductible.tsx";
 import { IncomeDetailDialog } from "../../dialogs/income_detail.tsx";
@@ -53,6 +54,7 @@ export function LedgerDialogs({ host, onCreated }: LedgerDialogsProps) {
   const workspace = useWorkspace();
   const ledger = workspace.ledger;
   const act = useFormAct();
+  const notifyDone = useNotifyDone();
   const { spec, open, close } = host;
   if (spec === null) return null;
   const key = `${spec.kind}-${host.key}`;
@@ -67,7 +69,7 @@ export function LedgerDialogs({ host, onCreated }: LedgerDialogsProps) {
           onClose={close}
           kind={spec.op}
           onDone={(kind, id) => {
-            notify(`${OPERATION_KINDS[kind]}: lançamento registrado.`);
+            notifyDone(`${OPERATION_KINDS[kind]}: lançamento registrado.`);
             onCreated(id);
           }}
         />
@@ -81,7 +83,7 @@ export function LedgerDialogs({ host, onCreated }: LedgerDialogsProps) {
           open={open}
           onClose={close}
           operation={op}
-          onDone={() => notify("Lançamento corrigido. A versão anterior ficou no histórico.")}
+          onDone={() => notifyDone("Lançamento corrigido. A versão anterior ficou no histórico.")}
           onFullEditor={() => host.show({ kind: "postings", id: spec.id })}
         />
       );
@@ -95,7 +97,7 @@ export function LedgerDialogs({ host, onCreated }: LedgerDialogsProps) {
           open={open}
           onClose={close}
           operation={op}
-          onDone={() => notify("Lançamento corrigido. A versão anterior ficou no histórico.")}
+          onDone={() => notifyDone("Lançamento corrigido. A versão anterior ficou no histórico.")}
         />
       );
     }
@@ -107,7 +109,7 @@ export function LedgerDialogs({ host, onCreated }: LedgerDialogsProps) {
           onClose={close}
           operationIds={spec.ids}
           onDone={(result: edits.BulkResult) => {
-            const message = `${result.changed} reclassificado(s), ${result.skipped} mantido(s).`;
+            const message = `${plural(result.changed, "reclassificado", "reclassificados")}, ${plural(result.skipped, "mantido", "mantidos")}.`;
             if (result.errors.length) {
               void decide({
                 title: "Reclassificação",
@@ -115,7 +117,7 @@ export function LedgerDialogs({ host, onCreated }: LedgerDialogsProps) {
                 choices: [],
                 cancelLabel: "Entendi",
               });
-            } else notify(message);
+            } else notifyDone(message);
           }}
         />
       );
@@ -127,7 +129,7 @@ export function LedgerDialogs({ host, onCreated }: LedgerDialogsProps) {
           onClose={close}
           operationIds={spec.ids}
           onDone={(changed) => {
-            if (changed) notify(`Marcadores alterados em ${changed} lançamento(s).`);
+            if (changed) notifyDone(`Marcadores alterados em ${plural(changed, "lançamento", "lançamentos")}.`);
             else notify("Nenhum lançamento mudou: os marcadores já estavam assim.");
           }}
         />
@@ -139,7 +141,9 @@ export function LedgerDialogs({ host, onCreated }: LedgerDialogsProps) {
           open={open}
           onClose={close}
           tag={spec.tag}
-          onDone={(changed, name) => notify(`Marcador renomeado para “${name}” em ${changed} lançamento(s).`)}
+          onDone={(changed, name) =>
+            notifyDone(`Marcador renomeado para “${name}” em ${plural(changed, "lançamento", "lançamentos")}.`)
+          }
         />
       );
     case "income-detail":
@@ -149,7 +153,7 @@ export function LedgerDialogs({ host, onCreated }: LedgerDialogsProps) {
           open={open}
           onClose={close}
           operationId={spec.id}
-          onDone={() => notify("Rendimento detalhado: aparece em Imposto de renda.")}
+          onDone={() => notifyDone("Rendimento detalhado: aparece em Imposto de renda.")}
         />
       );
     case "merchant": {
@@ -168,7 +172,7 @@ export function LedgerDialogs({ host, onCreated }: LedgerDialogsProps) {
           emptyMessage="Informe o nome do estabelecimento."
           onSubmit={(name) => {
             act((l) => dom.merchants.nameMerchant(l, op.description, name), "nomear estabelecimento");
-            notify(`Estabelecimento “${name}” definido; a descrição original continua guardada.`);
+            notifyDone(`Estabelecimento “${name}” definido; a descrição original continua guardada.`);
           }}
         />
       );
@@ -182,7 +186,7 @@ export function LedgerDialogs({ host, onCreated }: LedgerDialogsProps) {
           open={open}
           onClose={close}
           operation={op}
-          onDone={() => notify("Reembolso registrado. Acompanhe em Reembolsos e acertos.")}
+          onDone={() => notifyDone("Reembolso registrado. Acompanhe em Reembolsos e acertos.")}
         />
       );
     }
@@ -199,7 +203,7 @@ export function LedgerDialogs({ host, onCreated }: LedgerDialogsProps) {
           description={`${op.description}: o estorno é um novo lançamento oposto; o original é mantido.`}
           onSubmit={(reason) => {
             act((l) => l.reverseOperation(op.id, workspace.today(), reason), "estornar lançamento");
-            notify("Estorno registrado como nova operação; o original foi mantido.");
+            notifyDone("Estorno registrado como nova operação; o original foi mantido.");
           }}
         />
       );
@@ -217,7 +221,7 @@ export function LedgerDialogs({ host, onCreated }: LedgerDialogsProps) {
           description={`${op.description}: continua visível em “Só cancelados”, fora dos saldos e relatórios.`}
           onSubmit={(reason) => {
             act((l) => l.cancelOperation(op.id, reason), "cancelar lançamento");
-            notify("Lançamento cancelado. Ele continua visível em “Só cancelados”.");
+            notifyDone("Lançamento cancelado. Ele continua visível em “Só cancelados”.");
           }}
         />
       );
@@ -256,10 +260,11 @@ export function LedgerDialogs({ host, onCreated }: LedgerDialogsProps) {
           choices={spec.choices}
           onDone={(check, name) => {
             const result = dom.balanceChecks.results(ledger, check.account_id).find((r) => r.check.id === check.id);
-            if (result === undefined) notify(`Saldo de ${name} conferido.`);
-            else if (result.matches) notify(`Saldo de ${name} confere com o do banco (${formatBrl(result.computed)}).`);
+            if (result === undefined) notifyDone(`Saldo de ${name} conferido.`);
+            else if (result.matches)
+              notifyDone(`Saldo de ${name} confere com o do banco (${formatBrl(result.computed)}).`);
             else
-              notify(
+              notifyDone(
                 `Saldo de ${name} difere: o banco mostra ${formatBrl(check.informed)} e o livro ${formatBrl(result.computed)}.`,
                 { tone: "warning" },
               );
@@ -274,7 +279,7 @@ export function LedgerDialogs({ host, onCreated }: LedgerDialogsProps) {
           onClose={close}
           categoryId={spec.categoryId}
           onDone={(kind) =>
-            notify(
+            notifyDone(
               kind === null
                 ? "Categoria deixou de ser dedutível."
                 : `Categoria marcada como dedutível (${dom.deductibles.KIND_LABELS[kind]}).`,
@@ -298,7 +303,7 @@ export function LedgerDialogs({ host, onCreated }: LedgerDialogsProps) {
               (l) => dom.savedFilters.saveFilter(l, snapshotFilter(spec.filter, name)),
               "salvar filtro",
             );
-            notify(`Filtro “${saved.name}” salvo no projeto.`);
+            notifyDone(`Filtro “${saved.name}” salvo no projeto.`);
           }}
         />
       );

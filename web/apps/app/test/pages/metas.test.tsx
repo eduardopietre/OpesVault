@@ -5,9 +5,10 @@ import { pinToday } from "../clock.ts";
 import { nameOf, reachedLabel, shareLabel, summaryLine } from "../../src/pages/metas/rows.ts";
 import { openPage } from "./recorrencias_harness.tsx";
 import { accountNamed } from "../lookup.ts";
-import { flat, fromRowMenu, rowById, rowMenu, undoOnce } from "../dom.ts";
+import { flat, fromRowMenu, menuReason, rowById, rowMenu, undoOnce } from "../dom.ts";
 import { addressSettles } from "../navigations.ts";
 import { DASH as NONE, dateOr as dateOrNone, moneyOr as moneyOrNone } from "../../src/data/money.ts";
+import { NOT_LAST } from "../../src/data/react.tsx";
 
 const open = (options = {}) => openPage("/metas", "Metas", options);
 const goals = (ledger: Parameters<typeof dom.goals.goals>[0]) => dom.goals.goals(ledger);
@@ -22,7 +23,7 @@ describe("Metas rows", () => {
     expect(nameOf({ name: "Viagem", archived: true } as never)).toBe("Viagem (arquivada)");
     expect(nameOf({ name: "Viagem", archived: false } as never)).toBe("Viagem");
     expect(summaryLine([])).toBe("");
-    expect(summaryLine([{ archived: false }, { archived: true }] as never)).toBe("1 meta(s) ativa(s)");
+    expect(summaryLine([{ archived: false }, { archived: true }] as never)).toBe("1 meta ativa");
   });
 });
 
@@ -47,7 +48,7 @@ describe("Metas", () => {
     expect(p.reachedOnPace).toBeNull();
     expect(text).toContain(NONE);
     expect(shareLabel(p)).toBe("54%");
-    expect(screen.getByText("1 meta(s) ativa(s)")).toBeTruthy();
+    expect(screen.getByText("1 meta ativa")).toBeTruthy();
     // the selected goal's details and its chart with the same values in a table
     expect(screen.getByText(/Selecionada:/)).toBeTruthy();
     expect(screen.getByText("Falta por mês")).toBeTruthy();
@@ -82,7 +83,7 @@ describe("Metas", () => {
     // no deadline: the monthly need is unknown, not zero
     const table = screen.getByRole("grid", { name: "Metas" });
     expect(flat(rowById(table, made.id).textContent)).toContain(NONE);
-    expect(screen.getByText("2 meta(s) ativa(s)")).toBeTruthy();
+    expect(screen.getByText("2 metas ativas")).toBeTruthy();
     // the new goal is the selected one, with its own chart
     expect(await screen.findByRole("table", { name: "Valores de Meta: Patrimônio de 100 mil" })).toBeTruthy();
     expect(screen.getByText("Sem prazo")).toBeTruthy();
@@ -172,7 +173,7 @@ describe("Metas", () => {
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Arquivar meta" })).toBeNull());
     expect(goals(ledger)[0]!.archived).toBe(true);
     expect(await screen.findByText("Meta arquivada.")).toBeTruthy();
-    expect(screen.getByText("0 meta(s) ativa(s)")).toBeTruthy();
+    expect(screen.getByText("0 metas ativas")).toBeTruthy();
     const table = screen.getByRole("grid", { name: "Metas" });
     expect(flat(rowById(table, goal.id).textContent)).toContain("arquivada");
 
@@ -186,6 +187,33 @@ describe("Metas", () => {
     expect(goals(ledger)[0]!.archived).toBe(true);
     undoOnce(workspace);
     expect(goals(ledger)[0]!.archived).toBe(false);
+  });
+
+  it("offers Desfazer in the notice after archiving, and only while the archiving is the last action", async () => {
+    const { ledger, workspace, user } = await open();
+    const archive = async (button: string, title: string, reason: string) => {
+      await user.click(screen.getByRole("button", { name: button }));
+      const box = await screen.findByRole("dialog", { name: title });
+      await user.type(within(box).getByLabelText(/Motivo/), reason);
+      await user.click(within(box).getByRole("button", { name: title.split(" ")[0]! }));
+      await waitFor(() => expect(screen.queryByRole("dialog", { name: title })).toBeNull());
+    };
+    await archive("Arquivar…", "Arquivar meta", "Não vale mais");
+    expect(goals(ledger)[0]!.archived).toBe(true);
+    const notice = (await screen.findByText("Meta arquivada.")).parentElement!;
+    await user.click(within(notice).getByRole("button", { name: "Desfazer" }));
+    expect(goals(ledger)[0]!.archived).toBe(false);
+    expect(await screen.findByText("Desfeito: arquivar meta.")).toBeTruthy();
+
+    // another change after it: that notice's Desfazer no longer undoes, and says how
+    await archive("Arquivar…", "Arquivar meta", "De novo");
+    const stale = (await screen.findAllByText("Meta arquivada.")).at(-1)!.parentElement!;
+    const redo = within(stale).getByRole("button", { name: "Desfazer" });
+    await archive("Reativar…", "Reativar meta", "Voltou");
+    await user.click(redo);
+    expect(goals(ledger)[0]!.archived).toBe(false);
+    expect(await screen.findByText(NOT_LAST)).toBeTruthy();
+    expect(workspace.undoStack.undoLabel()).toBe("reativar meta");
   });
 
   it("opens a goal's commands on a right click: Editar first, Arquivar apart and in red, through the reason", async () => {
@@ -311,11 +339,10 @@ describe("Metas", () => {
     expect(await within(dialog).findByText("Dê um nome à meta.")).toBeTruthy();
     expect(workspace.ledger.entities("goal").size).toBe(0);
     expect(workspace.undoStack.canUndo()).toBe(false);
-    // the menu asks to select a goal when there is none
+    // with no goal to select, the menu's commands are disabled and say why
     await user.click(within(dialog).getByRole("button", { name: "Cancelar" }));
-    await user.click(screen.getByRole("button", { name: "Mais" }));
-    await user.click(await screen.findByRole("menuitem", { name: "Editar meta…" }));
-    expect(await screen.findByText("Selecione uma meta.")).toBeTruthy();
+    expect(await menuReason(user, "Mais", "Editar meta…")).toBe("Selecione uma meta na lista.");
+    expect(await menuReason(user, "Mais", "Arquivar ou reativar…")).toBe("Selecione uma meta na lista.");
   });
 
   it("is read only while another tab or device edits: nothing can be changed", async () => {

@@ -17,7 +17,6 @@ import {
 import {
   Button,
   ChartPanel,
-  confirm,
   DURATION,
   DataTable,
   EASE,
@@ -51,13 +50,13 @@ import {
   type GridChange,
   type GridRow,
 } from "../../dialogs/budget_logic.ts";
-import { useAct, useLedger, useWorkspace } from "../../data/react.tsx";
+import { useAct, useLedger, useNotifyDone, useWorkspace } from "../../data/react.tsx";
 import { useSharedMonth } from "../../data/month.ts";
 import { useGoTo, useReveal } from "../../data/navigation.ts";
-import { useUndo } from "../../shell/undo.tsx";
+
 import { toChartData } from "../../data/chart_data.ts";
 import { STATE_LABELS, categoryRef, parseCategoryRef, summaryLine, usedPercent } from "./rows.ts";
-import { EditButton, usePick } from "../../components/list_parts.tsx";
+import { EditButton, forSelected, usePick } from "../../components/list_parts.tsx";
 import { lockEntries, useLock } from "../../data/read_only.ts";
 import { useDialog } from "../../data/dialog.ts";
 import { cents } from "../../data/money.ts";
@@ -68,6 +67,7 @@ import { plural } from "../../data/text.ts";
 type Row = dom.budget.BudgetRow;
 
 const HISTORY_MONTHS = 6;
+const PICK_CATEGORY = "Selecione uma categoria na tabela.";
 const MONTHS_AHEAD = 12;
 
 const money = (value: Dec) => formatBrl(value);
@@ -176,7 +176,7 @@ export function Page() {
   const workspace = useWorkspace();
   const act = useAct();
   const goTo = useGoTo();
-  const { undo } = useUndo();
+  const notifyDone = useNotifyDone();
   const preset = useMotionPreset();
   const phone = usePhone();
   const [month, chooseMonth] = useSharedMonth();
@@ -255,31 +255,25 @@ export function Page() {
     return changed !== undefined;
   };
 
-  const needsSelection = (): string | null => need("Selecione uma categoria na tabela.")?.categoryId ?? null;
+  const needsSelection = (): string | null => need(PICK_CATEGORY)?.categoryId ?? null;
 
   const editSelected = () => {
     const id = needsSelection();
     if (id) define(id);
   };
 
-  /** A destructive action, so it asks first (the entries stay in Livro; Desfazer brings the line back). */
-  const remove = async (id: string) => {
-    const name = status.rows.find((r) => r.categoryId === id)?.name ?? "esta categoria";
-    const ok = await confirm({
-      title: `Remover “${name}” do orçamento?`,
-      text: `O valor planejado de ${lower(month)} sai do orçamento; os lançamentos continuam no Livro. Dá para desfazer logo em seguida.`,
-      confirmLabel: "Remover",
-      danger: true,
+  /** Without asking: the entries stay in Livro, and the notice's Desfazer brings the line back. */
+  const remove = (id: string) => {
+    act((ledger) => dom.budget.removeBudget(ledger, id, month), {
+      done: "Categoria removida do orçamento.",
+      label: "remover categoria do orçamento",
     });
-    if (!ok) return;
-    act((ledger) => dom.budget.removeBudget(ledger, id, month), { label: "remover categoria do orçamento" });
-    notify("Categoria removida do orçamento.", { action: { label: "Desfazer", run: undo } });
     setPick(null);
   };
 
   const removeSelected = () => {
     const id = needsSelection();
-    if (id) void remove(id);
+    if (id) remove(id);
   };
 
   const entriesOf = (id: string) => goTo("livro", { ref: categoryRef(id, month) });
@@ -297,7 +291,7 @@ export function Page() {
         { kind: "separator", id: "s1" },
         { id: "entries", label: "Ver lançamentos", onSelect: () => entriesOf(row.categoryId) },
         { kind: "separator", id: "s2" },
-        { id: "remove", label: "Remover do orçamento", danger: true, onSelect: () => void remove(row.categoryId) },
+        { id: "remove", label: "Remover do orçamento", danger: true, onSelect: () => remove(row.categoryId) },
       ],
       locked,
       ["entries"],
@@ -309,7 +303,7 @@ export function Page() {
     });
     if (copied === undefined) return;
     if (copied > 0) {
-      notify(`${plural(copied, "categoria copiada", "categorias copiadas")} de ${lower(previous)}.`);
+      notifyDone(`${plural(copied, "categoria copiada", "categorias copiadas")} de ${lower(previous)}.`);
     } else {
       notify(`Nada a copiar: ${lower(previous)} não tem orçamento, ou estas categorias já estão definidas neste mês.`);
     }
@@ -342,9 +336,20 @@ export function Page() {
             { id: "define", label: "Definir valor…", onSelect: () => define(null), disabled: locked },
             { id: "copy", label: "Copiar do mês anterior", onSelect: copyPrevious, disabled: locked },
             { kind: "separator", id: "sep" },
-            { id: "edit", label: "Alterar valor…", onSelect: editSelected, disabled: locked },
-            { id: "remove", label: "Remover do orçamento", onSelect: removeSelected, disabled: locked, danger: true },
-            { id: "entries", label: "Ver lançamentos", onSelect: seeEntries },
+            {
+              id: "edit",
+              label: "Alterar valor…",
+              onSelect: editSelected,
+              ...forSelected(selected, PICK_CATEGORY, locked),
+            },
+            {
+              id: "remove",
+              label: "Remover do orçamento",
+              onSelect: removeSelected,
+              danger: true,
+              ...forSelected(selected, PICK_CATEGORY, locked),
+            },
+            { id: "entries", label: "Ver lançamentos", onSelect: seeEntries, ...forSelected(selected, PICK_CATEGORY) },
           ]}
         />
       }

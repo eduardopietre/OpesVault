@@ -6,9 +6,9 @@ import type { Ledger, session as sessions } from "@opesvault/domain";
 import { DomainError } from "@opesvault/domain/error";
 
 type Session = sessions.Session;
-import { notify } from "@opesvault/ui";
+import { notify, type ToastOptions } from "@opesvault/ui";
 import { createContext, useCallback, useContext, useMemo, useSyncExternalStore, type ReactNode } from "react";
-import type { Workspace } from "./workspace.ts";
+import type { UndoStep, Workspace } from "./workspace.ts";
 
 const WorkspaceContext = createContext<Workspace | null>(null);
 
@@ -45,6 +45,44 @@ export function useLedger<T>(select: (ledger: Ledger) => T, key: string | number
   return useMemo(() => select(workspace.ledger), [workspace, version, key]);
 }
 
+/** What the notice's Desfazer says when the action is no longer the last one (only the last can be undone). */
+export const NOT_LAST =
+  "Outra alteração foi feita depois desta. Use Desfazer no topo da tela, que desfaz uma ação de cada vez.";
+
+/** Undoes `step` if it is still the last action, with the notice Ctrl+Z gives ("Desfeito: arquivar meta."). */
+function undoStep(workspace: Workspace, step: UndoStep): void {
+  const stack = workspace.undoStack;
+  if (stack.undoSteps.at(-1) !== step || stack.journal.length) {
+    notify(NOT_LAST, { tone: "warning" });
+    return;
+  }
+  try {
+    const label = workspace.undo();
+    notify(label ? `Desfeito: ${label}.` : "Nada a desfazer.");
+  } catch (error) {
+    if (error instanceof DomainError) notify(error.message, { tone: "negative" });
+    else throw error;
+  }
+}
+
+/**
+ * The notice after a user action, with "Desfazer" for that action when it changed the project (and nothing
+ * changed it since). Every notice that reports a change uses this, so undoing never needs Ctrl+Z (docs/16 §4).
+ */
+export function notifyDone(workspace: Workspace, message: string, options: Omit<ToastOptions, "action"> = {}): void {
+  const step = workspace.freshStep();
+  notify(message, step ? { ...options, action: { label: "Desfazer", run: () => undoStep(workspace, step) } } : options);
+}
+
+/** `notifyDone` for the open project: call it right after the action, with what the action did. */
+export function useNotifyDone(): (message: string, options?: Omit<ToastOptions, "action">) => void {
+  const workspace = useWorkspace();
+  return useCallback(
+    (message: string, options?: Omit<ToastOptions, "action">) => notifyDone(workspace, message, options),
+    [workspace],
+  );
+}
+
 /** How a user action is reported: `done` is the notice after it; `label` names it in the undo history. */
 export interface ActOptions {
   done?: string | undefined;
@@ -66,7 +104,7 @@ export function useAct(): <T>(
       const { done, label } = typeof options === "string" ? { done: options, label: undefined } : (options ?? {});
       try {
         const result = workspace.act(action, label);
-        if (done) notify(done);
+        if (done) notifyDone(workspace, done);
         return result;
       } catch (error) {
         if (error instanceof DomainError) {

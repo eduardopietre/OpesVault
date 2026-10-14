@@ -9,7 +9,8 @@ import { importing, type Id } from "@opesvault/domain";
 import { decide, notify } from "@opesvault/ui";
 import { useCallback, useEffect, useRef } from "react";
 import { AI_OFF, failureText, useAiClient } from "../../data/ai.ts";
-import { useWorkspace } from "../../data/react.tsx";
+import { notifyDone, useWorkspace } from "../../data/react.tsx";
+import { plural } from "../../data/text.ts";
 import { useAiRun } from "../../dialogs/ai_review.tsx";
 
 type AiOutcome = importing.aiSuggestions.AiOutcome;
@@ -59,7 +60,7 @@ export function useImportAi() {
         client,
         (report, cancel) => importing.aiSuggestions.ask(client, requests, report, cancel),
         total,
-        "descrição(ões)",
+        ["descrição", "descrições"],
         (result) => {
           if (!alive.current) return;
           if (isOutcome(result)) {
@@ -68,10 +69,10 @@ export function useImportAi() {
               // one undo step for the whole answer
               count = workspace.act((l) => importing.aiSuggestions.applySuggestions(l, result.planned));
             }
-            let message = `IA local: ${count} categoria(s) sugerida(s)`;
+            let message = `IA local: ${plural(count, "categoria sugerida", "categorias sugeridas")}`;
             if (result.cancelled) message += ", consulta cancelada";
-            else if (result.failed) message += `; ${result.failed} item(ns) sem resposta válida`;
-            notify(message + (count ? ". Revise antes de aprovar." : "."));
+            else if (result.failed) message += `; ${plural(result.failed, "item", "itens")} sem resposta válida`;
+            notifyDone(workspace, message + (count ? ". Revise antes de aprovar." : "."));
             return;
           }
           const reason = failureText(result);

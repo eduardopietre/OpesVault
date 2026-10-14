@@ -10,7 +10,6 @@ import {
   ElidedText,
   EmptyState,
   PageHeader,
-  confirm,
   notify,
   type DataColumn,
   type MenuEntry,
@@ -19,9 +18,8 @@ import {
 } from "@opesvault/ui";
 import { useRef, useState } from "react";
 import { useGoTo, useReveal } from "../../data/navigation.ts";
-import { useLedger, useWorkspace } from "../../data/react.tsx";
+import { useLedger, useNotifyDone, useWorkspace } from "../../data/react.tsx";
 import { TableBox } from "../../data/table_box.tsx";
-import { useUndo } from "../../shell/undo.tsx";
 import { DocumentPanel } from "./panel.tsx";
 import { documentRows, summaryLine, type DocumentRow, type ReceiptUse } from "./rows.ts";
 import { exportUnencrypted, NOT_ENCRYPTED } from "../../data/export_file.ts";
@@ -69,7 +67,7 @@ const COLUMNS: DataColumn<DocumentRow>[] = [
 export function Page() {
   const workspace = useWorkspace();
   const goTo = useGoTo();
-  const { undo } = useUndo();
+  const notifyDone = useNotifyDone();
   const locked = workspace.readOnly;
   const panelBox = useRef<HTMLDivElement>(null);
 
@@ -98,14 +96,8 @@ export function Page() {
     choose(id);
   });
 
+  /** Without asking: nothing uses the file, and the notice's Desfazer puts it back with its bytes. */
   const remove = async (row: DocumentRow) => {
-    const ok = await confirm({
-      title: "Remover o documento?",
-      text: `“${row.name}” sai do projeto e deixa de ocupar espaço nele. Nada o usa. Dá para desfazer logo em seguida.`,
-      confirmLabel: "Remover documento",
-      danger: true,
-    });
-    if (!ok) return;
     try {
       // Undo puts the file back with its bytes, so they must be in this tab before it goes.
       await workspace.loadDocument(row.id);
@@ -115,21 +107,15 @@ export function Page() {
       return;
     }
     setPick(null);
-    notify("Documento removido.", { action: { label: "Desfazer", run: undo } });
+    notifyDone(`“${row.name}” removido do projeto.`);
   };
 
-  /** Takes a receipt off an operation; a file nothing else uses leaves the project with it (docs/04). */
+  /**
+   * Takes a receipt off an operation; a file nothing else uses leaves the project with it (docs/04). Without
+   * asking: the notice says what happened and its Desfazer puts the link (and the file) back.
+   */
   const detach = async (row: DocumentRow, use: ReceiptUse) => {
     const last = row.receipts.length === 1 && row.batchId === null;
-    const ok = await confirm({
-      title: "Desvincular o comprovante?",
-      text: last
-        ? `“${row.name}” deixa de ser comprovante de “${use.description}”. Como nada mais o usa, o arquivo sai do projeto. Dá para desfazer logo em seguida.`
-        : `“${row.name}” deixa de ser comprovante de “${use.description}”. O arquivo continua no projeto, porque outro item o usa.`,
-      confirmLabel: "Desvincular",
-      danger: true,
-    });
-    if (!ok) return;
     try {
       // Undo puts the file back with its bytes, so they must be in this tab before it can go.
       await workspace.loadDocument(row.id);
@@ -141,9 +127,11 @@ export function Page() {
       return;
     }
     if (last) setPick(null);
-    notify(last ? "Comprovante desvinculado e arquivo removido." : "Comprovante desvinculado.", {
-      action: { label: "Desfazer", run: undo },
-    });
+    notifyDone(
+      last
+        ? `“${row.name}” deixou de ser comprovante de “${use.description}” e saiu do projeto, porque nada mais o usa.`
+        : `“${row.name}” deixou de ser comprovante de “${use.description}”.`,
+    );
   };
 
   const save = async (row: DocumentRow, bytes: Uint8Array, kind: DocumentKind) => {
@@ -172,7 +160,7 @@ export function Page() {
 
   /**
    * A document's context menu: save the original, open what uses it, and the commands that take it off
-   * (Desvincular from each operation, Remover when nothing uses it) apart and in red, with their confirmation.
+   * (Desvincular from each operation, Remover when nothing uses it) apart and in red; their notice offers Desfazer.
    */
   const rowMenu = (row: DocumentRow): MenuEntry[] => {
     const seeImport: MenuEntry[] = row.batchId
@@ -209,13 +197,13 @@ export function Page() {
             kind: "submenu",
             id: "detach",
             label: "Desvincular",
-            items: row.receipts.map((use, i) => unlink(use, `detach-${i}`, `${use.description}…`)),
+            items: row.receipts.map((use, i) => unlink(use, `detach-${i}`, use.description)),
           },
         ]
       : only
-        ? [unlink(only, "detach", "Desvincular…")]
+        ? [unlink(only, "detach", "Desvincular")]
         : row.free
-          ? [{ id: "remove", label: "Remover…", danger: true, onSelect: () => void remove(row) }]
+          ? [{ id: "remove", label: "Remover", danger: true, onSelect: () => void remove(row) }]
           : [];
     const free = ["save", "import", "operations", "operation", ...row.receipts.map((_, i) => `operation-${i}`)];
     return lockEntries(

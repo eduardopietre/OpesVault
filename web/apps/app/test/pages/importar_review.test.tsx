@@ -97,7 +97,7 @@ describe("Importar e revisar: categoria de cada item e regras", () => {
     expect((field(rule, /A descrição contém/) as HTMLInputElement).value.toLowerCase()).toContain("loja");
     await o.user.click(within(rule).getByRole("button", { name: "Criar regra" }));
     await waitFor(() => expect(importing.rules.rules(o.ledger).size).toBe(rules + 1));
-    expect(await screen.findByText(/Regra criada\. \d+ item\(ns\) pendente\(s\) recategorizado\(s\)\./)).toBeTruthy();
+    expect(await screen.findByText(/Regra criada\. \d+ ite(m|ns) pendentes? recategorizados?\./)).toBeTruthy();
     const created = [...importing.rules.rules(o.ledger).values()].at(-1)!;
     expect(created.target_account_id).toBe(lazer.id);
     // the rule came from this item
@@ -133,10 +133,17 @@ describe("Importar e revisar: categoria de cada item e regras", () => {
     );
   });
 
-  it("creates a rule from the selected item with the menu, and asks for an item when none is selected", async () => {
+  it("creates a rule from the selected item with the menu, disabled with its reason while none is selected", async () => {
     const o = await openImport();
-    await menu(o.user, "Mais", /^Criar regra a partir do item…/);
-    expect(await screen.findByText("Selecione um item para criar a regra a partir dele.")).toBeTruthy();
+    await o.user.click(screen.getByRole("button", { name: "Mais" }));
+    for (const name of [/^Manter separado…/, /^Criar regra a partir do item…/, /^Rejeitar item…/]) {
+      const item = await screen.findByRole("menuitem", { name });
+      expect(item.getAttribute("aria-disabled"), String(name)).toBe("true");
+      expect(item.getAttribute("aria-description")).toBe("Selecione um item da lista.");
+    }
+    await o.user.click(await screen.findByRole("menuitem", { name: /^Criar regra a partir do item…/ }));
+    expect(screen.queryByRole("dialog", { name: "Regra de categoria" })).toBeNull();
+    await o.user.keyboard("{Escape}");
     await pickItem(o, "Loja Eletro");
     const rules = importing.rules.rules(o.ledger).size;
     await menu(o.user, "Mais", /^Criar regra a partir do item…/);
@@ -175,7 +182,7 @@ describe("Importar e revisar: aprovar", () => {
     const batch = importing.pipeline.batches(o.ledger).get(demoBatch(o).id)!;
     expect(batch.status).toBe(BatchStatus.PARTIAL);
     expect(batch.partial_reason).toBe("Conferi só a loja");
-    expect(await screen.findByText("1 operação(ões) criada(s), 0 evidência(s) vinculada(s).")).toBeTruthy();
+    expect(await screen.findByText("1 operação criada, 0 evidências vinculadas.")).toBeTruthy();
     // the review moved on to the next item
     expect(rowWith(await itemsTable(), "Amazon.com").getAttribute("aria-selected")).toBe("true");
     o.workspace.undo();
@@ -191,7 +198,11 @@ describe("Importar e revisar: aprovar", () => {
     await o.user.click(button("Aprovar prontos"));
     await waitFor(() => expect(operations(o)).toBe(before + open));
     expect(importing.pipeline.batches(o.ledger).get(demoBatch(o).id)!.status).toBe(BatchStatus.APPROVED);
-    expect(await screen.findByText(`${open} operação(ões) criada(s), 0 evidência(s) vinculada(s).`)).toBeTruthy();
+    expect(
+      await screen.findByText(
+        `${open} ${open === 1 ? "operação criada" : "operações criadas"}, 0 evidências vinculadas.`,
+      ),
+    ).toBeTruthy();
     expect(button("Aprovar prontos").disabled).toBe(true);
     expect(itemsOf(o, demoBatch(o).id).every((i) => i.status === ItemStatus.APPROVED)).toBe(true);
     // the notice offers the undo
@@ -301,7 +312,9 @@ describe("Importar e revisar: corrigir e rejeitar", () => {
     await o.user.click(within(ask).getByRole("button", { name: "Rejeitar" }));
     await waitFor(() => expect(item(o, "Amazon.com").status).toBe(ItemStatus.REJECTED));
     expect(rowWith(await itemsTable(), "Amazon.com").textContent).toContain("Rejeitado");
-    o.workspace.undo();
+    // the notice offers Desfazer, so the item comes back without Ctrl+Z
+    expect(await screen.findByText("Item rejeitado: não vira lançamento.")).toBeTruthy();
+    await o.user.click(await screen.findByRole("button", { name: "Desfazer" }));
     expect(item(o, "Amazon.com").status).toBe(ItemStatus.READY);
   });
 });
@@ -389,7 +402,7 @@ describe("Importar e revisar: já registrados", () => {
     );
     const before = operations(o);
     await o.user.click(button("Aprovar prontos"));
-    expect(await screen.findByText("0 operação(ões) criada(s), 2 evidência(s) vinculada(s).")).toBeTruthy();
+    expect(await screen.findByText("0 operações criadas, 2 evidências vinculadas.")).toBeTruthy();
     expect(operations(o)).toBe(before);
     o.workspace.undo();
     expect(itemsOf(o, batch.id).every((i) => i.status === ItemStatus.DUPLICATE)).toBe(true);

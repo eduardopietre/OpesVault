@@ -7,6 +7,7 @@ import { formatBrl, dom, type IsoDate, type YearMonth } from "@opesvault/domain"
 import { cn, useMotionPreset } from "@opesvault/ui";
 import { motion } from "motion/react";
 import { WEEKDAYS, WEEKDAY_NAMES, type DayCell } from "./rows.ts";
+import { plural } from "../../data/text.ts";
 
 const plain = (value: Parameters<typeof formatBrl>[0]) => formatBrl(value).replace("R$ ", "");
 
@@ -110,7 +111,7 @@ function Day({
       </span>
       {cell.events.length ? (
         <span className="mt-1 block truncate text-caption font-semibold tabular-nums text-text">
-          {cell.outflow ? plain(cell.outflow) : `${cell.events.length} item(ns)`}
+          {cell.outflow ? plain(cell.outflow) : plural(cell.events.length, "item", "itens")}
         </span>
       ) : null}
       {cell.events[0] ? (

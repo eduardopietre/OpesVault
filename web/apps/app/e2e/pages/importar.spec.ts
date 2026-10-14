@@ -108,9 +108,7 @@ for (const size of TEST_SIZES) {
         // the parser worker started from this app's own address, under the production CSP
         expect(workers.some((url) => /\/assets\/parser\.worker-[\w-]+\.js$/.test(url))).toBe(true);
         // the local AI looked at the items without a category, in the background, and nothing was approved
-        await expect(
-          page.getByText(/IA local: \d+ categoria\(s\) sugerida\(s\)\. Revise antes de aprovar\./),
-        ).toBeVisible();
+        await expect(page.getByText(/IA local: \d+ categorias? sugeridas?\. Revise antes de aprovar\./)).toBeVisible();
         // the last file read is the one open: its original has two pages
         await expect(page.getByRole("heading", { level: 2, name: "itau.pdf" })).toBeVisible();
         await expect(page.getByText("Página 1 de 2")).toBeVisible();
@@ -150,7 +148,7 @@ for (const size of TEST_SIZES) {
         await page.getByRole("combobox", { name: /^Conta ou cartão/ }).click();
         await page.getByRole("option", { name: "Banco A", exact: true }).click();
         await page.getByRole("button", { name: "Aprovar prontos" }).click();
-        await expect(page.getByText("2 operação(ões) criada(s), 0 evidência(s) vinculada(s).")).toBeVisible();
+        await expect(page.getByText("2 operações criadas, 0 evidências vinculadas.")).toBeVisible();
         await page.getByRole("button", { name: "Layouts suportados" }).click();
         await expect(
           page.getByRole("dialog", { name: "Layouts suportados" }).getByText("csv-extrato-generico"),
@@ -183,7 +181,7 @@ for (const size of TEST_SIZES) {
         const rule = page.getByRole("dialog", { name: "Regra de categoria" });
         await expect(rule.getByLabel(/A descrição contém/)).toHaveValue(/loja/i);
         await rule.getByRole("button", { name: "Criar regra", exact: true }).click();
-        await expect(page.getByText(/Regra criada\. \d+ item\(ns\) pendente\(s\) recategorizado\(s\)\./)).toBeVisible();
+        await expect(page.getByText(/Regra criada\. \d+ ite(m|ns) pendentes? recategorizados?\./)).toBeVisible();
 
         // correct an item: refused without a reason, then done
         await pick(page, "Padaria");
@@ -201,7 +199,7 @@ for (const size of TEST_SIZES) {
         await pick(page, "Mercado Bom Preço");
         await page.getByRole("button", { name: "Aprovar selecionado" }).click();
         await giveReason(dialogOf(page, "Aprovação parcial"), "Conferi só o mercado", "Aprovar");
-        await expect(page.getByText("1 operação(ões) criada(s), 0 evidência(s) vinculada(s).")).toBeVisible();
+        await expect(page.getByText("1 operação criada, 0 evidências vinculadas.")).toBeVisible();
         await page.locator("[data-row-id]").filter({ hasText: "Aprovado" }).first().click();
         await page.getByRole("button", { name: "Ver no Livro" }).click();
         await expect.poll(async () => (await addresses()).some((url) => /\/livro\?.*ref=/.test(url))).toBe(true);
@@ -211,9 +209,7 @@ for (const size of TEST_SIZES) {
 
         // approve what is left; the document is approved and the page says so
         await page.getByRole("button", { name: "Aprovar prontos" }).click();
-        await expect(
-          page.getByText(/operação\(ões\) criada\(s\), 0 evidência\(s\) vinculada\(s\)\./).last(),
-        ).toBeVisible();
+        await expect(page.getByText(/operaç(ão|ões) criadas?, 0 evidências? vinculadas?\./).last()).toBeVisible();
         await expect(queue(page).getByText("Aprovado").first()).toBeVisible();
         await expect(page.getByRole("button", { name: "Aprovar prontos" })).toBeDisabled();
 
@@ -225,7 +221,7 @@ for (const size of TEST_SIZES) {
         await page.getByRole("combobox", { name: /^Conta ou cartão/ }).click();
         await page.getByRole("option", { name: "Banco A", exact: true }).click();
         await page.getByRole("button", { name: "Aprovar prontos" }).click();
-        await expect(page.getByText("2 operação(ões) criada(s), 0 evidência(s) vinculada(s).")).toBeVisible();
+        await expect(page.getByText("2 operações criadas, 0 evidências vinculadas.")).toBeVisible();
 
         // the same transactions in another file are "já registrados": approving only links the evidence
         await chooseFiles(page, [{ ...OFX, name: "extrato-2.ofx", buffer: Buffer.from(OFX.buffer.toString() + "\n") }]);

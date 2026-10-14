@@ -23,6 +23,7 @@ import { FigureCard, Money } from "../../components/figures.tsx";
 import { DayList, EntriesTable, entryRows } from "./entries.tsx";
 import { MonthGrid } from "./month_grid.tsx";
 import { agendaFigures, entriesOf, monthWeeks } from "./rows.ts";
+import { plural } from "../../data/text.ts";
 
 /** The picker reaches two years back and one ahead, as on the desktop. */
 const MONTHS_BACK = 24;
@@ -75,7 +76,7 @@ export function Page() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Calendário" context={`${count} vencimento(s) em ${label}`}>
+      <PageHeader title="Calendário" context={`${plural(count, "vencimento", "vencimentos")} em ${label}`}>
         {picker}
       </PageHeader>
 

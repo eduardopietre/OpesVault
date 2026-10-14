@@ -62,7 +62,7 @@ import {
   Sparkles,
   Table2,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useGoTo, useReveal } from "../../data/navigation.ts";
 import { useSharedMonth } from "../../data/month.ts";
 import { useAct, useLedger, useWorkspace } from "../../data/react.tsx";
@@ -76,6 +76,7 @@ import { FilterBar, activeFilterCount, useFilterChoices } from "./filters.tsx";
 import { LedgerDialogs, type DialogSpec } from "./host.tsx";
 import { useDialog } from "../../data/dialog.ts";
 import { lockEntries } from "../../data/read_only.ts";
+import { EditButton } from "../../components/list_parts.tsx";
 import { OperationDetails, SelectionNote } from "./inspector.tsx";
 import {
   EMPTY_FILTERS,
@@ -651,9 +652,9 @@ export function Page() {
     },
   }));
   const columns = useMemo(
-    () => ledgerColumns({ ledger, checked, onCheck: check, hidden, readOnly, cards }),
+    () => ledgerColumns({ ledger, hidden, readOnly, cards }),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `ledger` is stable; `operations` follows its changes
-    [operations, checked, hidden, cards],
+    [operations, hidden, cards],
   );
 
   // ── coming from other pages (docs/16 §5) ───────
@@ -734,15 +735,17 @@ export function Page() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
-  const onTableKey = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (
-      event.key === " " &&
-      current !== null &&
-      event.target === event.currentTarget.querySelector('[role="grid"],[role="listbox"]')
-    ) {
-      event.preventDefault();
-      check(current, !checked.has(current));
+  /** The marked operations still in force (a cancelled one is neither reversed nor cancelled again). */
+  const actOnMarked = (kind: "reverse-many" | "cancel-many", marked: readonly Id[]) => {
+    const ids = marked.filter((id) => {
+      const op = operationOf(id);
+      return op !== null && isActive(op);
+    });
+    if (!ids.length) {
+      notify("Os lançamentos marcados estão cancelados.");
+      return;
     }
+    show({ kind, ids, skipped: marked.length - ids.length });
   };
 
   // ── render ─────────────────────────────────────
@@ -958,32 +961,7 @@ export function Page() {
       </AnimatePresence>
 
       <div className="flex min-w-0 items-stretch">
-        <div ref={measureTable} className="flex min-w-0 flex-1 flex-col gap-2" onKeyDown={onTableKey}>
-          <AnimatePresence initial={false}>
-            {checked.size > 0 ? (
-              <motion.div
-                key="marked"
-                initial={preset.fade.initial}
-                animate={preset.fade.animate}
-                exit={preset.fade.exit}
-                transition={preset.fade.transition}
-                className="flex flex-wrap items-center gap-2 rounded-lg bg-accent-soft px-3 py-1.5"
-                role="status"
-              >
-                <span className="text-body font-medium">
-                  {checked.size} {checked.size === 1 ? "marcado" : "marcados"}
-                </span>
-                {checked.size < operations.length ? (
-                  <Button size="sm" variant="ghost" onClick={selectAllShown}>
-                    Marcar os {operations.length} exibidos
-                  </Button>
-                ) : null}
-                <Button size="sm" variant="ghost" onClick={() => setChecked(EMPTY_SET)}>
-                  Limpar marcação
-                </Button>
-              </motion.div>
-            ) : null}
-          </AnimatePresence>
+        <div ref={measureTable} className="flex min-w-0 flex-1 flex-col gap-2">
           <DataTable
             label="Lançamentos"
             rows={operations}
@@ -998,6 +976,28 @@ export function Page() {
             renderCard={(op) => <LedgerCard ledger={ledger} op={op} />}
             cardHeight={66}
             empty={empty}
+            selection={{
+              selected: checked,
+              onChange: setChecked,
+              rowLabel: (op) => `Marcar ${op.description}`,
+              count: (n) => (n === 1 ? "1 marcado" : `${n} marcados`),
+              clearLabel: "Limpar marcação",
+              actions: (ids) => (
+                <>
+                  {ids.length < operations.length ? (
+                    <Button size="sm" variant="ghost" onClick={selectAllShown}>
+                      Marcar os {operations.length} exibidos
+                    </Button>
+                  ) : null}
+                  <EditButton size="sm" onClick={() => actOnMarked("reverse-many", ids)}>
+                    Estornar marcados…
+                  </EditButton>
+                  <EditButton size="sm" variant="danger" onClick={() => actOnMarked("cancel-many", ids)}>
+                    Cancelar marcados…
+                  </EditButton>
+                </>
+              ),
+            }}
           />
         </div>
         <Inspector open={detailsOpen} onOpenChange={setDetailsOpen} title="Detalhes do lançamento">

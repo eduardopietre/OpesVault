@@ -18,6 +18,7 @@ import { ReclassifyDialog } from "../../dialogs/reclassify.tsx";
 import { ReimbursementDialog } from "../../dialogs/reimbursement.tsx";
 import { RenameTagDialog, TagDialog } from "../../dialogs/tags.tsx";
 import { AiReviewDialog } from "../../dialogs/ai_review.tsx";
+import { actionName } from "../../data/action_names.ts";
 import { HISTORY_ACTIONS, instantLabel } from "./inspector.tsx";
 import { ReceiptDialog } from "./receipt.tsx";
 import { snapshotFilter, type FilterState } from "./rows.ts";
@@ -35,6 +36,8 @@ export type DialogSpec =
   | { kind: "reimbursement"; id: Id }
   | { kind: "reverse"; id: Id }
   | { kind: "cancel"; id: Id }
+  | { kind: "reverse-many"; ids: readonly Id[]; skipped: number }
+  | { kind: "cancel-many"; ids: readonly Id[]; skipped: number }
   | { kind: "history"; id: Id }
   | { kind: "balance"; accountId: Id; choices: readonly Id[] }
   | { kind: "deductible"; categoryId: Id }
@@ -218,6 +221,49 @@ export function LedgerDialogs({ host, onCreated }: LedgerDialogsProps) {
           onSubmit={(reason) => {
             act((l) => l.cancelOperation(op.id, reason), "cancelar lançamento");
             notify("Lançamento cancelado. Ele continua visível em “Só cancelados”.");
+          }}
+        />
+      );
+    }
+    case "reverse-many":
+    case "cancel-many": {
+      // One reason and one act for the batch: a single undo step puts every one back.
+      const reverse = spec.kind === "reverse-many";
+      const n = spec.ids.length;
+      const many = n === 1 ? "1 lançamento" : `${n} lançamentos`;
+      const skipped =
+        spec.skipped > 0
+          ? ` ${spec.skipped === 1 ? "1 marcado já está cancelado e fica" : `${spec.skipped} marcados já estão cancelados e ficam`} como está.`
+          : "";
+      return (
+        <ReasonDialog
+          key={key}
+          open={open}
+          onClose={close}
+          title={reverse ? `Estornar ${many}` : `Cancelar ${many}`}
+          confirmLabel={reverse ? `Estornar ${many}` : `Cancelar ${many}`}
+          description={
+            (reverse
+              ? `Cada estorno é um novo lançamento oposto; os originais são mantidos. O mesmo motivo vale para todos.`
+              : `Continuam visíveis em “Só cancelados”, fora dos saldos e relatórios. O mesmo motivo vale para todos.`) +
+            skipped
+          }
+          onSubmit={(reason) => {
+            const today = workspace.today();
+            act(
+              (l) => {
+                for (const id of spec.ids) {
+                  if (reverse) l.reverseOperation(id, today, reason);
+                  else l.cancelOperation(id, reason);
+                }
+              },
+              actionName(reverse ? "estornar" : "cancelar", n, "lançamento", "lançamentos"),
+            );
+            notify(
+              reverse
+                ? `${n === 1 ? "1 estorno registrado" : `${n} estornos registrados`}; os originais foram mantidos.`
+                : `${many} ${n === 1 ? "cancelado" : "cancelados"}. Continuam visíveis em “Só cancelados”.`,
+            );
           }}
         />
       );

@@ -535,6 +535,24 @@ describe("Importar e revisar: teclado", () => {
     expect(operations(o)).toBe(before);
   });
 
+  it("rejects the marked items with one reason, in one undo step", async () => {
+    const o = await openImport();
+    const grid = (await itemsTable()) as HTMLElement;
+    await o.user.click(within(grid).getByRole("checkbox", { name: "Marcar Padaria" }));
+    await o.user.click(within(grid).getByRole("checkbox", { name: "Marcar Loja Eletro" }));
+    await o.user.click(button("Rejeitar marcados…"));
+    const ask = await dialog("Rejeitar 2 itens");
+    await type(o.user, field(ask, /Motivo/), "Não são nossos");
+    await o.user.click(within(ask).getByRole("button", { name: "Rejeitar 2 itens" }));
+    await waitFor(() => expect(item(o, "Padaria").status).toBe(ItemStatus.REJECTED));
+    expect(item(o, "Loja Eletro").status).toBe(ItemStatus.REJECTED);
+    expect(screen.queryByRole("button", { name: "Rejeitar marcados…" })).toBeNull();
+    expect(o.workspace.undoStack.undoLabel()).toBe("rejeitar 2 itens importados");
+    o.workspace.undo();
+    expect(item(o, "Padaria").status).not.toBe(ItemStatus.REJECTED);
+    expect(item(o, "Loja Eletro").status).not.toBe(ItemStatus.REJECTED);
+  });
+
   it("C opens the category of the selected item", async () => {
     const o = await openImport();
     await pickItem(o, "Loja Eletro");

@@ -7,10 +7,16 @@
  * back from the project keeps its selection. Keyboard: arrows, Home/End, Page Up/Down and Enter; the Menu key or
  * Shift+F10 opens the selected row's context menu (`rowMenu`), as a right click or a long press does.
  *
+ * Opt-in tools above the rows: a search box (`search`, accent- and case-insensitive over the text the page says a
+ * row is found by), toggle filters (`filters`), and the ticking of several rows (`selection`: a checkbox column,
+ * "all shown", Shift+click for a range, Space on the current row, and a bar with the page's batch commands). The
+ * ticked ids belong to the page; a command acts only on the ticked rows the search and filters still show.
+ *
  * Tables start in the order the data arrives, without a sort indicator (docs/16 §4 rule 12).
  */
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, Minus, Search, SearchX } from "lucide-react";
+import { Checkbox as RadixCheckbox } from "radix-ui";
 import {
   memo,
   useCallback,
@@ -25,9 +31,12 @@ import {
   type ReactNode,
 } from "react";
 import { cn } from "../cn.ts";
-import { compareLabels } from "../format.ts";
+import { compareLabels, searchKey } from "../format.ts";
 import { useElementWidth } from "../hooks.ts";
 import { BAND } from "../tokens.ts";
+import { Button } from "./Button.tsx";
+import { Checkbox, TextField } from "./fields.tsx";
+import { EmptyState } from "./layout.tsx";
 import { ContextMenuAt, type MenuEntry } from "./Menu.tsx";
 import { usePortalContainer } from "./portal.ts";
 
@@ -62,6 +71,56 @@ export interface DataColumn<T> {
   width?: number;
   /** Share of the leftover width (text columns grow; numbers keep their width). */
   grow?: number;
+}
+
+/** The search box of a table: what a row is found by. */
+export interface TableSearch<T> {
+  /** The text a row is found by (names, descriptions, notes); compared without accents or case. */
+  text: (row: T) => string;
+  /** The field's accessible name; `Buscar em <label>` by default. */
+  label?: string;
+  placeholder?: string;
+}
+
+/** A toggle above a table that narrows its rows ("Ocultar arquivadas"). */
+export interface TableFilter<T> {
+  id: string;
+  label: string;
+  /** While the filter is on, only the rows it keeps show. */
+  keep: (row: T) => boolean;
+  /** On when the table first shows. */
+  initial?: boolean;
+}
+
+/** Ticking several rows for a batch command. The ticked ids belong to the page (one model per screen). */
+export interface TableSelection<T> {
+  selected: ReadonlySet<string>;
+  onChange: (next: ReadonlySet<string>) => void;
+  /** The batch commands, for the ticked rows that are shown (in the order shown). */
+  actions?: (ids: readonly string[]) => ReactNode;
+  /** Rows that cannot be ticked (an item already decided); every row by default. */
+  canSelect?: (row: T) => boolean;
+  /** A row's checkbox name (`Selecionar <first column>` by default). */
+  rowLabel?: (row: T) => string;
+  /** The count in the bar ("3 selecionados"). */
+  count?: (n: number) => string;
+  /** The command that unticks everything ("Limpar seleção"). */
+  clearLabel?: string;
+}
+
+/** "1 selecionado", "3 selecionados". */
+export function selectedCount(n: number): string {
+  return `${n} ${n === 1 ? "selecionado" : "selecionados"}`;
+}
+
+/** The words of a search, without accents or case. */
+export function searchWords(query: string): string[] {
+  return searchKey(query).split(/\s+/).filter(Boolean);
+}
+
+/** Whether a row's search text (already through `searchKey`) holds every word of the search. */
+export function matchesSearch(key: string, words: readonly string[]): boolean {
+  return words.every((word) => key.includes(word));
 }
 
 export interface DataTableProps<T> {
@@ -100,6 +159,12 @@ export interface DataTableProps<T> {
   rowMenu?: (row: T) => readonly MenuEntry[];
   /** The context menu's accessible name for a row ("Ações de …"); the row's first column by default. */
   rowMenuLabel?: (row: T) => string;
+  /** A search box above the rows. */
+  search?: TableSearch<T>;
+  /** Toggles above the rows that narrow them. */
+  filters?: readonly TableFilter<T>[];
+  /** Ticking several rows, with a bar of batch commands. */
+  selection?: TableSelection<T>;
 }
 
 /** The text of a cell, for the menu's name; an element (a badge, a warning) gives none. */
@@ -144,6 +209,61 @@ interface TableRowProps<T> {
   rowHeight: number;
   onSelect: (id: string) => void;
   onActivate: (id: string) => void;
+  /** The row's checkbox: null without `selection`. */
+  checked: boolean | null;
+  checkable: boolean;
+  checkLabel: string;
+  onCheck: (id: string, value: boolean, range: boolean) => void;
+}
+
+/** Width of the checkbox column, in px. */
+const CHECK_WIDTH = 44;
+
+const checkClass =
+  "grid size-4.5 shrink-0 place-items-center rounded-sm border border-separator-strong bg-raised text-accent-text " +
+  "shadow-sm transition-colors data-[state=checked]:border-accent-fill data-[state=checked]:bg-accent-fill " +
+  "data-[state=indeterminate]:border-accent-fill data-[state=indeterminate]:bg-accent-fill disabled:opacity-50";
+
+/**
+ * A row's checkbox. Out of the tab order (the grid is one stop; Space ticks the current row) and apart from the
+ * row: a click on it neither moves the current row nor opens the row. Shift+click ticks the range from the last one.
+ */
+function RowCheck({
+  id,
+  checked,
+  disabled,
+  label,
+  onCheck,
+}: {
+  id: string;
+  checked: boolean;
+  disabled: boolean;
+  label: string;
+  onCheck: (id: string, value: boolean, range: boolean) => void;
+}) {
+  return (
+    <RadixCheckbox.Root
+      checked={checked}
+      disabled={disabled}
+      tabIndex={-1}
+      aria-label={label}
+      onMouseDown={(event) => {
+        // Shift+click would select the page's text between the two clicks
+        if (event.shiftKey) event.preventDefault();
+      }}
+      onClick={(event) => {
+        event.stopPropagation();
+        event.preventDefault();
+        onCheck(id, !checked, event.shiftKey);
+      }}
+      onDoubleClick={(event) => event.stopPropagation()}
+      className={checkClass}
+    >
+      <RadixCheckbox.Indicator>
+        <Check aria-hidden="true" className="size-3.5" strokeWidth={3} />
+      </RadixCheckbox.Indicator>
+    </RadixCheckbox.Root>
+  );
 }
 
 /**
@@ -162,6 +282,10 @@ const TableRow = memo(function TableRow<T>({
   rowHeight,
   onSelect,
   onActivate,
+  checked,
+  checkable,
+  checkLabel,
+  onCheck,
 }: TableRowProps<T>) {
   return (
     <div
@@ -183,6 +307,11 @@ const TableRow = memo(function TableRow<T>({
       )}
       style={{ gridTemplateColumns: template, height: rowHeight, transform: `translateY(${start}px)` }}
     >
+      {checked !== null ? (
+        <div role="gridcell" className="flex items-center justify-center">
+          <RowCheck id={rowId} checked={checked} disabled={!checkable} label={checkLabel} onCheck={onCheck} />
+        </div>
+      ) : null}
       {visible.map((column) => (
         <div
           key={column.id}
@@ -217,6 +346,9 @@ export function DataTable<T extends object>({
   layout = "auto",
   rowMenu,
   rowMenuLabel,
+  search,
+  filters,
+  selection,
 }: DataTableProps<T>) {
   const [measure, width] = useElementWidth<HTMLDivElement>();
   const [portalAnchor, portalContainer] = usePortalContainer();
@@ -242,17 +374,39 @@ export function DataTable<T extends object>({
     return visibility;
   }, [columns, width]);
 
+  // ── search and filters ──
+  const [query, setQuery] = useState("");
+  const [filtersOn, setFiltersOn] = useState<ReadonlySet<string>>(
+    () => new Set((filters ?? []).filter((f) => f.initial).map((f) => f.id)),
+  );
+  const searchText = search?.text;
+  const searchKeys = useMemo(
+    () => (searchText ? rows.map((row) => searchKey(searchText(row))) : null),
+    [rows, searchText],
+  );
+  const words = useMemo(() => (searchText ? searchWords(query) : []), [searchText, query]);
+  const activeFilters = useMemo(() => (filters ?? []).filter((f) => filtersOn.has(f.id)), [filters, filtersOn]);
+  const narrowed = words.length > 0 || activeFilters.length > 0;
+  const shownRows = useMemo<readonly T[]>(() => {
+    if (!narrowed) return rows;
+    return rows.filter(
+      (row, index) =>
+        (searchKeys === null || matchesSearch(searchKeys[index] ?? "", words)) &&
+        activeFilters.every((f) => f.keep(row)),
+    );
+  }, [rows, narrowed, searchKeys, words, activeFilters]);
+
   const sortedRows = useMemo<readonly T[]>(() => {
     const column = sorting === null ? undefined : columns.find((c) => c.id === sorting.id);
-    if (sorting === null || column?.sortValue === undefined) return rows;
+    if (sorting === null || column?.sortValue === undefined) return shownRows;
     const value = column.sortValue;
-    const keys = rows.map((row) => value(row) ?? null);
-    const order = Array.from(rows.keys());
+    const keys = shownRows.map((row) => value(row) ?? null);
+    const order = Array.from(shownRows.keys());
     const direction = sorting.desc ? -1 : 1;
     // Ties keep the order the data arrived in, in both directions.
     order.sort((x, y) => direction * compare(keys[x], keys[y]) || x - y);
-    return order.map((i) => rows[i]!);
-  }, [rows, columns, sorting]);
+    return order.map((i) => shownRows[i]!);
+  }, [shownRows, columns, sorting]);
   const ids = useMemo(() => sortedRows.map((row) => getRowId(row)), [sortedRows, getRowId]);
   const selectedIndex = selectedId === null ? -1 : ids.indexOf(selectedId);
   const toggleSort = (id: string, firstDesc = false) =>
@@ -264,14 +418,62 @@ export function DataTable<T extends object>({
     () => columns.filter((column) => columnVisibility[column.id] !== false),
     [columns, columnVisibility],
   );
+  // ── ticking several rows ──
+  const selecting = selection !== undefined;
+  const canSelect = selection?.canSelect;
+  /** The ids that can be ticked, in the order shown. */
+  const checkableIds = useMemo(
+    () => (selecting ? sortedRows.filter((row) => canSelect?.(row) ?? true).map((row) => getRowId(row)) : []),
+    [selecting, sortedRows, canSelect, getRowId],
+  );
+  const ticked = selection?.selected;
+  const shownTicked = useMemo(
+    () => (ticked ? checkableIds.filter((id) => ticked.has(id)) : []),
+    [checkableIds, ticked],
+  );
+  const anchor = useRef<string | null>(null);
+  const check = (id: string, value: boolean, range: boolean) => {
+    if (!selection) return;
+    const next = new Set(selection.selected);
+    const from = range && anchor.current !== null ? checkableIds.indexOf(anchor.current) : -1;
+    const to = checkableIds.indexOf(id);
+    if (to < 0) return;
+    const span = from >= 0 ? checkableIds.slice(Math.min(from, to), Math.max(from, to) + 1) : [id];
+    for (const each of span) {
+      if (value) next.add(each);
+      else next.delete(each);
+    }
+    anchor.current = id;
+    selection.onChange(next);
+  };
+  const checkAll = (value: boolean) => {
+    if (!selection) return;
+    const next = new Set(selection.selected);
+    for (const id of checkableIds) {
+      if (value) next.add(id);
+      else next.delete(id);
+    }
+    selection.onChange(next);
+  };
+  const allState: boolean | "indeterminate" =
+    shownTicked.length === 0 ? false : shownTicked.length === checkableIds.length ? true : "indeterminate";
+
   // Rows are memoized: the handlers they get never change identity, they call the latest props.
-  const handlers = useRef({ onSelect, onActivate });
-  handlers.current = { onSelect, onActivate };
+  const handlers = useRef({ onSelect, onActivate, check });
+  handlers.current = { onSelect, onActivate, check };
   const select = useCallback((id: string) => handlers.current.onSelect?.(id), []);
   const activate = useCallback((id: string) => handlers.current.onActivate?.(id), []);
-  const template = visible
-    .map((column) => (column.grow ? `minmax(${column.width ?? 120}px, ${column.grow}fr)` : `${column.width ?? 120}px`))
-    .join(" ");
+  const onCheck = useCallback(
+    (id: string, value: boolean, range: boolean) => handlers.current.check(id, value, range),
+    [],
+  );
+  const checkLabel = (row: T) => selection?.rowLabel?.(row) ?? `Selecionar ${textOf(visible[0]?.cell(row)) || "linha"}`;
+  const template = [
+    ...(selecting ? [`${CHECK_WIDTH}px`] : []),
+    ...visible.map((column) =>
+      column.grow ? `minmax(${column.width ?? 120}px, ${column.grow}fr)` : `${column.width ?? 120}px`,
+    ),
+  ].join(" ");
 
   const scroller = useRef<HTMLDivElement>(null);
   // The virtualizer measures every row again when these functions change identity: with 50 thousand rows
@@ -395,6 +597,11 @@ export function DataTable<T extends object>({
         if (selectedId !== null && selectedIndex >= 0) onActivate?.(selectedId);
       },
     };
+    // Space ticks the current row (Shift+Space: the range from the last one ticked).
+    if (selection && selectedId !== null && selectedIndex >= 0) {
+      const current = selectedId;
+      actions[" "] = () => check(current, !selection.selected.has(current), event.shiftKey);
+    }
     const action = actions[event.key];
     if (action) {
       event.preventDefault();
@@ -425,6 +632,98 @@ export function DataTable<T extends object>({
     );
   }
 
+  const clearSearch = () => {
+    setQuery("");
+    setFiltersOn(new Set());
+  };
+  const toggleFilter = (id: string, on: boolean) =>
+    setFiltersOn((current) => {
+      const next = new Set(current);
+      if (on) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  const tools =
+    search || filters?.length || (selection && cards) ? (
+      <div className="mb-2 flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2">
+        {search ? (
+          <TextField
+            label={search.label ?? `Buscar em ${label}`}
+            hideLabel
+            type="search"
+            value={query}
+            onChange={setQuery}
+            placeholder={search.placeholder ?? "Buscar"}
+            adornment={<Search />}
+            autoComplete="off"
+            fieldClassName="w-full tablet:w-72"
+            onKeyDown={(event) => {
+              if (event.key === "Escape" && query) {
+                event.stopPropagation();
+                setQuery("");
+              }
+            }}
+          />
+        ) : null}
+        {(filters ?? []).map((filter) => (
+          <Checkbox
+            key={filter.id}
+            label={filter.label}
+            checked={filtersOn.has(filter.id)}
+            onCheckedChange={(on) => toggleFilter(filter.id, on)}
+          />
+        ))}
+        {selection && cards && checkableIds.length ? (
+          <Checkbox label="Selecionar todos os exibidos" checked={allState} onCheckedChange={checkAll} />
+        ) : null}
+        <span role="status" className="text-caption text-secondary tabular-nums">
+          {narrowed ? `${ids.length} de ${rows.length}` : ""}
+        </span>
+      </div>
+    ) : null;
+  const shownCount = shownTicked.length;
+  const selectionBar = selection ? (
+    <div
+      role="toolbar"
+      aria-label={`Ações dos selecionados em ${label}`}
+      className={
+        shownCount ? "mb-2 flex min-w-0 flex-wrap items-center gap-2 rounded-lg bg-accent-soft px-3 py-1.5" : "sr-only"
+      }
+    >
+      <span role="status" className="text-body font-medium">
+        {shownCount ? (selection.count ?? selectedCount)(shownCount) : ""}
+      </span>
+      {shownCount ? (
+        <>
+          {selection.actions?.(shownTicked)}
+          <Button size="sm" variant="ghost" onClick={() => selection.onChange(new Set())}>
+            {selection.clearLabel ?? "Limpar seleção"}
+          </Button>
+        </>
+      ) : null}
+    </div>
+  ) : null;
+
+  if (ids.length === 0 && narrowed) {
+    return (
+      <div ref={measure} className={cn("min-w-0", className)}>
+        {tools}
+        <div className="rounded-lg border border-separator bg-raised">
+          <EmptyState
+            icon={<SearchX />}
+            title="Nada encontrado"
+            description={
+              words.length
+                ? "Nenhuma linha tem este texto com os filtros escolhidos. Ajuste a busca ou os filtros."
+                : "Os filtros escolhidos escondem todas as linhas."
+            }
+            actions={<Button onClick={clearSearch}>Limpar busca e filtros</Button>}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       ref={(element) => {
@@ -433,6 +732,8 @@ export function DataTable<T extends object>({
       }}
       className={cn("min-w-0", className)}
     >
+      {tools}
+      {selectionBar}
       {menuAt !== null && menuItems.length > 0 ? (
         <ContextMenuAt
           key={`${menuAt.id}|${menuAt.x}|${menuAt.y}`}
@@ -500,6 +801,29 @@ export function DataTable<T extends object>({
               className="grid min-w-full border-b border-separator bg-raised"
               style={{ gridTemplateColumns: template }}
             >
+              {selection ? (
+                <div role="columnheader" className="flex h-9 items-center justify-center">
+                  <RadixCheckbox.Root
+                    checked={allState}
+                    disabled={!checkableIds.length}
+                    tabIndex={-1}
+                    aria-label="Selecionar todos os exibidos"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      checkAll(allState !== true);
+                    }}
+                    className={checkClass}
+                  >
+                    <RadixCheckbox.Indicator>
+                      {allState === "indeterminate" ? (
+                        <Minus aria-hidden="true" className="size-3.5" />
+                      ) : (
+                        <Check aria-hidden="true" className="size-3.5" strokeWidth={3} />
+                      )}
+                    </RadixCheckbox.Indicator>
+                  </RadixCheckbox.Root>
+                </div>
+              ) : null}
               {visible.map((column) => {
                 const sorted = sorting?.id === column.id ? (sorting.desc ? "desc" : "asc") : false;
                 const end = column.align === "end";
@@ -568,6 +892,17 @@ export function DataTable<T extends object>({
                       selected ? "border-accent ring-1 ring-accent" : "border-separator",
                     )}
                   >
+                    {selection ? (
+                      <div className="float-left mt-0.5 mr-2.5">
+                        <RowCheck
+                          id={rowId}
+                          checked={selection.selected.has(rowId)}
+                          disabled={!(canSelect?.(original) ?? true)}
+                          label={checkLabel(original)}
+                          onCheck={onCheck}
+                        />
+                      </div>
+                    ) : null}
                     {renderCard ? (
                       renderCard(original)
                     ) : (
@@ -603,6 +938,10 @@ export function DataTable<T extends object>({
                 rowHeight={rowHeight}
                 onSelect={select}
                 onActivate={activate}
+                checked={selection ? selection.selected.has(rowId) : null}
+                checkable={selection ? (canSelect?.(original) ?? true) : false}
+                checkLabel={selection ? checkLabel(original) : ""}
+                onCheck={onCheck}
               />
             );
           })}

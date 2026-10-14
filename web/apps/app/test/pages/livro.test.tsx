@@ -410,6 +410,47 @@ describe("Livro: classificar", () => {
     expect(o.workspace.undoStack.undoLabel()).toBe(before);
   });
 
+  it("cancels the ticked operations with one reason, one undo step for all", async () => {
+    const o = await openLivro();
+    const ids: string[] = [];
+    for (const row of rowsWith("Padaria Real").slice(0, 2)) {
+      ids.push(row.getAttribute("data-row-id")!);
+      await o.user.click(within(row).getByRole("checkbox"));
+    }
+    await o.user.click(await screen.findByRole("button", { name: "Cancelar marcados…" }));
+    const d = await dialog("Cancelar 2 lançamentos");
+    await submit(o.user, d, "Cancelar 2 lançamentos");
+    expect(await within(d).findByText("O motivo é obrigatório.")).toBeTruthy();
+    await typeInto(o.user, d, /Motivo/, "Lançados em dobro");
+    await submit(o.user, d, "Cancelar 2 lançamentos");
+    await waitFor(() => expect(ids.every((id) => !isActive(byId(o, id)))).toBe(true));
+    expect(o.workspace.ledger.historyOf(ids[0]!).at(-1)?.reason).toBe("Lançados em dobro");
+    expect(o.workspace.undoStack.undoLabel()).toBe("cancelar 2 lançamentos");
+    o.workspace.undo();
+    expect(ids.every((id) => isActive(byId(o, id)))).toBe(true);
+  });
+
+  it("reverses the ticked operations, leaving the cancelled ones alone", async () => {
+    const o = await openLivro();
+    const ids: string[] = [];
+    for (const row of rowsWith("Padaria Real").slice(0, 3)) {
+      ids.push(row.getAttribute("data-row-id")!);
+      await o.user.click(within(row).getByRole("checkbox"));
+    }
+    o.workspace.act((l) => l.cancelOperation(ids[2]!, "teste"));
+    const before = o.workspace.ledger.operations.size;
+    await o.user.click(await screen.findByRole("button", { name: "Estornar marcados…" }));
+    const d = await dialog("Estornar 2 lançamentos");
+    expect(within(d).getByText(/1 marcado já está cancelado/)).toBeTruthy();
+    await typeInto(o.user, d, /Motivo/, "Devolvido");
+    await submit(o.user, d, "Estornar 2 lançamentos");
+    await waitFor(() => expect(o.workspace.ledger.operations.size).toBe(before + 2));
+    const reversals = [...o.workspace.ledger.operations.values()].filter((op) => op.reversal_of !== null);
+    expect(ids.slice(0, 2).every((id) => reversals.some((r) => r.reversal_of === id))).toBe(true);
+    o.workspace.undo();
+    expect(o.workspace.ledger.operations.size).toBe(before);
+  });
+
   it("tags operations, filters by the tag, removes it and renames it", async () => {
     const o = await openLivro();
     const id = await selectOperation(o.user, "Posto Shell");

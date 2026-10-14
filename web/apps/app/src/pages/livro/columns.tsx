@@ -1,11 +1,12 @@
 /**
  * The Livro's columns (desktop `OperationsModel`): Data, Descrição, De → Para, Valor, Competência, Tipo,
- * Origem and Situação, plus a checkbox column to pick several operations (reclassify, tag, mark as checked).
+ * Origem and Situação. The checkbox that picks several operations (reclassify, tag, reverse, cancel) is the
+ * table's own (`DataTable` `selection`).
  * A cancelled row is dimmed and also says "Cancelado": never color alone. The columns the person hides are
  * remembered on this computer.
  */
 import { isActive, type Ledger, type Operation } from "@opesvault/domain";
-import { Checkbox, cn, type DataColumn } from "@opesvault/ui";
+import { cn, type DataColumn } from "@opesvault/ui";
 import {
   KIND_LABELS,
   ORIGIN_LABELS,
@@ -17,10 +18,8 @@ import {
 } from "./rows.ts";
 import { dateOr } from "../../data/money.ts";
 
-export const SELECT_COLUMN = "marcar";
-
 /** Columns that cannot be hidden (the desktop's `required`). */
-export const REQUIRED_COLUMNS: ReadonlySet<string> = new Set([SELECT_COLUMN, "data", "descricao", "valor"]);
+export const REQUIRED_COLUMNS: ReadonlySet<string> = new Set(["data", "descricao", "valor"]);
 
 /** Id and title of each optional column, for the "Colunas" menu. */
 export const COLUMN_TITLES: readonly (readonly [string, string])[] = [
@@ -38,35 +37,14 @@ const dim = (op: Operation) => (isActive(op) ? "" : "text-tertiary");
 
 export interface ColumnContext {
   ledger: Ledger;
-  checked: ReadonlySet<string>;
-  onCheck: (id: string, value: boolean) => void;
   hidden: ReadonlySet<string>;
   readOnly?: boolean;
-  /** Phone layout: each operation is a card whose title carries the checkbox, so there is no column for it. */
+  /** Phone layout: each operation is a card (`LedgerCard`). */
   cards?: boolean;
 }
 
-export function ledgerColumns({ ledger, checked, onCheck, hidden, cards }: ColumnContext): DataColumn<Operation>[] {
+export function ledgerColumns({ ledger, hidden, cards }: ColumnContext): DataColumn<Operation>[] {
   const all: DataColumn<Operation>[] = [
-    {
-      id: SELECT_COLUMN,
-      header: "Marcar",
-      width: 72,
-      cell: (op) => (
-        // The cell is not the row: ticking must not move the current row or open the editor.
-        <span
-          className="inline-flex"
-          onClick={(event) => event.stopPropagation()}
-          onDoubleClick={(event) => event.stopPropagation()}
-        >
-          <Checkbox
-            label={<span className="sr-only">Marcar {op.description}</span>}
-            checked={checked.has(op.id)}
-            onCheckedChange={(value) => onCheck(op.id, value)}
-          />
-        </span>
-      ),
-    },
     {
       id: "data",
       header: "Data",

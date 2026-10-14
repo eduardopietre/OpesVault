@@ -321,6 +321,31 @@ export function Review({ batchId, selected, onSelect, queue, ai }: ReviewProps) 
     }
   };
 
+  /** The marked items rejected together: one reason for all of them, and one undo step. */
+  const rejectMarked = async () => {
+    if (readOnly || !markedOpen.length) return;
+    const ids = markedOpen.map((row) => row.id);
+    const many = ids.length === 1 ? "1 item" : `${ids.length} itens`;
+    const reason = await prompts.ask({
+      title: `Rejeitar ${many}`,
+      confirmLabel: `Rejeitar ${many}`,
+      description: "Os itens marcados não viram lançamentos. O mesmo motivo fica registrado em todos.",
+    });
+    if (reason === null) return;
+    const done = attempt(
+      () =>
+        workspace.act(
+          (ledger) => importing.pipeline.rejectItems(ledger, ids, reason),
+          actionName("rejeitar", ids.length, "item importado", "itens importados"),
+        ) ?? true,
+    );
+    if (done === undefined) return;
+    setMarked(NO_MARKS);
+    notify(`${ids.length === 1 ? "1 item rejeitado" : `${ids.length} itens rejeitados`}.`, {
+      action: { label: "Desfazer", run: undo },
+    });
+  };
+
   const createRule = (row: ItemRow | null) => {
     if (readOnly) return;
     if (!row) return notify("Selecione um item para criar a regra a partir dele.");
@@ -608,6 +633,11 @@ export function Review({ batchId, selected, onSelect, queue, ai }: ReviewProps) 
             title={readOnlyTip ?? "Ctrl+Enter"}
           >
             {`Aprovar marcados (${markedOpen.length})`}
+          </Button>
+        ) : null}
+        {markedOpen.length ? (
+          <Button variant="danger" onClick={() => void rejectMarked()} disabled={readOnly} title={readOnlyTip}>
+            Rejeitar marcados…
           </Button>
         ) : (
           <Button

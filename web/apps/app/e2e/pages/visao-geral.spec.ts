@@ -58,6 +58,9 @@ test.describe("visão geral: every action", () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
   test("every notice goes to the place where it is resolved", async ({ page }) => {
+    // The demonstration's dates are fixed: from mid-October 2026 on it no longer has a late recurring forecast, so
+    // no notice would lead to Recorrências. Today is pinned, as in the page's unit test.
+    await page.clock.setFixedTime(new Date("2026-10-06T12:00:00"));
     const errors = watchErrors(page);
     await openDemo(page, "/visao-geral");
     const panel = page.getByRole("region", { name: "Atenção" });

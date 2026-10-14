@@ -514,6 +514,7 @@ export function Page() {
           <>
             <DataTable
               label="Orçamento por categoria"
+              search={{ text: (row) => row.name, placeholder: "Buscar categoria" }}
               rows={status.rows}
               columns={columns}
               getRowId={(row) => row.categoryId}

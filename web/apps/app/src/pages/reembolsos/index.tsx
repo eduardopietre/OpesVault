@@ -400,6 +400,8 @@ export function Page() {
                   {(height) => (
                     <DataTable
                       label="Reembolsos"
+                      search={{ text: (r) => `${r.description} ${r.payer}`, placeholder: "Buscar reembolso" }}
+                      filters={[{ id: "open", label: "Só os pendentes", keep: (r) => r.open }]}
                       rows={view.reimbursements}
                       columns={REIMBURSEMENT_COLUMNS}
                       getRowId={(r) => r.id}
@@ -432,6 +434,7 @@ export function Page() {
                   {(height) => (
                     <DataTable
                       label="Saldos entre integrantes"
+                      search={{ text: (r) => `${r.debtor} ${r.creditor}`, placeholder: "Buscar integrante" }}
                       rows={view.balances}
                       columns={BALANCE_COLUMNS}
                       getRowId={(r) => r.id}
@@ -505,6 +508,7 @@ export function Page() {
                     {(height) => (
                       <DataTable
                         label="Acertos registrados"
+                        search={{ text: (r) => `${r.debtor} ${r.creditor} ${r.note}`, placeholder: "Buscar acerto" }}
                         rows={view.settlements}
                         columns={HISTORY_COLUMNS}
                         getRowId={(r) => r.id}

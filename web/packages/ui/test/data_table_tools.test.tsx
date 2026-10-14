@@ -176,7 +176,7 @@ describe("DataTable selection", () => {
     expect(onBatch).toHaveBeenLastCalledWith(["c3"]);
   });
 
-  it("puts a checkbox in each card and a select-all above the cards", async () => {
+  it("draws a box in each card, the state on the option, and a select-all above the cards", async () => {
     const user = userEvent.setup();
     function Cards() {
       const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
@@ -192,7 +192,11 @@ describe("DataTable selection", () => {
       );
     }
     render(<Cards />);
-    await user.click(screen.getByRole("checkbox", { name: "Selecionar Padaria" }));
+    const card = document.querySelector<HTMLElement>(`[role="option"][data-row-id="d4"]`)!;
+    expect(card.querySelector("button, [role=checkbox]")).toBeNull();
+    await user.click(card.querySelector<HTMLElement>("[data-check]")!);
+    expect(card.getAttribute("aria-checked")).toBe("true");
+    expect(card.getAttribute("aria-selected")).toBe("false");
     expect(screen.getByText("1 selecionado")).toBeTruthy();
     await user.click(screen.getByRole("checkbox", { name: "Selecionar todos os exibidos" }));
     expect(screen.getByText("4 selecionados")).toBeTruthy();

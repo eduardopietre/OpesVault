@@ -12,7 +12,7 @@ import { z } from "zod";
 import type { Id } from "../lib/ids.ts";
 import { zId } from "../lib/schema.ts";
 import { batches } from "../importing/store.ts";
-import { type Session, sha256Hex } from "../session.ts";
+import { type Document, type Session, sha256Hex } from "../session.ts";
 import { DomainError, Ledger } from "./ledger.ts";
 import { zEntityId } from "./model.ts";
 
@@ -64,6 +64,24 @@ export function attach(session: Session, operationId: Id, originalName: string, 
     throw new DomainError("Este comprovante já está anexado a este lançamento.");
   }
   return ledger.put("attachment", AttachmentSchema.parse({ operation_id: operationId, document_id: document.meta.id }));
+}
+
+/**
+ * A file the person adds to the project's documents by itself (Documentos → "Adicionar arquivo"), not yet a
+ * receipt of anything: the same rules as a receipt (PDF or image by its content, at most `MAX_BYTES`), and the
+ * same file twice is kept once. Only the bytes are stored; nothing reads a PDF here.
+ */
+export function addFile(
+  session: Session,
+  originalName: string,
+  data: Uint8Array,
+): { document: Document; existed: boolean } {
+  if (kindOf(data) === null) throw new DomainError("Adicione um PDF ou uma imagem (PNG ou JPEG).");
+  if (data.length > MAX_BYTES) throw new DomainError("O arquivo passa de 25 MB.");
+  const name = originalName.trim() || "documento";
+  const existing = session.findDocumentByHash(sha256Hex(data));
+  if (existing !== null) return { document: existing, existed: true };
+  return { document: session.addDocument(name, data), existed: false };
 }
 
 /** Removes the link; the file leaves the project when nothing else uses it. */

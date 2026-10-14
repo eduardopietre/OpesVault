@@ -4,10 +4,20 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderPdf } from "../../src/data/pdf_render.ts";
 import type { Workspace } from "../../src/data/workspace.ts";
 import { saveFile, formatBytes as fileSize } from "@opesvault/ui";
-import { documentRows, summaryLine, usedBy } from "../../src/pages/documentos/rows.ts";
+import {
+  NO_FILTER,
+  documentRows,
+  fileType,
+  filterActive,
+  keepsDocument,
+  summaryLine,
+  usedBy,
+  type DocumentFilter,
+  type DocumentRow,
+} from "../../src/pages/documentos/rows.ts";
 import { DocumentUnavailable } from "../../src/data/workspace.ts";
 import { openAt } from "./sharing_docs_harness.tsx";
-import { flat, fromRowMenu, rowMenu, type User, undoOnce } from "../dom.ts";
+import { choose, flat, fromRowMenu, rowMenu, type User, undoOnce } from "../dom.ts";
 import { addressSettles, navigations, wentTo } from "../navigations.ts";
 import { type MountOptions } from "../mount.tsx";
 
@@ -474,6 +484,92 @@ describe("Documentos", () => {
       expect((screen.getByRole("button", { name: "Salvar o original…" }) as HTMLButtonElement).disabled).toBe(false),
     );
     expect(await screen.findByText("2 páginas")).toBeTruthy();
+  });
+
+  it("adds a file by itself, opens it, and one undo takes it out", async () => {
+    const { workspace, user } = await open();
+    const before = workspace.session.documents.length;
+    await user.upload(
+      screen.getByLabelText("Escolher o arquivo"),
+      new File([PDF("CONTRATO")], "contrato.pdf", { type: "application/pdf" }),
+    );
+    await waitFor(() => expect(documents(workspace)).toContain("contrato.pdf"));
+    expect(await screen.findByText("Arquivo adicionado e guardado cifrado no projeto.")).toBeTruthy();
+    await waitFor(async () => expect((await panel()).textContent).toContain("contrato.pdf"));
+    expect(
+      flat(
+        within(await list())
+          .getByText("contrato.pdf")
+          .closest("[role=row]")!.textContent,
+      ),
+    ).toContain("Sem importação");
+    expect(workspace.undoStack.undoLabel()).toBe("adicionar documento");
+    undoOnce(workspace);
+    expect(workspace.session.documents.length).toBe(before);
+  });
+
+  it("keeps the same file once and refuses what is not a PDF or an image", async () => {
+    const { workspace, user } = await open();
+    const before = workspace.session.documents.length;
+    const input = screen.getByLabelText("Escolher o arquivo");
+    await user.upload(input, new File([PDF("LIVRE")], "copia.pdf", { type: "application/pdf" }));
+    expect(await screen.findByText("Este arquivo já está no projeto, como “livre.pdf”.")).toBeTruthy();
+    await user.upload(input, new File(["só texto"], "falso.pdf", { type: "application/pdf" }));
+    expect(await screen.findByText("Adicione um PDF ou uma imagem (PNG ou JPEG).")).toBeTruthy();
+    expect(workspace.session.documents.length).toBe(before);
+  });
+
+  it("finds documents by name or by what uses them, and filters by type and date", async () => {
+    const { user } = await open();
+    const grid = await list();
+    const names = () =>
+      within(screen.getByRole("grid", { name: "Documentos no projeto" }))
+        .getAllByRole("row")
+        .slice(1)
+        .map((row) => flat(row.textContent));
+    await user.type(screen.getByRole("searchbox", { name: "Buscar em Documentos no projeto" }), "mercado do mes");
+    await waitFor(() => expect(names()).toHaveLength(1));
+    expect(names()[0]).toContain("nota-dividida.pdf");
+    expect(screen.getByText("1 de 7")).toBeTruthy();
+    await user.clear(screen.getByRole("searchbox", { name: "Buscar em Documentos no projeto" }));
+    expect(grid.isConnected).toBe(true);
+
+    await choose(user, "Tipo de arquivo", "Imagem");
+    await waitFor(() => expect(names()).toHaveLength(1));
+    await choose(user, "Tipo de arquivo", "Outro");
+    await waitFor(() => expect(names()).toHaveLength(1));
+    expect(names()[0]).toContain("extrato.csv");
+    await choose(user, "Tipo de arquivo", "Todos os tipos");
+
+    await choose(user, "Data dos documentos", "Intervalo de datas");
+    await user.type(screen.getByRole("textbox", { name: "Data inicial" }), "01/01/2099");
+    expect(await screen.findByText("Nada encontrado")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Limpar busca e filtros" }));
+    await waitFor(() => expect(names()).toHaveLength(7));
+  });
+
+  it("keeps a document by its type and its date, a month or a range", () => {
+    const row = (name: string, date: string | null) =>
+      ({ name, date, where: "", state: "", receipts: [] }) as unknown as DocumentRow;
+    expect(fileType("Foto.JPEG")).toBe("image");
+    expect(fileType("fatura.pdf")).toBe("pdf");
+    expect(fileType("extrato.ofx")).toBe("other");
+    expect(fileType("sem extensão")).toBe("other");
+    const march = row("a.pdf", "2026-03-10");
+    expect(keepsDocument(march, { type: "pdf", date: { kind: "any" } })).toBe(true);
+    expect(keepsDocument(march, { type: "image", date: { kind: "any" } })).toBe(false);
+    expect(keepsDocument(march, { type: null, date: { kind: "month", month: { year: 2026, month: 3 } } })).toBe(true);
+    expect(keepsDocument(march, { type: null, date: { kind: "month", month: { year: 2026, month: 4 } } })).toBe(false);
+    const range = (from: string | null, to: string | null) =>
+      ({ type: null, date: { kind: "range", from, to } }) as DocumentFilter;
+    expect(keepsDocument(march, range("2026-03-10", "2026-03-10"))).toBe(true);
+    expect(keepsDocument(march, range("2026-03-11", null))).toBe(false);
+    expect(keepsDocument(march, range(null, "2026-03-09"))).toBe(false);
+    // without a date a document passes only while no date is asked for
+    expect(keepsDocument(row("b.pdf", null), range(null, null))).toBe(true);
+    expect(keepsDocument(row("b.pdf", null), range("2026-01-01", null))).toBe(false);
+    expect(filterActive(range(null, null))).toBe(false);
+    expect(filterActive(NO_FILTER)).toBe(false);
   });
 
   it("formats sizes as people read them", () => {

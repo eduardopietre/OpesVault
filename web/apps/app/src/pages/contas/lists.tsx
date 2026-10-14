@@ -108,6 +108,7 @@ export function CardsTab({ reveal }: { reveal?: TabReveal<Id> | null }) {
       {rows.length ? (
         <ListTable
           label="Cartões"
+          search={{ text: (r) => `${r.name} ${r.holder} ${r.last4}`, placeholder: "Buscar cartão" }}
           rows={rows}
           columns={CARD_COLUMNS}
           getRowId={(r) => r.id}
@@ -290,6 +291,7 @@ export function CategoriesTab() {
       {rows.length ? (
         <ListTable
           label="Categorias"
+          search={{ text: (r) => `${r.name} ${r.kind} ${r.parent}`, placeholder: "Buscar categoria" }}
           rows={rows}
           columns={CATEGORY_COLUMNS}
           getRowId={(r) => r.id}
@@ -385,6 +387,7 @@ export function MembersTab() {
       {rows.length ? (
         <ListTable
           label="Integrantes"
+          search={{ text: (r) => `${r.name} ${r.role}`, placeholder: "Buscar integrante" }}
           rows={rows}
           columns={MEMBER_COLUMNS}
           getRowId={(r) => r.id}

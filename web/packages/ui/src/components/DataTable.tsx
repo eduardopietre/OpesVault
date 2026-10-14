@@ -165,6 +165,14 @@ export interface DataTableProps<T> {
   filters?: readonly TableFilter<T>[];
   /** Ticking several rows, with a bar of batch commands. */
   selection?: TableSelection<T>;
+  /**
+   * A filter of the page's own (a type, a period), whose controls go in `toolbar`: counted in "N de M" with the
+   * search, and undone by `onClearFilters` from the "nothing found" state. Null when it keeps every row.
+   */
+  narrow?: ((row: T) => boolean) | null;
+  /** The page's own filter controls, beside the search box. */
+  toolbar?: ReactNode;
+  onClearFilters?: () => void;
 }
 
 /** The text of a cell, for the menu's name; an element (a badge, a warning) gives none. */
@@ -349,6 +357,9 @@ export function DataTable<T extends object>({
   search,
   filters,
   selection,
+  narrow = null,
+  toolbar,
+  onClearFilters,
 }: DataTableProps<T>) {
   const [measure, width] = useElementWidth<HTMLDivElement>();
   const [portalAnchor, portalContainer] = usePortalContainer();
@@ -386,15 +397,16 @@ export function DataTable<T extends object>({
   );
   const words = useMemo(() => (searchText ? searchWords(query) : []), [searchText, query]);
   const activeFilters = useMemo(() => (filters ?? []).filter((f) => filtersOn.has(f.id)), [filters, filtersOn]);
-  const narrowed = words.length > 0 || activeFilters.length > 0;
+  const narrowed = words.length > 0 || activeFilters.length > 0 || narrow !== null;
   const shownRows = useMemo<readonly T[]>(() => {
     if (!narrowed) return rows;
     return rows.filter(
       (row, index) =>
         (searchKeys === null || matchesSearch(searchKeys[index] ?? "", words)) &&
-        activeFilters.every((f) => f.keep(row)),
+        activeFilters.every((f) => f.keep(row)) &&
+        (narrow === null || narrow(row)),
     );
-  }, [rows, narrowed, searchKeys, words, activeFilters]);
+  }, [rows, narrowed, searchKeys, words, activeFilters, narrow]);
 
   const sortedRows = useMemo<readonly T[]>(() => {
     const column = sorting === null ? undefined : columns.find((c) => c.id === sorting.id);
@@ -635,6 +647,7 @@ export function DataTable<T extends object>({
   const clearSearch = () => {
     setQuery("");
     setFiltersOn(new Set());
+    onClearFilters?.();
   };
   const toggleFilter = (id: string, on: boolean) =>
     setFiltersOn((current) => {
@@ -644,7 +657,7 @@ export function DataTable<T extends object>({
       return next;
     });
   const tools =
-    search || filters?.length || (selection && cards) ? (
+    search || filters?.length || toolbar || (selection && cards) ? (
       <div className="mb-2 flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2">
         {search ? (
           <TextField
@@ -665,6 +678,7 @@ export function DataTable<T extends object>({
             }}
           />
         ) : null}
+        {toolbar}
         {(filters ?? []).map((filter) => (
           <Checkbox
             key={filter.id}
@@ -877,12 +891,16 @@ export function DataTable<T extends object>({
             };
             if (cards) {
               const [first, ...rest] = visible;
+              const cardCheck = selection
+                ? { checked: selection.selected.has(rowId), enabled: canSelect?.(original) ?? true }
+                : null;
               return (
                 <div
                   key={rowId}
                   ref={virtualizer.measureElement}
                   role="option"
                   {...common}
+                  aria-checked={cardCheck ? cardCheck.checked : undefined}
                   className="absolute inset-x-0 top-0 pb-2"
                   style={{ transform: `translateY(${item.start}px)` }}
                 >
@@ -892,16 +910,21 @@ export function DataTable<T extends object>({
                       selected ? "border-accent ring-1 ring-accent" : "border-separator",
                     )}
                   >
-                    {selection ? (
-                      <div className="float-left mt-0.5 mr-2.5">
-                        <RowCheck
-                          id={rowId}
-                          checked={selection.selected.has(rowId)}
-                          disabled={!(canSelect?.(original) ?? true)}
-                          label={checkLabel(original)}
-                          onCheck={onCheck}
-                        />
-                      </div>
+                    {cardCheck ? (
+                      // An option holds no control: the box is drawn here and the state is the option's aria-checked
+                      // (Space ticks the current card; a tap on the box ticks without opening the card).
+                      <span
+                        aria-hidden="true"
+                        data-check=""
+                        data-state={cardCheck.checked ? "checked" : "unchecked"}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          if (cardCheck.enabled) check(rowId, !cardCheck.checked, event.shiftKey);
+                        }}
+                        className={cn(checkClass, "float-left mt-0.5 mr-2.5", !cardCheck.enabled && "opacity-50")}
+                      >
+                        {cardCheck.checked ? <Check className="size-3.5" strokeWidth={3} /> : null}
+                      </span>
                     ) : null}
                     {renderCard ? (
                       renderCard(original)

@@ -185,6 +185,7 @@ export function AccountsTab({ reveal }: { reveal?: TabReveal<AccountReveal> | nu
       {rows.length ? (
         <ListTable
           label="Contas"
+          search={{ text: (r) => `${r.name} ${r.type} ${r.institution} ${r.holders}`, placeholder: "Buscar conta" }}
           rows={rows}
           columns={COLUMNS}
           getRowId={(r) => r.id}

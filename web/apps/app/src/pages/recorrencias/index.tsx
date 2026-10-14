@@ -325,6 +325,7 @@ export function Page() {
         </p>
         <DataTable
           label="Assinaturas e contas fixas"
+          search={{ text: (c) => c.rule.description, placeholder: "Buscar compromisso" }}
           rows={commitments}
           columns={COMMITMENT_COLUMNS}
           getRowId={(c) => c.rule.id}
@@ -355,6 +356,7 @@ export function Page() {
       >
         <DataTable
           label="Cobranças que parecem recorrentes"
+          search={{ text: (c) => c.description, placeholder: "Buscar cobrança" }}
           rows={candidates}
           columns={CANDIDATE_COLUMNS}
           getRowId={candidateKey}
@@ -406,6 +408,7 @@ export function Page() {
             >
               <DataTable
                 label="Regras de recorrência"
+                search={{ text: (r) => r.description, placeholder: "Buscar recorrência" }}
                 rows={rules}
                 columns={RULE_COLUMNS}
                 getRowId={(r) => r.id}
@@ -453,6 +456,7 @@ export function Page() {
               >
                 <DataTable
                   label="Previsões"
+                  search={{ text: (f) => f.description, placeholder: "Buscar previsão" }}
                   rows={forecasts}
                   columns={FORECAST_COLUMNS}
                   getRowId={(f) => forecastId(f.ruleId, f.dueOn)}

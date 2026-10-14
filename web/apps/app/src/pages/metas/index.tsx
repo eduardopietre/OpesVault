@@ -18,6 +18,8 @@ import {
   useMotionPreset,
   fitHeight,
   usePhone,
+  type TableFilter,
+  type TableSearch,
 } from "@opesvault/ui";
 import { Goal as GoalIcon } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
@@ -28,13 +30,18 @@ import { useReveal } from "../../data/navigation.ts";
 import { GoalDialog } from "../../dialogs/goal_dialog.tsx";
 import { ReasonDialog } from "../../dialogs/livro_prompts.tsx";
 import { goalColumns } from "./columns.tsx";
-import { goalExample, goalRows, reachedLabel, summaryLine, type GoalExample } from "./rows.ts";
+import { goalExample, goalRows, reachedLabel, summaryLine, type GoalExample, type GoalRow } from "./rows.ts";
 import { EditButton, usePick } from "../../components/list_parts.tsx";
 import { READ_ONLY_TIP, lockEntries, useLock } from "../../data/read_only.ts";
 import { useDialog } from "../../data/dialog.ts";
 import { moneyOr, dateOr } from "../../data/money.ts";
 
 type Goal = dom.goals.Goal;
+
+const GOAL_SEARCH: TableSearch<GoalRow> = { text: (row) => row.goal.name, placeholder: "Buscar meta" };
+const GOAL_FILTERS: readonly TableFilter<GoalRow>[] = [
+  { id: "archived", label: "Ocultar arquivadas", keep: (row) => !row.goal.archived },
+];
 
 interface EditState {
   goal: Goal | null;
@@ -167,6 +174,8 @@ export function Page() {
             <DataTable
               label="Metas"
               rows={rows}
+              search={GOAL_SEARCH}
+              filters={GOAL_FILTERS}
               columns={columns}
               getRowId={(row) => row.id}
               selectedId={selected?.id ?? null}

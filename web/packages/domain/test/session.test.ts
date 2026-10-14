@@ -194,6 +194,25 @@ describe("receipts (tests/test_planning_more.py)", () => {
     );
     expect(attachments.kindOf(new Uint8Array([0xff, 0xd8, 0xff, 0xe0]))).toBe("jpeg");
   });
+
+  it("adds a file by itself to the documents: PDF or image, at most 25 MB, the same bytes once", () => {
+    const session = Session.new();
+    const added = attachments.addFile(session, "contrato.pdf", PDF);
+    expect(added.existed).toBe(false);
+    expect(session.documents.map((d) => d.meta.original_name)).toEqual(["contrato.pdf"]);
+    const again = attachments.addFile(session, "outro nome.pdf", PDF);
+    expect(again).toEqual({ document: added.document, existed: true });
+    expect(session.documents).toHaveLength(1);
+    expect(() => attachments.addFile(session, "nota.txt", new TextEncoder().encode("texto"))).toThrow(
+      /PDF ou uma imagem/,
+    );
+    const big = new Uint8Array(attachments.MAX_BYTES + 1);
+    big.set(PDF);
+    expect(() => attachments.addFile(session, "grande.pdf", big)).toThrow(/25 MB/);
+    expect(attachments.addFile(session, "  ", PNG).document.meta.original_name).toBe("documento");
+    // nothing else in the project changed: the file is only a document
+    expect(attachments.attachments(session.ledger).size).toBe(0);
+  });
 });
 
 describe("PDF passwords in the pipeline (tests/test_pdf_password.py)", () => {

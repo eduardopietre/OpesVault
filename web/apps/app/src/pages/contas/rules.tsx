@@ -155,6 +155,7 @@ export function RulesTab({ reveal }: { reveal?: TabReveal<Id> | null }) {
       {rows.length ? (
         <ListTable
           label="Regras de categoria"
+          search={{ text: (r) => `${r.pattern} ${r.category} ${r.scope}`, placeholder: "Buscar regra" }}
           rows={rows}
           columns={COLUMNS}
           getRowId={(r) => r.id}

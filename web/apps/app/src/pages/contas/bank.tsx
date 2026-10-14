@@ -275,6 +275,10 @@ export function BankTab({ reveal }: { reveal?: TabReveal<BankReveal> | null }) {
         <>
           <ListTable
             label="Contas bancárias"
+            search={{
+              text: (r) => `${r.name} ${r.bank} ${r.number} ${r.holders}`,
+              placeholder: "Buscar conta bancária",
+            }}
             rows={rows}
             columns={COLUMNS}
             getRowId={(r) => r.id}

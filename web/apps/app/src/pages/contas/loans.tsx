@@ -245,6 +245,7 @@ export function LoansTab({ reveal }: { reveal?: TabReveal<LoanReveal> | null }) 
       {rows.length ? (
         <ListTable
           label="Financiamentos"
+          search={{ text: (r) => `${r.name} ${r.system}`, placeholder: "Buscar financiamento" }}
           rows={rows}
           columns={COLUMNS}
           getRowId={(r) => r.id}

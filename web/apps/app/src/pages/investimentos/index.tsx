@@ -15,6 +15,8 @@ import {
   notify,
   useMotionPreset,
   type MenuEntry,
+  type TableFilter,
+  type TableSearch,
 } from "@opesvault/ui";
 import { useNavigate } from "@tanstack/react-router";
 import { Table2 } from "lucide-react";
@@ -60,6 +62,18 @@ import { lockEntries, useLock } from "../../data/read_only.ts";
 import { accountRef } from "../livro/rows.ts";
 
 const { service, model } = investments;
+
+const PORTFOLIO_SEARCH: TableSearch<PortfolioRow> = {
+  text: (row) => `${row.name} ${row.assetClass} ${row.mode}`,
+  placeholder: "Buscar investimento",
+};
+const PORTFOLIO_FILTERS: readonly TableFilter<PortfolioRow>[] = [
+  { id: "closed", label: "Ocultar posições encerradas", keep: (row) => !row.closed },
+];
+const NOTE_SEARCH: TableSearch<NoteRow> = {
+  text: (row) => `${row.number} ${row.date} ${row.assets}`,
+  placeholder: "Buscar nota ou ativo",
+};
 
 type Spec =
   | { kind: "position" }
@@ -403,6 +417,8 @@ export function Page() {
             <ListTable
               label="Investimentos"
               rows={rows}
+              search={PORTFOLIO_SEARCH}
+              filters={PORTFOLIO_FILTERS}
               columns={PORTFOLIO_COLUMNS}
               getRowId={(r) => r.id}
               selectedId={selected?.id ?? null}
@@ -485,6 +501,7 @@ export function Page() {
             <ListTable
               label="Notas de negociação"
               rows={notes}
+              search={NOTE_SEARCH}
               columns={NOTE_COLUMNS}
               getRowId={(r) => r.id}
               selectedId={notePick}

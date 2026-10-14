@@ -31,6 +31,22 @@ describe("Investimentos: carteira e detalhe", () => {
     expect(selectedRow(grid)).toBe(rowOf(grid, "CDB Banco X 2028"));
   });
 
+  it("hides the closed positions on request and finds an investment by its name", async () => {
+    const { ledger, workspace, user } = await openInvestimentos();
+    const grid = await table("Investimentos");
+    const all = grid.querySelectorAll("[data-row-id]").length;
+    const id = cdbOf(ledger);
+    workspace.act((l) => l.put("position", { ...service.position(l, id), closed: true }, { reason: "teste" }));
+    await waitFor(() => expect(flat(rowOf(grid, "CDB Banco X 2028").textContent)).toContain("(encerrado)"));
+    await user.click(screen.getByRole("checkbox", { name: "Ocultar posições encerradas" }));
+    await waitFor(() => expect(grid.querySelector(`[data-row-id="${id}"]`)).toBeNull());
+    expect(screen.getByText(`${all - 1} de ${all}`)).toBeTruthy();
+    await user.click(screen.getByRole("checkbox", { name: "Ocultar posições encerradas" }));
+    await user.type(screen.getByRole("searchbox", { name: "Buscar em Investimentos" }), "cdb x");
+    await waitFor(() => expect(grid.querySelectorAll("[data-row-id]").length).toBe(1));
+    expect(grid.querySelector(`[data-row-id="${id}"]`)).toBeTruthy();
+  });
+
   it("shows the key figures of the selected investment: value, cost, unrealized and maturity", async () => {
     const { ledger, workspace } = await openInvestimentos();
     const id = cdbOf(ledger);

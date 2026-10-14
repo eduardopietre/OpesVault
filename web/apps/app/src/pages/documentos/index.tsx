@@ -1,6 +1,8 @@
 /**
  * Documentos (desktop `ui/pages/documents_page.py`): every file stored in the project, imports and receipts,
- * what uses each one and the original itself, drawn in the tab only when asked for (docs/03 §6).
+ * what uses each one and the original itself, drawn in the tab only when asked for (docs/03 §6). A file can be
+ * added here by itself (a contract, a policy): it is stored encrypted like a receipt, under the same rules
+ * (`dom.attachments.addFile`), and only read when it is opened. The list is searched and filtered by type and date.
  */
 import { DomainError, dom, exporting, type Id } from "@opesvault/domain";
 import {
@@ -14,16 +16,30 @@ import {
   notify,
   type DataColumn,
   type MenuEntry,
+  type TableSearch,
   saveFile,
   formatBytes,
 } from "@opesvault/ui";
-import { useRef, useState } from "react";
+import { FilePlus } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
 import { useGoTo, useReveal } from "../../data/navigation.ts";
 import { useLedger, useWorkspace } from "../../data/react.tsx";
 import { TableBox } from "../../data/table_box.tsx";
 import { useUndo } from "../../shell/undo.tsx";
 import { DocumentPanel } from "./panel.tsx";
-import { documentRows, summaryLine, type DocumentRow, type ReceiptUse } from "./rows.ts";
+import {
+  NO_FILTER,
+  documentRows,
+  documentSearchText,
+  filterActive,
+  keepsDocument,
+  summaryLine,
+  type DocumentFilter,
+  type DocumentRow,
+  type ReceiptUse,
+} from "./rows.ts";
+import { DocumentFilters } from "./filters.tsx";
+import { EditButton } from "../../components/list_parts.tsx";
 import { exportUnencrypted, NOT_ENCRYPTED } from "../../data/export_file.ts";
 import { DOCUMENT_MIME, type DocumentKind } from "../../data/use_document.ts";
 import { lockEntries } from "../../data/read_only.ts";
@@ -66,12 +82,23 @@ const COLUMNS: DataColumn<DocumentRow>[] = [
   },
 ];
 
+const SEARCH: TableSearch<DocumentRow> = { text: documentSearchText, placeholder: "Buscar documento" };
+
+/** What the file picker offers: the kinds a document may be (the content is checked again when it is read). */
+const ACCEPT = ".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg";
+
 export function Page() {
   const workspace = useWorkspace();
   const goTo = useGoTo();
   const { undo } = useUndo();
   const locked = workspace.readOnly;
   const panelBox = useRef<HTMLDivElement>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [filter, setFilter] = useState<DocumentFilter>(NO_FILTER);
+  const narrow = useMemo(
+    () => (filterActive(filter) ? (row: DocumentRow) => keepsDocument(row, filter) : null),
+    [filter],
+  );
 
   const rows = useLedger((ledger) => documentRows(ledger, workspace.session.documents));
   const [pick, setPick] = useState<string | null>(null);
@@ -97,6 +124,34 @@ export function Page() {
     }
     choose(id);
   });
+
+  /** A file chosen in the picker becomes a document of the project (one act); the same file twice is kept once. */
+  const addChosen = async (file: File | undefined) => {
+    if (!file) return;
+    // refused before reading it: a file this large is never loaded into the tab
+    if (file.size > dom.attachments.MAX_BYTES) {
+      notify("O arquivo passa de 25 MB.", { tone: "negative" });
+      return;
+    }
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    let added: ReturnType<typeof dom.attachments.addFile>;
+    try {
+      added = workspace.act(
+        (_ledger, session) => dom.attachments.addFile(session, file.name, bytes),
+        "adicionar documento",
+      );
+    } catch (error) {
+      notify(error instanceof DomainError ? error.message : "Não foi possível adicionar o arquivo.", {
+        tone: "negative",
+      });
+      return;
+    }
+    setFilter(NO_FILTER);
+    choose(added.document.meta.id);
+    if (added.existed) notify(`Este arquivo já está no projeto, como “${added.document.meta.original_name}”.`);
+    else notify("Arquivo adicionado e guardado cifrado no projeto.", { action: { label: "Desfazer", run: undo } });
+  };
+  const pickFile = () => fileInput.current?.click();
 
   const remove = async (row: DocumentRow) => {
     const ok = await confirm({
@@ -236,7 +291,30 @@ export function Page() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Documentos" context={context} />
+      <PageHeader
+        title="Documentos"
+        context={context}
+        primary={
+          rows.length > 0 ? (
+            <EditButton variant="primary" icon={<FilePlus />} onClick={pickFile}>
+              Adicionar arquivo…
+            </EditButton>
+          ) : null
+        }
+      />
+      <input
+        ref={fileInput}
+        type="file"
+        aria-label="Escolher o arquivo"
+        accept={ACCEPT}
+        className="sr-only"
+        tabIndex={-1}
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          event.target.value = "";
+          void addChosen(file);
+        }}
+      />
 
       {rows.length > 0 ? (
         <Adaptive at={1200} columns="5fr 4fr" gap={24}>
@@ -254,6 +332,10 @@ export function Page() {
                   rowMenuLabel={(row) => `Ações de ${row.name}`}
                   cardTitle={(row) => <ElidedText>{row.name}</ElidedText>}
                   height={height}
+                  search={SEARCH}
+                  narrow={narrow}
+                  onClearFilters={() => setFilter(NO_FILTER)}
+                  toolbar={<DocumentFilters filter={filter} onChange={setFilter} today={workspace.today()} />}
                 />
               )}
             </TableBox>
@@ -283,8 +365,15 @@ export function Page() {
         <EmptyState
           framed
           title="Nenhum documento no projeto"
-          description="Os arquivos importados e os comprovantes anexados no Livro ficam guardados aqui, cifrados, como evidência dos lançamentos."
-          actions={<Button onClick={() => goTo("livro")}>Abrir o Livro financeiro</Button>}
+          description="Os arquivos importados e os comprovantes anexados no Livro ficam guardados aqui, cifrados, como evidência dos lançamentos. Um contrato ou uma apólice também pode ser adicionado por aqui."
+          actions={
+            <>
+              <EditButton variant="primary" icon={<FilePlus />} onClick={pickFile}>
+                Adicionar arquivo…
+              </EditButton>
+              <Button onClick={() => goTo("livro")}>Abrir o Livro financeiro</Button>
+            </>
+          }
         />
       )}
     </div>

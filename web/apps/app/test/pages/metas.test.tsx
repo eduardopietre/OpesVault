@@ -264,6 +264,31 @@ describe("Metas", () => {
     expect(await screen.findByRole("button", { name: "Reativar…" })).toBeTruthy();
   });
 
+  it("hides the archived goals on request and finds a goal by its name", async () => {
+    const { workspace, user } = await open();
+    const archived = workspace.act((l) =>
+      dom.goals.addGoal(
+        l,
+        dom.goals.GoalSchema.parse({
+          name: "Antiga",
+          kind: "net_worth",
+          target: "1000.00",
+          created_on: makeDate(2026, 1, 1),
+          archived: true,
+        }),
+      ),
+    );
+    const table = await screen.findByRole("grid", { name: "Metas" });
+    expect(rowById(table, archived.id)).toBeTruthy();
+    await user.click(screen.getByRole("checkbox", { name: "Ocultar arquivadas" }));
+    await waitFor(() => expect(table.querySelector(`[data-row-id="${archived.id}"]`)).toBeNull());
+    expect(screen.getByText("1 de 2")).toBeTruthy();
+    await user.click(screen.getByRole("checkbox", { name: "Ocultar arquivadas" }));
+    await user.type(screen.getByRole("searchbox", { name: "Buscar em Metas" }), "antiga");
+    await waitFor(() => expect(table.querySelectorAll("[data-row-id]").length).toBe(1));
+    expect(rowById(table, archived.id)).toBeTruthy();
+  });
+
   it("opens the goal a link names ('<goalId>'), and 'editar' also opens its form", async () => {
     const { ledger, router, workspace } = await open();
     const second = workspace.act((l) =>

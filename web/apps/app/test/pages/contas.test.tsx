@@ -98,6 +98,23 @@ describe("Integrantes", () => {
     }
   });
 
+  it("finds a category by its name without accents or case, and says when nothing matches", async () => {
+    const { user } = await openContas();
+    await goTab(user, "Categorias");
+    const grid = await table("Categorias");
+    const all = grid.querySelectorAll("[data-row-id]").length;
+    const box = screen.getByRole("searchbox", { name: "Buscar em Categorias" });
+    await user.type(box, "SAUDE");
+    const shown = [...grid.querySelectorAll("[data-row-id]")].map((row) => flat(row.textContent));
+    expect(shown.length).toBeGreaterThan(0);
+    expect(shown.length).toBeLessThan(all);
+    expect(shown.every((text) => /saúde/i.test(text))).toBe(true);
+    expect(screen.getByText(`${shown.length} de ${all}`)).toBeTruthy();
+    await user.clear(box);
+    await user.type(box, "zzz nada");
+    expect(await screen.findByText("Nada encontrado")).toBeTruthy();
+  });
+
   it("adds a member with a role (Novo integrante…) and one undo removes it", async () => {
     const { ledger, workspace, user } = await openContas();
     const before = snapshot(ledger);
